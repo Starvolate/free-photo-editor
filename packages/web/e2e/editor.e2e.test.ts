@@ -16,7 +16,8 @@ import { AUTHOR_URL, CREDIT, SOURCE_URL, addLayer, createDocument, createLayer, 
 import { readPsdDocument, writePsdDocument } from '@free-photoeditor/core/psd';
 
 interface LayerInfo { name: string; visible: boolean; opacity: number; blendMode: string; x: number; y: number; width: number; height: number; }
-interface Info { width: number; height: number; layers: LayerInfo[]; canUndo: boolean; canRedo: boolean; layout: string | null; }
+interface Info { width: number; height: number; layers: LayerInfo[]; canUndo: boolean; canRedo: boolean; layout: string | null;
+  selection: { x: number; y: number; w: number; h: number } | null; }
 interface Fpe {
   getInfo(): Info | null; newDocument(w: number, h: number, bg?: string | null): void;
   sample(x: number, y: number, activeLayerOnly?: boolean): number[] | null; toClient(x: number, y: number): { x: number; y: number } | null;
@@ -148,6 +149,7 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
 
   it('starts with a plain empty state and opens a PNG from the file picker', async () => {
     expect(await page.textContent('[data-testid="empty"]')).toContain('Your pictures stay on this device');
+    await page.screenshot({ path: join(OUT, 'empty-1440.png') });
     const i = await openFile(page, 'photo.png', 'image/png', PHOTO, 120, 80);
     expect(i.layers.length).toBe(1);
     expect(await page.isVisible('[data-testid="empty"]')).toBe(false);
@@ -298,13 +300,20 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
       expect(m.body, `${where} at ${w} px`).toBeLessThanOrEqual(m.view);
       expect(m.tools, `tool bar at ${w} px`).toBeLessThanOrEqual(0);
     };
-    for (const [w, h, layout] of [[360, 740, 'phone'], [1440, 900, 'desktop']] as const) {
+    for (const [w, h, layout] of [[360, 740, 'phone'], [1024, 768, 'tablet'], [1440, 900, 'desktop']] as const) {
       await page.setViewportSize({ width: w, height: h });
       await page.waitForFunction((l) => (window as unknown as Win).fpe.getInfo()?.layout === l, layout);
       await check('editor', w);
       const bb = await page.locator('[data-testid="brand"]').boundingBox();
       expect(!!bb && bb.x >= 0 && bb.x + bb.width <= w && bb.width > 0).toBe(true);
       await page.screenshot({ path: join(OUT, `editor-${w}.png`) });
+      if (layout === 'tablet') {
+        await page.click('[data-testid="btn-layers"]');
+        await page.locator('[data-testid="sheet-layers"]').waitFor({ state: 'visible' });
+        await check('layers panel', w);
+        await page.screenshot({ path: join(OUT, `layers-${w}.png`) });
+        await page.click('[data-testid="close-layers"]');
+      }
       if (layout !== 'phone') continue;
       await page.click('[data-testid="btn-layers"]');
       await page.locator('[data-testid="sheet-layers"]').waitFor({ state: 'visible' });
@@ -314,9 +323,86 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
       await page.click('[data-testid="btn-export"]');
       await page.locator('[data-testid="sheet-export"]').waitFor({ state: 'visible' });
       await check('export sheet', w);
+      expect(await page.evaluate(() => (document.querySelector('.fpe-shell') as HTMLElement).inert), 'the editor behind a dialog is inert').toBe(true);
       await page.screenshot({ path: join(OUT, `export-${w}.png`) });
       await page.keyboard.press('Escape');
+      expect(await page.evaluate(() => (document.querySelector('.fpe-shell') as HTMLElement).inert)).toBe(false);
     }
+  });
+
+  it('makes a new picture from the menu; a selection limits delete and paint; eyedropper, move layer and crop', async () => {
+    await page.click('[data-testid="btn-menu"]');
+    await page.click('[data-testid="menu-new"]');
+    await page.locator('[data-testid="new-width"]').fill('200');
+    await page.locator('[data-testid="new-height"]').fill('150');
+    await page.click('[data-testid="new-create"]');
+    await waitDoc(page, 200, 150);
+    expect(await sample(page, 5, 5)).toEqual([255, 255, 255, 255]);
+    const drag = async (from: [number, number], to: [number, number]): Promise<void> => {
+      const a = await toClient(page, ...from), b = await toClient(page, ...to);
+      await page.mouse.move(a.x, a.y);
+      await page.mouse.down();
+      await page.mouse.move(b.x, b.y, { steps: 10 });
+      await page.mouse.up();
+    };
+
+    await page.click('[data-testid="tool-select"]');
+    await drag([20, 20], [80, 60]);
+    const sel = (await info(page))?.selection ?? null;
+    expect(sel && near([sel.x, sel.y, sel.w, sel.h], [20, 20, 60, 40], 1), JSON.stringify(sel)).toBe(true);
+    await page.click('[data-testid="sel-delete"]');
+    expect(await sample(page, 50, 40)).toEqual([0, 0, 0, 0]);
+    expect(await sample(page, 120, 40)).toEqual([255, 255, 255, 255]);
+
+    await page.click('[data-testid="tool-brush"]');
+    await drag([5, 40], [195, 40]);
+    expect(near(await sample(page, 50, 40), [228, 87, 46, 255], 8), 'painted inside the selection').toBe(true);
+    expect(await sample(page, 120, 40), 'untouched outside the selection').toEqual([255, 255, 255, 255]);
+
+    await page.click('[data-testid="tool-eyedropper"]');
+    const white = await toClient(page, 120, 40);
+    await page.mouse.click(white.x, white.y);
+    await page.click('[data-testid="tool-brush"]');
+    expect(await page.inputValue('[data-testid="brush-color"]')).toBe('#ffffff');
+
+    await page.keyboard.press('Control+d');
+    expect((await info(page))?.selection).toBeNull();
+    await page.click('[data-testid="tool-move"]');
+    await drag([100, 100], [120, 110]);
+    const moved = (await info(page))?.layers[0];
+    expect(!!moved && near([moved.x, moved.y], [20, 10], 1), JSON.stringify(moved)).toBe(true);
+    await page.click('[data-testid="btn-undo"]');
+    expect((await info(page))?.layers[0].x).toBe(0);
+
+    await page.click('[data-testid="tool-crop"]');
+    await drag([0, 0], [100, 75]);
+    await page.click('[data-testid="crop-apply"]');
+    const c = await info(page);
+    expect(!!c && near([c.width, c.height], [100, 75], 1), JSON.stringify(c && [c.width, c.height])).toBe(true);
+    await page.click('[data-testid="btn-undo"]');
+    await waitDoc(page, 200, 150);
+  });
+
+  it('keeps the primary button readable (WCAG AA) in the dark and the light look', async () => {
+    const ratio = (): Promise<number> => page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('[data-testid="btn-export"]') as HTMLElement);
+      const lum = (c: string): number => {
+        const [r, g, b] = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map((v) => { const s = Number(v) / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const a = lum(cs.color), b = lum(cs.backgroundColor);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    expect(await ratio(), 'dark look').toBeGreaterThanOrEqual(4.5);
+    await page.click('[data-testid="btn-menu"]');
+    await page.click('[data-testid="menu-theme"]');
+    expect(await page.getAttribute('.fpe', 'data-theme')).toBe('light');
+    expect(await ratio(), 'light look').toBeGreaterThanOrEqual(4.5);
+    await page.screenshot({ path: join(OUT, 'light-1440.png') });
+    await page.click('[data-testid="btn-menu"]');
+    await page.click('[data-testid="menu-theme"]');
+    expect(await page.getAttribute('.fpe', 'data-theme')).toBe('dark');
+    await page.waitForFunction(() => !document.querySelector('[data-testid="toast"]')?.hasAttribute('data-on'), undefined, { timeout: 8000 });
   });
 
   it('had zero page errors', () => {

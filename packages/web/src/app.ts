@@ -82,6 +82,7 @@ class Editor {
   private canvas!: HTMLCanvasElement;
   private dock!: HTMLElement;
   private optionsBar!: HTMLElement;
+  private shell!: HTMLElement;
   private toolsBar!: HTMLElement;
   private emptyEl!: HTMLElement;
   private dropEl!: HTMLElement;
@@ -222,6 +223,7 @@ class Editor {
       iconButton('layers', 'Layers', { 'data-testid': 'btn-layers', 'data-panel': 'layers', 'aria-expanded': 'false', onclick: () => this.togglePanel('layers') }),
       iconButton('sliders', 'Adjustments and filters', { 'data-testid': 'btn-adjust', 'data-panel': 'adjust', 'aria-expanded': 'false', onclick: () => this.togglePanel('adjust') }));
     this.optionsBar = h('div', { class: 'fpe-options', role: 'toolbar', 'aria-label': 'Tool options' });
+    this.optionsBar.addEventListener('scroll', () => this.syncOptionsFade(), { passive: true });
     this.canvas = h('canvas', { class: 'fpe-canvas', role: 'img', 'aria-label': 'The picture you are editing', 'data-testid': 'canvas' });
     this.emptyEl = h('div', { class: 'fpe-empty', 'data-testid': 'empty' },
       icon('image', 'fpe-icon fpe-empty-icon'), h('h2', {}, 'Open a photo to start'),
@@ -237,7 +239,7 @@ class Editor {
       iconButton('zoom-in', 'Zoom in (Ctrl+=)', { onclick: () => this.zoomBy(1.25) }));
     this.stage = h('div', { class: 'fpe-stage' }, this.canvas, this.emptyEl, this.dropEl, zoom);
     this.dock = h('aside', { class: 'fpe-panels', 'aria-label': 'Panels' });
-    const shell = h('div', { class: 'fpe-shell' }, top, this.stage, this.optionsBar, this.toolsBar, this.dock);
+    const shell = (this.shell = h('div', { class: 'fpe-shell' }, top, this.stage, this.optionsBar, this.toolsBar, this.dock));
 
     this.layerList = h('ul', { class: 'fpe-layer-list', 'aria-label': 'Layers, top first' });
     this.layerProps = h('div', { class: 'fpe-props' });
@@ -316,6 +318,7 @@ class Editor {
 
   // ---------- layout, theme, view ----------
   private onRootResize(): void {
+    this.syncOptionsFade();
     const w = this.root.clientWidth;
     const layout: Layout = w >= 1200 ? 'desktop' : w >= 768 ? 'tablet' : 'phone';
     if (layout === this.layout) return;
@@ -325,12 +328,14 @@ class Editor {
     const panels = (['layers', 'adjust'] as const).map((id) => this.sheets.get(id) as HTMLElement);
     if (layout === 'desktop') {
       this.dock.append(...panels);
-      for (const p of panels) { p.dataset.state = 'open'; p.inert = false; }
+      for (const p of panels) p.dataset.state = 'open';
     } else {
       (layout === 'tablet' ? this.stage : this.root).append(...panels);
-      for (const p of panels) { p.dataset.state = 'closed'; p.inert = true; }
+      for (const p of panels) p.dataset.state = 'closed';
     }
+    this.syncInert();
     this.syncPanelButtons();
+    this.syncOptionsFade();
   }
   private onStageResize(): void {
     this.renderer.resize(this.stage.clientWidth, this.stage.clientHeight, window.devicePixelRatio || 1);
@@ -546,6 +551,7 @@ class Editor {
       o.append(h('span', { class: 'fpe-dot', 'data-swatch': '', style: 'background:' + this.brush.color, role: 'img', 'aria-label': 'Brush colour ' + this.brush.color }),
         hint('Tap the picture to pick a colour for the brush.'), seg);
     }
+    this.syncOptionsFade();
   }
   private slider(label: string, min: number, max: number, value: number, unit: string, onInput: (v: number) => void, testid: string): HTMLElement {
     const id = `fpe-${this.uid}-${testid}`;
@@ -846,8 +852,8 @@ class Editor {
       const s = this.sheets.get(other) as HTMLElement;
       const st = other === id ? state : state === 'closed' ? s.dataset.state ?? 'closed' : 'closed';
       s.dataset.state = st;
-      s.inert = st === 'closed';
     }
+    this.syncInert();
     if (id === 'adjust' && state === 'closed') this.cancelSession();
     this.syncPanelButtons();
   }
@@ -862,6 +868,20 @@ class Editor {
       b.classList.toggle('fpe-on', open);
     }
   }
+  /** While a dialog is open, everything behind it is inert, so keyboard focus stays in the dialog. */
+  private syncInert(): void {
+    this.shell.inert = !!this.modal;
+    for (const id of ['layers', 'adjust'] as const) {
+      const p = this.sheets.get(id) as HTMLElement;
+      p.inert = !!this.modal || (this.layout !== 'desktop' && p.dataset.state === 'closed');
+    }
+  }
+  /** Fades the options bar's edge while more options sit off screen (phones), so people know to swipe it. */
+  private syncOptionsFade(): void {
+    const o = this.optionsBar, rest = o.scrollWidth - o.clientWidth - o.scrollLeft;
+    o.toggleAttribute('data-more', rest > 2);
+    o.toggleAttribute('data-less', o.scrollLeft > 2);
+  }
   private openModal(id: string): void {
     const s = this.sheets.get(id);
     if (!s) return;
@@ -871,6 +891,7 @@ class Editor {
     this.modal = id;
     s.dataset.state = 'open';
     s.inert = false;
+    this.syncInert();
     this.scrim.setAttribute('data-on', '');
     requestAnimationFrame(() => (s.querySelector<HTMLElement>('[data-autofocus]') ?? s.querySelector<HTMLElement>('.fpe-sheet-body .fpe-btn-primary')
       ?? s.querySelector<HTMLElement>('.fpe-sheet-body button'))?.focus({ preventScroll: true }));
@@ -881,6 +902,7 @@ class Editor {
     const s = this.sheets.get(id);
     if (s) { s.dataset.state = 'closed'; s.inert = true; }
     this.modal = null;
+    this.syncInert();
     this.scrim.removeAttribute('data-on');
     if (id === 'ask' && this.askResolve) { const r = this.askResolve; this.askResolve = null; r('cancel'); }
     if (restore) { this.modalReturn?.focus({ preventScroll: true }); this.modalReturn = null; }

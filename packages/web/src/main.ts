@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
-import { APP_NAME } from '@free-photoeditor/core';
-document.title = APP_NAME;
+/** The standalone page. */
+import { mount } from './app';
+
+const el = document.getElementById('app');
+if (el) (window as unknown as { fpe: unknown }).fpe = mount(el, { standalone: true });

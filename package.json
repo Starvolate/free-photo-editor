@@ -5,7 +5,7 @@
   "description": "Free Photo Editor by Bhawesh Tibrewal: a fast, small photo editor that runs fully in the browser.",
   "license": "AGPL-3.0-only",
   "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
-  "homepage": "https://github.com/Starvolate/free-photoeditor",
+  "homepage": "https://github.com/Starvolate/free-photo-editor",
   "type": "module",
   "workspaces": ["packages/core", "packages/web"],
   "scripts": {

@@ -370,3 +370,11 @@
 .fpe[data-layout=phone] .fpe-jobs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .fpe[data-layout=phone] .fpe-job{min-height:88px;padding:10px}
 @media (prefers-reduced-motion:reduce){.fpe [data-pulse]{animation:none;box-shadow:0 0 0 3px var(--accent)}.fpe *{transition:none!important}}
+
+/* W3 tools: options-bar fields, text panels, the text box */
+.fpe-w3-field{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fpe-w3-label{font-size:12px;opacity:.85}
+.fpe-w3-num{width:64px;min-height:32px}
+.fpe-w3-panel{gap:10px}
+.fpe-w3-panel .fpe-w3-field{justify-content:space-between;width:100%}
+.fpe-textedit{box-sizing:content-box}

@@ -14,6 +14,10 @@ export interface Overlay {
   hole?: Rect | null;
   /** Grid spacing in picture pixels, or 0 for no grid. */
   grid?: number;
+  /** A shaped selection's edge as segments x0 y0 x1 y1 in picture pixels (drawn instead of its box). */
+  outline?: Float32Array | null;
+  /** Extra drawing on top (the W3 tools' handles, outlines and previews), in CSS pixels of the canvas. */
+  draw?: ((ctx: CanvasRenderingContext2D) => void) | null;
 }
 export interface Colors { stage: string; checkA: string; checkB: string; edge: string; }
 export interface Renderer {
@@ -127,7 +131,7 @@ export class Canvas2DRenderer implements Renderer {
       ctx.restore();
     }
     if (ov.crop) this.drawCrop(view, ov.crop);
-    if (ov.selection) this.drawAnts(view, ov.selection, ov.ants);
+    if (ov.selection) { if (ov.outline) this.drawOutline(view, ov.outline, ov.ants); else this.drawAnts(view, ov.selection, ov.ants); }
     if (ov.hole) this.drawAnts(view, ov.hole, ov.ants);
     if (ov.cursor) {
       ctx.beginPath();
@@ -135,6 +139,7 @@ export class Canvas2DRenderer implements Renderer {
       ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.25; ctx.stroke();
     }
+    if (ov.draw) { ctx.save(); ov.draw(ctx); ctx.restore(); }
   }
   private screen(view: View, r: Rect): Rect {
     return { x: Math.round(view.panX + r.x * view.zoom), y: Math.round(view.panY + r.y * view.zoom), w: Math.round(r.w * view.zoom), h: Math.round(r.h * view.zoom) };
@@ -150,6 +155,16 @@ export class Canvas2DRenderer implements Renderer {
     ctx.strokeStyle = '#fff';
     ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
     ctx.setLineDash([]);
+  }
+  private drawOutline(view: View, segs: Float32Array, offset: number): void {
+    const ctx = this.ctx, z = view.zoom, px = view.panX, py = view.panY;
+    ctx.beginPath();
+    for (let i = 0; i < segs.length; i += 4) {
+      ctx.moveTo(Math.round(px + segs[i] * z) + 0.5, Math.round(py + segs[i + 1] * z) + 0.5);
+      ctx.lineTo(Math.round(px + segs[i + 2] * z) + 0.5, Math.round(py + segs[i + 3] * z) + 0.5);
+    }
+    ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -offset; ctx.strokeStyle = '#000'; ctx.stroke();
+    ctx.lineDashOffset = -offset + 4; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.setLineDash([]);
   }
   private drawCrop(view: View, r: Rect): void {
     const s = this.screen(view, r), ctx = this.ctx;

@@ -8,7 +8,10 @@
 import { COLOR_FAMILIES, GRADIENT_MAPS, PHOTO_FILTERS, SOURCE_URL, type JobOp } from '@free-photoeditor/core';
 import type { Editor } from './app';
 
-export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom';
+export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom'
+  | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
+  | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
+  | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -106,7 +109,18 @@ export const TOOLS: Record<string, ToolId> = {
   'tool.move': 'move', 'tool.select-rect': 'select', 'tool.crop': 'crop', 'tool.brush': 'brush', 'tool.pencil': 'pencil',
   'tool.eraser': 'eraser', 'tool.eyedropper': 'eyedropper', 'tool.hand': 'hand', 'tool.zoom': 'zoom',
 };
-export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'info'] as const;
+/** W3 tools: their pointer handling, options bars and drawing live in toolkit.ts, which loads on first use. */
+export const W3_TOOLS: Record<string, ToolId> = {
+  'tool.lasso': 'lasso', 'tool.lasso-poly': 'lasso-poly', 'tool.magic-wand': 'wand', 'tool.quick-select': 'quick-select', 'tool.gradient': 'gradient',
+  'tool.bucket': 'bucket', 'tool.magic-eraser': 'magic-eraser', 'tool.bg-eraser': 'bg-eraser', 'tool.color-replace': 'color-replace',
+  'tool.history-brush': 'history-brush', 'tool.clone': 'clone', 'tool.heal': 'heal', 'tool.spot-heal': 'spot-heal', 'tool.patch': 'patch',
+  'tool.red-eye': 'red-eye', 'tool.dodge': 'dodge', 'tool.burn': 'burn', 'tool.sponge': 'sponge', 'tool.blur': 'blur', 'tool.sharpen': 'sharpen',
+  'tool.smudge': 'smudge', 'tool.type': 'type', 'tool.rect': 'rect', 'tool.rounded-rect': 'rounded-rect', 'tool.ellipse': 'ellipse',
+  'tool.polygon': 'polygon', 'tool.line': 'line',
+};
+Object.assign(TOOLS, W3_TOOLS);
+export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
+export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'info', 'character', 'paragraph'] as const;
 export type PanelId = (typeof DOCK_PANELS)[number];
 
 export const HANDLERS: Record<string, Handler> = {
@@ -197,6 +211,12 @@ export const HANDLERS: Record<string, Handler> = {
   'tool.swap-colors': H((e) => e.swapColors(), always),
   'tool.default-colors': H((e) => e.defaultColors(), always),
 };
+const w3 = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.toolkit()).cmd(id), enabled);
+for (const id of ['select.color-range', 'select.grow', 'select.similar', 'select.quick-mask', 'select.save', 'select.load', 'edit.free-transform', 'edit.scale',
+  'edit.rotate', 'edit.skew', 'edit.distort', 'edit.perspective', 'layer.align-left', 'layer.align-hcenter', 'layer.align-right', 'layer.align-top',
+  'layer.align-vcenter', 'layer.align-bottom', 'layer.distribute-h', 'layer.distribute-v', 'layer.rasterize', 'type.fonts', 'type.rasterize']) HANDLERS[id] = w3(id);
+for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.contract', 'select.feather', 'select.transform', 'edit.stroke']) HANDLERS[id] = w3(id, hasSel);
+HANDLERS['type.add'] = H((e) => e.setTool('type'));
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));

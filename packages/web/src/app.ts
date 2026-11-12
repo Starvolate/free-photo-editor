@@ -26,6 +26,9 @@ import { NOTICES } from './notices';
 import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
+import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
+import { TK_TOOLS } from './commands';
+import type { ToolHost, ToolKit } from './toolkit';
 
 type Layout = 'phone' | 'tablet' | 'desktop';
 type Answer = 'primary' | 'secondary' | 'cancel';
@@ -100,8 +103,8 @@ const GROUP_ICON: Record<string, string> = {
 };
 const GROUPS: { id: string; panels: string[] }[] = [
   { id: 'nav', panels: ['navigator', 'info'] }, { id: 'color', panels: ['color', 'swatches'] },
-  { id: 'props', panels: ['properties', 'adjustments', 'history'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
-const MORE_PANELS = ['brushes', 'character', 'paragraph', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
+  { id: 'props', panels: ['properties', 'adjustments', 'history', 'character', 'paragraph'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
+const MORE_PANELS = ['brushes', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
 const SWATCHES = ['#000000', '#3a3a3a', '#7a7a7a', '#b8b8b8', '#ffffff', '#e4572e', '#f3a712', '#f9e04b', '#9bc53d', '#2e9e5b', '#17bebb', '#2d7dd2',
   '#3d348b', '#8e44ad', '#d81e5b', '#ff8fab', '#7f5539', '#b08968', '#ddb892', '#ede0d4', '#0b132b', '#1c2541', '#3a506b', '#5bc0be', '#6fffe9',
   '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#bdb2ff', '#590d22', '#a4133c', '#ff4d6d', '#ffb3c1', '#264653', '#e9c46a'];
@@ -262,6 +265,12 @@ export class Editor {
   private ro: ResizeObserver;
   private stageRo: ResizeObserver;
   private off: (() => void)[] = [];
+  tk: ToolKit | null = null;
+  private tkLoad: Promise<ToolKit> | null = null;
+  private tkDown = false;
+  autoPick = false;
+  private olSel: Selection | null = null;
+  private olSegs: Float32Array | null = null;
 
   constructor(host: HTMLElement, opts: MountOptions) {
     this.opts = opts;
@@ -632,7 +641,7 @@ export class Editor {
     const chips = h('div', { class: 'fpe-chips-col' }, h('div', { class: 'fpe-chip-pair' }, bg, fg),
       h('div', { class: 'fpe-chip-btns' }, this.cmdBtn('tool.swap-colors', 'swap', null, { class: 'fpe-btn fpe-icon-btn fpe-mini' }),
         this.cmdBtn('tool.default-colors', 'contrast', null, { class: 'fpe-btn fpe-icon-btn fpe-mini' })));
-    const qm = h('button', { type: 'button', class: 'fpe-tool fpe-tool-planned', 'data-cmd': 'select.quick-mask', 'aria-disabled': 'true', 'aria-label': 'Paint a selection (Quick mask), planned', 'data-testid': 'tool-quick-mask' }, icon('scan'));
+    const qm = this.cmdBtn('select.quick-mask', 'scan', null, { class: 'fpe-tool', 'aria-pressed': 'false', 'data-testid': 'tool-quick-mask' });
     const sm = this.cmdBtn('view.screen-cycle', 'fit', null, { class: 'fpe-tool', 'data-testid': 'tool-screen-mode' });
     const phone = h('div', { class: 'fpe-phone-panels' },
       iconButton('layers', 'Layers', { 'data-testid': 'btn-layers', 'aria-expanded': 'false', onclick: () => this.togglePhonePanel('layers') }),
@@ -784,6 +793,10 @@ export class Editor {
     } else if (pid === 'info') {
       this.infoBody = h('dl', { class: 'fpe-info', 'data-testid': 'info' });
       b.append(this.infoBody);
+    }
+    if (pid === 'character' || pid === 'paragraph') {
+      b.append(h('p', { class: 'fpe-note' }, 'Getting the text settings ready…'));
+      void this.toolkit().then((tk) => tk.fillPanel(pid, b));
     }
     this.bodies.set(pid, b);
     return b;
@@ -1213,9 +1226,11 @@ export class Editor {
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; }
     if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, compositeDoc(d, r)); }
     const t = this.tool, z = this.view.zoom, o = t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush;
-    const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil') ? { x: this.hoverPt.x, y: this.hoverPt.y, r: (o.size / 2) * z } : null;
+    const tks = this.tk?.cursorSize(t) ?? null;
+    const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
-      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0 });
+      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0,
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -1314,12 +1329,53 @@ export class Editor {
     ctx.strokeRect(ox + (-v.panX / v.zoom) * k, oy + (-v.panY / v.zoom) * k, (this.stage.clientWidth / v.zoom) * k, (this.stage.clientHeight / v.zoom) * k);
   }
 
+  // ---------- W3 tools (toolkit.ts, loaded on first use) ----------
+  toolkit(): Promise<ToolKit> {
+    return (this.tkLoad ??= import('./toolkit').then((m) => {
+      this.tk = m.createToolKit(this.toolHost());
+      this.renderOptions();
+      this.renderPanels();
+      this.requestRender();
+      return this.tk;
+    }));
+  }
+  private toolHost(): ToolHost {
+    return {
+      root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
+      fg: () => this.brush.color, bg: () => this.bgColor, push: (c, all) => this.pushCmd(c, all), dirty: (r) => { this.markDirty(r); this.requestRender(); },
+      all: () => { this.markAll(); this.requestRender(); }, render: () => this.requestRender(), selectionChanged: () => this.afterSelection(),
+      refreshOptions: () => this.renderOptions(), toast: (m) => this.toast(m), editable: (l, px) => this.editable(l, px), setTool: (t) => this.setTool(t),
+      tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
+      slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
+      forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
+      paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush),
+    };
+  }
+  private toolSheet(id: string, title: string, body: HTMLElement): void {
+    if (!this.sheets.has(id)) { this.makeSheet(id, title, body); this.root.insertBefore(this.sheets.get(id) as HTMLElement, this.scrim); }
+    const t = this.sheets.get(id)?.querySelector('.fpe-sheet-title');
+    if (t) t.textContent = title;
+    this.openModal(id);
+  }
+  private showPanelTab(pid: string): void {
+    if (this.layout === 'phone') { this.setDock(this.dockState === 'closed' ? 'half' : this.dockState, pid); return; }
+    const g = GROUPS.find((x) => x.panels.includes(pid));
+    if (g) this.activateTab(g.id, pid);
+  }
+  private outline(s: Selection): Float32Array {
+    if (this.olSel !== s) { this.olSel = s; this.olSegs = w3Outline(s); }
+    return this.olSegs as Float32Array;
+  }
+
   // ---------- tools ----------
   setTool(t: ToolId): void {
     if (this.stroke || this.drag) return;
     if (t !== 'crop') { this.crop = null; this.ratio = 0; }
+    const prevTool = this.tool;
     this.tool = t;
     this.root.dataset.tool = t;
+    if (prevTool !== t) this.tk?.toolChanged(prevTool, t);
+    if (TK_TOOLS.has(t) && !this.tk) void this.toolkit();
     const id = Object.keys(TOOLS).find((k) => TOOLS[k] === t);
     const r = id ? BY_ID.get(id) : undefined;
     if (r && id) {
@@ -1343,7 +1399,11 @@ export class Editor {
     const o = this.paintOpts(), pr = clamp(i.pressure, 0.05, 1), tilt = Math.min(1, Math.hypot(i.tiltX, i.tiltY) / 60);
     return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt) };
   }
-  private editable(l: Layer): boolean {
+  private editable(l: Layer, pixels = true): boolean {
+    if (pixels && l.content && !l.locked) {
+      this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: change it with its own tool, or choose Layer › Turn into plain pixels to paint on it.`);
+      return false;
+    }
     if (!l.locked) return true;
     this.toast(`"${l.name}" is locked. Unlock it in the Layers panel to change it.`);
     return false;
@@ -1354,6 +1414,12 @@ export class Editor {
     this.closeMenus();
     if (!d) return;
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
+    if (this.tk?.claims(this.tool) || TK_TOOLS.has(this.tool)) {
+      if (!this.tk) { this.toast('Getting the tool ready…'); void this.toolkit(); return; }
+      this.tkDown = true;
+      this.tk.start(p, i);
+      return;
+    }
     const t: ToolId = i.alt && (this.tool === 'brush' || this.tool === 'pencil') ? 'eyedropper' : this.tool;
     if (t === 'hand') { this.drag = { kind: 'pan', start: p }; return; }
     if (t === 'zoom') { this.fitted = false; this.zoomAt(i.alt ? 0.8 : 1.25, p.x * this.view.zoom + this.view.panX, p.y * this.view.zoom + this.view.panY); return; }
@@ -1367,9 +1433,14 @@ export class Editor {
       this.flushStroke();
       return;
     }
-    if (t === 'move') { const l = activeLayer(d); if (l && this.editable(l)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id }; return; }
+    if (t === 'move') {
+      if (this.autoPick) { const hit = w3LayerAt(d, p.x, p.y); if (hit && hit.id !== d.activeId) this.selectLayer(hit.id); }
+      const l = activeLayer(d);
+      if (l && this.editable(l, false)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id };
+      return;
+    }
     if (t === 'eyedropper') { this.drag = { kind: 'pick', start: p }; this.pick(p); return; }
-    this.drag = { kind: t, start: this.clampPt(p) };
+    this.drag = { kind: t as 'select' | 'crop', start: this.clampPt(p) };
     if (t === 'crop') this.crop = null; else { d.selection = null; this.hole = null; }
     this.updateAnts();
     this.requestRender();
@@ -1377,6 +1448,7 @@ export class Editor {
   private toolMove(p: Pt, i: PointerInfo): void {
     const d = this.doc;
     if (!d) return;
+    if (this.tkDown) { this.tk?.move(p, i); return; }
     if (this.stroke) { this.stroke.add(this.strokePoint(p, i)); this.flushStroke(); return; }
     const g = this.drag;
     if (!g) return;
@@ -1409,6 +1481,7 @@ export class Editor {
     this.requestRender();
   }
   private toolEnd(p: Pt, i: PointerInfo): void {
+    if (this.tkDown) { this.tkDown = false; this.tk?.end(p, i); return; }
     const d = this.doc;
     if (this.stroke) {
       this.stroke.add(this.strokePoint(p, i));
@@ -1430,6 +1503,7 @@ export class Editor {
     this.requestRender();
   }
   private toolCancel(): void {
+    if (this.tkDown) { this.tkDown = false; this.tk?.cancel(); }
     if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.markDirty(r); this.requestRender(); }
     const g = this.drag;
     this.drag = null;
@@ -1492,9 +1566,20 @@ export class Editor {
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'crop-cancel', onclick: () => { this.crop = null; this.renderOptions(); this.requestRender(); } }, 'Cancel'),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'crop-apply', onclick: () => this.applyCrop() }, 'Apply crop'));
       else o.append(hint('Drag over the picture to choose the part to keep.'));
-    } else if (t === 'move') o.append(hint('Drag to move the active layer. Arrow keys nudge it 1 px (Shift: 10 px).'), btn('edit.flip-layer-h', 'Mirror'), btn('edit.rotate-layer-cw', 'Turn right'));
+    } else if (t === 'move') {
+      const pick = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(this.autoPick), 'data-testid': 'move-autopick',
+        'data-help-title': 'Pick the layer under the pointer · Auto-select', 'data-help': 'When on, dragging moves whichever layer you press on, not only the active one.',
+        onclick: () => { this.autoPick = !this.autoPick; this.renderOptions(); } }, 'Pick by clicking');
+      const line = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-haspopup': 'menu', 'data-testid': 'move-align', 'data-help-title': 'Line up · Align',
+        'data-help': 'Line the layer up with the selection or the picture, or space layers out evenly.' }, 'Line up');
+      line.addEventListener('click', () => this.showPopover(['layer.align-left', 'layer.align-hcenter', 'layer.align-right', 'layer.align-top', 'layer.align-vcenter',
+        'layer.align-bottom', 'layer.distribute-h', 'layer.distribute-v'].map((id) => ({ label: BY_ID.get(id)?.plain ?? id, cmd: id, run: () => void this.run(id) })), line));
+      o.append(hint('Drag to move the active layer. Arrow keys nudge it 1 px (Shift: 10 px).'), pick, btn('edit.free-transform', 'Resize and turn'), line,
+        btn('edit.flip-layer-h', 'Mirror'), btn('edit.rotate-layer-cw', 'Turn right'));
+    }
     else if (t === 'hand') o.append(hint('Drag to move around the picture.'), btn('view.fit', 'Fit on screen'), btn('view.actual', '100%'));
     else if (t === 'zoom') o.append(hint('Click to zoom in; Alt-click to zoom out.'), btn('view.zoom-in', 'Zoom in'), btn('view.zoom-out', 'Zoom out'), btn('view.fit', 'Fit'), btn('view.actual', '100%'));
+    else if (TK_TOOLS.has(t)) { if (this.tk) this.tk.options(o, t); else o.append(hint('Getting the tool ready…')); }
     else {
       const seg = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': 'Pick from' });
       for (const [all, label] of [[true, 'All layers'], [false, 'This layer']] as const) {
@@ -1503,6 +1588,7 @@ export class Editor {
       o.append(h('span', { class: 'fpe-dot', 'data-swatch': '', style: 'background:' + this.brush.color, role: 'img', 'aria-label': 'Main colour ' + this.brush.color }),
         hint('Tap the picture to pick a colour to paint with.'), seg);
     }
+    this.tk?.decorate(o, t);
     this.syncChrome();
   }
   private slider(label: string, help: string, min: number, max: number, value: number, unit: string, onInput: (v: number) => void, testid: string): HTMLElement {
@@ -1640,6 +1726,7 @@ export class Editor {
 
   // ---------- panels ----------
   private renderPanels(): void {
+    this.tk?.refresh();
     this.renderLayers();
     this.renderHistory();
     this.renderProps();
@@ -2037,6 +2124,7 @@ export class Editor {
     }
   }
   private cancelSession(): void {
+    this.tk?.abort();
     const s = this.session;
     if (!s) return;
     this.session = null;
@@ -2348,6 +2436,7 @@ export class Editor {
   pickFile(asLayer: boolean): void { this.fileAsLayer = asLayer && !!this.doc; this.fileInput.click(); }
   openSample(): void { this.addTab(makeSample(), 'Sample photo'); this.toast('Sample photo opened: two layers, a landscape and a sun.'); }
   private stash(): void {
+    this.tk?.abort();
     const t = this.tabs[this.cur];
     if (!t || !this.doc) return;
     Object.assign(t, { doc: this.doc, history: this.history, name: this.name, savedId: this.savedId, view: this.view, fitted: this.fitted, lastSel: this.lastSel, hole: this.hole });
@@ -2463,6 +2552,7 @@ export class Editor {
   private setSpace(on: boolean): void { this.space = on; this.root.toggleAttribute('data-space', on); }
   private onKey(e: KeyboardEvent): void {
     if (!this.isActive()) return;
+    if (this.tk?.key(e)) { e.preventDefault(); return; }
     const k = e.key, mod = e.ctrlKey || e.metaKey;
     if (k === 'Escape') {
       if (this.popover) this.closePopover();
@@ -2483,7 +2573,7 @@ export class Editor {
       if (k.startsWith('Arrow') && this.tool === 'move' && this.doc) {
         e.preventDefault();
         const d = this.doc, l = activeLayer(d), n = e.shiftKey ? 10 : 1;
-        if (!l || !this.editable(l)) return;
+        if (!l || !this.editable(l, false)) return;
         const old = layerRect(l);
         const dx = k === 'ArrowLeft' ? -n : k === 'ArrowRight' ? n : 0, dy = k === 'ArrowUp' ? -n : k === 'ArrowDown' ? n : 0;
         this.pushCmd(setLayerProps(d, l.id, { x: l.x + dx, y: l.y + dy }, 'Move layer'));
@@ -2570,6 +2660,7 @@ export class Editor {
           hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
           adjust: this.session?.id ?? null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
+          w3: this.tk?.state() ?? null, autoPick: this.autoPick,
         };
       },
       openSample: () => this.openSample(),

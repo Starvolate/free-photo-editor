@@ -67,10 +67,10 @@ edit.clear | Delete the selected pixels | Clear | Make the selected area of this
 --
 edit.fill | Fill with the main colour | Fill | Fill the selected area, or the whole layer, with your main colour. | paint area, colour fill, fill colour | R | W1 | Alt+Backspace
 edit.fill-bg | Fill with the second colour | Fill with background colour | Fill the selected area, or the whole layer, with your second colour. | fill white, background colour | R | W1 | Ctrl+Backspace
-edit.stroke | Outline the selection | Stroke | Draw a line along the edge of the selection. | border, outline | P | 3
+edit.stroke | Outline the selection | Stroke | Draw a line along the edge of the selection. | border, outline | R | W3
 edit.smart-fill | Fill from the surroundings | Content-aware fill | Remove something by filling it from nearby pixels. | remove object, erase object, remove person | P | 11
 --
-edit.free-transform | Resize and turn freely | Free transform | Scale, turn and move the layer with handles. | resize layer, scale, rotate layer | P | 3 | Ctrl+T
+edit.free-transform | Resize and turn freely | Free transform | Scale, turn and move the layer with handles. | resize layer, scale, rotate layer | R | W3 | Ctrl+T
 @Edit > Transform = Turn and flip | Transform | Flip, turn and reshape the active layer.
 edit.flip-layer-h | Mirror left to right | Flip horizontal | Flip the active layer like a mirror. | mirror, flip sideways | R | W1
 edit.flip-layer-v | Flip top to bottom | Flip vertical | Flip the active layer upside down. | upside down | R | W1
@@ -78,11 +78,11 @@ edit.rotate-layer-cw | Turn right 90° | Rotate 90° clockwise | Turn the active
 edit.rotate-layer-ccw | Turn left 90° | Rotate 90° counter-clockwise | Turn the active layer a quarter turn to the left. | rotate layer left | R | W1
 edit.rotate-layer-180 | Turn half way round | Rotate 180° | Turn the active layer half a turn. | rotate layer 180 | R | W1
 --
-edit.scale | Resize the layer | Scale | Make the layer bigger or smaller with handles. | bigger, smaller | P | 3
-edit.rotate | Turn by any angle | Rotate | Turn the layer by any amount. | tilt, angle | P | 3
-edit.skew | Slant | Skew | Slant the layer sideways. | slant, italic | P | 3
-edit.distort | Pull corners freely | Distort | Move each corner on its own. | corner pin | P | 3
-edit.perspective | Fix the angle | Perspective | Make a slanted surface look straight on. | keystone | P | 3
+edit.scale | Resize the layer | Scale | Make the layer bigger or smaller with handles. | bigger, smaller | R | W3
+edit.rotate | Turn by any angle | Rotate | Turn the layer by any amount. | tilt, angle | R | W3
+edit.skew | Slant | Skew | Slant the layer sideways. | slant, italic | R | W3
+edit.distort | Pull corners freely | Distort | Move each corner on its own. | corner pin | R | W3
+edit.perspective | Fix the angle | Perspective | Make a slanted surface look straight on. | keystone | R | W3
 edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | P | 3
 @Edit
 edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | P | 11
@@ -212,13 +212,23 @@ layer.smart-edit | Edit the contents | Edit contents | Open the original pixels 
 layer.smart-replace | Replace the contents | Replace contents | Swap the contents for another picture. | mockup | P | 3
 layer.smart-rasterize | Turn back into pixels | Rasterize smart object | Make the smart layer an ordinary layer. | rasterize | P | 3
 @Layer
-layer.rasterize | Turn into plain pixels | Rasterize layer | Make text, shapes or effects into ordinary pixels. | flatten text | P | 6
+layer.rasterize | Turn into plain pixels | Rasterize layer | Make text, shapes or effects into ordinary pixels. | flatten text | R | W3
 --
 @Layer > Arrange = Order | Arrange | Move the layer up or down the stack.
 layer.front | Bring to the very top | Bring to front | Move the active layer above all others. | top layer | R | W1 | Ctrl+Shift+]
 layer.forward | Bring up one | Bring forward | Move the active layer up one place. | move layer up | R | 1 | Ctrl+]
 layer.backward | Send down one | Send backward | Move the active layer down one place. | move layer down | R | 1 | Ctrl+[
 layer.back | Send to the very bottom | Send to back | Move the active layer below all others. | bottom layer | R | W1 | Ctrl+Shift+[
+@Layer > Align = Line up | Align | Line up the active layer with the selection, or with the picture when nothing is selected.
+layer.align-left | Line up left edges | Align left edges | Move the layer so its left edge meets the selection's, or the picture's. | align left, line up left | R | W3
+layer.align-hcenter | Line up centres across | Align horizontal centers | Centre the layer from side to side on the selection or the picture. | centre horizontally, center | R | W3
+layer.align-right | Line up right edges | Align right edges | Move the layer so its right edge meets the selection's, or the picture's. | align right | R | W3
+layer.align-top | Line up top edges | Align top edges | Move the layer so its top meets the selection's, or the picture's. | align top | R | W3
+layer.align-vcenter | Line up middles | Align vertical centers | Centre the layer from top to bottom on the selection or the picture. | centre vertically, middle | R | W3
+layer.align-bottom | Line up bottom edges | Align bottom edges | Move the layer so its bottom meets the selection's, or the picture's. | align bottom | R | W3
+--
+layer.distribute-h | Space out across | Distribute horizontal centers | Space three or more layers evenly from left to right. | space evenly, distribute | R | W3
+layer.distribute-v | Space out down | Distribute vertical centers | Space three or more layers evenly from top to bottom. | space evenly vertically | R | W3
 @Layer
 layer.lock | Lock the layer | Lock all | Protect the active layer from changes. | lock, protect, freeze | R | W1 | Ctrl+/
 layer.hide | Hide the layer | Hide layers | Hide the active layer without deleting it; choose again to show it. | hide, show, eye | R | W1 | Ctrl+,
@@ -230,13 +240,13 @@ layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around 
 layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | P | 13
 
 @Type = Type | Type | Add and style text.
-type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | P | W3
+type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | R | W3
 type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | P | 6
-type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | P | 6
+type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | R | W3
 type.warp | Bend text | Warp text | Arc, wave or bulge the text. | curved text, arc text, wavy text | P | 6
 type.path | Text along a line | Type on a path | Make text follow a curve or a circle. | text on circle | P | 6
 type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | P | 6
-type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | P | 6
+type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | R | W3
 type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | P | 6
 type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | P | 6
 type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | P | 6
@@ -249,24 +259,24 @@ select.inverse | Swap selected and not selected | Inverse | Select everything ex
 --
 select.subject | Select the main subject | Subject | Find the person or thing in front automatically. | person, subject, auto select | P | 11
 select.remove-bg | Remove the background | Remove background | Keep the subject and clear everything behind it. | background removal, cut out, transparent background, remove backdrop | P | 11
-select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | P | 2
+select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | P | 11
 --
 select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
-select.border | Edge band | Border | Select a band along the selection edge. | border selection | P | 2
-select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | P | 2
-select.expand | Grow by pixels | Expand | Make the selection bigger by a number of pixels. | bigger selection | P | 2
-select.contract | Shrink by pixels | Contract | Make the selection smaller by a number of pixels. | smaller selection | P | 2
-select.feather | Soften the edge | Feather | Make the selection fade out gently at its edge. | soft edge, feather | P | 2 | Shift+F6
+select.border | Edge band | Border | Select a band along the selection edge. | border selection | R | W3
+select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | R | W3
+select.expand | Grow by pixels | Expand | Make the selection bigger by a number of pixels. | bigger selection | R | W3
+select.contract | Shrink by pixels | Contract | Make the selection smaller by a number of pixels. | smaller selection | R | W3
+select.feather | Soften the edge | Feather | Make the selection fade out gently at its edge. | soft edge, feather | R | W3 | Shift+F6
 @Select
-select.grow | Grow into similar colours | Grow | Add nearby pixels of similar colour. | grow | P | 2
-select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | P | 2
-select.transform | Resize the selection | Transform selection | Change the size and angle of the selection. | resize selection | P | 2
+select.grow | Grow into similar colours | Grow | Add nearby pixels of similar colour. | grow | R | W3
+select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | R | W3
+select.transform | Resize the selection | Transform selection | Change the size and angle of the selection. | resize selection | R | W3
 --
-select.quick-mask | Paint a selection | Quick mask | Paint where to select, then switch back to a selection. | paint selection | P | 2 | Q
-select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | P | 2
-select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | P | 2
+select.quick-mask | Paint a selection | Quick mask | Paint where to select, then switch back to a selection. | paint selection | R | W3 | Q
+select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | R | W3
+select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | R | W3
 
 @Filter = Filter | Filter | Effects such as blur, sharpen, noise and distortions.
 filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | R | W1 | Ctrl+Alt+F
@@ -383,8 +393,8 @@ panel.navigator | Navigator | Navigator | A small view of the whole picture; dra
 panel.info | Info | Info | Position and colour under the pointer, and the picture's size. | coordinates, rgb values, pixel colour | R | W1 | F8
 panel.channels | Colour channels | Channels | See the red, green, blue and see-through channels one by one. | channels | P | 2
 panel.paths | Paths | Paths | Outlines you drew with the pen. | paths | P | 6
-panel.character | Text style | Character | Font, size and spacing of text. | font size | P | 6
-panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | P | 6
+panel.character | Text style | Character | Font, size and spacing of text. | font size | R | W3
+panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | P | W2
 panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | P | 13
@@ -418,13 +428,13 @@ tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an ov
 tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | P | 2
 tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | P | 2
 @Tools > Lasso = Draw a selection | Lasso | Draw around the part you want.
-tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | P | 2 | L
-tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | P | 2
+tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | R | W3 | L
+tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
 tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | P | 2
 @Tools > Smart select = Smart select | Quick selection | Let the editor find the edges for you.
-tool.object-select | Select an object | Object selection | Drag a box around an object and its edges are found. | object | P | 11 | W
-tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | P | 2
-tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | P | 2
+tool.object-select | Select an object | Object selection | Drag a box around an object and its edges are found. | object | P | 11
+tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | R | W3
+tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | R | W3 | W
 @Tools > Crop = Crop | Crop | Cut the picture to a new shape.
 tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | R | 1 | C
 tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | P | 3
@@ -435,37 +445,37 @@ tool.color-sampler | Colour markers | Colour sampler | Pin up to four points tha
 tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | P | 13
 tool.note | Sticky note | Note | Pin a written note on the picture. | comment | P | 13
 @Tools > Retouch = Fix spots | Healing | Remove spots and blemishes.
-tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | P | W3 | J
-tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | P | W3
-tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | P | W3
+tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | R | W3 | J
+tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | R | W3
+tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | R | W3
 tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | P | 11
-tool.red-eye | Fix red eyes | Red eye | Click a red eye to make it dark again. | red eye, flash eyes | P | W3
+tool.red-eye | Fix red eyes | Red eye | Click a red eye to make it dark again. | red eye, flash eyes | R | W3
 @Tools > Paint = Paint | Brush | Paint and draw.
 tool.brush | Paint brush | Brush | Paint with soft or hard edges; pens set the size by pressure. | paint, draw, brush, colour in | R | 1 | B
 tool.pencil | Pencil | Pencil | Hard-edged lines, good for pixel art. | pixel art, hard line, sketch | R | W1
-tool.color-replace | Recolour by painting | Colour replacement | Paint to change a colour and keep the detail. | recolour | P | W3
+tool.color-replace | Recolour by painting | Colour replacement | Paint to change a colour and keep the detail. | recolour | R | W3
 tool.mixer | Blend paint | Mixer brush | Paint that mixes with the colours already there. | wet paint | P | 4
 @Tools > Clone = Copy an area | Clone stamp | Paint with pixels copied from another spot.
-tool.clone | Copy an area | Clone stamp | Alt-click a source, then paint to copy it somewhere else. | clone, copy area, duplicate object | P | W3 | S
+tool.clone | Copy an area | Clone stamp | Alt-click a source, then paint to copy it somewhere else. | clone, copy area, duplicate object | R | W3 | S
 tool.pattern-stamp | Paint a pattern | Pattern stamp | Paint with a repeating pattern. | pattern brush | P | 4
 @Tools > History brush = Paint back | History brush | Paint parts back to an earlier step.
-tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked before. | undo part | P | 4 | Y
+tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked before. | undo part | R | W3 | Y
 tool.art-history | Painterly strokes | Art history brush | Paint quick artistic strokes from an earlier step. | art brush | P | 4
 @Tools > Erase = Erase | Eraser | Remove pixels.
 tool.eraser | Eraser | Eraser | Rub out pixels so they become see-through. | erase, rub out | R | 1 | E
-tool.bg-eraser | Erase a background | Background eraser | Erase the colour under the brush's centre and keep the edges. | erase background | P | W3
-tool.magic-eraser | Erase similar colour | Magic eraser | Click a colour to erase the area of similar colour. | remove white background | P | W3
+tool.bg-eraser | Erase a background | Background eraser | Erase the colour under the brush's centre and keep the edges. | erase background | R | W3
+tool.magic-eraser | Erase similar colour | Magic eraser | Click a colour to erase the area of similar colour. | remove white background | R | W3
 @Tools > Fill = Fill | Gradient | Fill areas with colour or colour fades.
-tool.gradient | Colour fade | Gradient | Drag to fill with a smooth fade between colours. | fade, gradient, ombre | P | W3 | G
-tool.bucket | Fill an area | Paint bucket | Click to fill an area of similar colour. | fill, bucket | P | W3
+tool.gradient | Colour fade | Gradient | Drag to fill with a smooth fade between colours. | fade, gradient, ombre | R | W3 | G
+tool.bucket | Fill an area | Paint bucket | Click to fill an area of similar colour. | fill, bucket | R | W3
 @Tools > Soften = Soften and smudge | Blur tool | Blur, sharpen or smudge by painting.
-tool.blur | Soften by painting | Blur tool | Paint to soften just where you want. | soften part | P | W3
-tool.sharpen | Sharpen by painting | Sharpen tool | Paint to sharpen just where you want. | sharpen part | P | W3
-tool.smudge | Smudge | Smudge | Push the colours around like wet paint. | smear | P | W3
+tool.blur | Soften by painting | Blur tool | Paint to soften just where you want. | soften part | R | W3
+tool.sharpen | Sharpen by painting | Sharpen tool | Paint to sharpen just where you want. | sharpen part | R | W3
+tool.smudge | Smudge | Smudge | Push the colours around like wet paint. | smear | R | W3
 @Tools > Light = Lighten and darken | Dodge | Lighten, darken or change colour strength by painting.
-tool.dodge | Lighten by painting | Dodge | Paint to lighten just where you want. | lighten part, brighten eyes | P | W3 | O
-tool.burn | Darken by painting | Burn | Paint to darken just where you want. | darken part | P | W3
-tool.sponge | Colour strength by painting | Sponge | Paint to make colours stronger or weaker. | saturate part | P | W3
+tool.dodge | Lighten by painting | Dodge | Paint to lighten just where you want. | lighten part, brighten eyes | R | W3 | O
+tool.burn | Darken by painting | Burn | Paint to darken just where you want. | darken part | R | W3
+tool.sponge | Colour strength by painting | Sponge | Paint to make colours stronger or weaker. | saturate part | R | W3
 @Tools > Pen = Pen | Pen | Draw exact outlines and curves.
 tool.pen | Draw curves | Pen | Click and drag to draw exact curves. | bezier, outline | P | 6 | P
 tool.pen-free | Draw outlines freely | Freeform pen | Draw an outline freely like a pencil. | freeform | P | 6
@@ -473,18 +483,19 @@ tool.anchor-add | Add a point | Add anchor point | Add a point to an outline. | 
 tool.anchor-delete | Remove a point | Delete anchor point | Remove a point from an outline. | remove point | P | 6
 tool.anchor-convert | Change a corner | Convert point | Switch a point between sharp and smooth. | corner | P | 6
 @Tools > Text = Text | Type | Add words to the picture.
-tool.type | Text | Horizontal type | Click and type words on the picture. | text, words, caption | P | W3 | T
+tool.type | Text | Horizontal type | Click and type words on the picture. | text, words, caption | R | W3 | T
 tool.type-vertical | Up-down text | Vertical type | Type words from top to bottom. | vertical text | P | 6
 tool.type-mask | Text-shaped selection | Type mask | Type words to select their shape. | text selection | P | 6
 @Tools > Path select = Pick outlines | Path selection | Select and move outlines.
 tool.path-select | Pick a whole outline | Path selection | Click an outline to move it. | select path | P | 6 | A
 tool.direct-select | Pick outline points | Direct selection | Click points of an outline to move them. | edit points | P | 6
 @Tools > Shapes = Shapes | Shape | Draw rectangles, circles, lines and more.
-tool.rect | Rectangle | Rectangle | Drag to draw a rectangle. | box, square shape | P | W3 | U
-tool.ellipse | Circle or oval | Ellipse | Drag to draw an oval; hold Shift for a circle. | circle shape | P | W3
-tool.polygon | Polygon | Polygon | Draw a shape with straight sides, like a star. | star, triangle | P | W3
-tool.line | Line | Line | Drag to draw a straight line or arrow. | arrow, straight line | P | W3
-tool.custom-shape | Ready-made shapes | Custom shape | Draw hearts, arrows, speech bubbles and more. | heart, speech bubble | P | W3
+tool.rect | Rectangle | Rectangle | Drag to draw a rectangle. | box, square shape | R | W3 | U
+tool.rounded-rect | Rounded rectangle | Rounded rectangle | Drag to draw a box with round corners; set how round in the options bar. | rounded box, button shape, pill | R | W3
+tool.ellipse | Circle or oval | Ellipse | Drag to draw an oval; hold Shift for a circle. | circle shape | R | W3
+tool.polygon | Polygon | Polygon | Draw a shape with straight sides, like a star. | star, triangle | R | W3
+tool.line | Line | Line | Drag to draw a straight line or arrow. | arrow, straight line | R | W3
+tool.custom-shape | Ready-made shapes | Custom shape | Draw hearts, arrows, speech bubbles and more. | heart, speech bubble | P | 6
 @Tools > Hand = Move around | Hand | Move around a zoomed picture.
 tool.hand | Move the view | Hand | Drag to move around the picture; hold Space with any tool. | pan, scroll around | R | W1 | H
 tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle. | turn canvas | P | 13 | R

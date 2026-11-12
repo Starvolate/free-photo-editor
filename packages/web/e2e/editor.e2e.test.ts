@@ -16,7 +16,7 @@ import { AUTHOR_URL, CREDIT, SOURCE_URL, addLayer, createDocument, createLayer, 
 import { readPsdDocument, writePsdDocument } from '@free-photoeditor/core/psd';
 
 interface LayerInfo { name: string; visible: boolean; opacity: number; blendMode: string; x: number; y: number; width: number; height: number; }
-interface Info { width: number; height: number; layers: LayerInfo[]; canUndo: boolean; canRedo: boolean; layout: string | null;
+interface Info { width: number; height: number; layers: LayerInfo[]; canUndo: boolean; canRedo: boolean; layout: string | null; active: number; zoom: number;
   selection: { x: number; y: number; w: number; h: number } | null; }
 interface Fpe {
   getInfo(): Info | null; newDocument(w: number, h: number, bg?: string | null): void;
@@ -381,6 +381,52 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     expect(!!c && near([c.width, c.height], [100, 75], 1), JSON.stringify(c && [c.width, c.height])).toBe(true);
     await page.click('[data-testid="btn-undo"]');
     await waitDoc(page, 200, 150);
+  });
+
+  it('layers panel: add, rename, duplicate, reorder, hide, opacity, blend mode, delete; then the eraser and the zoom buttons', async () => {
+    const now = async (): Promise<Info> => (await info(page)) as Info;
+    await page.click('[data-testid="layer-add"]');
+    expect((await now()).layers.length).toBe(2);
+    const name = page.locator('[data-testid="layer-name"]');
+    await name.fill('Sky');
+    await name.press('Enter');
+    let i = await now();
+    expect(i.layers[i.active].name).toBe('Sky');
+    await page.click('[data-testid="layer-duplicate"]');
+    i = await now();
+    expect(i.layers.length).toBe(3);
+    const a0 = i.active;
+    expect(a0).toBeGreaterThan(0);
+    await page.click('[data-testid="layer-down"]');
+    expect((await now()).active).toBe(a0 - 1);
+    await page.locator('[data-testid="layer-eye"]').first().click();
+    i = await now();
+    expect(i.layers[i.layers.length - 1].visible).toBe(false);
+    await page.locator('[data-testid="layer-opacity"]').fill('40');
+    i = await now();
+    expect(i.layers[i.active].opacity).toBeCloseTo(0.4, 2);
+    await page.selectOption('[data-testid="layer-blend"]', 'screen');
+    i = await now();
+    expect(i.layers[i.active].blendMode).toBe('screen');
+    await page.click('[data-testid="layer-delete"]');
+    expect((await now()).layers.length).toBe(2);
+
+    await page.locator('[data-testid="layer-select"]').last().click();
+    expect((await now()).active).toBe(0);
+    await page.click('[data-testid="tool-eraser"]');
+    const a = await toClient(page, 5, 120), b = await toClient(page, 195, 120);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 12 });
+    await page.mouse.up();
+    expect(((await sample(page, 100, 120)) as number[])[3], 'erased to transparent').toBeLessThan(10);
+    expect(await sample(page, 100, 20)).toEqual([255, 255, 255, 255]);
+
+    const z0 = (await now()).zoom;
+    await page.click('.fpe-zoom button:last-child');
+    expect((await now()).zoom).toBeCloseTo(z0 * 1.25, 3);
+    await page.click('.fpe-zoom-label');
+    expect((await now()).zoom).toBeCloseTo(z0, 3);
   });
 
   it('keeps the primary button readable (WCAG AA) in the dark and the light look', async () => {

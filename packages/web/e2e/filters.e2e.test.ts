@@ -161,8 +161,11 @@ suite('W2 filters (headless Chrome)', () => {
       await p.screenshot({ path: join(OUT, shot) });
       await p.click('[data-testid="adj-cancel"]');
     }
+    // The dialog sits over the right of the picture, so the spot goes on the left half, where its handles are in reach.
+    const LEFT: [number, number, number, number] = [80, 150, 320, 260];
+    await p.evaluate((b) => (window as unknown as Win).fpe.select(b[0], b[1], b[2], b[3]), LEFT);
     await dialog(p, 'filter.blur-iris');
-    const centre = await p.evaluate((b) => (window as unknown as Win).fpe.toClient(b[0] + b[2] / 2, b[1] + b[3] / 2), BOX);
+    const centre = await p.evaluate((b) => (window as unknown as Win).fpe.toClient(b[0] + b[2] / 2, b[1] + b[3] / 2), LEFT);
     if (!centre) throw new Error('no picture');
     const cx = Number(await p.inputValue('[data-testid="ctl-cx"]'));
     await p.mouse.move(centre.x, centre.y);

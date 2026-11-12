@@ -125,7 +125,9 @@
 .fpe-group[data-group=layers]{flex:1 1 auto;min-height:250px}
 .fpe-group[data-group=layers][data-folded]{flex:none;min-height:0}
 .fpe-ghead{display:flex;align-items:flex-start;flex:none;min-height:32px;background:var(--panel-2)}
-.fpe-gtabs{display:flex;flex-wrap:wrap;align-items:stretch;flex:1;min-width:0}
+.fpe-gtabs{display:flex;flex-wrap:nowrap;align-items:stretch;flex:1;min-width:0;overflow:hidden}
+.fpe-gtab[data-overflow]{display:none}
+.fpe-gmore{height:28px;margin:2px 2px 0 0;padding:0 8px;font-size:12px;color:var(--muted)}
 .fpe-gtab{display:inline-flex;align-items:center;gap:6px;flex:none;height:32px;padding:0 9px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer}
 .fpe-gtab[aria-selected=true]{background:var(--panel);color:var(--text);font-weight:600}
 .fpe-more-head{flex:1;justify-content:flex-start}
@@ -328,11 +330,22 @@
 .fpe[data-layout=phone] .fpe-pop>.fpe-btn{height:44px}
 .fpe[data-layout=phone] .fpe-dock{position:absolute;left:0;right:0;bottom:58px;z-index:30;display:flex;flex-direction:column;height:52%;overflow:hidden;border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:var(--shadow);transition:transform .2s,visibility .2s}
 .fpe[data-layout=phone] .fpe-dock[data-state=closed]{transform:translateY(calc(100% + 60px));visibility:hidden}
-.fpe[data-layout=phone] .fpe-dock[data-state=full]{height:calc(100% - 66px)}
+.fpe[data-layout=phone] .fpe-dock[data-state=full]{height:calc(100% - 114px)}
+/* an open sheet takes its own row, so the picture refits into the space above it instead of hiding under it */
+.fpe[data-layout=phone]:is([data-dock=half],[data-dock=full]):not([data-screen=focus]) .fpe-shell{grid-template-rows:48px 48px minmax(0,1fr) 52% 58px;grid-template-areas:"top" "opts" "center" "." "tools"}
 .fpe[data-layout=phone] .fpe-dock-phonehead{display:block;flex:none;background:var(--panel)}
 .fpe[data-layout=phone] .fpe-handle{display:flex}
 .fpe-dock-phonebar{display:flex;align-items:center;gap:4px;padding:0 4px 0 8px}
+.fpe-ptabs-wrap{position:relative;display:flex;flex:1;min-width:0}
 .fpe-ptabs{display:flex;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.fpe-ptabs::-webkit-scrollbar{display:none}
+.fpe-ptabs-wrap[data-more=right] .fpe-ptabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.fpe-ptabs-wrap[data-more=left] .fpe-ptabs{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent)}
+.fpe-ptabs-wrap[data-more="left right"] .fpe-ptabs{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent)}
+.fpe-pcue{position:absolute;top:0;bottom:0;display:none;align-items:center;pointer-events:none;color:var(--text)}
+.fpe-pcue-l{left:0}
+.fpe-pcue-r{right:0}
+.fpe-ptabs-wrap[data-more~=left] .fpe-pcue-l,.fpe-ptabs-wrap[data-more~=right] .fpe-pcue-r{display:flex}
 .fpe-ptab{flex:none;height:44px;padding:0 12px;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer;white-space:nowrap}
 .fpe-ptab[aria-selected=true]{background:var(--sel);color:var(--text);font-weight:600}
 .fpe[data-layout=phone] .fpe-dock>.fpe-group,.fpe[data-layout=phone] .fpe-dock>.fpe-group[hidden]{display:contents!important}
@@ -346,7 +359,10 @@
 .fpe[data-layout=phone] .fpe-sheet[data-state=open],.fpe[data-layout=phone] .fpe-sheet[data-sheet][data-state=open]{transform:none}
 .fpe[data-layout=phone] .fpe-sheet-head{padding-top:2px}
 .fpe[data-layout=phone] .fpe-dlg{top:auto;left:6px;right:6px;bottom:64px;width:auto;max-height:55%}
-.fpe[data-layout=phone] .fpe-toast{bottom:72px}
+.fpe[data-layout=phone] .fpe-toast{bottom:72px;padding:8px 12px;line-height:1.3}
+/* toasts sit above an open sheet and above the tool bar, never over them; with the full sheet, at the top */
+.fpe[data-layout=phone][data-dock=half] .fpe-toast{bottom:calc(52% + 70px)}
+.fpe[data-layout=phone][data-dock=full] .fpe-toast{top:3px;bottom:auto}
 .fpe[data-layout=phone] .fpe-start{padding:20px 12px}
 .fpe[data-layout=phone] .fpe-start-title{font-size:22px}
 .fpe[data-layout=phone] .fpe-jobs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}

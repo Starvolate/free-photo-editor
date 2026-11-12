@@ -33,8 +33,12 @@ jobs:
       - run: npm ci
       - name: Build
         run: npm run build
-      - name: Workspace test in headless Chrome
-        run: CHROME_PATH="$(which google-chrome || which chromium || which chromium-browser)" npx vitest run --config packages/web/vitest.e2e.config.ts workspace
+      - name: Every browser test (packages/web/e2e/*.e2e.test.ts) in headless Chrome
+        run: |
+          CHROME_PATH="$(which google-chrome || which chromium || which chromium-browser || true)"
+          test -n "$CHROME_PATH" || { echo "No Chrome on the runner: the browser tests would be skipped"; exit 1; }
+          export CHROME_PATH
+          npx vitest run --config packages/web/vitest.e2e.config.ts
       - name: Keep the screenshots
         if: always()
         uses: actions/upload-artifact@v4

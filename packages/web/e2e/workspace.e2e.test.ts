@@ -19,8 +19,9 @@ interface Cmd { id: string; status: string; kind: string; enabled: boolean; chec
 interface Fpe {
   commands(): Cmd[]; run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; setZoom(z: number): void;
   select(x: number, y: number, w: number, h: number): void; newDocument(w: number, h: number, bg?: string | null): void;
-  getInfo(): { layers: unknown[]; width: number; height: number } | null;
+  getInfo(): { layers: unknown[]; width: number; height: number } | null; toClient(x: number, y: number): { x: number; y: number } | null;
 }
+interface Box { top: number; bottom: number; }
 type Win = Window & { fpe: Fpe; __n: { dl: number; open: number; pick: number } };
 
 const WEB = fileURLToPath(new URL('..', import.meta.url));
@@ -247,6 +248,116 @@ suite('W1 workspace (headless Chrome)', () => {
     const steps = (await state(p)).steps as number;
     await p.tap('[data-testid="ms-image.adj-invert"]');
     await p.waitForFunction((n) => ((window as unknown as Win).fpe.state().steps as number) > n, steps);
+  }, 60_000);
+
+  it('phone: a half-open sheet leaves the whole picture above it, toasts never cover the sheet or the tool bar, panel tabs scroll with an edge cue', async () => {
+    const p = await open(390, 844, true);
+    await p.tap('[data-testid="start-sample"]');
+    const geo = (): Promise<{ pic: Box; stage: Box; dock: Box; tools: Box; toast: Box }> => p.evaluate(() => {
+      const w = window as unknown as Win, i = w.fpe.getInfo(), a = w.fpe.toClient(0, 0), b = i ? w.fpe.toClient(i.width, i.height) : null;
+      const box = (s: string): Box => { const r = document.querySelector(s)?.getBoundingClientRect(); return { top: r?.top ?? NaN, bottom: r?.bottom ?? NaN }; };
+      return { pic: { top: a?.y ?? NaN, bottom: b?.y ?? NaN }, stage: box('.fpe-stage'), dock: box('[data-testid="dock"]'), tools: box('[data-testid="tools"]'), toast: box('[data-testid="toast"]') };
+    });
+    const toast = async (): Promise<void> => {
+      await p.evaluate(() => document.querySelector('[data-testid="toast"]')?.removeAttribute('data-on'));
+      expect(await run(p, 'edit.pref-pro-names')).toBe(true);
+      await p.waitForSelector('[data-testid="toast"][data-on]');
+    };
+    const tabs = (): Promise<string[]> => p.evaluate(() => {
+      const wrap = document.querySelector<HTMLElement>('.fpe-ptabs-wrap'), strip = document.querySelector<HTMLElement>('.fpe-ptabs');
+      if (!wrap || !strip) return ['no panel tab strip'];
+      const s = strip.getBoundingClientRect(), more = wrap.dataset.more ?? '', bad: string[] = [];
+      const all = Array.from(strip.querySelectorAll<HTMLElement>('.fpe-ptab'));
+      if (new Set(all.map((t) => Math.round(t.getBoundingClientRect().top))).size !== 1) bad.push('the panel tabs are not one row');
+      for (const side of ['left', 'right']) {
+        const cue = wrap.querySelector<HTMLElement>('.fpe-pcue-' + side[0]), shown = !!cue && getComputedStyle(cue).display !== 'none';
+        if (more.includes(side) !== shown) bad.push(`the ${side} edge cue is ${shown ? 'shown with nothing there' : 'missing'}`);
+      }
+      for (const t of all) {
+        const a = t.getBoundingClientRect(), name = (t.textContent ?? '').trim(), cutL = a.left < s.left - 1, cutR = a.right > s.right + 1;
+        if (t.scrollWidth > t.clientWidth + 1 || parseFloat(getComputedStyle(t).fontSize) < 12) bad.push('label cut or too small: ' + name);
+        if (t.getAttribute('aria-selected') === 'true' && (cutL || cutR)) bad.push('the open tab is cut: ' + name);
+        if (cutL && !more.includes('left')) bad.push('cut at the left edge with no cue: ' + name);
+        if (cutR && !more.includes('right')) bad.push('cut at the right edge with no cue: ' + name);
+      }
+      return bad;
+    });
+    await toast();
+    let g = await geo();
+    expect(g.toast.bottom, 'toast above the tool bar').toBeLessThanOrEqual(g.tools.top);
+    await p.screenshot({ path: join(OUT, 'w1b-phone-390-toast.png') });
+    const full0 = g.pic.bottom - g.pic.top;
+    await p.tap('[data-testid="btn-layers"]');
+    await p.waitForSelector('[data-testid="dock"][data-state="half"]');
+    await p.waitForTimeout(200);
+    await toast();
+    g = await geo();
+    expect(g.pic.top, 'picture inside the space above the sheet').toBeGreaterThanOrEqual(g.stage.top - 1);
+    expect(g.pic.bottom, 'picture never under the sheet').toBeLessThanOrEqual(g.dock.top + 1);
+    expect(g.stage.bottom, 'the picture space ends where the sheet starts').toBeLessThanOrEqual(g.dock.top + 1);
+    expect(g.pic.bottom - g.pic.top, 'the picture refits, it is not cut').toBeLessThanOrEqual(full0 + 1);
+    expect(g.toast.top).toBeGreaterThanOrEqual(0);
+    expect(g.toast.bottom, 'toast above the half sheet').toBeLessThanOrEqual(g.dock.top);
+    expect(await rowsVisible(p)).toMatchObject({ rows: 2, visible: 2 });
+    await p.screenshot({ path: join(OUT, 'w1b-phone-390-dock-half.png') });
+    expect(await tabs()).toEqual([]);
+    expect(await p.getAttribute('.fpe-ptabs-wrap', 'data-more')).toContain('right');
+    await p.tap('[data-testid="ptab-info"]');
+    await p.waitForSelector('[data-testid="ptab-info"][aria-selected="true"]');
+    expect(await tabs()).toEqual([]);
+    expect(await p.getAttribute('.fpe-ptabs-wrap', 'data-more')).toContain('left');
+    await p.screenshot({ path: join(OUT, 'w1b-phone-390-tabs.png') });
+    await p.tap('.fpe-handle');
+    await p.waitForSelector('[data-testid="dock"][data-state="full"]');
+    await toast();
+    g = await geo();
+    expect(g.toast.top).toBeGreaterThanOrEqual(0);
+    expect(g.toast.bottom, 'toast above the full sheet').toBeLessThanOrEqual(g.dock.top);
+    await p.screenshot({ path: join(OUT, 'w1b-phone-390-dock-full.png') });
+    await p.tap('[data-testid="close-dock"]');
+    await p.waitForSelector('[data-testid="dock"][data-state="closed"]', { state: 'attached' });
+    await p.waitForTimeout(200);
+    g = await geo();
+    expect(Math.abs(g.pic.bottom - g.pic.top - full0), 'the picture fills the space again once the sheet closes').toBeLessThanOrEqual(1);
+  }, 60_000);
+
+  it('desktop and tablet: each panel group is one tidy row of tabs, nothing cut, the rest behind its "+n" button', async () => {
+    const check = (p: Page): Promise<string[]> => p.evaluate(() => {
+      const out: string[] = [];
+      for (const strip of Array.from(document.querySelectorAll<HTMLElement>('.fpe-group:not([hidden]) .fpe-gtabs'))) {
+        const s = strip.getBoundingClientRect(), tabs = Array.from(strip.querySelectorAll<HTMLElement>('.fpe-gtab')).filter((t) => t.getBoundingClientRect().width > 0);
+        const label = tabs.map((t) => (t.textContent ?? '').trim()).join(' | ');
+        if (!tabs.length) out.push('a panel group shows no tab');
+        if (new Set(tabs.map((t) => Math.round(t.getBoundingClientRect().top))).size > 1) out.push('two rows: ' + label);
+        for (const t of tabs) {
+          const a = t.getBoundingClientRect(), name = (t.textContent ?? '').trim();
+          if (a.left < s.left - 1 || a.right > s.right + 1 || t.scrollWidth > t.clientWidth + 1) out.push('cut: ' + name);
+          if (parseFloat(getComputedStyle(t).fontSize) < 12) out.push('smaller than 12 px: ' + name);
+        }
+      }
+      return out;
+    });
+    for (const [w, hgt] of [[1440, 900], [1024, 768], [820, 1180]] as const) {
+      const p = await open(w, hgt);
+      await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+      await p.waitForTimeout(150);
+      expect(await check(p), `${w} px`).toEqual([]);
+      if (w === 1440) {
+        await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-tabs.png') });
+        await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-dock.png'), clip: { x: 1440 - 320, y: 84, width: 320, height: 520 } });
+      }
+      if (w !== 820) continue;
+      const more = p.locator('[data-testid="gmore-props"]');
+      expect(await more.isVisible(), 'the Properties group has a "+n" button on a 252 px dock').toBe(true);
+      expect(await more.getAttribute('aria-label')).toContain('History');
+      await more.click();
+      await p.click('.fpe-pop button:has-text("History")');
+      await p.waitForSelector('[data-testid="tab-history"][aria-selected="true"]');
+      expect(await p.isVisible('[data-testid="tab-history"]')).toBe(true);
+      await p.waitForSelector('[data-testid="history-list"]', { state: 'visible' });
+      expect(await check(p), `${w} px after picking History`).toEqual([]);
+      await p.screenshot({ path: join(OUT, 'w1b-tablet-820-tabs.png') });
+    }
   }, 60_000);
 
   for (const [w, hgt, touch] of [[1440, 900, false], [1024, 768, false], [820, 1180, true], [390, 844, true], [360, 740, true]] as const) {

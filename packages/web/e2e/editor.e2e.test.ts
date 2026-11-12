@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * The headless browser test: the built editor (dist/) in a real Chrome, used the way a person uses it.
- * Run: CHROME_PATH=<path to a Chrome or Chromium binary> npm run e2e   (headless only; no window ever opens)
+ * The engine in a real headless Chrome, used through the W1 workspace the way a person uses it: opening every format,
+ * painting, light and colour fixes with undo and redo, select, delete, the eyedropper, move, crop, the eraser, the layers
+ * panel, drop and paste, export bytes with his credit inside every file (PNG, JPEG, WebP and PSD), the PSD round trip,
+ * the loss warning, the About screen and both looks. Screen widths and phone sheets are covered by workspace.e2e.test.ts.
+ * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts editor
  */
 import { existsSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
@@ -15,11 +18,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AUTHOR_URL, CREDIT, SOURCE_URL, addLayer, createDocument, createLayer, readJpegSoftware, readJpegXmp, readPngText, webpInfo } from '@free-photoeditor/core';
 import { readPsdDocument, writePsdDocument } from '@free-photoeditor/core/psd';
 
-interface LayerInfo { name: string; visible: boolean; opacity: number; blendMode: string; x: number; y: number; width: number; height: number; }
+interface LayerInfo { name: string; visible: boolean; opacity: number; blendMode: string; x: number; y: number; width: number; height: number; locked: boolean; }
 interface Info { width: number; height: number; layers: LayerInfo[]; canUndo: boolean; canRedo: boolean; layout: string | null; active: number; zoom: number;
-  selection: { x: number; y: number; w: number; h: number } | null; }
+  tool: string; selection: { x: number; y: number; w: number; h: number } | null; }
 interface Fpe {
-  getInfo(): Info | null; newDocument(w: number, h: number, bg?: string | null): void;
+  getInfo(): Info | null; newDocument(w: number, h: number, bg?: string | null): void; state(): Record<string, unknown>;
   sample(x: number, y: number, activeLayerOnly?: boolean): number[] | null; toClient(x: number, y: number): { x: number; y: number } | null;
 }
 type Win = { fpe: Fpe };
@@ -31,6 +34,8 @@ const OUT = join(WEB, 'e2e', 'out');
 const CHROME = process.env.CHROME_PATH;
 const INPUT = '[data-testid="file-input"]';
 const TOAST = '[data-testid="toast"]';
+/** The credit ADDITIONAL-TERMS 7(b) requires in every exported file. */
+const NAME = 'Free Photo Editor by Bhawesh Tibrewal';
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png',
@@ -92,6 +97,7 @@ const PHOTO = pngBytes(120, 80, (x, y) => [x * 2, y * 3, 128, 255]);
 
 // ---------- page helpers ----------
 const info = (p: Page): Promise<Info | null> => p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+const steps = (p: Page): Promise<number> => p.evaluate(() => (window as unknown as Win).fpe.state().steps as number);
 const sample = (p: Page, x: number, y: number): Promise<number[] | null> =>
   p.evaluate(([a, b]) => (window as unknown as Win).fpe.sample(a, b), [x, y] as [number, number]);
 const toClient = async (p: Page, x: number, y: number): Promise<{ x: number; y: number }> =>
@@ -107,6 +113,9 @@ async function waitDoc(p: Page, w: number, h: number): Promise<Info> {
   }
   return (await info(p)) as Info;
 }
+async function waitStep(p: Page, before: number): Promise<void> {
+  await p.waitForFunction((n) => ((window as unknown as Win).fpe.state().steps as number) > n, before, { timeout: 15_000 });
+}
 async function openFile(p: Page, name: string, mimeType: string, buffer: Buffer, w: number, h: number): Promise<Info> {
   await p.locator(INPUT).setInputFiles({ name, mimeType, buffer });
   return waitDoc(p, w, h);
@@ -120,8 +129,21 @@ async function exportAs(p: Page, format: string): Promise<{ bytes: Buffer; name:
   await p.click(`[data-testid="export-format-${format}"]`);
   return download(p);
 }
+/** Opens a top menu, a submenu if given, and runs the item: the way a person reaches a command on a desktop. */
+async function menu(p: Page, top: string, item: string, sub?: string): Promise<void> {
+  await p.click(`[data-testid="menu-top-${top}"]`);
+  if (sub) await p.hover(`[data-testid="sub-${sub}"]`);
+  await p.click(`[data-testid="mi-${item}"]`);
+}
+async function drag(p: Page, from: [number, number], to: [number, number]): Promise<void> {
+  const a = await toClient(p, ...from), b = await toClient(p, ...to);
+  await p.mouse.move(a.x, a.y);
+  await p.mouse.down();
+  await p.mouse.move(b.x, b.y, { steps: 12 });
+  await p.mouse.up();
+}
 
-describe('Free Photo Editor in a real browser (headless Chrome)', () => {
+describe('Free Photo Editor engine through the workspace (headless Chrome)', () => {
   let browser: Browser | undefined;
   let server: Server | undefined;
   let page: Page;
@@ -139,7 +161,7 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     page.on('pageerror', (e) => errors.push('page error: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error') errors.push('console error: ' + m.text()); });
     await page.goto(s.url);
-    await page.locator('[data-testid="empty"]').waitFor({ state: 'visible' });
+    await page.locator('[data-testid="start"]').waitFor({ state: 'visible' });
   });
   afterAll(async () => {
     await browser?.close();
@@ -147,60 +169,64 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     server?.close();
   });
 
-  it('starts with a plain empty state and opens a PNG from the file picker', async () => {
-    expect(await page.textContent('[data-testid="empty"]')).toContain('Your pictures stay on this device');
-    await page.screenshot({ path: join(OUT, 'empty-1440.png') });
+  it('starts on "What do you want to do?" and opens a PNG from the file picker', async () => {
+    expect(await page.textContent('[data-testid="start"]')).toContain('Your pictures stay on this device');
     const i = await openFile(page, 'photo.png', 'image/png', PHOTO, 120, 80);
     expect(i.layers.length).toBe(1);
-    expect(await page.isVisible('[data-testid="empty"]')).toBe(false);
+    await expect.poll(() => page.isVisible('[data-testid="start"]')).toBe(false);
     expect(await sample(page, 10, 10)).toEqual([20, 30, 128, 255]);
   });
 
   it('paints a brush stroke with the mouse', async () => {
+    await page.click('[data-testid="tool-paint"]');
+    expect((await info(page))?.tool).toBe('brush');
     const before = await sample(page, 60, 40);
-    const a = await toClient(page, 20, 40), b = await toClient(page, 100, 40);
-    await page.mouse.move(a.x, a.y);
-    await page.mouse.down();
-    await page.mouse.move(b.x, b.y, { steps: 12 });
-    await page.mouse.up();
+    await drag(page, [20, 40], [100, 40]);
     await page.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.canUndo === true);
     const after = await sample(page, 60, 40);
     expect(after).not.toEqual(before);
-    expect(near(after, [228, 87, 46, 255], 8)).toBe(true);
+    expect(near(after, [228, 87, 46, 255], 8), JSON.stringify(after)).toBe(true);
     expect(await sample(page, 60, 5)).toEqual([120, 15, 128, 255]);
   });
 
-  it('applies adjustments (instant invert, live-preview brightness), then undo and redo by button and keyboard', async () => {
+  it('light and colour: instant invert and live-preview brightness, then undo and redo by button and keyboard', async () => {
+    await page.click('[data-testid="tab-adjustments"]');
     const p0 = (await sample(page, 10, 10)) as number[];
-    await page.click('[data-testid="adj-invert"]');
-    await expect.poll(() => page.getAttribute('[data-testid="btn-undo"]', 'title')).toContain('Invert');
+    let n = await steps(page);
+    await page.click('[data-testid="adj-image.adj-invert"]');
+    await waitStep(page, n);
+    expect(await page.getAttribute('[data-testid="btn-undo"]', 'aria-label')).toMatch(/^Undo: ./);
     const p1 = (await sample(page, 10, 10)) as number[];
     expect(p1).toEqual([...p0.slice(0, 3).map((v) => 255 - v), 255]);
     await page.click('[data-testid="btn-undo"]');
-    expect(await sample(page, 10, 10)).toEqual(p0);
+    await expect.poll(() => sample(page, 10, 10)).toEqual(p0);
     await page.click('[data-testid="btn-redo"]');
-    expect(await sample(page, 10, 10)).toEqual(p1);
+    await expect.poll(() => sample(page, 10, 10)).toEqual(p1);
     await page.keyboard.press('Control+z');
-    expect(await sample(page, 10, 10)).toEqual(p0);
+    await expect.poll(() => sample(page, 10, 10)).toEqual(p0);
     await page.keyboard.press('Control+Shift+z');
-    expect(await sample(page, 10, 10)).toEqual(p1);
+    await expect.poll(() => sample(page, 10, 10)).toEqual(p1);
 
-    await page.click('[data-testid="adj-brightness"]');
+    n = await steps(page);
+    await page.click('[data-testid="adj-image.adj-brightness"]');
+    await page.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
     await page.locator('[data-testid="ctl-brightness"]').fill('60');
     await page.waitForFunction((prev) => JSON.stringify((window as unknown as Win).fpe.sample(10, 10)) !== prev, JSON.stringify(p1));
     await page.click('[data-testid="adj-apply"]');
-    await expect.poll(() => page.getAttribute('[data-testid="btn-undo"]', 'title')).toContain('Brightness');
+    await waitStep(page, n);
     expect(page.workers().length, 'filters and adjustments run in a Web Worker').toBeGreaterThan(0);
     expect(await sample(page, 10, 10)).not.toEqual(p1);
     await page.click('[data-testid="btn-undo"]');
-    expect(await sample(page, 10, 10)).toEqual(p1);
+    await expect.poll(() => sample(page, 10, 10)).toEqual(p1);
   });
 
   it('exports PNG, JPEG and WebP with his credit inside each file, and re-opens PNG and JPEG', async () => {
     const p1 = (await sample(page, 10, 10)) as number[];
     const png = await exportAs(page, 'png');
     expect(png.name).toBe('photo.png');
+    expect([...png.bytes.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
     expect(readPngText(new Uint8Array(png.bytes)).Software).toBe(CREDIT);
+    expect(CREDIT).toContain(NAME);
     await expect.poll(() => page.textContent(TOAST)).toMatch(/Saved photo\.png/);
 
     await page.click('[data-testid="btn-export"]');
@@ -210,12 +236,15 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     expect(jpg.name).toBe('photo.jpg');
     expect([jpg.bytes[0], jpg.bytes[1]]).toEqual([0xff, 0xd8]);
     expect(readJpegSoftware(new Uint8Array(jpg.bytes))).toBe(CREDIT);
-    expect(readJpegXmp(new Uint8Array(jpg.bytes))).toContain('Bhawesh Tibrewal');
+    expect(readJpegXmp(new Uint8Array(jpg.bytes))).toContain(NAME);
 
     const webp = await exportAs(page, 'webp');
+    expect(webp.name).toBe('photo.webp');
+    expect(webp.bytes.subarray(0, 4).toString('latin1')).toBe('RIFF');
+    expect(webp.bytes.subarray(8, 12).toString('latin1')).toBe('WEBP');
     const wi = webpInfo(new Uint8Array(webp.bytes));
     expect([wi.width, wi.height]).toEqual([120, 80]);
-    expect(wi.xmp).toContain('Bhawesh Tibrewal');
+    expect(wi.xmp).toContain(NAME);
 
     await blank(page);
     await openFile(page, 'photo.png', 'image/png', png.bytes, 120, 80);
@@ -225,34 +254,41 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     expect(near(await sample(page, 10, 10), p1, 16)).toBe(true);
   });
 
-  it('opens a 2-layer PSD with names, order, offsets, opacity and blend mode', async () => {
+  it('opens a 2-layer PSD with names, order, offsets, opacity and blend mode, one Layers row each', async () => {
     const i = await openFile(page, 'two-layers.psd', 'image/vnd.adobe.photoshop', twoLayerPsd(), 90, 60);
     expect(i.layers.map((l) => l.name)).toEqual(['Background', 'Red square']);
     const t = i.layers[1];
     expect([t.x, t.y, t.width, t.height]).toEqual([10, 12, 40, 30]);
     expect(t.blendMode).toBe('multiply');
     expect(t.opacity).toBeCloseTo(0.6, 2);
-    expect(await page.locator('[data-testid="layer-row"]').count()).toBe(2);
+    await expect.poll(() => page.locator('[data-testid="layer-row"]').count()).toBe(2);
   });
 
-  it('warns that JPEG merges the layers, switches to PSD in one click, and the PSD keeps both layers', async () => {
+  it('warns that JPEG merges the layers, switches to PSD in one click, and the PSD keeps both layers and his credit', async () => {
     await page.click('[data-testid="btn-export"]');
     await page.click('[data-testid="export-format-jpeg"]');
     const box = page.locator('[data-testid="loss-warning"]');
     expect(Number(await box.getAttribute('data-losses'))).toBeGreaterThanOrEqual(1);
     expect(await box.textContent()).toMatch(/layer/i);
     expect(await page.textContent('[data-testid="export-go"]')).toMatch(/anyway/i);
+    await page.screenshot({ path: join(OUT, 'editor-1440-loss-warning.png') });
     await page.click('[data-testid="loss-switch"]');
     expect(await page.getAttribute('[data-testid="export-format-psd"]', 'aria-checked')).toBe('true');
+    expect(Number(await box.getAttribute('data-losses'))).toBe(0);
     const psd = await download(page);
     expect(psd.name).toBe('two-layers.psd');
+    expect(psd.bytes.subarray(0, 4).toString('latin1')).toBe('8BPS');
     const back = readPsdDocument(new Uint8Array(psd.bytes));
     expect(back.doc.layers.map((l) => l.name)).toEqual(['Background', 'Red square']);
     expect(back.credit).toBe(CREDIT);
+    expect(back.credit).toContain(NAME);
     await blank(page);
     const i = await openFile(page, 'two-layers.psd', 'image/vnd.adobe.photoshop', psd.bytes, 90, 60);
-    expect(i.layers.length).toBe(2);
+    expect(i.layers.map((l) => l.name)).toEqual(['Background', 'Red square']);
     expect(i.layers[1].blendMode).toBe('multiply');
+    expect(i.layers[1].opacity).toBeCloseTo(0.6, 2);
+    expect([i.layers[1].x, i.layers[1].y]).toEqual([10, 12]);
+    await expect.poll(() => page.locator('[data-testid="layer-row"]').count()).toBe(2);
   });
 
   it('opens BMP, GIF (first frame), ICO, SVG and WebP', async () => {
@@ -273,16 +309,15 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     }
   });
 
-  it('shows his name in the header and the About screen, with the licence and the source link', async () => {
+  it('shows his name in the header and the About screen (Help menu), with the licence and the source link', async () => {
     const brand = page.locator('[data-testid="brand"]');
     expect(await brand.textContent()).toContain('by Bhawesh Tibrewal');
     expect(await brand.getAttribute('href')).toBe(AUTHOR_URL);
-    await page.click('[data-testid="btn-menu"]');
-    await page.click('[data-testid="menu-about"]');
+    await menu(page, 'help', 'help.about');
     const about = page.locator('[data-testid="about"]');
     await about.waitFor({ state: 'visible' });
     const text = (await about.textContent()) ?? '';
-    expect(text).toContain('Free Photo Editor by Bhawesh Tibrewal');
+    expect(text).toContain(NAME);
     expect(text).toContain('GNU Affero General Public License');
     expect(text).toContain('ag-psd');
     expect(await page.getAttribute('[data-testid="about-source"]', 'href')).toBe(SOURCE_URL);
@@ -291,92 +326,68 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     await page.locator('[data-testid="sheet-about"]').waitFor({ state: 'hidden' });
   });
 
-  it('fits a 360 px phone and a 1440 px desktop with no sideways scrolling', async () => {
-    const check = async (where: string, w: number): Promise<void> => {
-      const m = await page.evaluate(() => {
-        const t = document.querySelector('.fpe-tools') as HTMLElement;
-        return { doc: document.documentElement.scrollWidth, body: document.body.scrollWidth, view: document.documentElement.clientWidth, tools: t.scrollWidth - t.clientWidth };
-      });
-      expect(m.doc, `${where} at ${w} px`).toBeLessThanOrEqual(m.view);
-      expect(m.body, `${where} at ${w} px`).toBeLessThanOrEqual(m.view);
-      expect(m.tools, `tool bar at ${w} px`).toBeLessThanOrEqual(0);
-    };
-    for (const [w, h, layout] of [[360, 740, 'phone'], [1024, 768, 'tablet'], [1440, 900, 'desktop']] as const) {
+  it('keeps the editor behind a dialog inert, on a phone and on a desktop', async () => {
+    const inert = (): Promise<boolean> => page.evaluate(() => (document.querySelector('.fpe-shell') as HTMLElement).inert);
+    for (const [w, h, layout] of [[360, 740, 'phone'], [1440, 900, 'desktop']] as const) {
       await page.setViewportSize({ width: w, height: h });
       await page.waitForFunction((l) => (window as unknown as Win).fpe.getInfo()?.layout === l, layout);
-      await check('editor', w);
-      const bb = await page.locator('[data-testid="brand"]').boundingBox();
-      expect(!!bb && bb.x >= 0 && bb.x + bb.width <= w && bb.width > 0).toBe(true);
-      await page.screenshot({ path: join(OUT, `editor-${w}.png`) });
-      if (layout === 'tablet') {
+      if (layout === 'phone') {
         await page.click('[data-testid="btn-layers"]');
-        await page.locator('[data-testid="sheet-layers"]').waitFor({ state: 'visible' });
-        await check('layers panel', w);
-        await page.screenshot({ path: join(OUT, `layers-${w}.png`) });
-        await page.click('[data-testid="close-layers"]');
+        await page.waitForSelector('[data-testid="dock"][data-state="half"]');
+        await expect.poll(() => page.locator('[data-testid="layer-row"]').count()).toBeGreaterThan(0);
+        await page.click('[data-testid="close-dock"]');
+        await page.waitForSelector('[data-testid="dock"][data-state="closed"]', { state: 'attached' });
       }
-      if (layout !== 'phone') continue;
-      await page.click('[data-testid="btn-layers"]');
-      await page.locator('[data-testid="sheet-layers"]').waitFor({ state: 'visible' });
-      await check('layers sheet', w);
-      await page.screenshot({ path: join(OUT, `layers-${w}.png`) });
-      await page.click('[data-testid="close-layers"]');
       await page.click('[data-testid="btn-export"]');
       await page.locator('[data-testid="sheet-export"]').waitFor({ state: 'visible' });
-      await check('export sheet', w);
-      expect(await page.evaluate(() => (document.querySelector('.fpe-shell') as HTMLElement).inert), 'the editor behind a dialog is inert').toBe(true);
-      await page.screenshot({ path: join(OUT, `export-${w}.png`) });
+      expect(await inert(), `the editor behind the export dialog is inert at ${w} px`).toBe(true);
+      await page.screenshot({ path: join(OUT, `editor-${w}-export.png`) });
       await page.keyboard.press('Escape');
-      expect(await page.evaluate(() => (document.querySelector('.fpe-shell') as HTMLElement).inert)).toBe(false);
+      await expect.poll(inert).toBe(false);
     }
   });
 
-  it('makes a new picture from the menu; a selection limits delete and paint; eyedropper, move layer and crop', async () => {
-    await page.click('[data-testid="btn-menu"]');
-    await page.click('[data-testid="menu-new"]');
+  it('makes a new picture from the File menu; a selection limits delete and paint; eyedropper, move layer and crop', async () => {
+    await menu(page, 'file', 'file.new');
     await page.locator('[data-testid="new-width"]').fill('200');
     await page.locator('[data-testid="new-height"]').fill('150');
     await page.click('[data-testid="new-create"]');
     await waitDoc(page, 200, 150);
     expect(await sample(page, 5, 5)).toEqual([255, 255, 255, 255]);
-    const drag = async (from: [number, number], to: [number, number]): Promise<void> => {
-      const a = await toClient(page, ...from), b = await toClient(page, ...to);
-      await page.mouse.move(a.x, a.y);
-      await page.mouse.down();
-      await page.mouse.move(b.x, b.y, { steps: 10 });
-      await page.mouse.up();
-    };
 
-    await page.click('[data-testid="tool-select"]');
-    await drag([20, 20], [80, 60]);
+    await page.click('[data-testid="tool-select-box"]');
+    expect((await info(page))?.tool).toBe('select');
+    await drag(page, [20, 20], [80, 60]);
     const sel = (await info(page))?.selection ?? null;
     expect(sel && near([sel.x, sel.y, sel.w, sel.h], [20, 20, 60, 40], 1), JSON.stringify(sel)).toBe(true);
     await page.click('[data-testid="sel-delete"]');
-    expect(await sample(page, 50, 40)).toEqual([0, 0, 0, 0]);
+    await expect.poll(() => sample(page, 50, 40)).toEqual([0, 0, 0, 0]);
     expect(await sample(page, 120, 40)).toEqual([255, 255, 255, 255]);
 
-    await page.click('[data-testid="tool-brush"]');
-    await drag([5, 40], [195, 40]);
-    expect(near(await sample(page, 50, 40), [228, 87, 46, 255], 8), 'painted inside the selection').toBe(true);
+    await page.click('[data-testid="tool-paint"]');
+    await drag(page, [5, 40], [195, 40]);
+    await expect.poll(async () => near(await sample(page, 50, 40), [228, 87, 46, 255], 8), { message: 'painted inside the selection' }).toBe(true);
     expect(await sample(page, 120, 40), 'untouched outside the selection').toEqual([255, 255, 255, 255]);
 
-    await page.click('[data-testid="tool-eyedropper"]');
+    await page.click('[data-testid="tool-measure"]');
+    expect((await info(page))?.tool).toBe('eyedropper');
     const white = await toClient(page, 120, 40);
     await page.mouse.click(white.x, white.y);
-    await page.click('[data-testid="tool-brush"]');
+    await expect.poll(() => page.evaluate(() => (window as unknown as Win).fpe.state().fg)).toBe('#ffffff');
+    await page.click('[data-testid="tool-paint"]');
     expect(await page.inputValue('[data-testid="brush-color"]')).toBe('#ffffff');
 
     await page.keyboard.press('Control+d');
     expect((await info(page))?.selection).toBeNull();
     await page.click('[data-testid="tool-move"]');
-    await drag([100, 100], [120, 110]);
+    await drag(page, [100, 100], [120, 110]);
     const moved = (await info(page))?.layers[0];
     expect(!!moved && near([moved.x, moved.y], [20, 10], 1), JSON.stringify(moved)).toBe(true);
     await page.click('[data-testid="btn-undo"]');
     expect((await info(page))?.layers[0].x).toBe(0);
 
     await page.click('[data-testid="tool-crop"]');
-    await drag([0, 0], [100, 75]);
+    await drag(page, [0, 0], [100, 75]);
     await page.click('[data-testid="crop-apply"]');
     const c = await info(page);
     expect(!!c && near([c.width, c.height], [100, 75], 1), JSON.stringify(c && [c.width, c.height])).toBe(true);
@@ -391,10 +402,9 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     const name = page.locator('[data-testid="layer-name"]');
     await name.fill('Sky');
     await name.press('Enter');
-    let i = await now();
-    expect(i.layers[i.active].name).toBe('Sky');
+    await expect.poll(async () => { const i = await now(); return i.layers[i.active].name; }).toBe('Sky');
     await page.click('[data-testid="layer-duplicate"]');
-    i = await now();
+    let i = await now();
     expect(i.layers.length).toBe(3);
     const a0 = i.active;
     expect(a0).toBeGreaterThan(0);
@@ -404,29 +414,26 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     i = await now();
     expect(i.layers[i.layers.length - 1].visible).toBe(false);
     await page.locator('[data-testid="layer-opacity"]').fill('40');
-    i = await now();
-    expect(i.layers[i.active].opacity).toBeCloseTo(0.4, 2);
+    await expect.poll(async () => { const j = await now(); return Math.round(j.layers[j.active].opacity * 100); }).toBe(40);
     await page.selectOption('[data-testid="layer-blend"]', 'screen');
     i = await now();
     expect(i.layers[i.active].blendMode).toBe('screen');
+    await page.screenshot({ path: join(OUT, 'editor-1440-layers.png') });
     await page.click('[data-testid="layer-delete"]');
     expect((await now()).layers.length).toBe(2);
 
     await page.locator('[data-testid="layer-select"]').last().click();
     expect((await now()).active).toBe(0);
-    await page.click('[data-testid="tool-eraser"]');
-    const a = await toClient(page, 5, 120), b = await toClient(page, 195, 120);
-    await page.mouse.move(a.x, a.y);
-    await page.mouse.down();
-    await page.mouse.move(b.x, b.y, { steps: 12 });
-    await page.mouse.up();
-    expect(((await sample(page, 100, 120)) as number[])[3], 'erased to transparent').toBeLessThan(10);
+    await page.click('[data-testid="tool-erase"]');
+    expect((await now()).tool).toBe('eraser');
+    await drag(page, [5, 120], [195, 120]);
+    await expect.poll(async () => ((await sample(page, 100, 120)) as number[])[3], { message: 'erased to see-through' }).toBeLessThan(10);
     expect(await sample(page, 100, 20)).toEqual([255, 255, 255, 255]);
 
     const z0 = (await now()).zoom;
     await page.click('.fpe-zoom button:last-child');
     expect((await now()).zoom).toBeCloseTo(z0 * 1.25, 3);
-    await page.click('.fpe-zoom-label');
+    await page.click('[data-testid="status-zoom"]');
     expect((await now()).zoom).toBeCloseTo(z0, 3);
   });
 
@@ -448,7 +455,7 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     expect(((await info(page)) as Info).layers.map((l) => l.name)).toEqual(expect.arrayContaining(['dropped', 'pasted']));
   });
 
-  it('keeps the primary button readable (WCAG AA) in the dark and the light look', async () => {
+  it('keeps the primary button readable (WCAG AA) in the dark and the light look, switched from Edit > Settings', async () => {
     const ratio = (): Promise<number> => page.evaluate(() => {
       const cs = getComputedStyle(document.querySelector('[data-testid="btn-export"]') as HTMLElement);
       const lum = (c: string): number => {
@@ -459,15 +466,12 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     });
     expect(await ratio(), 'dark look').toBeGreaterThanOrEqual(4.5);
-    await page.click('[data-testid="btn-menu"]');
-    await page.click('[data-testid="menu-theme"]');
-    expect(await page.getAttribute('.fpe', 'data-theme')).toBe('light');
+    await menu(page, 'edit', 'edit.pref-theme', 'edit-settings');
+    await expect.poll(() => page.getAttribute('.fpe', 'data-theme')).toBe('light');
     expect(await ratio(), 'light look').toBeGreaterThanOrEqual(4.5);
-    await page.screenshot({ path: join(OUT, 'light-1440.png') });
-    await page.click('[data-testid="btn-menu"]');
-    await page.click('[data-testid="menu-theme"]');
-    expect(await page.getAttribute('.fpe', 'data-theme')).toBe('dark');
-    await page.waitForFunction(() => !document.querySelector('[data-testid="toast"]')?.hasAttribute('data-on'), undefined, { timeout: 8000 });
+    await page.screenshot({ path: join(OUT, 'editor-1440-light.png') });
+    await menu(page, 'edit', 'edit.pref-theme', 'edit-settings');
+    await expect.poll(() => page.getAttribute('.fpe', 'data-theme')).toBe('dark');
   });
 
   it('had zero page errors', () => {

@@ -244,6 +244,11 @@ export class Editor {
   private folded = new Set<string>(['nav', 'color', 'more']);
   private groupActive = new Map<string, string>();
   private dockState: DockState = 'closed';
+  private moreBtns = new Map<string, HTMLButtonElement>();
+  private ptabs!: HTMLElement;
+  private ptabsWrap!: HTMLElement;
+  private stageSize = { w: 0, h: 0 };
+  private dockRo!: ResizeObserver;
   private phonePanel = 'layers';
   private menuOpen: string | null = null;
   private menuStack: HTMLElement[] = [];
@@ -310,6 +315,8 @@ export class Editor {
     this.ro.observe(this.root);
     this.stageRo = new ResizeObserver(() => this.onStageResize());
     this.stageRo.observe(this.stage);
+    this.dockRo = new ResizeObserver(() => { this.fitTabs(); this.ptabsCue(); });
+    this.dockRo.observe(this.dock);
     this.onRootResize();
     this.onStageResize();
     this.setTool('brush');
@@ -670,7 +677,11 @@ export class Editor {
       return h('button', { type: 'button', class: 'fpe-ptab', role: 'tab', 'aria-selected': 'false', 'data-ptab': pid, 'data-testid': 'ptab-' + pid,
         onclick: () => this.setDock(this.dockState === 'closed' ? 'half' : this.dockState, pid) }, r?.plain ?? pid);
     }));
-    dock.append(h('div', { class: 'fpe-dock-phonehead' }, handle, h('div', { class: 'fpe-dock-phonebar' }, ptabs,
+    this.ptabs = ptabs;
+    this.ptabsWrap = h('div', { class: 'fpe-ptabs-wrap' }, ptabs,
+      h('span', { class: 'fpe-pcue fpe-pcue-l', 'aria-hidden': 'true' }, icon('chev-left')), h('span', { class: 'fpe-pcue fpe-pcue-r', 'aria-hidden': 'true' }, icon('chev-right')));
+    ptabs.addEventListener('scroll', () => this.ptabsCue(), { passive: true });
+    dock.append(h('div', { class: 'fpe-dock-phonehead' }, handle, h('div', { class: 'fpe-dock-phonebar' }, this.ptabsWrap,
       iconButton('close', 'Close panels', { class: 'fpe-btn fpe-icon-btn', 'data-testid': 'close-dock', onclick: () => this.setDock('closed') }))));
     for (const g of GROUPS) {
       const tabs = h('div', { class: 'fpe-gtabs', role: 'tablist' });
@@ -685,7 +696,14 @@ export class Editor {
         tabs.append(t);
       }
       const fold = iconButton('chev-down', 'Fold or unfold this panel group', { class: 'fpe-btn fpe-icon-btn fpe-gfold', 'data-testid': 'fold-' + g.id, onclick: () => this.toggleGroup(g.id) });
-      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, fold), body);
+      const more = h('button', { type: 'button', class: 'fpe-btn fpe-gmore', hidden: true, 'aria-haspopup': 'menu', 'data-testid': 'gmore-' + g.id,
+        'data-help-title': 'More panels', 'data-help': 'Panels of this group that did not fit in the row. Pick one to show it here.' }, h('span', {}, '+0'));
+      more.addEventListener('click', () => this.showPopover(Array.from(tabs.querySelectorAll<HTMLElement>('[data-tab][data-overflow]'), (t) => {
+        const pid = t.dataset.tab as string, r = BY_ID.get('panel.' + pid), ok = r?.status === 'ready';
+        return { label: (r?.plain ?? pid) + (ok ? '' : ' (planned)'), cmd: 'panel.' + pid, disabled: !ok, run: () => this.activateTab(g.id, pid) };
+      }), more));
+      this.moreBtns.set(g.id, more);
+      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, more, fold), body);
       this.groupEls.set(g.id, sec);
       dock.append(sec);
     }
@@ -799,6 +817,7 @@ export class Editor {
       for (const p of g.panels) this.bodies.get(p)?.toggleAttribute('data-active', p === act);
     }
     this.groupEls.get('more')?.toggleAttribute('data-folded', this.folded.has('more'));
+    this.fitTabs();
   }
   togglePanelShown(pid: string): void {
     if (this.layout === 'phone') { this.togglePhonePanel(pid); return; }
@@ -839,11 +858,51 @@ export class Editor {
     for (const t of this.dock.querySelectorAll<HTMLElement>('[data-ptab]')) t.setAttribute('aria-selected', String(t.dataset.ptab === this.phonePanel));
     this.dockState = state;
     this.dock.dataset.state = state;
+    this.root.dataset.dock = state;
     this.dock.inert = this.layout === 'phone' && state === 'closed';
     const open = state !== 'closed';
     this.root.querySelector('[data-testid="btn-layers"]')?.setAttribute('aria-expanded', String(open && this.phonePanel === 'layers'));
     this.root.querySelector('[data-testid="btn-panels"]')?.setAttribute('aria-expanded', String(open && this.phonePanel !== 'layers'));
     if (open) this.renderPanels();
+    if (open && this.layout === 'phone') this.revealPtab();
+  }
+  /** Desktop and tablet: each group's tabs stay one row. Tabs that do not fit go behind the group's "+n" button; the open tab always stays. */
+  private fitTabs(): void {
+    if (!this.layout || this.layout === 'phone') return;
+    for (const g of GROUPS) {
+      const sec = this.groupEls.get(g.id), more = this.moreBtns.get(g.id), strip = sec?.querySelector<HTMLElement>('.fpe-gtabs');
+      if (!sec || !more || !strip) continue;
+      const tabs = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab]'));
+      for (const t of tabs) t.removeAttribute('data-overflow');
+      more.hidden = true;
+      if (sec.hidden || !strip.clientWidth || strip.scrollWidth <= strip.clientWidth + 1) continue;
+      more.hidden = false;
+      const act = this.groupActive.get(g.id);
+      for (let i = tabs.length - 1; i >= 0 && strip.scrollWidth > strip.clientWidth + 1; i--) {
+        if (tabs[i].dataset.tab !== act && !tabs[i].hidden) tabs[i].setAttribute('data-overflow', '');
+      }
+      const out = tabs.filter((t) => t.hasAttribute('data-overflow')).map((t) => BY_ID.get('panel.' + t.dataset.tab)?.plain ?? '');
+      more.hidden = !out.length;
+      more.firstElementChild?.replaceChildren('+' + out.length);
+      more.setAttribute('aria-label', `${out.length} more panel${out.length === 1 ? '' : 's'}: ${out.join(', ')}`);
+    }
+  }
+  /** Phone: marks which side of the panel tab strip has more tabs, so a fade and an arrow show at that edge. */
+  private ptabsCue(): void {
+    const s = this.ptabs, w = this.ptabsWrap;
+    if (!s || !w) return;
+    const max = s.scrollWidth - s.clientWidth, more = [s.scrollLeft > 1 ? 'left' : '', s.scrollLeft < max - 1 ? 'right' : ''].filter(Boolean).join(' ');
+    if (more) w.dataset.more = more; else delete w.dataset.more;
+  }
+  /** Phone: scrolls only the panel tab strip (never the page) so the open tab is fully in view, clear of the edge cue. */
+  private revealPtab(): void {
+    const s = this.ptabs, t = s?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (s && t && s.clientWidth) {
+      const a = t.getBoundingClientRect(), b = s.getBoundingClientRect(), pad = 36;
+      if (a.left < b.left + pad) s.scrollLeft -= b.left + pad - a.left;
+      else if (a.right > b.right - pad) s.scrollLeft += a.right - b.right + pad;
+    }
+    this.ptabsCue();
   }
 
   // ---------- the start screen: "What do you want to do?" ----------
@@ -1041,8 +1100,13 @@ export class Editor {
     this.renderOptions();
   }
   private onStageResize(): void {
-    this.renderer.resize(this.stage.clientWidth, this.stage.clientHeight, window.devicePixelRatio || 1);
-    if (this.doc && this.fitted) this.fit(); else this.requestRender();
+    const W = this.stage.clientWidth, H = this.stage.clientHeight, was = this.stageSize, v = this.view;
+    this.stageSize = { w: W, h: H };
+    this.renderer.resize(W, H, window.devicePixelRatio || 1);
+    if (this.doc && this.fitted) this.fit();
+    // A zoomed view keeps the same spot in the middle when the space changes (a phone panel sheet opening, rulers on or off).
+    else if (this.doc && was.w && was.h && W && H) this.setView({ zoom: v.zoom, panX: v.panX + (W - was.w) / 2, panY: v.panY + (H - was.h) / 2 });
+    else this.requestRender();
   }
   private loadPrefs(): void {
     try {
@@ -2524,6 +2588,7 @@ export class Editor {
     this.input.destroy();
     this.ro.disconnect();
     this.stageRo.disconnect();
+    this.dockRo.disconnect();
     this.jobs.dispose();
     this.renderer.dispose();
     for (const f of this.off) f();

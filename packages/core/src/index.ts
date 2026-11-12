@@ -15,5 +15,6 @@ export * from './filters';
 export * from './tone';
 export * from './imageops';
 export * from './jobs';
+export { FX_KINDS, fxReach, type FxKind } from './fx/meta';
 export * from './loss';
 export * from './metadata';

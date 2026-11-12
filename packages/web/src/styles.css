@@ -370,3 +370,8 @@
 .fpe[data-layout=phone] .fpe-jobs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .fpe[data-layout=phone] .fpe-job{min-height:88px;padding:10px}
 @media (prefers-reduced-motion:reduce){.fpe [data-pulse]{animation:none;box-shadow:0 0 0 3px var(--accent)}.fpe *{transition:none!important}}
+/* W2: the custom filter's number grid and the dialog's before/after switch */
+.fpe-kernel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:2px 0 6px}
+.fpe-kernel input{width:100%;min-width:0;min-height:32px;padding:4px 2px;text-align:center;font:inherit;color:var(--text);background:var(--input);border:1px solid var(--line);border-radius:6px}
+.fpe-actions .fpe-before{margin-right:auto}
+.fpe-before[aria-pressed=true]{background:var(--accent-bg);border-color:var(--accent)}

@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**382 functions: 128 Ready, 254 Planned** (63 tools, 22 panels, 35 menus and submenus).
+**383 functions: 179 Ready, 204 Planned** (63 tools, 22 panels, 35 menus and submenus).
 
 ## Phases
 
@@ -267,7 +267,7 @@ Groups: Change the selection · Modify.
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Planned | 2 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Planned | 2 |  |
 
-## Filter (5 Ready, 63 Planned)
+## Filter (56 Ready, 13 Planned)
 
 Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; Grain · Noise; Blocks and dots · Pixelate; Make patterns · Render; Sharpen · Sharpen; Graphic effects · Stylize; More effects · Other.
 
@@ -280,65 +280,66 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | Filter | Planned | 5 |  |
 | filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | Filter | Planned | 5 |  |
 | filter.blur-gaussian | Smooth blur | Gaussian blur | An even, soft blur over the selected area or the whole layer. | blur, soften, smooth, out of focus, blurry | Filter › Blur | Ready | 1 |  |
-| filter.blur-box | Box blur | Box blur | A blur that averages square blocks. | box blur | Filter › Blur | Planned | W2 |  |
-| filter.blur-motion | Movement blur | Motion blur | Streak the picture as if it moved. | speed, motion | Filter › Blur | Planned | W2 |  |
-| filter.blur-radial | Spin or zoom blur | Radial blur | Blur in circles or toward a centre. | zoom blur, spin | Filter › Blur | Planned | W2 |  |
-| filter.blur-surface | Skin smoothing blur | Surface blur | Smooth flat areas and keep edges sharp. | smooth skin, airbrush | Filter › Blur | Planned | W2 |  |
-| filter.blur-lens | Camera lens blur | Lens blur | A blur that looks like a real camera lens. | bokeh | Filter › Blur | Planned | W2 |  |
-| filter.blur-average | Average colour | Average | Fill the area with its average colour. | average | Filter › Blur | Planned | W2 |  |
-| filter.blur-smart | Edge-aware blur | Smart blur | Blur everything except sharp edges. | smart blur | Filter › Blur | Planned | W2 |  |
-| filter.blur-field | Gradual blur | Field blur | Blur that changes smoothly across the picture. | gradual blur | Filter › Camera blurs | Planned | W2 |  |
-| filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | Filter › Camera blurs | Planned | W2 |  |
-| filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | Filter › Camera blurs | Planned | W2 |  |
+| filter.blur-box | Box blur | Box blur | A blur that averages square blocks. | box blur | Filter › Blur | Ready | W2 |  |
+| filter.blur-motion | Movement blur | Motion blur | Streak the picture as if it moved. | speed, motion | Filter › Blur | Ready | W2 |  |
+| filter.blur-radial | Spin or zoom blur | Radial blur | Blur in circles or toward a centre. | zoom blur, spin | Filter › Blur | Ready | W2 |  |
+| filter.blur-surface | Skin smoothing blur | Surface blur | Smooth flat areas and keep edges sharp. | smooth skin, airbrush | Filter › Blur | Ready | W2 |  |
+| filter.blur-lens | Camera lens blur | Lens blur | A blur that looks like a real camera lens. | bokeh | Filter › Blur | Ready | W2 |  |
+| filter.blur-average | Average colour | Average | Fill the area with its average colour. | average | Filter › Blur | Ready | W2 |  |
+| filter.blur-smart | Edge-aware blur | Smart blur | Blur everything except sharp edges. | smart blur | Filter › Blur | Ready | W2 |  |
+| filter.blur-field | Gradual blur | Field blur | Blur that changes smoothly across the picture. | gradual blur | Filter › Camera blurs | Ready | W2 |  |
+| filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | Filter › Camera blurs | Ready | W2 |  |
+| filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | Filter › Camera blurs | Ready | W2 |  |
 | filter.blur-path | Blur along a path | Path blur | Blur along a line you draw. | path blur | Filter › Camera blurs | Planned | W2 |  |
 | filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | Filter › Camera blurs | Planned | W2 |  |
-| filter.displace | Push by a map | Displace | Shift pixels using another picture as a map. | displacement | Filter › Distort | Planned | W2 |  |
-| filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | Filter › Distort | Planned | W2 |  |
-| filter.polar | Wrap into a circle | Polar coordinates | Wrap the picture into a circle or unwrap it. | tiny planet | Filter › Distort | Planned | W2 |  |
-| filter.ripple | Ripples | Ripple | Add ripples like water. | water ripple | Filter › Distort | Planned | W2 |  |
-| filter.shear | Bend sideways | Shear | Bend the picture along a curve. | shear | Filter › Distort | Planned | W2 |  |
-| filter.spherize | Bulge | Spherize | Bulge the picture like a ball. | bulge, fisheye | Filter › Distort | Planned | W2 |  |
-| filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | Filter › Distort | Planned | W2 |  |
-| filter.wave | Waves | Wave | Bend the picture in waves. | wavy | Filter › Distort | Planned | W2 |  |
-| filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | Filter › Distort | Planned | W2 |  |
+| filter.displace | Push by a map | Displace | Push pixels around by a pattern of light and dark, such as soft clouds. | displacement, warp, distort | Filter › Distort | Ready | W2 |  |
+| filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | Filter › Distort | Ready | W2 |  |
+| filter.polar | Wrap into a circle | Polar coordinates | Wrap the picture into a circle or unwrap it. | tiny planet | Filter › Distort | Ready | W2 |  |
+| filter.ripple | Ripples | Ripple | Add ripples like water. | water ripple | Filter › Distort | Ready | W2 |  |
+| filter.shear | Bend sideways | Shear | Bend the picture along a curve. | shear | Filter › Distort | Ready | W2 |  |
+| filter.spherize | Bulge | Spherize | Bulge the picture like a ball. | bulge, fisheye | Filter › Distort | Ready | W2 |  |
+| filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | Filter › Distort | Ready | W2 |  |
+| filter.wave | Waves | Wave | Bend the picture in waves. | wavy | Filter › Distort | Ready | W2 |  |
+| filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | Filter › Distort | Ready | W2 |  |
 | filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | Filter › Distort | Planned | W2 |  |
 | filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | Filter › Distort | Planned | W2 |  |
-| filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | Filter › Noise | Planned | W2 |  |
-| filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | Filter › Noise | Planned | W2 |  |
-| filter.dust | Remove dust and scratches | Dust and scratches | Hide small dust spots and scratches. | dust, scratches, old photo | Filter › Noise | Planned | W2 |  |
-| filter.median | Smooth out specks | Median | Replace each pixel with the middle value nearby. | median | Filter › Noise | Planned | W2 |  |
-| filter.reduce-noise | Reduce grain | Reduce noise | Smooth away camera grain from dark photos. | denoise, grainy photo | Filter › Noise | Planned | W2 |  |
-| filter.halftone | Print dots | Colour halftone | Make the picture out of printing dots. | comic dots | Filter › Pixelate | Planned | W2 |  |
-| filter.crystallize | Crystals | Crystallize | Break the picture into crystal shapes. | crystals | Filter › Pixelate | Planned | W2 |  |
-| filter.facet | Painted look | Facet | Group similar pixels into flat patches. | facet | Filter › Pixelate | Planned | W2 |  |
-| filter.fragment | Shaky copies | Fragment | Overlay four shifted copies. | shaky | Filter › Pixelate | Planned | W2 |  |
-| filter.mezzotint | Engraved dots | Mezzotint | Turn tones into random dots and lines. | engraving | Filter › Pixelate | Planned | W2 |  |
-| filter.mosaic | Blocks | Mosaic | Turn the picture into big square blocks. | pixelate, censor, hide face | Filter › Pixelate | Planned | W2 |  |
-| filter.pointillize | Painted dots | Pointillize | Paint the picture with coloured dots. | dots | Filter › Pixelate | Planned | W2 |  |
-| filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | Filter › Render | Planned | W2 |  |
-| filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | Filter › Render | Planned | W2 |  |
-| filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Planned | W2 |  |
+| filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | Filter › Noise | Ready | W2 |  |
+| filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | Filter › Noise | Ready | W2 |  |
+| filter.dust | Remove dust and scratches | Dust and scratches | Hide small dust spots and scratches. | dust, scratches, old photo | Filter › Noise | Ready | W2 |  |
+| filter.median | Smooth out specks | Median | Replace each pixel with the middle value nearby. | median | Filter › Noise | Ready | W2 |  |
+| filter.reduce-noise | Reduce grain | Reduce noise | Smooth away camera grain from dark photos. | denoise, grainy photo | Filter › Noise | Ready | W2 |  |
+| filter.halftone | Print dots | Colour halftone | Make the picture out of printing dots. | comic dots | Filter › Pixelate | Ready | W2 |  |
+| filter.crystallize | Crystals | Crystallize | Break the picture into crystal shapes. | crystals | Filter › Pixelate | Ready | W2 |  |
+| filter.facet | Painted look | Facet | Group similar pixels into flat patches. | facet | Filter › Pixelate | Ready | W2 |  |
+| filter.fragment | Shaky copies | Fragment | Overlay four shifted copies. | shaky | Filter › Pixelate | Ready | W2 |  |
+| filter.mezzotint | Engraved dots | Mezzotint | Turn tones into random dots and lines. | engraving | Filter › Pixelate | Ready | W2 |  |
+| filter.mosaic | Blocks | Mosaic | Turn the picture into big square blocks. | pixelate, censor, hide face | Filter › Pixelate | Ready | W2 |  |
+| filter.pointillize | Painted dots | Pointillize | Paint the picture with coloured dots. | dots | Filter › Pixelate | Ready | W2 |  |
+| filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | Filter › Render | Ready | W2 |  |
+| filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | Filter › Render | Ready | W2 |  |
+| filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Ready | W2 |  |
 | filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Planned | W2 |  |
 | filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Planned | W2 |  |
 | filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper in one step. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Ready | W1 |  |
 | filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper in one step. | sharper | Filter › Sharpen | Ready | W1 |  |
 | filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | Filter › Sharpen | Ready | 1 |  |
-| filter.sharpen-edges | Sharpen only the edges | Sharpen edges | Sharpen edges and leave smooth areas alone. | edges | Filter › Sharpen | Planned | W2 |  |
-| filter.smart-sharpen | Smart sharpen | Smart sharpen | Sharpen with less halo and noise. | smart sharpen | Filter › Sharpen | Planned | W2 |  |
-| filter.diffuse | Scatter | Diffuse | Scatter the pixels for a frosted look. | scatter | Filter › Stylize | Planned | W2 |  |
-| filter.emboss | Stamped metal | Emboss | Make the picture look pressed into metal. | emboss | Filter › Stylize | Planned | W2 |  |
-| filter.extrude | 3D blocks | Extrude | Push the picture out into 3D blocks. | blocks | Filter › Stylize | Planned | W2 |  |
-| filter.find-edges | Outline drawing | Find edges | Keep only the outlines, like a sketch. | sketch, outline, line drawing | Filter › Stylize | Planned | W2 |  |
-| filter.oil-paint | Oil painting | Oil paint | Make the picture look painted with oils. | painting, oil | Filter › Stylize | Planned | W2 |  |
-| filter.solarize | Half negative | Solarize | Mix the picture with its negative. | solarize | Filter › Stylize | Planned | W2 |  |
-| filter.tiles | Tiles | Tiles | Break the picture into tiles. | tiles | Filter › Stylize | Planned | W2 |  |
-| filter.trace-contour | Contour lines | Trace contour | Draw lines along areas of the same brightness. | contour | Filter › Stylize | Planned | W2 |  |
-| filter.wind | Wind streaks | Wind | Blow streaks across the picture. | wind | Filter › Stylize | Planned | W2 |  |
-| filter.high-pass | Keep only the detail | High pass | Grey picture of just the edges, used for sharpening. | high pass | Filter › Other | Planned | W2 |  |
-| filter.maximum | Grow light areas | Maximum | Spread the light areas outwards. | maximum | Filter › Other | Planned | W2 |  |
-| filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | Filter › Other | Planned | W2 |  |
-| filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | Filter › Other | Planned | W2 |  |
-| filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | Filter › Other | Planned | W2 |  |
+| filter.sharpen-edges | Sharpen only the edges | Sharpen edges | Sharpen edges and leave smooth areas alone. | edges | Filter › Sharpen | Ready | W2 |  |
+| filter.smart-sharpen | Smart sharpen | Smart sharpen | Sharpen with less halo and noise. | smart sharpen | Filter › Sharpen | Ready | W2 |  |
+| filter.diffuse | Scatter | Diffuse | Scatter the pixels for a frosted look. | scatter | Filter › Stylize | Ready | W2 |  |
+| filter.emboss | Stamped metal | Emboss | Make the picture look pressed into metal. | emboss | Filter › Stylize | Ready | W2 |  |
+| filter.extrude | 3D blocks | Extrude | Push the picture out into 3D blocks. | blocks | Filter › Stylize | Ready | W2 |  |
+| filter.find-edges | Outline drawing | Find edges | Keep only the outlines, like a sketch. | sketch, outline, line drawing | Filter › Stylize | Ready | W2 |  |
+| filter.oil-paint | Oil painting | Oil paint | Make the picture look painted with oils. | painting, oil | Filter › Stylize | Ready | W2 |  |
+| filter.solarize | Half negative | Solarize | Mix the picture with its negative. | solarize | Filter › Stylize | Ready | W2 |  |
+| filter.tiles | Tiles | Tiles | Break the picture into tiles. | tiles | Filter › Stylize | Ready | W2 |  |
+| filter.trace-contour | Contour lines | Trace contour | Draw lines along areas of the same brightness. | contour | Filter › Stylize | Ready | W2 |  |
+| filter.wind | Wind streaks | Wind | Blow streaks across the picture. | wind | Filter › Stylize | Ready | W2 |  |
+| filter.glowing-edges | Glowing outlines | Glowing edges | Turn the outlines into bright, neon-like lines on black. | neon, glow, glowing lines, neon outline | Filter › Stylize | Ready | W2 |  |
+| filter.high-pass | Keep only the detail | High pass | Grey picture of just the edges, used for sharpening. | high pass | Filter › Other | Ready | W2 |  |
+| filter.maximum | Grow light areas | Maximum | Spread the light areas outwards. | maximum | Filter › Other | Ready | W2 |  |
+| filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | Filter › Other | Ready | W2 |  |
+| filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | Filter › Other | Ready | W2 |  |
+| filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | Filter › Other | Ready | W2 |  |
 | filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Planned | W2 |  |
 | filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Planned | W2 |  |
 

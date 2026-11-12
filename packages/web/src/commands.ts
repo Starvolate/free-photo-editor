@@ -12,13 +12,16 @@ export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' 
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
-  type?: 'range' | 'select' | 'check'; options?: readonly string[]; group?: string;
+  type?: 'range' | 'select' | 'check' | 'num'; options?: readonly string[]; group?: string;
+  /** For a select: settings to fill in when each option is picked (the custom filter's ready-made grids). */
+  fills?: ReadonlyArray<Record<string, number>>;
 }
-export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; }
+/** `colors` passes the main and second colours to the filter; `handles` names its on-picture handles (handles.ts). */
+export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field'; }
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step, unit, group });
-const SEL = (key: string, label: string, help: string, options: readonly string[], value = 0): Ctl => ({ key, label, help, value, type: 'select', options });
+const SEL = (key: string, label: string, help: string, options: readonly string[], value = 0, fills?: Ctl['fills']): Ctl => ({ key, label, help, value, type: 'select', options, fills });
 const CHK = (key: string, label: string, help: string, value = 1): Ctl => ({ key, label, help, value, type: 'check' });
 const tones = (prefix: string, group: string): Ctl[] => [
   R(prefix + 'r', 'Cyan ↔ Red', 'Left adds cyan, right adds red.', -100, 100, 0, 1, '', group),
@@ -26,6 +29,24 @@ const tones = (prefix: string, group: string): Ctl[] => [
   R(prefix + 'b', 'Yellow ↔ Blue', 'Left adds yellow, right adds blue.', -100, 100, 0, 1, '', group)];
 const mix = (out: string, name: string, own: string): Ctl[] => ['r', 'g', 'b'].map((c, i) => R(out + c, 'From ' + ['red', 'green', 'blue'][i],
   `How much of the original ${['red', 'green', 'blue'][i]} goes into the ${name.toLowerCase()}.`, -200, 200, c === own ? 100 : 0, 1, '%', name));
+
+const FX = (kind: string, controls: Ctl[], more: Partial<AdjDef> = {}): AdjDef => ({ op: 'fx', kind, controls, ...more });
+const SEED = R('seed', 'Pattern', 'Pick another random pattern of the same kind.', 1, 100, 1);
+const PX = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1): Ctl => R(key, label, help, min, max, value, step, ' px');
+const PCT = (key: string, label: string, help: string, min: number, max: number, value: number): Ctl => R(key, label, help, min, max, value, 1, '%');
+const SPOT = (key: string, label: string, help: string, value: number): Ctl => PCT(key, label, help, 0, 100, value);
+/** The custom filter's 5×5 grid: k0 is the top-left neighbour, k12 the pixel itself, k24 the bottom-right. */
+const GRID: Ctl[] = Array.from({ length: 25 }, (_, i) => ({ key: 'k' + i, label: `Row ${Math.floor(i / 5) + 1}, column ${(i % 5) + 1}`,
+  help: 'How much this neighbour counts; the middle box is the pixel itself.', value: 0, min: -99, max: 99, step: 1, type: 'num', group: 'Numbers' }));
+const kernel = (cells: Record<number, number>, scale = 1, offset = 0): Record<string, number> => {
+  const o: Record<string, number> = { scale, offset };
+  for (let i = 0; i < 25; i++) o['k' + i] = cells[i] ?? 0;
+  return o;
+};
+const KERNELS = [kernel({ 7: -1, 11: -1, 12: 5, 13: -1, 17: -1 }), kernel({ 6: 1, 7: 1, 8: 1, 11: 1, 12: 1, 13: 1, 16: 1, 17: 1, 18: 1 }, 9),
+  kernel({ 6: -1, 7: -1, 8: -1, 11: -1, 12: 8, 13: -1, 16: -1, 17: -1, 18: -1 }), kernel({ 6: -2, 7: -1, 11: -1, 12: 1, 13: 1, 17: 1, 18: 2 })];
+for (const c of GRID) c.value = KERNELS[0][c.key];
+const CLOUDS = [PX('size', 'Cloud size', 'How big the clouds are.', 2, 400, 120), R('detail', 'Detail', 'More adds finer wisps.', 1, 8, 5), SEED];
 
 export const ADJ: Record<string, AdjDef> = {
   'image.adj-brightness': { op: 'adjust', kind: 'brightness-contrast', controls: [
@@ -92,6 +113,96 @@ export const ADJ: Record<string, AdjDef> = {
     R('threshold', 'Ignore small differences', 'Leaves smooth areas such as skin alone.', 0, 255, 0)] },
   'filter.sharpen': { op: 'sharpen', instant: true, controls: [R('amount', 'Strength', '', 0, 5, 0.6, 0.1), R('radius', 'Edge width', '', 0.5, 10, 1)] },
   'filter.sharpen-more': { op: 'sharpen', instant: true, controls: [R('amount', 'Strength', '', 0, 5, 1.5, 0.1), R('radius', 'Edge width', '', 0.5, 10, 1)] },
+  // ---------- W2: every filter family ----------
+  'filter.blur-box': FX('box-blur', [PX('radius', 'Blur amount', 'How far each pixel spreads, in square steps; bigger is blurrier.', 1, 100, 6)]),
+  'filter.blur-motion': FX('motion-blur', [R('angle', 'Direction', 'Which way the streaks run: 0° is side to side, 90° is up and down.', -180, 180, 0, 1, '°'),
+    PX('distance', 'Streak length', 'How far the picture seems to move.', 1, 200, 20)]),
+  'filter.blur-radial': FX('radial-blur', [SEL('mode', 'Kind', 'Spin turns round the centre; Zoom rushes toward it.', ['Spin', 'Zoom']),
+    R('amount', 'Strength', 'How strong the spin or the zoom is.', 1, 100, 10), SPOT('cx', 'Centre across', 'Where the centre is, from the left edge.', 50),
+    SPOT('cy', 'Centre down', 'Where the centre is, from the top edge.', 50)]),
+  'filter.blur-surface': FX('surface-blur', [PX('radius', 'Size', 'How big an area is smoothed round each pixel.', 1, 30, 5),
+    R('threshold', 'Smooth up to', 'Lower keeps more edges sharp; higher smooths more.', 2, 255, 30)]),
+  'filter.blur-lens': FX('lens-blur', [PX('radius', 'Blur amount', 'How out of focus the picture looks.', 1, 60, 10),
+    PCT('bright', 'Bright spots', 'How much bright points glow into round discs, like a real lens.', 0, 100, 40),
+    R('threshold', 'Glow from', 'Only parts brighter than this glow.', 0, 254, 200)]),
+  'filter.blur-average': FX('average', [PCT('strength', 'Strength', 'How far the area moves toward its one average colour.', 1, 100, 100)]),
+  'filter.blur-smart': FX('smart-blur', [PX('radius', 'Size', 'How big an area is blurred round each pixel.', 1, 30, 5),
+    R('threshold', 'Keep edges', 'Differences bigger than this count as edges and stay sharp.', 1, 255, 40),
+    SEL('mode', 'Show', 'The blurred picture, only the edges, or white edges over the picture.', ['Blurred picture', 'Edges only', 'White edges on top'])]),
+  'filter.blur-field': FX('field-blur', [PX('b1', 'Blur at pin 1', 'How blurry the picture is at the first pin.', 0, 100, 0, 0.5),
+    PX('b2', 'Blur at pin 2', 'How blurry the picture is at the second pin; the blur changes smoothly between them.', 0, 100, 20, 0.5),
+    SPOT('x1', 'Pin 1 across', 'Where the first pin is, from the left. You can also drag it on the picture.', 30), SPOT('y1', 'Pin 1 down', 'Where the first pin is, from the top.', 30),
+    SPOT('x2', 'Pin 2 across', 'Where the second pin is, from the left.', 70), SPOT('y2', 'Pin 2 down', 'Where the second pin is, from the top.', 70)], { handles: 'field' }),
+  'filter.blur-iris': FX('iris-blur', [PX('blur', 'Background blur', 'How blurry everything outside the sharp spot becomes.', 0.5, 100, 12, 0.5),
+    PCT('rw', 'Spot width', 'How wide the sharp spot is. You can also drag its handles on the picture.', 2, 100, 25),
+    PCT('rh', 'Spot height', 'How tall the sharp spot is.', 2, 100, 30), PCT('feather', 'Soft edge', 'How gently sharp turns into blurred.', 2, 100, 50),
+    SPOT('cx', 'Spot across', 'Where the sharp spot is, from the left.', 50), SPOT('cy', 'Spot down', 'Where the sharp spot is, from the top.', 50)], { handles: 'iris' }),
+  'filter.blur-tilt': FX('tilt-blur', [PX('blur', 'Blur', 'How blurry the parts above and below the sharp strip become.', 0.5, 100, 12, 0.5),
+    PCT('band', 'Sharp strip', 'How tall the sharp strip is. You can also drag its handles on the picture.', 0, 100, 15),
+    PCT('fade', 'Soft edge', 'How gently the strip turns blurry.', 1, 100, 20), R('angle', 'Tilt', 'Turn the sharp strip.', -90, 90, 0, 1, '°'),
+    SPOT('cy', 'Strip position', 'Where the sharp strip sits, from the top.', 50), SPOT('cx', 'Strip centre across', 'Where the strip turns round, from the left.', 50)], { handles: 'tilt' }),
+  'filter.smart-sharpen': FX('smart-sharpen', [PCT('amount', 'Strength', 'How much crisper the edges become.', 1, 500, 150),
+    PX('radius', 'Edge width', 'How wide the sharpened edges are.', 0.5, 10, 1.5, 0.1), PCT('noise', 'Ignore grain', 'Leaves tiny grainy differences alone.', 0, 100, 10),
+    PCT('halo', 'Halo control', 'Stops bright and dark outlines forming round edges.', 0, 100, 60)]),
+  'filter.sharpen-edges': FX('sharpen-edges', [PCT('amount', 'Strength', 'How much crisper the edges become.', 1, 500, 150),
+    PX('radius', 'Edge width', 'How wide the sharpened edges are.', 0.5, 5, 1, 0.1), R('edge', 'Edges from', 'Only places with at least this much contrast are sharpened.', 1, 120, 20)]),
+  'filter.add-noise': FX('add-noise', [PCT('amount', 'Grain', 'How strong the grain is.', 1, 100, 20),
+    SEL('dist', 'Grain kind', 'Even grain, or film-like grain with a few strong specks.', ['Even', 'Film-like']), CHK('mono', 'Grey grain only', 'Grain without coloured specks.', 0), SEED]),
+  'filter.reduce-noise': FX('reduce-noise', [PCT('strength', 'Smoothing', 'How strongly grain is smoothed away.', 0, 100, 60),
+    PCT('detail', 'Keep detail', 'Brings back fine detail such as hair and texture.', 0, 100, 30), PCT('color', 'Remove colour blotches', 'Smooths coloured specks out of dark photos.', 0, 100, 50)]),
+  'filter.median': FX('median', [PX('radius', 'Size', 'How big an area each pixel looks at; bigger removes bigger specks.', 1, 50, 2)]),
+  'filter.dust': FX('dust', [PX('radius', 'Size', 'How big the dust and scratches are.', 1, 20, 2), R('threshold', 'Protect texture', 'Leaves fine detail alone; raise it to protect more.', 0, 128, 10)]),
+  'filter.despeckle': FX('despeckle', [PX('radius', 'Strength', 'How big the specks are that get smoothed away.', 1, 5, 1), R('edge', 'Keep edges', 'Edges with more contrast than this stay crisp.', 1, 120, 30)]),
+  'filter.pinch': FX('pinch', [PCT('amount', 'Squeeze', 'Right squeezes the middle in; left pushes it out.', -100, 100, 50)]),
+  'filter.twirl': FX('twirl', [R('angle', 'Swirl', 'How far the middle turns; left swirls the other way.', -999, 999, 90, 1, '°')]),
+  'filter.ripple': FX('ripple', [PCT('amount', 'Strength', 'How strong the ripples are.', -999, 999, 100), SEL('size', 'Ripple size', 'Small, medium or large ripples.', ['Small', 'Medium', 'Large'], 1)]),
+  'filter.wave': FX('wave', [PX('wavelength', 'Wave length', 'The distance from one wave to the next.', 2, 300, 60), PX('amplitude', 'Wave height', 'How far the waves bend the picture.', 1, 100, 10),
+    SEL('type', 'Wave shape', 'Smooth, pointed or square waves.', ['Smooth', 'Pointed', 'Square']), SEL('dir', 'Direction', 'Which way the picture bends.', ['Both ways', 'Side to side', 'Up and down'])]),
+  'filter.polar': FX('polar', [SEL('mode', 'Kind', 'Wrap the picture into a circle (a tiny planet), or unwrap a circle into a strip.', ['Wrap into a circle', 'Unwrap a circle'])]),
+  'filter.spherize': FX('spherize', [PCT('amount', 'Bulge', 'Right bulges the middle out like a ball; left pushes it in.', -100, 100, 60),
+    SEL('mode', 'Direction', 'Bulge every way, or only sideways, or only up and down.', ['Every way', 'Side to side', 'Up and down'])]),
+  'filter.zigzag': FX('zigzag', [PCT('amount', 'Strength', 'How strong the rings are.', -100, 100, 30), R('ridges', 'Rings', 'How many rings spread out.', 1, 20, 5),
+    SEL('style', 'Style', 'How the rings move the picture.', ['Pond ripples', 'Out from the centre', 'Round the centre'])]),
+  'filter.displace': FX('displace', [PCT('hscale', 'Push sideways', 'How far pixels move left and right.', -100, 100, 15), PCT('vscale', 'Push up and down', 'How far pixels move up and down.', -100, 100, 15),
+    SEL('map', 'Map', 'The pattern of light and dark that decides where each pixel moves.', ['Soft clouds', 'The picture itself']), PX('size', 'Pattern size', 'How big the cloud pattern is.', 2, 200, 40), SEED]),
+  'filter.shear': FX('shear', [PCT('amount', 'Bend', 'How far the picture bends sideways.', -100, 100, 30), SEL('shape', 'Bend shape', 'One arc, an S curve or a wave.', ['One arc', 'S curve', 'Wave']),
+    SEL('edge', 'Edges', 'What fills the side the picture leaves.', ['Wrap round', 'Repeat the edge'])]),
+  'filter.emboss': FX('emboss', [R('angle', 'Light direction', 'Where the light comes from.', -180, 180, 135, 1, '°'), PX('height', 'Depth', 'How deep the stamp looks.', 1, 10, 3),
+    PCT('amount', 'Strength', 'How strong the raised edges are.', 1, 500, 100), CHK('color', 'Keep colour', 'Keep the colours instead of grey metal.', 0)]),
+  'filter.find-edges': FX('find-edges', [PCT('strength', 'Line strength', 'How dark the outlines are.', 10, 400, 100)]),
+  'filter.solarize': FX('solarize', [R('level', 'Turn point', 'Tones brighter than this turn into their negative.', 0, 255, 128)]),
+  'filter.oil-paint': FX('oil-paint', [PX('radius', 'Brush size', 'How big the brush strokes are.', 1, 10, 4), R('levels', 'Detail', 'More keeps more of the picture; fewer looks more painted.', 4, 60, 20),
+    PCT('shine', 'Brush shine', 'How much the paint looks raised and shiny.', 0, 100, 40)]),
+  'filter.wind': FX('wind', [SEL('method', 'Kind', 'Light wind, a strong blast, or uneven gusts.', ['Wind', 'Blast', 'Gusts']), SEL('dir', 'From', 'Which side the wind blows from.', ['The right', 'The left']),
+    PX('length', 'Streak length', 'How far the streaks blow.', 2, 200, 30), SEED]),
+  'filter.diffuse': FX('diffuse', [PX('radius', 'Scatter distance', 'How far pixels jump.', 1, 20, 4),
+    SEL('mode', 'Kind', 'Scatter every pixel, or only where it makes the picture darker or lighter.', ['Every pixel', 'Darker only', 'Lighter only']), SEED]),
+  'filter.tiles': FX('tiles', [R('count', 'Tiles across', 'How many tiles fit across.', 1, 99, 8), PCT('offset', 'Gap', 'How far each tile can slide out of place.', 1, 99, 10),
+    SEL('fill', 'Gaps show', 'What shows between the tiles.', ['Second colour', 'Negative', 'Original picture', 'See-through']), SEED], { colors: true }),
+  'filter.extrude': FX('extrude', [SEL('type', 'Kind', 'Square blocks or pyramids.', ['Blocks', 'Pyramids']), PX('size', 'Block size', 'How big each block is.', 2, 255, 16),
+    R('depth', 'Depth', 'How far the blocks stick out.', 1, 255, 30), CHK('solid', 'Plain fronts', 'Fill each block front with one colour.', 0)]),
+  'filter.trace-contour': FX('trace-contour', [R('level', 'Brightness level', 'Lines are drawn where the colours cross this level.', 0, 255, 128),
+    SEL('edge', 'Line side', 'Draw on the darker or the brighter side of the level.', ['Darker side', 'Brighter side'], 1)]),
+  'filter.glowing-edges': FX('glowing-edges', [PX('width', 'Line width', 'How thick the glowing lines are.', 1, 14, 2), R('bright', 'Glow', 'How bright the lines glow.', 0, 20, 8),
+    R('smooth', 'Smoothness', 'Higher ignores small details.', 1, 15, 5)]),
+  'filter.halftone': FX('halftone', [PX('radius', 'Dot size', 'The size of the biggest printing dots.', 4, 127, 8)]),
+  'filter.crystallize': FX('crystallize', [PX('size', 'Crystal size', 'How big each crystal is.', 3, 300, 16), SEED]),
+  'filter.facet': FX('facet', [PX('radius', 'Patch size', 'How big the flat patches are.', 1, 10, 3)]),
+  'filter.fragment': FX('fragment', [PX('distance', 'Shake', 'How far apart the four copies sit.', 1, 50, 4)]),
+  'filter.mezzotint': FX('mezzotint', [SEL('type', 'Kind', 'The shape of the dots or lines.', ['Fine dots', 'Grainy dots', 'Short lines', 'Long lines']), SEED]),
+  'filter.mosaic': FX('mosaic', [PX('size', 'Block size', 'How big each square block is.', 2, 200, 12)]),
+  'filter.pointillize': FX('pointillize', [PX('size', 'Dot size', 'How big each painted dot is; the second colour shows between them.', 3, 300, 10), SEED], { colors: true }),
+  'filter.clouds': FX('clouds', [...CLOUDS], { colors: true }),
+  'filter.difference-clouds': FX('diff-clouds', [...CLOUDS], { colors: true }),
+  'filter.fibers': FX('fibers', [R('variance', 'Fibre length', 'How long the fibres run.', 1, 64, 16), R('strength', 'Fibre density', 'How tightly the fibres pack.', 1, 64, 4), SEED], { colors: true }),
+  'filter.high-pass': FX('high-pass', [PX('radius', 'Detail size', 'Bigger keeps bigger details; smaller keeps only fine edges.', 0.5, 100, 4, 0.5)]),
+  'filter.maximum': FX('maximum', [PX('radius', 'Size', 'How far light areas spread.', 1, 100, 2)]),
+  'filter.minimum': FX('minimum', [PX('radius', 'Size', 'How far dark areas spread.', 1, 100, 2)]),
+  'filter.offset': FX('offset', [PCT('dx', 'Slide sideways', 'How far the picture slides right (left below 0).', -100, 100, 25), PCT('dy', 'Slide down', 'How far the picture slides down (up below 0).', -100, 100, 0),
+    SEL('edge', 'Edges', 'What fills the space the picture leaves.', ['Wrap round', 'Repeat the edge', 'See-through'])]),
+  'filter.custom': FX('custom', [SEL('preset', 'Start from', 'Fill the grid with a ready-made filter, then change any number.', ['Sharpen', 'Blur', 'Outline', 'Emboss'], 0, KERNELS),
+    ...GRID, R('scale', 'Divide by', 'The total is divided by this; the sum of the numbers keeps the brightness.', 1, 100, 1),
+    R('offset', 'Add', 'Added to every result; 128 gives a grey middle.', -255, 255, 0)]),
 };
 
 const always = (): boolean => true;

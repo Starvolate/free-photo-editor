@@ -49,7 +49,7 @@
 .fpe-options{grid-area:opts;display:flex;align-items:center;gap:14px;padding:0 10px;min-width:0;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin;background:var(--panel);border-bottom:1px solid var(--line)}
 .fpe-opt-tool{display:inline-flex;align-items:center;gap:6px;flex:none;font-weight:600}
 .fpe-hint{flex:none;font-size:12px;color:var(--muted)}
-.fpe-options .fpe-field{display:flex;align-items:center;gap:8px;flex:none;margin:0}
+.fpe-options .fpe-field{display:flex;flex-direction:row;align-items:center;gap:8px;flex:none;margin:0}
 .fpe-options .fpe-field-top{display:contents}
 .fpe-options .fpe-field input[type=range]{order:1;width:120px}
 .fpe-options .fpe-field output{order:2;min-width:44px}

@@ -275,6 +275,11 @@ suite('W1 workspace (headless Chrome)', () => {
             if (a.left < b.left - 1 || a.right > b.right + 1 || a.top < b.top - 1 || a.bottom > b.bottom + 1) tabsOut.push((t.textContent ?? '').trim());
           }
         }
+        const bar = document.querySelector('[data-testid="options"]')?.getBoundingClientRect();
+        if (bar) for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-testid="options"] :is(label, output, input, button)'))) {
+          const a = el.getBoundingClientRect();
+          if (a.width && a.height && (a.top < bar.top - 1 || a.bottom > bar.bottom + 1)) tabsOut.push(`clipped in the options bar: ${(el.textContent ?? el.getAttribute('data-testid') ?? '').trim()}`);
+        }
         return { pageScroll: document.documentElement.scrollWidth - W, out, small, tabsOut };
       });
       await p.screenshot({ path: join(OUT, `w1-${w}.png`) });

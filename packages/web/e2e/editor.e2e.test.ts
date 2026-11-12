@@ -190,6 +190,7 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     await page.waitForFunction((prev) => JSON.stringify((window as unknown as Win).fpe.sample(10, 10)) !== prev, JSON.stringify(p1));
     await page.click('[data-testid="adj-apply"]');
     await expect.poll(() => page.getAttribute('[data-testid="btn-undo"]', 'title')).toContain('Brightness');
+    expect(page.workers().length, 'filters and adjustments run in a Web Worker').toBeGreaterThan(0);
     expect(await sample(page, 10, 10)).not.toEqual(p1);
     await page.click('[data-testid="btn-undo"]');
     expect(await sample(page, 10, 10)).toEqual(p1);
@@ -427,6 +428,24 @@ describe('Free Photo Editor in a real browser (headless Chrome)', () => {
     expect((await now()).zoom).toBeCloseTo(z0 * 1.25, 3);
     await page.click('.fpe-zoom-label');
     expect((await now()).zoom).toBeCloseTo(z0, 3);
+  });
+
+  it('adds a dropped image and a pasted image as new layers', async () => {
+    const data = PHOTO.toString('base64');
+    const before = ((await info(page)) as Info).layers.length;
+    await page.evaluate((b64) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) as BlobPart], 'dropped.png', { type: 'image/png' }));
+      document.querySelector('.fpe')?.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, data);
+    await page.waitForFunction((n) => (window as unknown as Win).fpe.getInfo()?.layers.length === n, before + 1);
+    await page.evaluate((b64) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) as BlobPart], 'pasted.png', { type: 'image/png' }));
+      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, data);
+    await page.waitForFunction((n) => (window as unknown as Win).fpe.getInfo()?.layers.length === n, before + 2);
+    expect(((await info(page)) as Info).layers.map((l) => l.name)).toEqual(expect.arrayContaining(['dropped', 'pasted']));
   });
 
   it('keeps the primary button readable (WCAG AA) in the dark and the light look', async () => {

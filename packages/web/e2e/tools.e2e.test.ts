@@ -128,6 +128,7 @@ suite('W3 tools (headless Chrome)', () => {
     s = (await info(p)).selection as Sel;
     expect(Math.abs(s.x - 400) + Math.abs(s.w - 200) + Math.abs(s.h - 150)).toBeLessThan(10);
     await run(p, 'select.none');
+    await useBackground(p);
     await run(p, 'tool.magic-wand');
     await click(p, 5, 320);
     const frame = (await w3(p)).selected;
@@ -316,10 +317,16 @@ suite('W3 tools (headless Chrome)', () => {
     expect(near(await px(p, 650, 150), clean2, 30)).toBe(true);
     await run(p, 'select.none');
 
-    const h0 = await px(p, 450, 120);
+    const clean3 = await px(p, 450, 120);
+    await run(p, 'tool.brush');
+    await click(p, 450, 120);
+    expect(near(await px(p, 450, 120), clean3, 20)).toBe(false);
     await run(p, 'tool.heal');
+    await p.keyboard.down('Alt');
+    await click(p, 450, 60);
+    await p.keyboard.up('Alt');
     await drag(p, [[440, 120], [460, 120]]);
-    expect(near(await px(p, 450, 120), h0, 0)).toBe(false);
+    expect(near(await px(p, 450, 120), clean3, 30)).toBe(true);
 
     for (const [tool, x, check] of [['tool.dodge', 400, (a: number[], b: number[]) => lum(b) > lum(a) + 3], ['tool.burn', 480, (a: number[], b: number[]) => lum(b) < lum(a) - 3],
       ['tool.sponge', 560, (a: number[], b: number[]) => sat(b) < sat(a)], ['tool.blur', 640, (a: number[], b: number[]) => !near(a, b, 0)],
@@ -420,7 +427,8 @@ suite('W3 tools (headless Chrome)', () => {
     expect(s.w).toBeGreaterThan(150);
     expect(s.h).toBeGreaterThan(150);
     await run(p, 'select.none');
-    await useBackground(p);
+    await run(p, 'layer.flatten');
+    expect((await info(p)).layers).toHaveLength(1);
     await run(p, 'tool.clone');
     await touch([[300, 60]], 900);
     expect((await w3(p)).source).toBe(true);
@@ -433,7 +441,7 @@ suite('W3 tools (headless Chrome)', () => {
     await p.keyboard.type('Hi');
     await p.click('[data-testid="text-done"]');
     await p.waitForTimeout(150);
-    expect((await info(p)).layers).toHaveLength(3);
+    expect((await info(p)).layers).toHaveLength(2);
     await shot(p, 'w3-phone-390.png');
     expect(errors).toEqual([]);
   }, 120_000);

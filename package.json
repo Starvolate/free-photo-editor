@@ -1,0 +1,30 @@
+{
+  "name": "free-photoeditor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Free Photo Editor by Bhawesh Tibrewal: a fast, small photo editor that runs fully in the browser.",
+  "license": "AGPL-3.0-only",
+  "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
+  "homepage": "https://github.com/Starvolate/free-photo-editor",
+  "type": "module",
+  "workspaces": ["packages/core", "packages/web"],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/core/tsconfig.test.json && tsc --noEmit -p packages/web && tsc --noEmit -p packages/web/tsconfig.node.json",
+    "build": "npm run build -w @free-photoeditor/web",
+    "size": "npm run build && node packages/web/scripts/size.mjs",
+    "e2e": "npm run build && vitest run --config packages/web/vitest.e2e.config.ts",
+    "dev": "npm run dev -w @free-photoeditor/web"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/pngjs": "6.0.5",
+    "jpeg-js": "0.4.4",
+    "playwright-core": "1.65.0",
+    "pngjs": "7.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}

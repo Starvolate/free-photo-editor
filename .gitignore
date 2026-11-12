@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+packages/web/e2e/out/

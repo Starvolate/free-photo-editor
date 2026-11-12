@@ -45,6 +45,10 @@ export class History {
   /** An id for the current state, to tell whether the picture changed since it was last saved. */
   stateId(): number { return this.done.length ? this.done[this.done.length - 1].id : 0; }
   clear(): void { this.done = []; this.undone = []; }
+  /** Step names for a History panel: steps done (oldest first), then steps undone (next first); `index` = steps done. */
+  entries(): { labels: string[]; index: number } {
+    return { labels: [...this.done.map((e) => e.cmd.label), ...this.undone.slice().reverse().map((e) => e.cmd.label)], index: this.done.length };
+  }
   private trim(): void {
     let total = 0;
     for (const e of this.done) total += e.cmd.bytes;
@@ -112,7 +116,7 @@ export function reorderCommand(from: number, to: number, label = 'Move layer'): 
   const move = (doc: Doc, a: number, b: number): void => { const [l] = doc.layers.splice(a, 1); doc.layers.splice(b, 0, l); };
   return { label, bytes: 0, redo(doc) { move(doc, from, to); }, undo(doc) { move(doc, to, from); } };
 }
-export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y'>>;
+export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y' | 'locked'>>;
 export function propsCommand(layerId: string, before: LayerProps, after: LayerProps, label = 'Layer change'): Command {
   return {
     label, bytes: 0,

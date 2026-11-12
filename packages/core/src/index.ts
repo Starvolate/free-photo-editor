@@ -12,6 +12,8 @@ export * from './stroke';
 export * from './ops';
 export * from './adjustments';
 export * from './filters';
+export * from './tone';
+export * from './imageops';
 export * from './jobs';
 export * from './loss';
 export * from './metadata';

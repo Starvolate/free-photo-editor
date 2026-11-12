@@ -8,6 +8,8 @@ import { contains, intersect, union, type Rect } from './geometry';
 export interface Bitmap { width: number; height: number; data: Uint8ClampedArray; }
 export interface Layer {
   id: string; name: string; visible: boolean; opacity: number; blendMode: BlendMode;
+  /** Locked layers refuse every edit until unlocked. */
+  locked?: boolean;
   /** Position of the layer's top-left pixel in the document; layers may extend past the canvas. */
   x: number; y: number; width: number; height: number;
   /** RGBA, straight alpha, width * height * 4 bytes. */

@@ -8,7 +8,13 @@
 import type { Rect } from '@free-photoeditor/core';
 
 export interface View { zoom: number; panX: number; panY: number; }
-export interface Overlay { selection: Rect | null; crop: Rect | null; cursor: { x: number; y: number; r: number } | null; ants: number; }
+export interface Overlay {
+  selection: Rect | null; crop: Rect | null; cursor: { x: number; y: number; r: number } | null; ants: number;
+  /** An unselected hole inside the selection (after Select > Inverse). */
+  hole?: Rect | null;
+  /** Grid spacing in picture pixels, or 0 for no grid. */
+  grid?: number;
+}
 export interface Colors { stage: string; checkA: string; checkB: string; edge: string; }
 export interface Renderer {
   readonly canvas: HTMLCanvasElement;
@@ -107,8 +113,22 @@ export class Canvas2DRenderer implements Renderer {
     ctx.strokeStyle = this.colors.edge;
     ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(px) - 0.5, Math.round(py) - 0.5, Math.round(dw) + 1, Math.round(dh) + 1);
+    if (ov.grid && ov.grid * z >= 6) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(px, py, dw, dh);
+      ctx.clip();
+      ctx.beginPath();
+      for (let gx = ov.grid; gx < this.docW; gx += ov.grid) { const sx = Math.round(px + gx * z) + 0.5; ctx.moveTo(sx, py); ctx.lineTo(sx, py + dh); }
+      for (let gy = ov.grid; gy < this.docH; gy += ov.grid) { const sy = Math.round(py + gy * z) + 0.5; ctx.moveTo(px, sy); ctx.lineTo(px + dw, sy); }
+      ctx.strokeStyle = 'rgba(128,160,255,.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
     if (ov.crop) this.drawCrop(view, ov.crop);
     if (ov.selection) this.drawAnts(view, ov.selection, ov.ants);
+    if (ov.hole) this.drawAnts(view, ov.hole, ov.ants);
     if (ov.cursor) {
       ctx.beginPath();
       ctx.arc(ov.cursor.x, ov.cursor.y, Math.max(2, ov.cursor.r), 0, Math.PI * 2);

@@ -1,18 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** Lucide icons (ISC licence; some derived from Feather, MIT) built into one inline SVG sprite. Only these are bundled. */
-import { ArrowDown, ArrowUp, Brush, Check, Code, Copy, Crop, Download, Eraser, Eye, EyeOff, FilePlus, FolderOpen, Image,
-  ImagePlus, Info, Keyboard, Layers, Maximize, Menu, Moon, Move, Pipette, Plus, Redo2, SlidersHorizontal, SquareDashed,
-  Sun, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide';
+import { ArrowDown, ArrowLeftRight, ArrowUp, Bandage, Brush, Check, ChevronDown, ChevronLeft, ChevronRight, Code, Contrast, Copy, Crop,
+  Download, Droplet, Eraser, Eye, EyeOff, FilePlus, Focus, FolderOpen, Hand, Image as ImageIcon, ImageDown, ImagePlus, Info, Keyboard,
+  Lasso, Layers, Lock, Maximize, Menu, Merge, Moon, MousePointer2, Move, PaintBucket, Palette, PenTool, Pipette, Plus, Redo2, RotateCcw,
+  Scan, Scissors, Search, Shapes, SlidersHorizontal, Sparkles, Square, SquareDashed, Stamp, Sun, SunDim, Trash2, Type, Undo2, Wand, X,
+  ZoomIn, ZoomOut } from 'lucide';
 
 type IconNode = ReadonlyArray<readonly [string, Record<string, string | number | undefined>]>;
 const ICONS: Record<string, unknown> = {
-  'arrow-down': ArrowDown, 'arrow-up': ArrowUp, brush: Brush, check: Check, code: Code, copy: Copy, crop: Crop,
-  download: Download, eraser: Eraser, eye: Eye, 'eye-off': EyeOff, 'file-plus': FilePlus, open: FolderOpen, image: Image,
-  'image-plus': ImagePlus, info: Info, keyboard: Keyboard, layers: Layers, fit: Maximize, menu: Menu, moon: Moon, move: Move,
-  pipette: Pipette, plus: Plus, redo: Redo2, sliders: SlidersHorizontal, select: SquareDashed, sun: Sun, trash: Trash2,
-  undo: Undo2, close: X, 'zoom-in': ZoomIn, 'zoom-out': ZoomOut,
+  'arrow-down': ArrowDown, 'arrow-up': ArrowUp, bandage: Bandage, brush: Brush, bucket: PaintBucket, check: Check,
+  'chev-down': ChevronDown, 'chev-left': ChevronLeft, 'chev-right': ChevronRight, close: X, code: Code, contrast: Contrast, copy: Copy,
+  crop: Crop, dodge: SunDim, download: Download, droplet: Droplet, eraser: Eraser, eye: Eye, 'eye-off': EyeOff, 'file-plus': FilePlus,
+  fit: Maximize, focus: Focus, hand: Hand, history: RotateCcw, image: ImageIcon, 'image-down': ImageDown, 'image-plus': ImagePlus,
+  info: Info, keyboard: Keyboard, lasso: Lasso, layers: Layers, lock: Lock, menu: Menu, merge: Merge, moon: Moon, move: Move,
+  open: FolderOpen, palette: Palette, pen: PenTool, pipette: Pipette, plus: Plus, pointer: MousePointer2, redo: Redo2, scan: Scan,
+  scissors: Scissors, search: Search, select: SquareDashed, shapes: Shapes, sliders: SlidersHorizontal, sparkles: Sparkles,
+  square: Square, stamp: Stamp, sun: Sun, swap: ArrowLeftRight, trash: Trash2, type: Type, undo: Undo2, wand: Wand,
+  'zoom-in': ZoomIn, 'zoom-out': ZoomOut,
 };
+/** Every icon name the sprite holds (tests check that the interface only asks for these). */
+export const ICON_NAMES: readonly string[] = Object.keys(ICONS);
 const SVGNS = 'http://www.w3.org/2000/svg';
 export function ensureSprite(doc: Document): void {
   if (doc.getElementById('fpe-sprite')) return;

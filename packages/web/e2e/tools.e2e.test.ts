@@ -329,17 +329,23 @@ suite('W3 tools (headless Chrome)', () => {
     expect(near(await px(p, 450, 120), clean3, 30)).toBe(true);
 
     for (const [tool, x, check] of [['tool.dodge', 400, (a: number[], b: number[]) => lum(b) > lum(a) + 3], ['tool.burn', 480, (a: number[], b: number[]) => lum(b) < lum(a) - 3],
-      ['tool.sponge', 560, (a: number[], b: number[]) => sat(b) < sat(a)], ['tool.blur', 640, (a: number[], b: number[]) => !near(a, b, 0)],
-      ['tool.sharpen', 720, (a: number[], b: number[]) => !near(a, b, 0)]] as [string, number, (a: number[], b: number[]) => boolean][]) {
+      ['tool.sponge', 560, (a: number[], b: number[]) => sat(b) < sat(a)]] as [string, number, (a: number[], b: number[]) => boolean][]) {
       const a = await px(p, x, 520);
       await run(p, tool);
       await drag(p, [[x - 20, 520], [x + 20, 520], [x - 20, 522], [x + 20, 522]]);
       expect(check(a, await px(p, x, 520)), tool).toBe(true);
     }
-    const sm = await px(p, 150, 460);
+    // Blur, sharpen and smudge change edges, not smooth colour fades, so they are tried on the edge of the 16 px frame.
+    for (const [tool, y] of [['tool.blur', 220], ['tool.sharpen', 420]] as [string, number][]) {
+      const a = await px(p, 17, y);
+      await run(p, tool);
+      await drag(p, [[16, y - 20], [16, y + 20], [16, y - 20]]);
+      expect(near(a, await px(p, 17, y), 0), tool).toBe(false);
+    }
+    const sm = await px(p, 30, 460);
     await run(p, 'tool.smudge');
-    await drag(p, [[100, 300], [150, 460]]);
-    expect(near(await px(p, 150, 460), sm, 0)).toBe(false);
+    await drag(p, [[6, 460], [40, 460]]);
+    expect(near(await px(p, 30, 460), sm, 0)).toBe(false);
 
     const r = await open(1440, 900);
     await r.evaluate(() => (window as unknown as Win).fpe.newDocument(200, 200, '#808080'));

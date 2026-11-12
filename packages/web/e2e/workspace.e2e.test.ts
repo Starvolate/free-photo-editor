@@ -3,7 +3,7 @@
 /**
  * The W1 workspace in a real headless Chrome. Every Ready function of the map runs and changes something a person can
  * see; every Planned one refuses. Menus, flyouts, help lines, search, the start screen, layer rows that stay visible,
- * the phone sheets, and no word or control off screen at 1440, 1024, 390 and 360 px wide. Screenshots go to e2e/out.
+ * the phone sheets, and no word, control or panel tab off screen at 1440, 1024, 820, 390 and 360 px wide. Screenshots go to e2e/out.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts workspace
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -249,7 +249,7 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.waitForFunction((n) => ((window as unknown as Win).fpe.state().steps as number) > n, steps);
   }, 60_000);
 
-  for (const [w, hgt, touch] of [[1440, 900, false], [1024, 768, false], [390, 844, true], [360, 740, true]] as const) {
+  for (const [w, hgt, touch] of [[1440, 900, false], [1024, 768, false], [820, 1180, true], [390, 844, true], [360, 740, true]] as const) {
     it(`keeps every word and control on screen at ${w} px, text 12 px or larger`, async () => {
       const p = await open(w, hgt, touch);
       await p.evaluate(() => (window as unknown as Win).fpe.openSample());
@@ -267,12 +267,21 @@ suite('W1 workspace (headless Chrome)', () => {
           if ((b.left < -1 || b.right > W + 1) && !scrolls(el)) out.push(name);
           if (Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim()) && parseFloat(cs.fontSize) < 12) small.push(`${name} ${cs.fontSize}`);
         }
-        return { pageScroll: document.documentElement.scrollWidth - W, out, small };
+        const tabsOut: string[] = [];
+        if (document.querySelector('.fpe')?.getAttribute('data-layout') !== 'phone') {
+          for (const t of Array.from(document.querySelectorAll<HTMLElement>('.fpe-gtab'))) {
+            const strip = t.closest('.fpe-gtabs'), a = t.getBoundingClientRect(), b = strip?.getBoundingClientRect();
+            if (!b || !a.width || !a.height) continue;
+            if (a.left < b.left - 1 || a.right > b.right + 1 || a.top < b.top - 1 || a.bottom > b.bottom + 1) tabsOut.push((t.textContent ?? '').trim());
+          }
+        }
+        return { pageScroll: document.documentElement.scrollWidth - W, out, small, tabsOut };
       });
       await p.screenshot({ path: join(OUT, `w1-${w}.png`) });
       expect(r.pageScroll).toBeLessThanOrEqual(0);
       expect(r.out).toEqual([]);
       expect(r.small).toEqual([]);
+      expect(r.tabsOut).toEqual([]);
     }, 60_000);
   }
 

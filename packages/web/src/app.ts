@@ -1175,14 +1175,14 @@ export class Editor {
       if (!this.doc) continue;
       const len = horiz ? w : hh, pan = horiz ? v.panX : v.panY, depth = horiz ? hh : w;
       const start = Math.floor(-pan / z / minor) * minor, end = (len - pan) / z;
-      ctx.strokeStyle = ink.fg; ctx.fillStyle = ink.fg; ctx.lineWidth = 1; ctx.font = '11px system-ui, sans-serif';
+      ctx.strokeStyle = ink.fg; ctx.fillStyle = ink.fg; ctx.lineWidth = 1; ctx.font = '12px system-ui, sans-serif';
       ctx.beginPath();
       for (let u = start; u <= end; u += minor) {
         const p = Math.round(pan + u * z) + 0.5, major = Math.abs(u / step - Math.round(u / step)) < 1e-6, t = major ? depth : depth * 0.3;
         if (horiz) { ctx.moveTo(p, hh); ctx.lineTo(p, hh - t); } else { ctx.moveTo(w, p); ctx.lineTo(w - t, p); }
         if (major) {
-          if (horiz) ctx.fillText(String(Math.round(u)), p + 3, 11);
-          else { ctx.save(); ctx.translate(11, p + 3); ctx.rotate(-Math.PI / 2); ctx.fillText(String(Math.round(u)), 0, 0); ctx.restore(); }
+          if (horiz) ctx.fillText(String(Math.round(u)), p + 3, 12);
+          else { ctx.save(); ctx.translate(12, p + 3); ctx.rotate(-Math.PI / 2); ctx.fillText(String(Math.round(u)), 0, 0); ctx.restore(); }
         }
       }
       ctx.stroke();

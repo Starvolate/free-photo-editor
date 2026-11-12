@@ -124,12 +124,12 @@
 .fpe-group{display:flex;flex-direction:column;flex:none;min-height:0;border-bottom:1px solid var(--line)}
 .fpe-group[data-group=layers]{flex:1 1 auto;min-height:250px}
 .fpe-group[data-group=layers][data-folded]{flex:none;min-height:0}
-.fpe-ghead{display:flex;align-items:center;flex:none;height:32px;background:var(--panel-2)}
-.fpe-gtabs{display:flex;align-items:stretch;flex:1;min-width:0;height:100%;overflow-x:auto;scrollbar-width:none}
-.fpe-gtab{display:inline-flex;align-items:center;gap:6px;flex:none;height:100%;padding:0 10px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer}
+.fpe-ghead{display:flex;align-items:flex-start;flex:none;min-height:32px;background:var(--panel-2)}
+.fpe-gtabs{display:flex;flex-wrap:wrap;align-items:stretch;flex:1;min-width:0}
+.fpe-gtab{display:inline-flex;align-items:center;gap:6px;flex:none;height:32px;padding:0 9px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer}
 .fpe-gtab[aria-selected=true]{background:var(--panel);color:var(--text);font-weight:600}
 .fpe-more-head{flex:1;justify-content:flex-start}
-.fpe-gfold{width:28px;height:28px;margin-right:2px}
+.fpe-gfold{width:28px;height:28px;margin:2px 2px 0 0}
 .fpe-gfold .fpe-icon{transition:transform .15s}
 .fpe-group[data-folded] .fpe-gfold .fpe-icon{transform:rotate(-90deg)}
 .fpe-gbody{min-height:0;max-height:220px;overflow-y:auto}

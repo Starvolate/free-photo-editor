@@ -307,7 +307,11 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await tabs()).toEqual([]);
     expect(await p.getAttribute('.fpe-ptabs-wrap', 'data-more')).toContain('left');
     await p.screenshot({ path: join(OUT, 'w1b-phone-390-tabs.png') });
-    await p.tap('.fpe-handle');
+    const hb = await p.locator('.fpe-handle').boundingBox();
+    if (!hb) throw new Error('no sheet handle');
+    await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+    await p.mouse.down();
+    await p.mouse.up();
     await p.waitForSelector('[data-testid="dock"][data-state="full"]');
     await toast();
     g = await geo();

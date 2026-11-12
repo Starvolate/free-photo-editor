@@ -15,6 +15,8 @@
 .fpe-icon-btn{width:32px;padding:0}
 .fpe-btn-ghost{border-color:var(--line);background:var(--panel-2)}
 .fpe-btn-primary{background:var(--accent-bg);color:var(--accent-fg)}
+/* white text on the blue button (WCAG AA), above the generic ".fpe button{color:inherit}" */
+.fpe .fpe-btn-primary{color:var(--accent-fg)}
 .fpe-btn-primary:hover{background:var(--accent-bg);filter:brightness(1.1)}
 .fpe [aria-disabled=true]{color:var(--dim);cursor:default}
 .fpe-btn[aria-disabled=true]:hover{background:none}

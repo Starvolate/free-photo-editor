@@ -241,7 +241,7 @@ export class Editor {
   screen: Screen = 'standard';
   flags: Record<Flag, boolean> = { rulers: true, grid: false, extras: true };
   private hidden = new Set<string>();
-  private folded = new Set<string>(['nav', 'more']);
+  private folded = new Set<string>(['nav', 'color', 'more']);
   private groupActive = new Map<string, string>();
   private dockState: DockState = 'closed';
   private phonePanel = 'layers';
@@ -815,7 +815,7 @@ export class Editor {
   }
   resetWorkspace(): void {
     this.hidden.clear();
-    this.folded = new Set(['nav', 'more']);
+    this.folded = new Set(['nav', 'color', 'more']);
     this.groupActive.clear();
     this.setScreen('standard');
     this.flags = { rulers: true, grid: false, extras: true };

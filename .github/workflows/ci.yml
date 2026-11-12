@@ -22,3 +22,23 @@ jobs:
         run: npm test
       - name: Size gate (build, then brotli JS + CSS within budget)
         run: npm run size
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Workspace test in headless Chrome
+        run: CHROME_PATH="$(which google-chrome || which chromium || which chromium-browser)" npx vitest run --config packages/web/vitest.e2e.config.ts workspace
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-out
+          path: packages/web/e2e/out
+          if-no-files-found: ignore

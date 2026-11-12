@@ -132,7 +132,7 @@
 .fpe-gfold{width:28px;height:28px;margin-right:2px}
 .fpe-gfold .fpe-icon{transition:transform .15s}
 .fpe-group[data-folded] .fpe-gfold .fpe-icon{transform:rotate(-90deg)}
-.fpe-gbody{min-height:0;max-height:260px;overflow-y:auto}
+.fpe-gbody{min-height:0;max-height:220px;overflow-y:auto}
 .fpe-group[data-folded] .fpe-gbody{display:none}
 .fpe-group[data-group=layers] .fpe-gbody{display:flex;flex-direction:column;flex:1 1 auto;max-height:none;overflow:hidden}
 .fpe-pbody{display:none;padding:8px 10px}

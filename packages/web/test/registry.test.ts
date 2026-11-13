@@ -158,7 +158,7 @@ describe('the Task ribbon', () => {
     const BUILT = new Set(['select.from-path', 'select.to-path', 'view.composition-guides',
       // Batch light-and-colour (light-more.ts).
       'image.hue-chroma', 'image.rotate-colours', 'image.colour-contrast', 'image.local-threshold', 'image.retinex', 'image.tone-mapping',
-      'image.harmonize', 'image.palette-edit', 'image.export-lut', 'image.gamut-warning',
+      'image.harmonize', 'image.palette-edit', 'image.export-lut', 'image.gamut-warning', 'image.decompose',
       // Batch select-and-layers (selmore.ts).
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata']);

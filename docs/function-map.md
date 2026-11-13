@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 367 Ready, 308 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 368 Ready, 307 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-231 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+230 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 204 | 446 | 0 |
-| Ready today | 367 | 25 | 167 | 175 | 0 |
+| Ready today | 368 | 25 | 167 | 176 | 0 |
 
 ## The Task ribbon
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (231 Planned, 30 Ready), by home
+## New functions from the feature census (230 Planned, 31 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -846,7 +846,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | image.colour-contrast | U200 | Check text contrast | WCAG contrast check | Shows whether text in a chosen colour is readable on this area (WCAG ratio), and lightens or darkens only the parts that fail. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Ready | T3 |
 | image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Saves your light and colour layers as one .cube file that other editors and video apps open. Add one such layer first. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Ready | T3 |
 | image.palette-edit | U202 | Change the main colours | Palette edit | Finds the picture's four main colours and lets you turn, strengthen or lighten each one. | edit palette, colormap, indexed palette, gif palette | Light & colour › Colour type · small button | Ready | T3 |
-| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Not built yet: splitting into channel layers and back needs several layers made in one step. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Planned | T3 |
+| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Splits the layer into Red, Green and Blue layers in one step (one undo). Together they rebuild the picture; edit or hide one to change just that colour. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Ready | T3 |
 | image.spot-channels | U204 | Print inks as separate plates | Spot channels, Duotone, Multichannel | Not built: special inks need separate colour channels, which the editor does not have yet. | spot colour, duotone, multichannel, ink plates, separations | Light & colour › Colour type · More list | Planned | T3 |
 
 ### Filters & blur (34)

@@ -10,6 +10,8 @@ import { contrastRatio, pressChroma, runEffect, toLab, wcagLum } from '@free-pho
 import type { Editor } from '../src/app';
 import { ADJ, HANDLERS, LIGHT_IDS } from '../src/commands';
 import { BY_ID } from '../src/registry';
+import type { ToolHost } from '../src/toolkit';
+import { compositeDoc, createDocument, docRect } from '@free-photoeditor/core';
 import '../src/registry-union';
 
 type P = Record<string, number>;
@@ -27,9 +29,9 @@ const hue = (c: ArrayLike<number>): number => { const o = [0, 0, 0]; toLab(c[0],
 
 describe('light and colour batch', () => {
   it('makes the batch Ready with handlers, loads the dialogs on first use, and leaves the rest Planned with reasons', async () => {
-    const ids = [...LIGHT_IDS, 'image.export-lut'];
+    const ids = [...LIGHT_IDS, 'image.export-lut', 'image.decompose'];
     for (const id of ids) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    for (const id of ['image.soft-proof', 'image.mode-32', 'image.profiles', 'image.spot-channels', 'image.apply', 'image.sample-colorize', 'image.decompose']) {
+    for (const id of ['image.soft-proof', 'image.mode-32', 'image.profiles', 'image.spot-channels', 'image.apply', 'image.sample-colorize']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
       expect(HANDLERS[id], id).toBeUndefined();
       expect(BY_ID.get(id)?.help, id).toMatch(/^Not built/);
@@ -167,5 +169,36 @@ describe('light and colour batch', () => {
     // Half opacity: black inverted is 255, half of it 127.5, kept as the byte 128 (128 / 255 = 0.501961).
     expect(lines({ layers: [{ ...inv, opacity: 0.5 }] })[4]).toBe('0.501961 0.501961 0.501961');
     expect(lines({ layers: [{ ...inv, visible: false }] })).toEqual(id);
+  });
+});
+
+describe('split into colour channels (image.decompose)', () => {
+  // Loaded here, not at the top: the first test checks that the dialogs are not in ADJ before first use.
+  it('keeps one channel per layer and the see-through parts', async () => {
+    const { channelLayers } = await import('../src/light-more');
+    // 200,100,50 at full alpha, then 10,20,30 at alpha 128.
+    const src = { width: 2, height: 1, data: new Uint8ClampedArray([200, 100, 50, 255, 10, 20, 30, 128]) };
+    const [r, g, b] = channelLayers(src);
+    expect(Array.from(r)).toEqual([200, 0, 0, 255, 10, 0, 0, 128]);
+    expect(Array.from(g)).toEqual([0, 100, 0, 255, 0, 20, 0, 128]);
+    expect(Array.from(b)).toEqual([0, 0, 50, 255, 0, 0, 30, 128]);
+  });
+  it('makes three layers in one step that rebuild the same picture, and one undo takes them away', async () => {
+    const { decompose } = await import('../src/light-more');
+    const d = createDocument(2, 1);
+    d.layers[0].data.set([200, 100, 50, 255, 0, 255, 128, 255]);
+    d.activeId = d.layers[0].id;
+    const picture = Array.from(compositeDoc(d, docRect(d)));
+    const push = vi.fn(), toast = vi.fn();
+    decompose({ doc: () => d, push, toast } as unknown as ToolHost);
+    expect(toast).not.toHaveBeenCalled();
+    expect(d.layers.map((l) => [l.name, l.blendMode, l.visible])).toEqual([
+      [d.layers[0].name, 'normal', false], ['Red channel', 'normal', true], ['Green channel', 'screen', true], ['Blue channel', 'screen', true]]);
+    // Screen with 0 keeps the channel below: 200,0,0 then 0,100,0 then 0,0,50 gives 200,100,50 again.
+    expect(Array.from(compositeDoc(d, docRect(d)))).toEqual(picture);
+    expect(push).toHaveBeenCalledTimes(1);
+    push.mock.calls[0][0].undo(d);
+    expect(d.layers.length).toBe(1);
+    expect(d.layers[0].visible).toBe(true);
   });
 });

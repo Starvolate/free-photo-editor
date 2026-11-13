@@ -6,10 +6,11 @@
  * estimate; plus saving the light and colour layers as a .cube lookup file. commands.ts loads this file the first time
  * one of them runs (LIGHT_IDS), so the first screen never downloads it; loading it adds the dialogs to ADJ.
  */
-import { runJob, type Doc, type JobSpec } from '@free-photoeditor/core';
+import { createLayer, docCommand, hasPixels, runJob, snapshotDoc, type Doc, type JobSpec, type Pixels } from '@free-photoeditor/core';
 import { contrastRatio, LEVELS, textColour, wcagLum } from '@free-photoeditor/core/fx';
 import type { Editor } from './app';
 import { ADJ, type AdjDef, type Ctl } from './commands';
+import type { ToolHost } from './toolkit';
 
 /**
  * Hand a file to the browser's download. Kept here rather than imported from io.ts: the CLI bundles commands.ts, which
@@ -115,4 +116,36 @@ export function cubeText(doc: Doc, n = 33): string {
 export function exportLut(e: Editor): void {
   const d = e.doc;
   if (d) download(new Blob([cubeText(d)], { type: 'text/plain' }), 'adjustments.cube', e.root);
+}
+
+/**
+ * One layer per colour channel: red, green and blue, each keeping only its own channel and the layer's see-through
+ * parts. Red is drawn normally and green and blue screen over it; screen with 0 leaves a channel as it was, so the three
+ * together rebuild the opaque picture exactly (200,100,50 = 200,0,0 then 0,100,0 then 0,0,50).
+ */
+export function channelLayers(src: Pixels): Uint8ClampedArray[] {
+  return [0, 1, 2].map((c) => {
+    const out = new Uint8ClampedArray(src.data.length);
+    for (let i = 0; i < out.length; i += 4) { out[i + c] = src.data[i + c]; out[i + 3] = src.data[i + 3]; }
+    return out;
+  });
+}
+const CHANNELS = ['Red', 'Green', 'Blue'] as const;
+/** Split into and rebuild from colour channels (image.decompose): three layers above the active one, which is hidden; one undo. */
+export function decompose(host: ToolHost): void {
+  const d = host.doc(), l = d?.layers.find((x) => x.id === d.activeId);
+  if (!d || !l || !hasPixels(l)) { host.toast('Pick a picture layer first.'); return; }
+  if (!l.visible) { host.toast('This layer is hidden. Show it to split it.'); return; }
+  const before = snapshotDoc(d), at = d.layers.indexOf(l);
+  const made = channelLayers(l).map((data, i) => {
+    const nl = createLayer(`${CHANNELS[i]} channel`, l.width, l.height, { x: l.x, y: l.y, data });
+    nl.blendMode = i ? 'screen' : 'normal';
+    if (l.parentId) nl.parentId = l.parentId;
+    if (l.mask) nl.mask = structuredClone(l.mask);
+    return nl;
+  });
+  d.layers.splice(at + 1, 0, ...made);
+  l.visible = false;
+  d.activeId = made[2].id;
+  host.push(docCommand('Split into colour channels', before, snapshotDoc(d)), true);
 }

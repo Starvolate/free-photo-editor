@@ -415,6 +415,7 @@ export const LIGHT_IDS = ('image.hue-chroma image.rotate-colours image.colour-co
   + 'image.harmonize image.palette-edit image.gamut-warning').split(' ');
 for (const id of LIGHT_IDS) HANDLERS[id] = H(async (e) => { await import('./light-more'); return e.openAdjust(id); });
 HANDLERS['image.export-lut'] = H(async (e) => (await import('./light-more')).exportLut(e), (e) => !!e.doc?.layers.some((l) => l.kind === 'adjust' && l.visible));
+HANDLERS['image.decompose'] = H((e) => e.decompose(), (e) => { const a = e.active(); return !!a && hasPixels(a); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));

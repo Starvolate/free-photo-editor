@@ -3375,6 +3375,10 @@ export class Editor {
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
+  /** Split into colour channel layers (light-more.ts, loaded on first use). */
+  async decompose(): Promise<void> {
+    try { (await import('./light-more')).decompose(this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */
   async openFiles(files: File[], asLayer = false): Promise<void> {
     for (const f of files) await this.openFile(f, f.name || 'Picture', asLayer && !!this.doc);

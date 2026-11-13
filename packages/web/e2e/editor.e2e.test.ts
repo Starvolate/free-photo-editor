@@ -404,6 +404,8 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     const now = async (): Promise<Info> => (await info(page)) as Info;
     await page.click('[data-testid="layer-add"]');
     expect((await now()).layers.length).toBe(2);
+    // Rename in place: a double-click on the row's name opens its name box.
+    await page.dblclick('[data-testid="layer-row"][aria-current="true"] [data-testid="layer-select"]');
     const name = page.locator('[data-testid="layer-name"]');
     await name.fill('Sky');
     await name.press('Enter');

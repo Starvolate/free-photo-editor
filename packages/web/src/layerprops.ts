@@ -152,7 +152,7 @@ export function renderAdjustProps(el: HTMLElement, host: MaskPropsHost): void {
     const reset = h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'adjust-reset', 'data-help-title': 'Back to the start · Reset',
       'data-help': 'Puts every setting of this layer back where it started.', onclick: () => { for (const c of def.controls) params[c.key] = c.value; input(); commit(); draw(); } }, 'Back to the start');
     el.replaceChildren(head,
-      h('p', { class: 'fpe-note' }, `${row?.help ?? ''} As a layer it changes everything below and keeps their pixels: change it at any time, or hide it to compare.`),
+      h('p', { class: 'fpe-note' }, `${row?.help ? row.help + ' ' : ''}As a layer it changes everything below and keeps their pixels: change it at any time, or hide it to compare.`),
       ...renderControls(def.controls, params, `fpe-${host.uid}-adj-`, { input, commit, rerender: draw }),
       h('div', { class: 'fpe-check', 'data-help-title': 'Affects only the layer below · Clip', 'data-help': 'Changes only the layer directly below it instead of everything below.' },
         cb, h('label', { for: clipId }, 'Affects only the layer below ', h('small', { class: 'fpe-pro' }, 'Clip'))),

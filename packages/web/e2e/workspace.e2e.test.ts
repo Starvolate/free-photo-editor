@@ -103,6 +103,56 @@ async function open(w: number, hgt: number, touch = false): Promise<Page> {
   return p;
 }
 const run = (p: Page, id: string): Promise<boolean> => p.evaluate((x) => (window as unknown as Win).fpe.run(x), id);
+/**
+ * Nothing in a dock card is cut: every control and line sits inside its card and inside each box around it that clips,
+ * unless that box scrolls and shows its calm fade on that edge (data-fade), so a person sees there is more.
+ */
+const clipped = (p: Page): Promise<string[]> => p.evaluate(() => {
+  const out: string[] = [];
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="dock"] :is(.fpe-group, .fpe-learn)')).filter((c) => c.getBoundingClientRect().height > 0);
+  for (const card of cards) {
+    for (const el of Array.from(card.querySelectorAll<HTMLElement>('button, input, select, label, canvas, p, li, h3, output, .fpe-field, .fpe-row'))) {
+      const a = el.getBoundingClientRect();
+      if (!a.width || !a.height || getComputedStyle(el).visibility === 'hidden') continue;
+      const name = `${card.dataset.group ?? 'learn'}: ${el.dataset.testid ?? ((el.textContent ?? '').trim().slice(0, 30) || el.tagName)}`;
+      // What can still be seen of it, walking outwards. A scroller that shows a fade on an edge hides what lies past that
+      // edge on purpose (app.ts fade), so from there on only its visible part counts: the card around the scroller then
+      // judges that part. Without this, a fading scroller inside a card could never pass, and a scroller cut by its own
+      // card is still caught.
+      let top = a.top, bottom = a.bottom;
+      for (let up = el.parentElement; up && up !== card.parentElement; up = up.parentElement) {
+        const cs = getComputedStyle(up);
+        if (up !== card && cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+        const b = up.getBoundingClientRect(), f = up.dataset.fade ?? '', scrolls = up.scrollHeight > up.clientHeight + 1 && /auto|scroll/.test(cs.overflowY);
+        if (top < b.top - 0.5 && !(scrolls && f.includes('top'))) { out.push('cut at the top: ' + name); break; }
+        if (bottom > b.bottom + 0.5 && !(scrolls && f.includes('bottom'))) { out.push('cut at the bottom: ' + name); break; }
+        if (a.left < b.left - 0.5 || a.right > b.right + 0.5) { out.push('cut at a side: ' + name); break; }
+        top = Math.max(top, b.top); bottom = Math.min(bottom, b.bottom);
+        if (bottom <= top) break;
+      }
+    }
+  }
+  return out;
+});
+/** The first-run tip and a toast never sit over a ruler; a toast sits no lower than the top of the zoom buttons. */
+const overRulers = (p: Page): Promise<string[]> => p.evaluate(() => {
+  const out: string[] = [];
+  const rect = (s: string): DOMRect | null => {
+    const e = document.querySelector<HTMLElement>(s), r = e?.getBoundingClientRect();
+    return e && r && !e.hidden && r.width && r.height && getComputedStyle(e).visibility !== 'hidden' ? r : null;
+  };
+  const hit = (a: DOMRect, b: DOMRect): boolean => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const rulers = Array.from(document.querySelectorAll('.fpe-ruler')).map((e) => e.getBoundingClientRect()).filter((r) => r.width && r.height);
+  if (!rulers.length) out.push('no rulers on screen');
+  for (const [name, sel] of [['tip', '[data-testid="rhint"]'], ['toast', '[data-testid="toast"][data-on]']]) {
+    const a = rect(sel);
+    if (a && rulers.some((r) => hit(a, r))) out.push(name + ' over a ruler');
+  }
+  const t = rect('[data-testid="toast"][data-on]'), z = rect('.fpe-zoom');
+  if (!t) out.push('no toast to check');
+  if (t && z && t.bottom > z.top + 0.5) out.push('toast lower than the top of the zoom buttons');
+  return out;
+});
 const state = (p: Page): Promise<Record<string, unknown>> => p.evaluate(() => (window as unknown as Win).fpe.state());
 const sig = (p: Page): Promise<string> => p.evaluate(() => {
   const w = window as unknown as Win;
@@ -438,6 +488,10 @@ suite('W1 workspace (headless Chrome)', () => {
   it('1440 x 900, the sample with a Tone curve layer: the Layers card shows its four action words and Properties its first four controls in full; 1280 is one tabbed card', async () => {
     const p = await open(1440, 900);
     await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    // "Sample photo opened" sits at the bottom centre of the picture area, above the zoom buttons; neither it nor the tip covers a ruler.
+    await p.waitForSelector('[data-testid="toast"][data-on]');
+    await p.waitForTimeout(250);
+    expect(await overRulers(p), 'tip and toast clear of the rulers').toEqual([]);
     expect(await run(p, 'layer.adj-curves')).toBe(true);
     await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)', { state: 'visible' });
     await p.waitForTimeout(300);
@@ -463,6 +517,11 @@ suite('W1 workspace (headless Chrome)', () => {
     const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)';
     expect(await fully(acts, 4), 'New, Mask, Copy and Delete in full').toEqual([]);
     expect(await fully(props, 4), 'the first four controls in full').toEqual([]);
+    expect(await clipped(p), '1440: nothing in a dock card is cut').toEqual([]);
+    // The Layers card: no Name field (rename happens in the row), and the list hugs its rows.
+    expect(await p.isVisible('[data-testid="layer-name"]'), 'no Name field under the actions').toBe(false);
+    expect(await p.$eval('[data-testid="layer-list"]', (l) => l.clientHeight - Array.from(l.children).reduce((s, r) => s + r.getBoundingClientRect().height, 0)),
+      'the list hugs its rows').toBeLessThanOrEqual(4);
     // Read in the page: inside a quoted CSS selector "\\d" is a hex escape, so a :text-matches regex never ran.
     expect(await p.$$eval('[data-testid="dock"] *', (els) => els.filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && /^\+\d+$/.test((e.textContent ?? '').trim())).length),
       'no "+n" chip on the resting dock').toBe(0);
@@ -471,17 +530,28 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await p.textContent('[data-testid="status-space"]')).toBe('sRGB · 8 bits a channel');
     expect(await p.textContent('[data-testid="learn-text"]')).toContain('Pros call it a Curves layer.');
     await p.screenshot({ path: join(OUT, 'ui-b-1440-adjust.png') });
+    await p.screenshot({ path: join(OUT, 'ui-c-1440-adjust.png') });
     // Below 1400 px the dock is one card with three tabs; nothing in it is cramped.
     await p.setViewportSize({ width: 1280, height: 800 });
     await p.waitForSelector('[data-testid="dock-views"]', { state: 'visible' });
     await p.click('[data-testid="dview-layers"]');
     await p.waitForTimeout(200);
     expect(await fully(acts, 4), '1280: New, Mask, Copy and Delete in full').toEqual([]);
+    expect(await clipped(p), '1280 Layers: nothing cut').toEqual([]);
+    // One tab in the card: its "..." sits in the switch row and the card has no empty header strip over Blend.
+    expect(await p.isVisible('[data-testid="group-layers"] .fpe-ghead'), '1280: no empty header strip').toBe(false);
+    expect(await p.isVisible('[data-testid="dock-views"] [data-testid="gmore-layers"]'), "1280: the card's ... in the switch row").toBe(true);
     await p.screenshot({ path: join(OUT, 'ui-b-1280-tabs.png') });
+    await p.screenshot({ path: join(OUT, 'ui-c-1280-tabs.png') });
     await p.click('[data-testid="dview-props"]');
     await p.waitForSelector(props, { state: 'visible' });
     expect(await fully(props, 4), '1280: the first four controls in full').toEqual([]);
+    await p.waitForTimeout(150);
+    expect(await clipped(p), '1280 Properties: nothing cut').toEqual([]);
     await p.screenshot({ path: join(OUT, 'ui-b-1280-props.png') });
+    await p.click('[data-testid="dview-history"]');
+    await p.waitForSelector('[data-testid="history-list"]', { state: 'visible' });
+    expect(await clipped(p), '1280 History: nothing cut').toEqual([]);
     // A folder's Blend reads "Pass through" in full.
     await p.click('[data-testid="dview-layers"]');
     expect(await run(p, 'layer.group')).toBe(true);
@@ -494,6 +564,24 @@ suite('W1 workspace (headless Chrome)', () => {
     });
     expect(fit.text).toBe('Pass through');
     expect(fit.need, 'Blend shows "Pass through" in full').toBeLessThanOrEqual(fit.have);
+  }, 60_000);
+
+  it('phone: Blend has a line of its own, so a folder\'s "Pass through" shows in full', async () => {
+    const p = await open(390, 844, true);
+    await p.tap('[data-testid="start-sample"]');
+    await p.waitForSelector('[data-testid="btn-layers"]', { state: 'visible' });
+    expect(await run(p, 'layer.group')).toBe(true);
+    await p.tap('[data-testid="btn-layers"]');
+    await p.waitForSelector('[data-testid="layer-top"] [data-testid="layer-blend"]', { state: 'visible' });
+    const fit = await p.$eval('[data-testid="layer-top"] [data-testid="layer-blend"]', (el) => {
+      const s = el as HTMLSelectElement, cs = getComputedStyle(s), ctx = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const text = s.selectedOptions[0]?.text ?? '', op = document.querySelector('[data-testid="layer-opacity"]')?.getBoundingClientRect(), b = s.getBoundingClientRect();
+      return { text, need: ctx.measureText(text).width + 28, have: s.clientWidth, ownLine: !op || op.top >= b.bottom - 1 };
+    });
+    expect(fit.text).toBe('Pass through');
+    expect(fit.need, 'phone: Blend shows "Pass through" in full').toBeLessThanOrEqual(fit.have);
+    expect(fit.ownLine, 'phone: Opacity sits below Blend, not beside it').toBe(true);
   }, 60_000);
 
   for (const [w, hgt, touch] of [[1440, 900, false], [1024, 768, false], [820, 1180, true], [390, 844, true], [360, 740, true]] as const) {

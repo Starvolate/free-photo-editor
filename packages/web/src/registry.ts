@@ -650,3 +650,32 @@ export function counts(): { total: number; ready: number; planned: number; tools
   return { total: ROWS.length, ready, planned: ROWS.length - ready, tools: ROWS.filter((r) => r.kind === 'tool').length,
     panels: PANELS.length, menus: [...MENU_INFO.keys()].filter((k) => !k.startsWith('Tools')).length };
 }
+
+// ---------- help lines arrive after the first screen ----------
+type HelpChunk = (() => Promise<{ default: Record<string, string> }>) | null;
+/**
+ * The build (scripts/help-split.ts) moves every row's help line out of SRC into a chunk of its own and points this at
+ * it, so the first screen carries none. In tests and in dev the help stays inline and this stays null.
+ */
+const HELP_CHUNK = null as HelpChunk; // fpe:help-chunk
+let helpDone = false, helpLoad: Promise<boolean> | null = null;
+const helpWaiters = new Set<() => void>();
+/** True once every row has its help line (always, when the build kept them inline). */
+export const helpReady = (): boolean => !HELP_CHUNK || helpDone;
+/** Fill blank help lines from `map` (a row that has its line keeps it); search then finds help words again. */
+export function applyHelp(map: Record<string, string>): void {
+  for (const r of ROWS) if (!r.help && map[r.id]) r.help = map[r.id];
+  INDEX = null;
+}
+/** Fetch the help lines once; a failed fetch (offline before first use) lets the next call try again. */
+export function loadHelp(): Promise<boolean> {
+  if (helpReady()) return Promise.resolve(true);
+  return (helpLoad ??= (HELP_CHUNK as NonNullable<HelpChunk>)().then((m) => {
+    applyHelp(m.default);
+    helpDone = true;
+    for (const f of helpWaiters) f();
+    return true;
+  }, () => { helpLoad = null; return false; }));
+}
+/** Call `f` when the help lines arrive, so what shows help can draw it. */
+export function onHelp(f: () => void): void { helpWaiters.add(f); }

@@ -72,6 +72,15 @@ function trace(m: Mask, f: Frame, tol: number): Subpath[] {
   return p ? mapSubpaths(p.subpaths, (q) => ({ x: q.x / f.k + f.ox, y: q.y / f.k + f.oy })) : [];
 }
 
+/**
+ * Trace a mask into outline pieces in picture pixels (Turn text into a shape). The mask has `k` cells per picture pixel
+ * and its top-left cell sits at picture point (ox, oy); `tol` is how far (pixels) the outline may stray. Holes come back
+ * as their own pieces, so the outline fills even-odd (the middle of an O stays empty).
+ */
+export function traceAlpha(alpha: Uint8Array, w: number, h: number, ox: number, oy: number, k: number, tol = 0.5): Subpath[] {
+  return trace({ width: w, height: h, data: alpha }, { ox, oy, k, w, h }, tol);
+}
+
 /** Combine two shapes: unite them, cut b out of a, keep only their overlap, or keep only what does not overlap. */
 export function booleanSubpaths(a: readonly Subpath[], b: readonly Subpath[], op: BoolOp, tol = 0.5): Subpath[] {
   const f = frameOf([a, b], 1);
@@ -418,4 +427,20 @@ export function arrowHead(pts: readonly Point[], atStart: boolean, size: number)
   const w = walk(pts, false), s = w.at(atStart ? 0 : w.length), dx = atStart ? -s.tx : s.tx, dy = atStart ? -s.ty : s.ty;
   const bx = s.x - dx * size, by = s.y - dy * size, hw = size / 2;
   return [{ x: s.x, y: s.y }, { x: bx - dy * hw, y: by + dx * hw }, { x: bx + dy * hw, y: by - dx * hw }];
+}
+
+/**
+ * Comic panels (shape.comic-panels): `rows` by `cols` panel boxes filling a page `width` by `height`, `margin` pixels in
+ * from its edge and `gap` pixels apart, in reading order (left to right, then down), each a closed box drawn clockwise
+ * from its top-left corner. Empty when the gaps and margins leave no room.
+ */
+export function comicPanels(width: number, height: number, rows: number, cols: number, gap: number, margin: number): Subpath[] {
+  const r = Math.max(1, Math.round(rows)), c = Math.max(1, Math.round(cols));
+  const pw = (width - 2 * margin - (c - 1) * gap) / c, ph = (height - 2 * margin - (r - 1) * gap) / r, out: Subpath[] = [];
+  if (pw < 1 || ph < 1) return out;
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) {
+    const x0 = margin + j * (pw + gap), y0 = margin + i * (ph + gap), x1 = x0 + pw, y1 = y0 + ph;
+    out.push({ anchors: [anchorAt(x0, y0), anchorAt(x1, y0), anchorAt(x1, y1), anchorAt(x0, y1)], closed: true });
+  }
+  return out;
 }

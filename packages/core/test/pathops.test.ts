@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { anchorAt, bezierAt, segments, type Subpath } from '../src/path';
 import {
   booleanSubpaths, mirrorSubpaths, offsetSubpaths, resample, rotateCopies, roughenSubpaths, spiralSubpath, splitPieces, starSubpath,
-  subpathsBounds, tracedArea, uniteAll,
+  subpathsBounds, traceAlpha, tracedArea, uniteAll,
 } from '../src/pathops';
 
 const rect = (x: number, y: number, w: number, h: number): Subpath =>
@@ -129,5 +129,17 @@ describe('copies round a centre, wobble, stars and spirals', () => {
       const t = (i + 0.5) * dt, r = b * t, p = bezierAt(c, 0.5);
       expect(Math.hypot(p.x - r * Math.cos(t), p.y - r * Math.sin(t))).toBeLessThan(0.5);
     });
+  });
+
+  it('traces a mask into an outline in picture pixels, a hole as its own piece', () => {
+    // 2 cells per pixel, the mask's corner at picture (10, 20). Cells 2..9 filled, cells 4..7 empty in the middle:
+    // a ring whose outside runs from picture 11 to 15 (x) and 21 to 25 (y), its hole from 12 to 14 and 22 to 24.
+    const w = 12, a = new Uint8Array(w * w);
+    for (let y = 2; y < 10; y++) for (let x = 2; x < 10; x++) if (x < 4 || x >= 8 || y < 4 || y >= 8) a[y * w + x] = 255;
+    const subs = traceAlpha(a, w, w, 10, 20, 2, 0.25);
+    const boxes = subs.map((s) => { const xs = s.anchors.map((q) => q.x), ys = s.anchors.map((q) => q.y); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; })
+      .sort((p, q) => p[0] - q[0]);
+    expect(subs.length).toBe(2);
+    expect(boxes.map((b) => b.map((v) => Math.round(v * 4) / 4))).toEqual([[11, 21, 15, 25], [12, 22, 14, 24]]);
   });
 });

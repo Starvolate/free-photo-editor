@@ -8,14 +8,23 @@
 import { findLayer, geomOf, setGeom, type Doc, type Layer, type LayerGeom } from './document';
 import type { Point, Rect } from './geometry';
 import type { Command } from './history';
+import type { TextWarp } from './textwarp';
 
 export interface TextStyle {
   font: string; size: number; color: string; bold: boolean; italic: boolean;
   align: 'left' | 'center' | 'right';
   /** Distance between lines, as a multiple of the size. */ lineHeight: number;
   /** Extra space between letters, in pixels. */ letterSpacing: number;
+  /** false: sharp letter edges, no anti-aliasing (textwarp.ts hardEdges). Missing means smooth. */ smooth?: boolean;
+  /** Font weight 100 to 900 (variable fonts take any number between); missing means 400, or 700 when bold. */ weight?: number;
+  /** Letter width as a percentage (textwarp.ts STRETCHES); missing means 100. */ stretch?: number;
+  /** false: letter pairs are not fitted (kerning off). */ kerning?: boolean;
+  /** Small capitals. */ caps?: 'normal' | 'small-caps' | 'all-small-caps';
 }
-export interface TextContent { kind: 'text'; text: string; x: number; y: number; style: TextStyle; }
+export interface TextContent {
+  kind: 'text'; text: string; x: number; y: number; style: TextStyle;
+  /** Bent text or text along a line (textwarp.ts): the words stay words, the bend is drawn each time. */ warp?: TextWarp;
+}
 export type ShapeKind = 'rect' | 'rounded' | 'ellipse' | 'polygon' | 'line';
 export interface ShapeContent {
   kind: 'shape'; shape: ShapeKind; x0: number; y0: number; x1: number; y1: number;
@@ -30,7 +39,7 @@ export const DEFAULT_TEXT_STYLE: TextStyle = { font: 'system-ui', size: 48, colo
 const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui']);
 /** A CSS font string for a text style. */
 export const fontString = (st: TextStyle, size = st.size): string =>
-  `${st.italic ? 'italic ' : ''}${st.bold ? '700' : '400'} ${size}px ${GENERIC.has(st.font) ? st.font : `"${st.font.replace(/"/g, '')}"`}`;
+  `${st.italic ? 'italic ' : ''}${st.weight ?? (st.bold ? 700 : 400)} ${size}px ${GENERIC.has(st.font) ? st.font : `"${st.font.replace(/"/g, '')}"`}`;
 
 export interface TextLine { text: string; x: number; y: number; width: number; }
 export interface TextLayout { lines: TextLine[]; box: Rect; advance: number; }
@@ -90,7 +99,10 @@ export function shapeBounds(s: ShapeContent): Rect {
 /** The content moved by dx, dy (after the layer itself was moved). */
 export function moveContent(c: LayerContent, dx: number, dy: number): LayerContent {
   if (!dx && !dy) return c;
-  if (c.kind === 'text') return { ...c, x: c.x + dx, y: c.y + dy };
+  if (c.kind === 'text') {
+    const w = c.warp; // text along a line: its line moves too
+    return { ...c, x: c.x + dx, y: c.y + dy, ...(w?.path && { warp: { ...w, path: w.path.map((p) => ({ x: p.x + dx, y: p.y + dy })) } }) };
+  }
   return { ...c, x0: c.x0 + dx, y0: c.y0 + dy, x1: c.x1 + dx, y1: c.y1 + dy };
 }
 /** The content as it applies now: shifted by however far the layer moved since it was drawn. */

@@ -4,16 +4,17 @@
  * Shapes & text, path operations (13 Nov 2026): combine two shapes, join or split pieces, grow or shrink, mirror, copies
  * round a centre, a hand-drawn wobble, star and spiral outlines; then (part 2) slice a shape with another, hatch lines,
  * stitch lines, in-between shapes, repeat or bend a shape along a line, thick-and-thin strokes, and drawing an outline as
- * a dashed or arrowed line on a layer. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
+ * a dashed or arrowed line on a layer; then (part 6) QR codes from our own encoder (core qr.ts); then (part 9) a page of comic panel frames. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
  * the first screen nor the tool kit carries it.
  *
  * Each command works at once with the numbers it used last (one undo step), then shows a small sheet: a choice button
  * redoes it that way at once, and "Update" redoes it with changed numbers. Each redo starts again from the outlines as
  * they were before the command, so trying numbers never stacks one result on another; each is its own undo step.
  */
-import { addLayer, clonePaths, createLayer, findLayer, geomOf, indexOfLayer, newPathId, setGeom, type Doc, type LayerGeom, type Subpath, type VectorPath } from '@free-photoeditor/core';
+import { addLayer, clonePaths, combineCommands, createLayer, findLayer, geomOf, indexOfLayer, newPathId, setGeom, type Command, type Doc, type LayerGeom, type Subpath, type VectorPath } from '@free-photoeditor/core';
+import { qrEncode, qrPixels, qrSubpaths, type QrLevel } from '@free-photoeditor/core/qr';
 import {
-  arrowHead, booleanSubpaths, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, mirrorSubpaths, offsetSubpaths, patternAlong, powerStroke,
+  arrowHead, booleanSubpaths, comicPanels, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, mirrorSubpaths, offsetSubpaths, patternAlong, powerStroke,
   ringPoints, rotateCopies, roughenSubpaths, sliceWalk, spiralSubpath, splitPieces, starSubpath, stitchSubpaths, subpathsBounds, walk,
   type BoolOp, type MirrorAxis,
 } from '@free-photoeditor/core/pathops';
@@ -35,7 +36,10 @@ export const S = {
   copies: 6, around: 'self' as 'self' | 'picture', amount: 4, size: 8, seed: 1, kind: 'star' as 'star' | 'spiral', points: 5, inner: 45, turns: 3,
   gap: 10, angle: 45, cross: false, keep: true, stitches: 12, steps: 3, along: 0, w0: 2, w1: 16, w2: 2,
   width: 6, dash: 'dash' as Dash, cap: 'round' as CanvasLineCap, corner: 'round' as CanvasLineJoin, ends: 'none' as 'none' | 'end' | 'both',
+  qrText: 'https://example.com', qrLevel: 'M' as QrLevel, qrModule: 0,
+  panelRows: 2, panelCols: 2, panelGap: 16, panelMargin: 24, panelLine: 4,
 };
+type LineStyle = { width: number; dash: Dash; cap: CanvasLineCap; corner: CanvasLineJoin; ends: 'none' | 'end' | 'both' };
 
 const TITLES: Record<string, [string, string]> = {
   'path.boolean': ['Combine two shapes', 'Boolean operations'],
@@ -53,6 +57,8 @@ const TITLES: Record<string, [string, string]> = {
   'path.bend': ['Bend a shape along a line', 'Bend'],
   'path.power-stroke': ['Thick and thin line', 'Power stroke'],
   'path.stroke-style': ['Draw the outline as a line', 'Stroke style: dashes, ends, corners, arrowheads'],
+  'shape.qr': ['QR code', 'QR code shape'],
+  'shape.comic-panels': ['Comic panels', 'Comic panel frames'],
 };
 const LABELS: Record<BoolOp, string> = { unite: 'Merge', subtract: 'Cut out', intersect: 'Keep the overlap', exclude: 'Keep what does not overlap' };
 /** Commands that work on two shapes: the picked outline and the one above it, or the first piece of one outline and the rest. */
@@ -82,7 +88,7 @@ const copy = (subs: readonly Subpath[]): Subpath[] => subs.map((s) => ({ closed:
 
 /** Why a command cannot run on this picture now, in plain words, or null when it can. */
 export function blocked(id: string, d: Doc, p: VectorPath | null): string | null {
-  if (id === 'shape.spiral-star') return null;
+  if (id === 'shape.spiral-star' || id === 'shape.qr' || id === 'shape.comic-panels') return null;
   if (!p || !p.subpaths.some((s) => s.anchors.length > 1)) return 'Draw an outline first: pick Draw curves (Pen), or make one from a selection in Outlines.';
   if (TWO.has(id) && !pairOf(d, p)) return 'This needs two shapes: draw a second outline, or a second piece in this one.';
   if (id === 'path.combine' && (d.paths ?? []).length < 2 && splitPieces(p.subpaths).length < 2) return 'This is one outline in one piece: draw a second outline to join it to.';
@@ -167,6 +173,8 @@ function apply(id: string, d: Doc, pid: string | null, k: PathOpsKit): string | 
 /** Run a path operation: at once with the last numbers, then the sheet to try others. */
 export function runPathOp(id: string, k: PathOpsKit): void {
   if (id === 'path.stroke-style') { runLineStyle(k); return; }
+  if (id === 'shape.qr') { runQr(k); return; }
+  if (id === 'shape.comic-panels') { runComic(k); return; }
   const host = k.host, d = host.doc();
   if (!d) return;
   const first = k.picked(d), why = blocked(id, d, first);
@@ -200,10 +208,10 @@ const PATTERN: Record<Dash, (w: number, butt: boolean) => number[]> = {
   solid: () => [1, 0], dash: (w) => [3 * w, 2 * w], dot: (w, butt) => (butt ? [w, w] : [0, 2 * w]), dashdot: (w, butt) => [3 * w, 2 * w, butt ? w : 0, 2 * w],
 };
 /** The outline drawn as a line in `color` with the style in S, as layer pixels just big enough to hold it. */
-function lineGeom(subs: readonly Subpath[], color: string): LayerGeom | null {
-  const b = subpathsBounds(subs), head = S.width * 3 + 6;
+function lineGeom(subs: readonly Subpath[], color: string, st: LineStyle = S): LayerGeom | null {
+  const b = subpathsBounds(subs), head = st.width * 3 + 6;
   if (!b) return null;
-  const pad = Math.ceil(S.width * 2 + head + 2), x0 = Math.floor(b.x - pad), y0 = Math.floor(b.y - pad);
+  const pad = Math.ceil(st.width * 2 + head + 2), x0 = Math.floor(b.x - pad), y0 = Math.floor(b.y - pad);
   const w = Math.ceil(b.w + 2 * pad) + 1, hh = Math.ceil(b.h + 2 * pad) + 1;
   if (w * hh > 25_000_000 || w > 16384 || hh > 16384) return null;
   const c = document.createElement('canvas');
@@ -211,21 +219,21 @@ function lineGeom(subs: readonly Subpath[], color: string): LayerGeom | null {
   const x = c.getContext('2d', { willReadFrequently: true });
   if (!x) return null;
   x.translate(-x0, -y0);
-  x.strokeStyle = x.fillStyle = color; x.lineWidth = S.width; x.lineCap = S.cap; x.lineJoin = S.corner; x.miterLimit = 10;
-  const pat = PATTERN[S.dash](S.width, S.cap === 'butt');
+  x.strokeStyle = x.fillStyle = color; x.lineWidth = st.width; x.lineCap = st.cap; x.lineJoin = st.corner; x.miterLimit = 10;
+  const pat = PATTERN[st.dash](st.width, st.cap === 'butt');
   for (const s of subs) {
     const pts = ringPoints(s);
     if (pts.length < 2) continue;
-    const arrows = !s.closed && S.ends !== 'none', wk = walk(pts, s.closed);
+    const arrows = !s.closed && st.ends !== 'none', wk = walk(pts, s.closed);
     // The line stops a little short of an arrowhead's tip, so its end never pokes out past the point.
-    const run = arrows ? sliceWalk(wk, S.ends === 'both' ? head * 0.6 : 0, Math.max(0, wk.length - head * 0.6)) : pts;
+    const run = arrows ? sliceWalk(wk, st.ends === 'both' ? head * 0.6 : 0, Math.max(0, wk.length - head * 0.6)) : pts;
     for (const dash of dashLine(run, s.closed && !arrows, pat)) {
       x.beginPath();
       dash.forEach((q, i) => (i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y)));
-      if (S.dash === 'solid' && s.closed) x.closePath();
+      if (st.dash === 'solid' && s.closed) x.closePath();
       x.stroke();
     }
-    if (arrows) for (const atStart of S.ends === 'both' ? [false, true] : [false]) {
+    if (arrows) for (const atStart of st.ends === 'both' ? [false, true] : [false]) {
       const t = arrowHead(pts, atStart, head);
       x.beginPath(); x.moveTo(t[0].x, t[0].y); x.lineTo(t[1].x, t[1].y); x.lineTo(t[2].x, t[2].y); x.closePath(); x.fill();
     }
@@ -261,6 +269,80 @@ function runLineStyle(k: PathOpsKit): void {
   show(k, `${plain} (${pro})`, sheet('path.stroke-style', k, go));
 }
 
+// ---- QR codes --------------------------------------------------------------------------------------------------------
+const changeGeom = (label: string, id: string, before: LayerGeom, after: LayerGeom): Command => {
+  const set = (x: Doc, v: LayerGeom): void => { const l = findLayer(x, id); if (l) setGeom(l, v); };
+  return { label, bytes: after.data.length + before.data.length, undo: (x) => set(x, before), redo: (x) => set(x, after) };
+};
+/**
+ * A QR code of the words in S, centred in the picture: black squares on a white border on a new layer (so a phone scans
+ * it), and the same squares as an outline. Making it, and each Update, is one undo step for both.
+ */
+function runQr(k: PathOpsKit): void {
+  const host = k.host, d = host.doc();
+  if (!d) return;
+  const [plain, pro] = TITLES['shape.qr'];
+  const ids = { pid: null as string | null, lid: null as string | null };
+  const go = (): void => {
+    const dd = host.doc();
+    if (dd !== d || !dd) { host.closeSheet(); return; }
+    const text = S.qrText.trim(), code = qrEncode(text, S.qrLevel);
+    if (!code) {
+      host.toast(text ? 'Too long for one QR code here: shorten the words, or pick a lower damage level.' : 'Type the words or web address the code should hold.');
+      return;
+    }
+    if (S.qrModule <= 0) S.qrModule = Math.max(1, Math.floor((Math.min(dd.width, dd.height) * 0.6) / (code.size + 8)));
+    const m = S.qrModule, px = qrPixels(code, m, 4, [0, 0, 0, 255], [255, 255, 255, 255]);
+    const x0 = Math.round((dd.width - px.width) / 2), y0 = Math.round((dd.height - px.width) / 2);
+    const g: LayerGeom = { x: x0, y: y0, width: px.width, height: px.width, data: px.data };
+    place(k, dd, ids, 'QR code', qrSubpaths(code, x0 + 4 * m, y0 + 4 * m, m), g, plain);
+  };
+  go();
+  show(k, `${plain} (${pro})`, sheet('shape.qr', k, go));
+}
+
+/**
+ * Put `subs` in the outline `ids.pid` (or a new one named after `name`) and `g` on the layer `ids.lid` (or a new layer
+ * above the active one), pick the outline, and push both as one undo step.
+ */
+function place(k: PathOpsKit, dd: Doc, ids: { pid: string | null; lid: string | null }, name: string, subs: Subpath[], g: LayerGeom, label: string): void {
+  const host = k.host, before = clonePaths(dd.paths);
+  let path = ids.pid ? dd.paths?.find((x) => x.id === ids.pid) : undefined;
+  if (path) path.subpaths = subs;
+  else { path = { id: newPathId(), name: nameFor(dd, name), subpaths: subs }; (dd.paths ??= []).push(path); ids.pid = path.id; }
+  const after = clonePaths(dd.paths), anchors = (ps: VectorPath[]): number => ps.reduce((n, q) => n + q.subpaths.reduce((a, s) => a + s.anchors.length, 0), 0);
+  const paths: Command = { label, bytes: 64 * (anchors(before) + anchors(after)) + 64, undo: (x) => { x.paths = clonePaths(before); }, redo: (x) => { x.paths = clonePaths(after); } };
+  const old = ids.lid ? findLayer(dd, ids.lid) : undefined;
+  let layer: Command;
+  if (old) { const was = geomOf(old); setGeom(old, g); layer = changeGeom(label, old.id, was, g); }
+  else { const l = createLayer(path.name, g.width, g.height, { x: g.x, y: g.y, data: g.data }); ids.lid = l.id; layer = addLayer(dd, l, indexOfLayer(dd, dd.activeId) + 1, label); }
+  k.pick(dd, path.id);
+  host.push(combineCommands(label, [paths, layer]), true);
+  host.render();
+}
+
+// ---- comic panels ----------------------------------------------------------------------------------------------------
+/**
+ * A page of comic panel frames (core comicPanels): rows and columns of boxes in reading order, with even gaps between
+ * them and a margin round the page. The boxes are solid lines in the main colour on a new layer, and the same boxes are an
+ * outline to reshape with the point tools or fill. Making them, and each Update, is one undo step for both.
+ */
+function runComic(k: PathOpsKit): void {
+  const host = k.host, d = host.doc();
+  if (!d) return;
+  const [plain, pro] = TITLES['shape.comic-panels'], ids = { pid: null as string | null, lid: null as string | null };
+  const go = (): void => {
+    const dd = host.doc();
+    if (dd !== d || !dd) { host.closeSheet(); return; }
+    const subs = comicPanels(dd.width, dd.height, S.panelRows, S.panelCols, S.panelGap, S.panelMargin);
+    const g = subs.length ? lineGeom(subs, host.fg(), { width: S.panelLine, dash: 'solid', cap: 'butt', corner: 'miter', ends: 'none' }) : null;
+    if (!g) { host.toast('No room for the panels: use a smaller gap or margin, or fewer rows or columns.'); return; }
+    place(k, dd, ids, plain, subs, g, plain);
+  };
+  go();
+  show(k, `${plain} (${pro})`, sheet('shape.comic-panels', k, go));
+}
+
 function seg<T extends string>(label: string, help: string, opts: readonly [T, string][], cur: () => T, set: (v: T) => void, redo: () => void, tid: string): HTMLElement {
   const wrap = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label, title: help, style: 'display:flex;flex-wrap:wrap;gap:4px' });
   const paint = (): void => { for (const b of Array.from(wrap.children)) b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.v === cur())); };
@@ -274,7 +356,7 @@ function check(label: string, help: string, get: () => boolean, set: (v: boolean
   return h('label', { title: help, style: 'display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px' }, box, label);
 }
 
-type Num = 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
+type Num = 'panelRows' | 'panelCols' | 'panelGap' | 'panelMargin' | 'panelLine' | 'qrModule' | 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
 function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
   const host = k.host, rows: HTMLElement[] = [];
   const num = (label: string, help: string, min: number, max: number, key: Num, unit: string): HTMLElement =>
@@ -351,6 +433,25 @@ function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
       rows.push(num('Width at the start', 'Pixels across at the start of the line.', 0, 200, 'w0', ' px'),
         num('Width in the middle', 'Pixels across halfway along.', 0, 200, 'w1', ' px'),
         num('Width at the end', 'Pixels across at the end of the line.', 0, 200, 'w2', ' px'));
+      break;
+    case 'shape.qr': {
+      note = 'Black squares on a white border, on a new layer in the middle of the picture, so a phone can scan it; the same squares are also an outline you can fill or reshape. Scan it with your phone before you print it.';
+      const ta = h('textarea', { rows: 3, 'data-testid': 'pathop-qr-text', 'aria-label': 'Words or web address', style: 'width:100%;box-sizing:border-box;font:inherit;font-size:13px',
+        oninput: () => { S.qrText = ta.value; } });
+      ta.value = S.qrText;
+      rows.push(h('label', { style: 'display:grid;gap:4px;font-size:13px' }, 'Words or web address (Update makes the new code)', ta),
+        seg('How much damage it survives (error correction)', 'More lets a phone read the code when part of it is covered or dirty, but packs the squares tighter.',
+          [['L', 'Low, 7%'], ['M', 'Medium, 15%'], ['Q', 'High, 25%'], ['H', 'Highest, 30%']] as const, () => S.qrLevel, (v) => { S.qrLevel = v; }, redo, 'pathop-qr-level'),
+        num('Square size', 'Pixels across each small square of the code.', 1, 40, 'qrModule', ' px'));
+      break;
+    }
+    case 'shape.comic-panels':
+      note = 'Frames for a comic page, in reading order: solid lines in the main colour on a new layer, and the same boxes as an outline you can reshape with the point tools or fill. Update draws them again with these numbers.';
+      rows.push(num('Rows', 'How many rows of panels down the page.', 1, 12, 'panelRows', ''),
+        num('Columns', 'How many panels across each row.', 1, 12, 'panelCols', ''),
+        num('Gap between panels (gutter)', 'Pixels between one panel and the next.', 0, 200, 'panelGap', ' px'),
+        num('Margin', 'Pixels from the panels to the edge of the picture.', 0, 400, 'panelMargin', ' px'),
+        num('Line width', 'How thick the frame lines are, in pixels.', 1, 40, 'panelLine', ' px'));
       break;
     case 'path.stroke-style':
       note = 'The picked outline is drawn as a line on a new layer in the main colour. Update redraws that layer.';

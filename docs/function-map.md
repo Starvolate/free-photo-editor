@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 474 Ready, 201 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 485 Ready, 190 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-148 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+143 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 232 | 418 | 0 |
-| Ready today | 474 | 25 | 197 | 252 | 0 |
+| Ready today | 485 | 25 | 197 | 263 | 0 |
 
 ## The Task ribbon
 
@@ -332,20 +332,20 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | Layer | Select & cut out › Perfect and keep · More list | Ready | 2 |  |
 | layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | Layer | Arrange layers › Animate · More list | Planned | 13 |  |
 
-## Type (3 Ready, 7 Planned)
+## Type (9 Ready, 1 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
 | type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | Type | Shapes & text › Text · More list | Ready | W3 |  |
-| type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | Type | Shapes & text › Text · More list | Planned | 6 |  |
+| type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | Type | Shapes & text › Text · More list | Ready | 6 |  |
 | type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | Type | Shapes & text › Text · More list | Ready | W3 |  |
-| type.warp | Bend text | Warp text | Arc, wave or bulge the text. | curved text, arc text, wavy text | Type | Shapes & text › Text · More list | Planned | 6 |  |
-| type.path | Text along a line | Type on a path | Make text follow a curve or a circle. | text on circle | Type | Shapes & text › Text · More list | Planned | 6 |  |
-| type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | Type | Shapes & text › Text · More list | Planned | 6 |  |
+| type.warp | Bend text | Warp text | Arc, wave or bulge the text. | curved text, arc text, wavy text | Type | Shapes & text › Text · More list | Ready | 6 |  |
+| type.path | Text along a line | Type on a path | Make text follow a curve or a circle. | text on circle | Type | Shapes & text › Text · More list | Ready | 6 |  |
+| type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | Type | Shapes & text › Text · More list | Ready | 6 |  |
 | type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | Type | Shapes & text › Text · More list | Ready | W3 |  |
-| type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | Type | Shapes & text › Text · More list | Planned | 6 |  |
+| type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | Type | Shapes & text › Text · More list | Ready | 6 |  |
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Shapes & text › Text · More list | Planned | 6 |  |
-| type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Planned | 6 |  |
+| type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Ready | 6 |  |
 
 ## Select (19 Ready, 0 Planned)
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (148 Planned, 113 Ready), by home
+## New functions from the feature census (143 Planned, 118 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -751,14 +751,14 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins the picked outline and the one above it into one outline, or splits an outline into its separate pieces (a hole stays with its shape). | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · small button | Ready | B4 |
 | path.stroke-style | U072 | Arrowheads and dash styles | Stroke style: dashes, line ends, corners, arrowheads | Draws the picked outline as a line on a new layer: solid, dashed or dotted, flat, round or square ends, sharp, round or cut corners, and arrowheads. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · small button | Ready | B15 |
 | path.effects | U073 | Non-destructive path effects, stackable | Live Path Effects | Adds editable effects to a path that update when the path changes; effects can be stacked. | path effects, live path effect, non-destructive path | Shapes & text › Live shape effects · More list | Planned | B15 |
-| type.opentype | U074 | Variable fonts and OpenType features | Variable fonts, ligatures, stylistic sets | Weight and width sliders and type features for fonts. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Planned | B15 |
-| type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Planned | B15 |
+| type.opentype | U074 | Weight, width and font extras | Variable fonts and OpenType features | Thicker or thinner, narrower or wider letters, letter-pair fitting and small capitals. A browser cannot switch ligatures or stylistic sets. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Ready | B15 |
+| type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Ready | B15 |
 | type.scripts | U076 | Text in every script | Complex scripts (Arabic, Hebrew, Indic) | Correct shaping and right-to-left layout for Arabic, Hebrew, Hindi and other Indic scripts. | hindi text, arabic text, hebrew, right to left, indic script, complex script | Shapes & text › Text style · More list | Planned | B15 |
 | path.tweak | U142 | Reshape a path by brushing it | Tweak Tool (push, shrink, roughen, jitter colours) | Pushes, thins or roughens path parts like clay. | tweak path, push path, roughen path, brush a shape | Shapes & text › Draw outlines · More list | Planned | T3 |
 | shape.spiral-star | U143 | Star and spiral outlines | Star and spiral tools | Draws a star (number of points, inner size) or a spiral (turns) as an outline you can reshape and fill. | spiral, star, polygon star, star shape, swirl | Shapes & text › Shapes · More list | Ready | T3 |
-| shape.qr | U144 | Draw QR codes | QR code shape | Generates an editable QR code. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Planned | T3 |
+| shape.qr | U144 | Draw QR codes | QR code shape | A QR code a phone can scan, on a new layer and as an outline. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Ready | T3 |
 | shape.generate | U145 | Generate shapes (barcodes, grids, gears) | Render extensions | Creates new objects from numbers. | barcode, grid, gear, generate shapes | Shapes & text › Shapes · More list | Planned | T3 |
-| shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draw and edit comic panel frames. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Planned | T3 |
+| shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draws a page of comic panel frames in reading order: pick the rows, columns, gap and margin. The frames are lines on a new layer and an outline you can reshape. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Ready | T3 |
 | path.divide | U147 | Slice a shape with another shape | Division | Slices the outline above the picked one along the picked one's edge: the parts outside it and the parts inside it each become their own outline. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Ready | T3 |
 | path.bend | U148 | Bend a shape along a curve | Bend | Bends the outline above the picked line along it, stretched to the line's length. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.hatches | U149 | Hatch lines | Hatches | Fills the picked outline with evenly spaced lines (holes stay empty): pick the gap, the angle, and crossed lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · small button | Ready | T3 |
@@ -776,7 +776,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | path.tiling | U161 | Tile many copies in a grid | LPE Tiling | Makes rows and columns of copies with gaps and offsets. | tile copies, grid of copies, repeat in grid | Shapes & text › Live shape effects · More list | Planned | T3 |
 | type.match-font | U162 | Change a font to match a picture | Match Font | Find a similar font from a photo of text. | match font, what font is this, identify font, font finder | Shapes & text › Text · More list | Planned | T3 |
 | type.unrasterize | U163 | Undo a rasterize | Revert Rasterize | Brings a text layer back to editable text. | undo rasterize, editable text again, revert rasterize | Shapes & text › Text · More list | Planned | T3 |
-| type.in-shape | U164 | Text that fills a shape | Shape text | Types words inside a custom outline. | text in shape, fill shape with text, text frame | Shapes & text › Text · More list | Planned | T3 |
+| type.in-shape | U164 | Text that fills a shape | Shape text | Types words inside a custom outline. | text in shape, fill shape with text, text frame | Shapes & text › Text · More list | Ready | T3 |
 | type.make-font | U165 | Make your own font | Creating Custom Fonts / SVG font editor | Draws glyphs and builds a font. | make a font, custom font, font from drawing, svg font | Shapes & text › Text · More list | Planned | T3 |
 
 ### Automate & batch (14)

@@ -18,7 +18,7 @@ import type { PointerInfo, Pt } from './input';
 import type { ToolHost } from './toolkit';
 
 /** Shapes & text path operations: the pen kit runs them through pathops.ts, loaded on first use. */
-export const PATH_OPS = new Set<string>(['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star',
+export const PATH_OPS = new Set<string>(['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'shape.qr', 'shape.comic-panels',
   'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']);
 export const PEN_TOOLS = new Set<ToolId>(['pen', 'path-select', 'direct-select', 'anchor-add', 'anchor-delete', 'anchor-convert']);
 
@@ -26,6 +26,10 @@ type DragKind = 'pen' | 'close' | 'anchor' | 'handle' | 'path' | 'pull';
 interface Drag { kind: DragKind; before: VectorPath[]; label: string; id: string; sub: number; idx: number; part?: 'in' | 'out'; alone?: boolean; last: Pt; from: Pt; moved: boolean; }
 
 export interface PenKit {
+  /** The picked outline (or the work path, or the last one): what text along a line follows. */
+  outline(d: Doc): VectorPath | null;
+  /** Add a finished outline (Turn text into a shape) and pick it, one undo step. */
+  addPath(p: VectorPath, label: string): void;
   start(p: Pt, i: PointerInfo): void;
   move(p: Pt, i: PointerInfo): void;
   end(p: Pt, i: PointerInfo): void;
@@ -247,12 +251,17 @@ export function createPenKit(host: ToolHost, setSel: (s: Selection | null, label
     if (!d.selection) { host.toast('Select something first, then make an outline from it.'); return; }
     const made = selectionToPath(d.selection, S.tol);
     if (!made) { host.toast('Nothing is selected enough to trace.'); return; }
-    const before = clonePaths(d.paths), all = (d.paths ??= []), old = all.find((p) => p.work);
-    // The earlier work path is kept under its own name, so nothing is lost.
+    addPath(made, 'Outline from the selection', true);
+  }
+  /** Add an outline and pick it, one undo step. A new work path keeps the earlier one under its own name, so nothing is lost. */
+  function addPath(made: VectorPath, label: string, work: boolean): void {
+    const d = doc();
+    if (!d) return;
+    const before = clonePaths(d.paths), all = (d.paths ??= []), old = work ? all.find((p) => p.work) : undefined;
     if (old) { old.work = undefined; delete old.work; old.name = nextName(d); }
     all.push(made);
     picked.set(d, made.id);
-    commit(d, before, 'Outline from the selection');
+    commit(d, before, label);
     host.render();
   }
   function edit(label: string, run: (d: Doc) => void): void {
@@ -361,6 +370,8 @@ export function createPenKit(host: ToolHost, setSel: (s: Selection | null, label
 
   return {
     start, move, end, cancel, options, overlay, key, fillPanel, refresh, state,
+    outline: (d: Doc) => active(d) ?? list(d).find((x) => x.work) ?? list(d)[list(d).length - 1] ?? null,
+    addPath: (p: VectorPath, label: string) => addPath(p, label, false),
     cmd(id) {
       if (PATH_OPS.has(id)) {
         return import('./pathops').then((m) => m.runPathOp(id, {

@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 196 | 454 | 0 |
-| Ready today | 346 | 25 | 159 | 162 | 0 |
+| All functions | 675 | 25 | 195 | 455 | 0 |
+| Ready today | 346 | 25 | 158 | 163 | 0 |
 
 ## The Task ribbon
 
@@ -27,7 +27,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
-| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
+| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 12 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 2 |
@@ -284,7 +284,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
-| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
 | layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |

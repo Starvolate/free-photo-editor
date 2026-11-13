@@ -61,11 +61,19 @@ async function open(w: number, hgt: number): Promise<Page> {
 const run = (p: Page, id: string): Promise<boolean> => p.evaluate((x) => (window as unknown as Win).fpe.run(x), id);
 const state = (p: Page): Promise<State> => p.evaluate(() => (window as unknown as Win).fpe.state());
 const hash = (p: Page): Promise<string> => p.evaluate(() => (window as unknown as Win).fpe.flatHash());
-/** Waits until the picture differs from `than` (effects draw once their lazy module is in). */
-const changed = (p: Page, than: string): Promise<string> => p.waitForFunction(async (o) => {
-  const x = await (window as unknown as Win).fpe.flatHash();
-  return x !== o ? x : null;
-}, than, { timeout: 15_000 }).then((h) => h.jsonValue() as Promise<string>);
+/**
+ * Polls the picture's hash from Node until `ok` holds (effects draw once their lazy module is in). Not waitForFunction: it
+ * calls its predicate without awaiting it, so an async predicate's Promise counts as true on the first poll and nothing waits.
+ */
+async function until(p: Page, ok: (x: string) => boolean, what: string): Promise<string> {
+  for (const end = Date.now() + 15_000; ; await p.waitForTimeout(100)) {
+    const x = await hash(p);
+    if (ok(x)) return x;
+    if (Date.now() > end) throw new Error(`${what}: the picture is still ${x.slice(0, 12)} after 15 s`);
+  }
+}
+/** Waits until the picture differs from `than`, and returns the new hash. */
+const changed = (p: Page, than: string): Promise<string> => until(p, (x) => x !== than, `waiting for a change from ${than.slice(0, 12)}`);
 /** Moves a range control the way a drag ends: input, then change. */
 const slide = (p: Page, sel: string, v: number): Promise<void> => p.$eval(sel, (el, x) => {
   const i = el as HTMLInputElement;
@@ -73,9 +81,14 @@ const slide = (p: Page, sel: string, v: number): Promise<void> => p.$eval(sel, (
   i.dispatchEvent(new Event('input', { bubbles: true }));
   i.dispatchEvent(new Event('change', { bubbles: true }));
 }, v);
-/** A tile of the sample photo on its own layer: the shape the effects light. */
+/**
+ * A tile of the sample photo on its own layer: the shape the effects light. The sample opens with its Sun layer active,
+ * which is empty there, so it is flattened first and the tile is a real piece of the photo.
+ */
 async function tile(p: Page): Promise<string> {
-  await p.evaluate(() => { const f = (window as unknown as Win).fpe; f.openSample(); f.select(300, 180, 300, 200); });
+  await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+  expect(await run(p, 'layer.flatten')).toBe(true);
+  await p.evaluate(() => (window as unknown as Win).fpe.select(300, 180, 300, 200));
   expect(await run(p, 'layer.new-copy')).toBe(true);
   await run(p, 'select.none');
   return hash(p);
@@ -119,7 +132,7 @@ suite('Batch effects 3 (headless Chrome)', () => {
     await q.waitForSelector('[data-testid="restore"]:not([hidden])', { timeout: 15_000 });
     await q.click('[data-testid="restore-yes"]');
     await q.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Brought back'), null, { timeout: 15_000 });
-    await q.waitForFunction(async (h) => (await (window as unknown as Win).fpe.flatHash()) === h, bigger, { timeout: 15_000 });
+    await until(q, (x) => x === bigger, 'Restore bringing the raised edge back');
     await reach(q, 'layer.fx-satin');
     await q.waitForSelector('[data-testid="fx-props"] [data-testid="fx-satin-0"] [data-testid="ctl-distance"]');
     await changed(q, bigger);

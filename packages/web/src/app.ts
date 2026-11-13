@@ -32,6 +32,7 @@ import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, 
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
+import { addFolder, arrangeNode, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, StrokeCache, toggleClip, ungroupNode } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -270,6 +271,8 @@ export class Editor {
   private sampleAll = true;
   private ratio = 0;
   private stroke: Stroke | null = null;
+  /** While a pixel stroke runs, the rows below the painted layer per tile, so a frame redraws only what changed (core composite.ts). */
+  private strokeCache: StrokeCache | null = null;
   /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
   private maskTarget = false;
   private maskSurf: MaskSurface | null = null;
@@ -1318,7 +1321,7 @@ export class Editor {
       this.rendW = d.width; this.rendH = d.height;
       this.dirty = docRect(d);
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; }
-    if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, compositeDoc(d, r)); }
+    if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, this.strokeCache ? this.strokeCache.composite(r) : compositeDoc(d, r)); }
     const t = this.tool, z = this.view.zoom, o = t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush;
     const tks = this.tk?.cursorSize(t) ?? null;
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
@@ -1502,17 +1505,20 @@ export class Editor {
   }
   /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
   private editable(l: Layer, pixels = true, onMask = false): boolean {
+    // A folder has no pixels of its own; moving one (with everything inside) is not wired yet, so it refuses too.
+    if (isFolder(l)) { this.toast('This is a folder: pick a layer inside it.'); return false; }
+    const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
     const mask = this.maskTarget && !!l.mask;
-    if (pixels && mask && !onMask && !l.locked) {
+    if (pixels && mask && !onMask && !locked) {
       this.toast('You are editing the mask. Brush, pencil, eraser, Fill, Delete, Colour fade (Gradient) and Negative (Invert) work on it; for this one, click the picture thumbnail in the Layers panel to edit pixels.');
       return false;
     }
-    if (pixels && !mask && l.content && !l.locked) {
+    if (pixels && !mask && l.content && !locked) {
       this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: change it with its own tool, or choose Layer › Turn into plain pixels to paint on it.`);
       return false;
     }
-    if (!l.locked) return true;
-    this.toast(`"${l.name}" is locked. Unlock it in the Layers panel to change it.`);
+    if (!locked) return true;
+    this.toast(l.locked ? `"${l.name}" is locked. Unlock it in the Layers panel to change it.` : `"${l.name}" is in a locked folder. Unlock the folder in the Layers panel to change it.`);
     return false;
   }
   private toolStart(p: Pt, i: PointerInfo): void {
@@ -1537,7 +1543,7 @@ export class Editor {
       if (!l.visible) { this.toast('This layer is hidden. Show it to paint on it.'); return; }
       const o = this.paintOpts(), opts = { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' };
       if (this.onMask(l)) { this.maskSurf = openMaskSurface(d, l); this.stroke = new Stroke(this.maskSurf.doc, this.maskSurf.layer, opts); }
-      else this.stroke = new Stroke(d, l, opts);
+      else { this.stroke = new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       return;
@@ -1637,7 +1643,7 @@ export class Editor {
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       const cmd = this.stroke.end(), surf = this.maskSurf;
-      this.stroke = null;
+      this.stroke = null; this.strokeCache = null;
       this.maskSurf = null;
       this.pushCmd(surf ? surf.finish(cmd?.label === 'Eraser' ? 'Erase on the mask' : 'Paint on the mask') : cmd);
       return;
@@ -1656,7 +1662,7 @@ export class Editor {
   private toolCancel(): void {
     if (this.tkDown) { this.tkDown = false; this.tk?.cancel(); }
     this.hdrag = null;
-    if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.markDirty(r); this.requestRender(); }
+    if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.strokeCache = null; this.markDirty(r); this.requestRender(); }
     const g = this.drag;
     this.drag = null;
     if (g && g.kind === 'move' && this.doc) {
@@ -1968,7 +1974,7 @@ export class Editor {
         if (this.opacityStart === null) this.opacityStart = a.opacity;
         a.opacity = Number(op.value) / 100;
         opOut.textContent = op.value + '%';
-        this.markDirty(intersect(layerRect(a), docRect(d)) ?? docRect(d));
+        this.markDirty(intersect((isFolder(a) ? effectiveBox(d.layers, a) : layerRect(a)) ?? docRect(d), docRect(d)) ?? docRect(d));
         this.requestRender();
       });
       op.addEventListener('change', () => {
@@ -2022,7 +2028,7 @@ export class Editor {
     const items: [string, string][] = [
       ['layer.mask-add', 'Add a mask'], ['layer.mask-toggle', m && !m.enabled ? 'Switch the mask on' : 'Switch the mask off'],
       ['layer.mask-link', m && !m.linked ? 'Link the mask' : 'Unlink the mask'], ['layer.clip', 'Clip to the layer below'],
-      ['layer.fx-shadow', 'Effects…'], ['layer.new-group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'], ['layer.delete', 'Delete'],
+      ['layer.fx-shadow', 'Effects…'], ['layer.group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'], ['layer.delete', 'Delete'],
     ];
     const rows = items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => {
       const planned = BY_ID.get(cmd)?.status !== 'ready';
@@ -2188,16 +2194,15 @@ export class Editor {
   deleteLayerAction(): void {
     const d = this.doc;
     if (!d) return this.needDoc();
-    if (d.layers.length < 2) { this.toast('A picture needs at least one layer.'); return; }
     this.cancelSession();
-    this.pushCmd(deleteLayer(d, d.activeId), true);
+    const cmd = deleteLayer(d, d.activeId);
+    if (!cmd) { this.toast('A picture needs at least one layer.'); return; }
+    this.pushCmd(cmd, true);
   }
   arrange(k: 'front' | 'forward' | 'backward' | 'back'): void {
     const d = this.doc;
     if (!d) return;
-    const i = indexOfLayer(d, d.activeId), n = d.layers.length;
-    const to = k === 'front' ? n - 1 : k === 'forward' ? i + 1 : k === 'backward' ? i - 1 : 0;
-    this.pushCmd(moveLayer(d, i, to), true);
+    this.pushCmd(arrangeNode(d, d.activeId, k), true);
   }
   active(): Layer | undefined { return this.doc ? activeLayer(this.doc) : undefined; }
   activeIndex(): number { return this.doc ? indexOfLayer(this.doc, this.doc.activeId) : -1; }
@@ -2222,7 +2227,30 @@ export class Editor {
     this.renderProps();
     this.syncChrome();
   }
-  mergeDownAction(): void { const d = this.doc; if (d) this.pushCmd(mergeDown(d), true); }
+  mergeDownAction(): void {
+    const d = this.doc;
+    if (!d) return;
+    const why = mergeDownRefusal(d);
+    if (why) { this.toast(why); return; }
+    this.pushCmd(mergeDown(d), true);
+  }
+  /** New empty folder, put the active node in a new folder, or take its folder apart (design 2.4). */
+  folderAction(k: 'new' | 'group' | 'ungroup'): void {
+    const d = this.doc;
+    if (!d) return this.needDoc();
+    this.cancelSession();
+    const cmd = k === 'new' ? addFolder(d) : k === 'group' ? groupNode(d, d.activeId) : ungroupNode(d, d.activeId);
+    if (!cmd && k === 'ungroup') { this.toast('This layer is not in a folder.'); return; }
+    this.pushCmd(cmd, true);
+  }
+  /** Show only inside the layer below · Create clipping mask, on or off. */
+  clipAction(): void {
+    const d = this.doc, a = this.active();
+    if (!d || !a) return this.needDoc();
+    const cmd = toggleClip(d, a.id);
+    if (!cmd) { this.toast('There is no layer below it in this folder to clip to.'); return; }
+    this.pushCmd(cmd, true);
+  }
   mergeVisibleAction(): void { const d = this.doc; if (d) this.pushCmd(mergeVisible(d), true); }
   flattenAction(): void { const d = this.doc; if (d) this.pushCmd(flattenDocument(d, parseHex(this.bgColor) ?? WHITE), true); }
   turnLayerAction(t: Turn): void {
@@ -2997,7 +3025,7 @@ export class Editor {
   }
   private load(i: number): void {
     this.cancelSession();
-    this.stroke = null;
+    this.stroke = null; this.strokeCache = null;
     this.drag = null;
     this.crop = null;
     const t = this.tabs[i];

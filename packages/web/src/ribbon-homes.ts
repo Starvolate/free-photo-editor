@@ -93,6 +93,7 @@ export const TABS: Tab[] = [
   { plain: 'Arrange layers', pro: 'Layer arrangement', groups: [
     g('This layer', 'Layer', 'small', '', 'layer.rename layer.hide layer.lock', 'layer.delete layer.rasterize panel.layers layer.convert layer.crop-to-content layer.split-by-colour layer.remove-alpha layer.invert-alpha layer.colour-space'),
     g('Order', 'Arrange', 'small', '', 'layer.front layer.forward layer.backward', 'layer.back layer.reverse'),
+    g('Folders', 'Group layers', 'small', '', 'layer.group layer.ungroup', ''),
     g('Line up', 'Align and distribute', 'small', '', 'layer.align-left layer.align-hcenter layer.align-right', 'layer.align-top layer.align-vcenter layer.align-bottom layer.distribute-h layer.distribute-v'),
     g('Combine', 'Merge', 'small', '', 'layer.merge-down layer.merge-visible layer.flatten', ''),
     g('Find and versions', 'Layer filter and comps', 'small', '', 'layer.filter layer.colour-label panel.layer-comps', 'layer.select-by-state layer.metadata'),

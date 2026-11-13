@@ -92,7 +92,7 @@ export const TABS: Tab[] = [
   { plain: 'Automate & batch', pro: 'Actions and batch', groups: [
     g('Record steps', 'Actions', 'small', 'panel.actions', 'auto.record-painting', ''),
     g('Do many at once', 'Batch', 'small', 'file.batch', 'file.resize-many auto.copy-edits auto.watermark', 'auto.droplets file.crop-scans'),
-    g('Merge photos', 'Photo merge', 'small', '', 'auto.panorama auto.hdr-merge edit.auto-blend', 'edit.auto-align auto.stacks auto.astro-stack auto.pixel-shift'),
+    g('Merge photos', 'Photo merge', 'small', '', 'edit.auto-align auto.panorama auto.hdr-merge edit.auto-blend', 'auto.stacks auto.astro-stack auto.pixel-shift'),
     g('Scripts and data', 'Scripting and data sets', 'small', '', 'file.scripts auto.plugins image.variables', 'auto.script-events auto.filter-graph'),
     g('Sheets and layouts', 'Contact sheet', 'small', '', 'file.contact-sheet', 'auto.collage auto.passport tool.slice'),
   ] },

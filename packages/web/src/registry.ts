@@ -95,16 +95,16 @@ edit.rotate | Turn by any angle | Rotate | Turn the layer by any amount. | tilt,
 edit.skew | Slant | Skew | Slant the layer sideways. | slant, italic | R | W3
 edit.distort | Pull corners freely | Distort | Move each corner on its own. | corner pin | R | W3
 edit.perspective | Fix the angle | Perspective | Make a slanted surface look straight on. | keystone | R | W3
-edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | P | 3
+edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | R | 3
 @Edit
-edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | P | 11
-edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | P | 3
-edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | P | 3
-edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | P | 13
-edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | P | 13
+edit.smart-scale | Stretch without squashing people | Content-aware scale | Resizes a layer by squeezing out or stretching its plain parts, so people keep their shape. Select a part first to protect it. | stretch background | R | 11
+edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | R | 3
+edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | R | 3
+edit.auto-align | Line up layers automatically | Auto-align layers | Moves and turns layers of one scene so they line up with the bottom one. | panorama, align | R | 13
+edit.auto-blend | Blend photos automatically | Auto-blend layers | Fades overlapping photos into each other along the middle of the overlap. Line them up first. | focus stack, blend | R | 13
 --
-edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | P | 4
-edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | P | 4
+edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | R | 4
+edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern to paint or fill with. | custom pattern, texture | R | 4
 @Edit > Settings = Settings | Preferences | Change how the editor looks and talks to you.
 edit.pref-pro-names | Show pro names first | Pro names first | Put the usual professional names before the plain names. | expert names, professional names | R | W1
 edit.pref-hints | Show help lines | Tooltips | Show one plain line of help when you point at, focus or hold a control. | tips, hints, help text | R | W1
@@ -308,7 +308,7 @@ filter.last | Repeat the last effect | Last filter | Run the last effect again w
 filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
 filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
-filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | P | 5
+filter.liquify | Push pixels like liquid | Liquify | Push, grow, shrink or twirl parts of a layer with a brush on a preview, then Apply. | reshape, slim, liquify | R | 5
 filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | P | 5
 @Filter > Blur = Blur | Blur | Soften the picture.
 filter.blur-gaussian | Smooth blur | Gaussian blur | An even, soft blur over the selected area or the whole layer. | blur, soften, smooth, out of focus, blurry | R | 1
@@ -420,11 +420,11 @@ panel.channels | Colour channels | Channels | See the red, green, blue and see-t
 panel.paths | Outlines | Paths | Outlines you drew with the pen: pick, rename, delete, or turn one into a selection. | paths, outlines, saved path, work path | R | 6
 panel.character | Text style | Character | Font, size and spacing of text. | font size | R | W3
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
-panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
+panel.brushes | Brush tips | Brushes | Choose, turn and space brush tips. | brush shapes | R | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
 panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | R | 13
 panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | P | 3
-panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
+panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | R | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6
 panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | P | 13
 panel.timeline | Animation timeline | Timeline | Frames of an animation in order. | animation | P | 13
@@ -650,3 +650,32 @@ export function counts(): { total: number; ready: number; planned: number; tools
   return { total: ROWS.length, ready, planned: ROWS.length - ready, tools: ROWS.filter((r) => r.kind === 'tool').length,
     panels: PANELS.length, menus: [...MENU_INFO.keys()].filter((k) => !k.startsWith('Tools')).length };
 }
+
+// ---------- help lines arrive after the first screen ----------
+type HelpChunk = (() => Promise<{ default: Record<string, string> }>) | null;
+/**
+ * The build (scripts/help-split.ts) moves every row's help line out of SRC into a chunk of its own and points this at
+ * it, so the first screen carries none. In tests and in dev the help stays inline and this stays null.
+ */
+const HELP_CHUNK = null as HelpChunk; // fpe:help-chunk
+let helpDone = false, helpLoad: Promise<boolean> | null = null;
+const helpWaiters = new Set<() => void>();
+/** True once every row has its help line (always, when the build kept them inline). */
+export const helpReady = (): boolean => !HELP_CHUNK || helpDone;
+/** Fill blank help lines from `map` (a row that has its line keeps it); search then finds help words again. */
+export function applyHelp(map: Record<string, string>): void {
+  for (const r of ROWS) if (!r.help && map[r.id]) r.help = map[r.id];
+  INDEX = null;
+}
+/** Fetch the help lines once; a failed fetch (offline before first use) lets the next call try again. */
+export function loadHelp(): Promise<boolean> {
+  if (helpReady()) return Promise.resolve(true);
+  return (helpLoad ??= (HELP_CHUNK as NonNullable<HelpChunk>)().then((m) => {
+    applyHelp(m.default);
+    helpDone = true;
+    for (const f of helpWaiters) f();
+    return true;
+  }, () => { helpLoad = null; return false; }));
+}
+/** Call `f` when the help lines arrive, so what shows help can draw it. */
+export function onHelp(f: () => void): void { helpWaiters.add(f); }

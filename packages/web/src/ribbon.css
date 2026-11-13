@@ -101,6 +101,10 @@
 .fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true]{color:var(--text);cursor:pointer}
 .fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true] :is(.fpe-rico,.fpe-icon){opacity:1}
 .fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true]:hover{background:var(--hover)}
+/* A layer effect with an adjustment layer active reads as normal: its tooltip and a click say "pick a picture layer". */
+.fpe :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-why]{color:var(--text);cursor:pointer}
+.fpe :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-why] :is(.fpe-rico,.fpe-icon){opacity:1}
+.fpe :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-why]:hover{background:var(--hover)}
 /* A group with nothing working yet: one quiet tile instead of a row of greyed buttons; it opens the group's "Coming" list. */
 .fpe-rsoon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:88px;align-self:stretch;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--muted);font:inherit;line-height:14px;text-align:center;cursor:pointer;flex:none}
 .fpe .fpe-rsoon{font-size:12px}
@@ -108,7 +112,14 @@
 .fpe-rsoon:hover,.fpe-rsoon[aria-expanded=true]{background:var(--hover)}
 .fpe-rthumb{display:block;width:100%;height:100%}
 .fpe-rcoming{margin-top:6px;padding:10px 10px 4px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
-.fpe-rcoach{position:absolute;z-index:40;max-width:min(560px,calc(100% - 16px));padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);color:var(--text);font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none}
+.fpe-rcoach{position:absolute;z-index:40;display:flex;align-items:center;gap:6px;min-width:0;padding:0 2px 0 4px;font-size:12px;color:var(--muted)}
+.fpe-rcoach>svg{flex:none;width:14px;height:14px;color:var(--accent)}
+.fpe-rcoach-text{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fpe-rcoach-x{display:inline-flex;align-items:center;justify-content:center;flex:none;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:none;color:var(--muted);cursor:pointer}
+.fpe-rcoach-x:hover{background:var(--hover);color:var(--text)}
+.fpe-rcoach-x svg{width:12px;height:12px}
+.fpe[data-coaching] .fpe-rcap{visibility:hidden}
+.fpe-rnone{margin:auto;padding:0 16px;font-size:13px;color:var(--muted)}
 .fpe-rcoach[hidden]{display:none}
 .fpe-rctxbody{align-items:center;padding-bottom:6px}
 .fpe-rctxbody .fpe-options{display:flex;flex:none;height:48px;padding:0 8px;overflow:visible;background:none;border:0}

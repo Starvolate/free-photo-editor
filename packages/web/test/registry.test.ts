@@ -155,11 +155,9 @@ describe('the Task ribbon', () => {
     const h = homes();
     expect(NEW_ROWS.length).toBe(261);
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
-    const BUILT = new Set(['select.from-path', 'select.to-path', 'view.composition-guides',
-      // Shapes & text (pathops.ts).
+    const BUILT = new Set(['auto.panorama', 'select.from-path', 'select.to-path', 'view.composition-guides', 'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
+      // Shapes & text: type and shapes (typekit.ts, pathops.ts).
       'type.styles', 'type.opentype', 'type.in-shape', 'shape.qr', 'shape.comic-panels',
-      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
-      'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
       'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
       // The Develop RAW sheet (raw-more.ts), 13 Nov 2026.
       ...('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading raw.contrast-levels '
@@ -171,6 +169,13 @@ describe('the Task ribbon', () => {
       // Batch select-and-layers (selmore.ts).
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
+      // Batch crop-warp (warpkit.ts, app.ts, toolkit.ts).
+      'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin',
+      'retouch.frequency-separation', 'retouch.deblur',
+      // Batch paint (paintkit.ts): the Brush extras sheet.
+      'paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'paint.enclose-fill', 'paint.colorize-mask',
+      // Batch shapes-text (pathops).
+      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
       // Automate and batch (automate.ts).
       'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());

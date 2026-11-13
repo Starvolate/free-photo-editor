@@ -204,7 +204,8 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
   }, 300_000);
 
   it('Make it bigger from the start screen: the small sample opens, and twice as big takes it from 256 x 171 to 512 x 342', async () => {
-    const p = await page.context().newPage();
+    // A page made by browser.newPage() owns its context, so context().newPage() is refused: open its own tab instead.
+    const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     listen(p);
     try {
       await p.goto(s.url);

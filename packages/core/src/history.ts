@@ -119,7 +119,7 @@ export function reorderCommand(from: number, to: number, label = 'Move layer'): 
   const move = (doc: Doc, a: number, b: number): void => { const [l] = doc.layers.splice(a, 1); doc.layers.splice(b, 0, l); };
   return { label, bytes: 0, redo(doc) { move(doc, from, to); }, undo(doc) { move(doc, to, from); } };
 }
-export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y' | 'locked' | 'mask' | 'clip' | 'passThrough' | 'psdKeep'>>;
+export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y' | 'locked' | 'mask' | 'clip' | 'passThrough' | 'psdKeep' | 'adjust' | 'fill'>>;
 /** Set layer properties. A move (x or y) carries a linked mask with it; a mask is swapped as a whole (a value object). */
 export function applyProps(l: Layer, p: LayerProps): void {
   const { x, y, mask, ...rest } = p;

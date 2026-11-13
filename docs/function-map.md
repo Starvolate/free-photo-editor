@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 285 Ready, 390 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 301 Ready, 374 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 285 | 25 | 124 | 136 | 0 |
+| Ready today | 301 | 25 | 130 | 146 | 0 |
 
 ## The Task ribbon
 
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · small button | Planned | 13 |  |
 
-## Layer (36 Ready, 36 Planned)
+## Layer (52 Ready, 20 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -278,25 +278,25 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
-| layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
+| layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
 | layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
 | layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
-| layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Planned | 3 |  |
-| layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-bw | Black and white layer | Black & white layer | Black and white that stays editable. | editable black and white | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-photo-filter | Lens filter layer | Photo filter layer | A photo filter that stays editable. | editable filter | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-channel-mixer | Channel mix layer | Channel mixer layer | A channel mix that stays editable. | editable channels | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
+| layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-bw | Black and white layer | Black & white layer | Black and white that stays editable. | editable black and white | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-photo-filter | Lens filter layer | Photo filter layer | A photo filter that stays editable. | editable filter | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-channel-mixer | Channel mix layer | Channel mixer layer | A channel mix that stays editable. | editable channels | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
 | layer.adj-color-lookup | Colour look layer | Colour lookup layer | A colour look that stays editable. | editable lut | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-invert | Negative layer | Invert layer | A negative that you can switch off. | editable invert | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-posterize | Fewer tones layer | Posterize layer | Posterize that stays editable. | editable posterize | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-threshold | Black and white split layer | Threshold layer | A threshold that stays editable. | editable threshold | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
-| layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Planned | 3 |  |
+| layer.adj-invert | Negative layer | Invert layer | A negative that you can switch off. | editable invert | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-posterize | Fewer tones layer | Posterize layer | Posterize that stays editable. | editable posterize | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-threshold | Black and white split layer | Threshold layer | A threshold that stays editable. | editable threshold | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
+| layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
 | layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | Layer › Mask | Effects & masks › Hide parts · big button | Ready | 2 |  |
 | layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |
 | layer.mask-apply | Make the mask permanent | Apply mask | Erase what the mask hides. | apply mask | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |

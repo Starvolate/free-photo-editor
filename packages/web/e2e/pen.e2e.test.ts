@@ -168,6 +168,8 @@ suite('Pen and paths (headless Chrome)', () => {
     await p.reload();
     await p.waitForFunction(() => !!(window as unknown as Win).fpe);
     await p.click('[data-testid="restore-yes"]', { timeout: 15_000 });
+    // Restore reads the saved copy back asynchronously: wait until the picture is on screen before clicking on it.
+    await p.waitForFunction(() => (window as unknown as Win).fpe.toClient(0, 0) !== null, null, { timeout: 15_000 });
     await run(p, 'tool.path-select');
     await p.waitForFunction(() => (window as unknown as Win).fpe.state().w3 !== null);
     await click(p, 260, 220);

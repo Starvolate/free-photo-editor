@@ -200,26 +200,26 @@ layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a
 layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | P | 3
 layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | P | 3
 @Layer > Fill layer = Colour layer | Fill layer | A layer filled with a colour, fade or pattern you can change later.
-layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | P | 3
+layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | R | 3
 layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | P | 3
 layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | P | 3
 @Layer > Adjustment layer = Editable light and colour | Adjustment layer | An adjustment you can change or remove at any time.
-layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | P | 3
-layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | P | 3
-layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | P | 3
-layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | P | 3
-layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | P | 3
-layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | P | 3
-layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | P | 3
-layer.adj-bw | Black and white layer | Black & white layer | Black and white that stays editable. | editable black and white | P | 3
-layer.adj-photo-filter | Lens filter layer | Photo filter layer | A photo filter that stays editable. | editable filter | P | 3
-layer.adj-channel-mixer | Channel mix layer | Channel mixer layer | A channel mix that stays editable. | editable channels | P | 3
+layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | R | 3
+layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | R | 3
+layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | R | 3
+layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | R | 3
+layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | R | 3
+layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | R | 3
+layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | R | 3
+layer.adj-bw | Black and white layer | Black & white layer | Black and white that stays editable. | editable black and white | R | 3
+layer.adj-photo-filter | Lens filter layer | Photo filter layer | A photo filter that stays editable. | editable filter | R | 3
+layer.adj-channel-mixer | Channel mix layer | Channel mixer layer | A channel mix that stays editable. | editable channels | R | 3
 layer.adj-color-lookup | Colour look layer | Colour lookup layer | A colour look that stays editable. | editable lut | P | 3
-layer.adj-invert | Negative layer | Invert layer | A negative that you can switch off. | editable invert | P | 3
-layer.adj-posterize | Fewer tones layer | Posterize layer | Posterize that stays editable. | editable posterize | P | 3
-layer.adj-threshold | Black and white split layer | Threshold layer | A threshold that stays editable. | editable threshold | P | 3
-layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | P | 3
-layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | P | 3
+layer.adj-invert | Negative layer | Invert layer | A negative that you can switch off. | editable invert | R | 3
+layer.adj-posterize | Fewer tones layer | Posterize layer | Posterize that stays editable. | editable posterize | R | 3
+layer.adj-threshold | Black and white split layer | Threshold layer | A threshold that stays editable. | editable threshold | R | 3
+layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | R | 3
+layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | R | 3
 @Layer > Mask = Hide parts | Mask | Hide parts of a layer without erasing them.
 layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | R | 2
 layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | R | 2

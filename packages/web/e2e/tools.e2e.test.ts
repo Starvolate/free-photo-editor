@@ -621,6 +621,7 @@ suite('W3 tools (headless Chrome)', () => {
       expect(Math.max(...gaps) - Math.min(...gaps), id).toBeLessThanOrEqual(2);
     }
     await useBackground(p);
+    await run(p, 'view.fit'); // the transform steps above may have nudged the view to show their handles
     await run(p, 'tool.bg-eraser');
     expect((await px(p, 6, 200, true))[3]).toBeGreaterThan(200);
     await drag(p, [[6, 170], [6, 230]]);

@@ -38,6 +38,8 @@ export function plainDoc(d: Doc, withContent = true): Doc {
     if (l.fill) out.fill = l.fill;
     if (l.fx) out.fx = l.fx;
     if (l.fillOpacity !== undefined) out.fillOpacity = l.fillOpacity;
+    if (l.label) out.label = l.label;
+    if (l.meta) out.meta = { notes: l.meta.notes, tags: [...l.meta.tags] };
     return out;
   };
   const s = d.selection;

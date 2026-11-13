@@ -15,6 +15,8 @@ export interface HandleSet {
   draw(p: JobParams, b: Rect): Guides;
   /** A handle was dragged to (x, y): update the settings. */
   drag(key: string, x: number, y: number, p: JobParams, b: Rect): void;
+  /** A press away from every handle, at (x, y): return true when it set something (the develop sheet's grey picker). */
+  press?(x: number, y: number, p: JobParams, b: Rect): boolean;
 }
 
 const val = (p: JobParams, k: string, d: number): number => p[k] ?? d;
@@ -72,4 +74,4 @@ const field: HandleSet = {
     if (key === 'pin1') { p.x1 = across(x, b); p.y1 = down(y, b); } else { p.x2 = across(x, b); p.y2 = down(y, b); }
   },
 };
-export const HANDLES: Record<'iris' | 'tilt' | 'field', HandleSet> = { iris, tilt, field };
+export const HANDLES: Record<'iris' | 'tilt' | 'field', HandleSet> & { spot?: HandleSet } = { iris, tilt, field };

@@ -55,10 +55,10 @@ file.export-layers | Save each layer as a file | Export layers | Save every laye
 file.print | Print | Print | Print the picture on paper. | printer, paper | R | 8
 file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | P | 7
 @File > Automate = Do many at once | Automate | Repeat a job on many pictures.
-file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | P | 13
-file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | P | 13
+file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | R | 13
+file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | R | 13
 file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | P | 13
-file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | P | 13
+file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | R | 13
 @File
 file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | P | 13
 
@@ -261,7 +261,7 @@ layer.hide | Hide the layer | Hide layers | Hide the active layer without deleti
 layer.merge-down | Merge into the layer below | Merge down | Combine the active layer with the one under it. | combine layers, merge | R | W1 | Ctrl+E
 layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | R | W1 | Ctrl+Shift+E
 layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | R | W1
-layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | P | 2
+layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | R | 2
 layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | P | 13
 
 @Type = Type | Type | Add and style text.
@@ -286,7 +286,7 @@ select.subject | Select the main subject | Subject | Find the person or thing in
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | R | 11
 --
-select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
+select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection: the edge follows the picture, then smooth, soften or move it. | hair, fur, edge | R | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
 select.border | Edge band | Border | Select a band along the selection edge. | border selection | R | W3
 select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | R | W3
@@ -422,7 +422,7 @@ panel.character | Text style | Character | Font, size and spacing of text. | fon
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
-panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | P | 13
+panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | R | 13
 panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | P | 3
 panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6

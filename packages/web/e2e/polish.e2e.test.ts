@@ -20,7 +20,7 @@ interface View { zoom: number; panX: number; panY: number; }
 interface Fpe {
   run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; getInfo(): Info | null;
   toClient(x: number, y: number): { x: number; y: number } | null; sample(x: number, y: number, only?: boolean): number[] | null;
-  checksum(x: number, y: number, w: number, h: number): number; setZoom(zoom: number): void;
+  checksum(x: number, y: number, w: number, h: number): number; setZoom(zoom: number): void; openFile(b: Blob, name?: string): Promise<void>;
 }
 type Win = Window & { fpe: Fpe };
 interface Ink { count: number; edges: { left: number; right: number }[]; strongest: number[]; }
@@ -364,6 +364,74 @@ suite('W5 polish (headless Chrome)', () => {
     expect(await pressed(), 'Edit > Paint back from this step marks the step you are at').toEqual([3]);
     expect(errors).toEqual([]);
   }, 120_000);
+
+  it('a slow filter on a 4000 x 3000 photo previews on a smaller copy, then Apply works at full size with a progress bar and Cancel', async () => {
+    const p = await open(1440, 900);
+    const line = (w: number, hgt: number): Promise<void> => p.evaluate(async ([a, b]) => {
+      const c = new OffscreenCanvas(a, b), x = c.getContext('2d') as OffscreenCanvasRenderingContext2D;
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, a, b);
+      x.fillStyle = '#fff';
+      x.fillRect(a / 2, 0, 3, b);
+      await (window as unknown as Win).fpe.openFile(await c.convertToBlob({ type: 'image/png' }), `line-${a}.png`);
+    }, [w, hgt] as const);
+    const row = (cx: number, y: number): Promise<number[]> => p.evaluate(([a, b]) => {
+      const f = (window as unknown as Win).fpe, out: number[] = [];
+      for (let x = a - 20; x <= a + 20; x++) out.push((f.sample(x, b) ?? [])[0]);
+      return out;
+    }, [cx, y] as const);
+    type Pv = { scale: number; done: boolean; applying: boolean } | null;
+    const pv = async (): Promise<Pv> => (await state(p)).preview as Pv;
+    const ready = (): Promise<unknown> => p.waitForFunction(() => ((window as unknown as Win).fpe.state().preview as { done: boolean } | null)?.done === true, null, { timeout: 60_000 });
+    const closed = (): Promise<unknown> => p.waitForFunction(() => (window as unknown as Win).fpe.state().adjust === null, null, { timeout: 90_000 });
+
+    await line(400, 300);
+    await run(p, 'filter.maximum');
+    await ready();
+    expect((await pv())?.scale, 'a small picture previews at full size').toBe(1);
+    const exact = await row(200, 150);
+    await p.click('[data-testid="adj-apply"]');
+    await closed();
+
+    await line(4000, 3000);
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.width === 4000);
+    const steps = (await state(p)).step as number;
+    await run(p, 'filter.maximum');
+    await ready();
+    expect((await pv())?.scale, 'a 12 MP picture previews on a smaller copy').toBeLessThan(0.5);
+    expect(await p.textContent('[data-testid="adj-small"]')).toContain('smaller copy');
+    expect(await row(2000, 1500), 'the quick preview is close, not exact').not.toEqual(exact);
+    await p.evaluate(() => {
+      const w = window as unknown as { seen: number[] };
+      w.seen = [];
+      new MutationObserver((ms) => { for (const m of ms) if ((m.target as HTMLElement).dataset.testid === 'job-bar') w.seen.push((m.target as HTMLProgressElement).value); })
+        .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['value'] });
+    });
+    await p.click('[data-testid="adj-apply"]');
+    await closed();
+    expect(await row(2000, 1500), 'Apply did every pixel at full size: the same as on the small picture').toEqual(exact);
+    const seen = await p.evaluate(() => (window as unknown as { seen: number[] }).seen);
+    expect(seen.some((v) => v > 0 && v < 1), `the bar moved in steps: ${seen.join(', ')}`).toBe(true);
+    expect((await state(p)).step).toBe(steps + 1);
+
+    const kept = await sumAt(p, { x: 1800, y: 1300, w: 400, h: 400 });
+    await run(p, 'filter.blur-surface');
+    await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
+    await p.$eval('[data-testid="ctl-radius"]', (el) => { const i = el as HTMLInputElement; i.value = '30'; i.dispatchEvent(new Event('input', { bubbles: true })); });
+    await ready();
+    await p.click('[data-testid="adj-apply"]');
+    await p.waitForSelector('[data-testid="job-progress"]', { state: 'visible' });
+    expect((await pv())?.applying).toBe(true);
+    await p.waitForFunction(() => Number((document.querySelector('[data-testid="job-bar"]') as HTMLProgressElement | null)?.value ?? 0) > 0, null, { timeout: 25_000 }).catch(() => undefined);
+    await shot(p, 'w5-slow-filter-progress.png');
+    await p.click('[data-testid="job-cancel"]');
+    await closed();
+    expect(await p.locator('[data-testid="job-progress"]').count()).toBe(0);
+    expect(await sumAt(p, { x: 1800, y: 1300, w: 400, h: 400 }), 'Cancel keeps the picture as it was').toBe(kept);
+    expect((await state(p)).step, 'and adds no step').toBe(steps + 1);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('stopped');
+    expect(errors).toEqual([]);
+  }, 300_000);
 
   it('every button keeps its own text colour and reads at WCAG AA contrast in the dark and the light look', async () => {
     const p = await open(1440, 900);

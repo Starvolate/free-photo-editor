@@ -161,6 +161,9 @@
 .fpe-hist-item:hover{background:var(--hover)}
 .fpe-hist-item[aria-current=step]{background:var(--sel);font-weight:600}
 .fpe-hist-item[data-undone]{color:var(--dim);font-style:italic}
+.fpe-job-veil{position:absolute;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.4)}
+.fpe-job{display:flex;flex-direction:column;gap:8px;width:min(440px,100%);padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.fpe-job progress{width:100%;height:12px;accent-color:var(--accent)}
 .fpe-hist-row{display:flex;align-items:center;gap:2px}
 .fpe-hist-row .fpe-hist-item{flex:1;min-width:0;width:auto}
 .fpe-hist-mark{flex:none;display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid transparent;border-radius:5px;background:none;color:var(--muted);cursor:pointer}

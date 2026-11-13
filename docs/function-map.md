@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 425 Ready, 250 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 437 Ready, 238 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-178 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+171 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 221 | 429 | 0 |
-| Ready today | 425 | 25 | 185 | 215 | 0 |
+| All functions | 675 | 25 | 227 | 423 | 0 |
+| Ready today | 437 | 25 | 191 | 221 | 0 |
 
 ## The Task ribbon
 
@@ -29,14 +29,14 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 |---|---|---|---|---|
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
-| Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
+| Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 13 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
-| AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
+| AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 5 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 6 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
-| Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
+| Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 20 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 15 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
@@ -150,7 +150,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · small button | Ready | 13 |  |
 | file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Edit (29 Ready, 11 Planned)
+## Edit (33 Ready, 7 Planned)
 
 Groups: Turn and flip · Transform; Settings · Preferences.
 
@@ -183,10 +183,10 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.skew | Slant | Skew | Slant the layer sideways. | slant, italic | Edit › Transform | Crop & resize › Move and reshape a layer · More list | Ready | W3 |  |
 | edit.distort | Pull corners freely | Distort | Move each corner on its own. | corner pin | Edit › Transform | Crop & resize › Move and reshape a layer · More list | Ready | W3 |  |
 | edit.perspective | Fix the angle | Perspective | Make a slanted surface look straight on. | keystone | Edit › Transform | Crop & resize › Move and reshape a layer · More list | Ready | W3 |  |
-| edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | Edit › Transform | Crop & resize › Bend and push · More list | Planned | 3 |  |
-| edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | Edit | Crop & resize › Bend and push · More list | Planned | 11 |  |
-| edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
-| edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
+| edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | Edit › Transform | Crop & resize › Bend and push · small button | Ready | 3 |  |
+| edit.smart-scale | Stretch without squashing people | Content-aware scale | Resizes a layer by squeezing out or stretching its plain parts, so people keep their shape. Select a part first to protect it. | stretch background | Edit | Crop & resize › Bend and push · More list | Ready | 11 |  |
+| edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | Edit | Crop & resize › Bend and push · small button | Ready | 3 |  |
+| edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | Edit | Crop & resize › Bend and push · More list | Ready | 3 |  |
 | edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
 | edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
 | edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | Edit | Paint & draw › Brush settings · More list | Planned | 4 |  |
@@ -373,7 +373,7 @@ Groups: Change the selection · Modify.
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 
-## Filter (64 Ready, 5 Planned)
+## Filter (65 Ready, 4 Planned)
 
 Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; Grain · Noise; Blocks and dots · Pixelate; Make patterns · Render; Sharpen · Sharpen; Graphic effects · Stylize; More effects · Other.
 
@@ -383,7 +383,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | Filter | Filters & blur › Artistic · family sheet | Planned | W2 |  |
 | filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Ready | W2 |  |
 | filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | Filter | Develop RAW › Develop · More list | Planned | 5 |  |
-| filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | Filter | Crop & resize › Bend and push · More list | Planned | 5 |  |
+| filter.liquify | Push pixels like liquid | Liquify | Push, grow, shrink or twirl parts of a layer with a brush on a preview, then Apply. | reshape, slim, liquify | Filter | Crop & resize › Bend and push · small button | Ready | 5 |  |
 | filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | Filter | Retouch & remove › Repair · More list | Planned | 5 |  |
 | filter.blur-gaussian | Smooth blur | Gaussian blur | An even, soft blur over the selected area or the whole layer. | blur, soften, smooth, out of focus, blurry | Filter › Blur | Filters & blur › Blur · family sheet | Ready | 1 |  |
 | filter.blur-box | Box blur | Box blur | A blur that averages square blocks. | box blur | Filter › Blur | Filters & blur › Blur · family sheet | Ready | W2 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (178 Planned, 83 Ready), by home
+## New functions from the feature census (171 Planned, 90 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -644,11 +644,11 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 |---|---|---|---|---|---|---|---|---|
 | retouch.distractions | U022 | Remove distracting people or wires in one click | Distraction removal (Remove people, Wires and cables) | Auto-find tourists, wires and cables and clear them. | remove people, remove wires, remove power lines, remove tourists, clean up background | Retouch & remove › Remove · More list | Planned | B11 |
 | retouch.fill-from-photo | U023 | Fill using a second photo | Multi-image Content-Aware Fill | Fill a hole with pixels borrowed from another photo of the same scene. | fill from another photo, multi image fill, borrow from second photo | Retouch & remove › Remove · More list | Planned | B11 |
-| retouch.smooth-skin | U024 | Smooth skin | Skin Smoothing | AI softens blemishes and texture while keeping facial detail. | smooth skin, skin softening, beauty, blemishes, wrinkles, airbrush | Retouch & remove › Faces and skin · More list | Planned | B11 |
-| retouch.frequency-separation | U025 | Smooth a face by detail layers | Frequency separation (via Apply Image and actions) | Split colour and texture so skin can be retouched without losing pores. | frequency separation, texture and colour layers, skin retouch | Retouch & remove › Faces and skin · More list | Planned | B11 |
+| retouch.smooth-skin | U024 | Smooth skin | Skin Smoothing | Softens skin in the selected area with a blur that keeps edges. It does not find faces: select the skin first. | smooth skin, skin softening, beauty, blemishes, wrinkles, airbrush | Retouch & remove › Faces and skin · small button | Ready | B11 |
+| retouch.frequency-separation | U025 | Smooth a face by detail layers | Frequency separation (via Apply Image and actions) | Split colour and texture so skin can be retouched without losing pores. | frequency separation, texture and colour layers, skin retouch | Retouch & remove › Faces and skin · small button | Ready | B11 |
 | retouch.restore-photo | U026 | Repair an old or damaged photo | Photo Restoration | AI fixes scratches, fading and grain in old prints. | restore old photo, damaged photo, scratches, torn photo, fix old picture | Retouch & remove › Rescue a photo · More list | Planned | B11 |
-| retouch.deblur | U027 | Fix a blurry or shaken photo | Shake Reduction / Deblur | Sharpens a picture blurred by camera movement. | deblur, shaky photo, camera shake, blurry photo, unblur | Retouch & remove › Rescue a photo · More list | Planned | B11 |
-| retouch.median-brush | U109 | Smooth by median average with a brush | Median Brush Tool | Paints a median blur to calm noise or texture. | median brush, smooth by painting, noise brush | Retouch & remove › Touch up by painting · More list | Planned | T3 |
+| retouch.deblur | U027 | Fix a blurry or shaken photo | Shake Reduction / Deblur | Sharpens a photo with a mild, even blur, such as one slightly out of focus. Strong camera shake or motion blur cannot be rescued. | deblur, shaky photo, camera shake, blurry photo, unblur | Retouch & remove › Rescue a photo · small button | Ready | B11 |
+| retouch.median-brush | U109 | Smooth by median average | Median Brush Tool | Smooths noise or texture in the selected area by a median average. A dialog, not a brush: select the area first. | median brush, smooth by painting, noise brush | Retouch & remove › Touch up by painting · More list | Ready | T3 |
 
 ### Develop RAW (32)
 
@@ -823,9 +823,9 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| edit.cage | U082 | Pin-based bend cage | Cage Transform | Draw a cage around a shape and drag its corners to reshape smoothly. | cage transform, cage warp, reshape with cage | Crop & resize › Bend and push · More list | Planned | B16 |
-| image.fit-canvas | U191 | Fit canvas to layers or selection | Fit Canvas to Layers / Selection | Resizes the canvas to what you have. | fit canvas, canvas to layers, canvas to selection, trim canvas | Crop & resize › Size · More list | Planned | T3 |
-| edit.transform-again | U192 | Repeat the last transform | Transform again | Pick the previous transform back up and keep adjusting. | transform again, repeat transform, do it again | Crop & resize › Move and reshape a layer · More list | Planned | T3 |
+| edit.cage | U082 | Pin-based bend cage | Cage Transform | Draw a cage around a shape and drag its corners to reshape smoothly. | cage transform, cage warp, reshape with cage | Crop & resize › Bend and push · More list | Ready | B16 |
+| image.fit-canvas | U191 | Fit canvas to layers or selection | Fit Canvas to Layers / Selection | The canvas becomes the selection, or wraps every layer's visible pixels; nothing is deleted. | fit canvas, canvas to layers, canvas to selection, trim canvas | Crop & resize › Size · More list | Ready | T3 |
+| edit.transform-again | U192 | Repeat the last transform | Transform again | Pick the previous transform back up and keep adjusting. | transform again, repeat transform, do it again | Crop & resize › Move and reshape a layer · More list | Ready | T3 |
 | edit.transform-3d | U193 | Tilt a layer in 3D | 3D Transform | Rotates a layer around three axes with a camera. | 3d transform, tilt layer, rotate in 3d, perspective tilt | Crop & resize › Bend and push · More list | Planned | T3 |
 
 ### Light & colour (16)

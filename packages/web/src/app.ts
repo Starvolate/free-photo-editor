@@ -1801,9 +1801,13 @@ export class Editor {
     if (!g) return false;
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
-    this.hdrag = best;
+    // A press away from every handle: the develop sheet's grey picker sets something there (true); pins and the cage add a
+    // handle there (its key), ready to drag.
     const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
-    if (!best && s && set?.press && b && set.press(p.x, p.y, (s.spec.params ??= {}), b)) { this.syncControls(); this.preview(); this.requestRender(); return true; }
+    const r = !best && s && b && set?.press?.(p.x, p.y, (s.spec.params ??= {}), b);
+    if (typeof r === 'string') best = r;
+    this.hdrag = best;
+    if (r) { this.syncControls(); this.preview(); this.requestRender(); return true; }
     return !!best;
   }
   private handleMove(p: Pt): void {
@@ -2673,6 +2677,12 @@ export class Editor {
     this.pushCmd(cmd, true);
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
+  }
+  /** Every crop-and-warp command (warpkit.ts runWarp: the bends, Liquify and the other sheets, Fit canvas), loaded on first use. */
+  async warpMore(id: string): Promise<void> {
+    try {
+      await (await import('./warpkit')).runWarp(id, { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), ed: this });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   revealAllAction(): void {
     const d = this.doc;

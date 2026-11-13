@@ -167,6 +167,9 @@ describe('the Task ribbon', () => {
       // Batch select-and-layers (selmore.ts).
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
+      // Batch crop-warp (warpkit.ts, app.ts, toolkit.ts).
+      'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin',
+      'retouch.frequency-separation', 'retouch.deblur',
       // Batch shapes-text (pathops).
       'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
       // Automate and batch (automate.ts).

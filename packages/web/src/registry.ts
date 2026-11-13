@@ -95,11 +95,11 @@ edit.rotate | Turn by any angle | Rotate | Turn the layer by any amount. | tilt,
 edit.skew | Slant | Skew | Slant the layer sideways. | slant, italic | R | W3
 edit.distort | Pull corners freely | Distort | Move each corner on its own. | corner pin | R | W3
 edit.perspective | Fix the angle | Perspective | Make a slanted surface look straight on. | keystone | R | W3
-edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | P | 3
+edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve | R | 3
 @Edit
-edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | P | 11
-edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | P | 3
-edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | P | 3
+edit.smart-scale | Stretch without squashing people | Content-aware scale | Resizes a layer by squeezing out or stretching its plain parts, so people keep their shape. Select a part first to protect it. | stretch background | R | 11
+edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | R | 3
+edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | R | 3
 edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | P | 13
 edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | P | 13
 --
@@ -308,7 +308,7 @@ filter.last | Repeat the last effect | Last filter | Run the last effect again w
 filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
 filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
-filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | P | 5
+filter.liquify | Push pixels like liquid | Liquify | Push, grow, shrink or twirl parts of a layer with a brush on a preview, then Apply. | reshape, slim, liquify | R | 5
 filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | P | 5
 @Filter > Blur = Blur | Blur | Soften the picture.
 filter.blur-gaussian | Smooth blur | Gaussian blur | An even, soft blur over the selected area or the whole layer. | blur, soften, smooth, out of focus, blurry | R | 1

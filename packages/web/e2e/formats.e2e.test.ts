@@ -371,6 +371,10 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     await p.fill('[data-testid="size-pw"]', '2');
     expect(Number(await p.inputValue('[data-testid="size-dpi"]')), '600 pixels across 2 in is 300 DPI').toBe(300);
     expect([await p.inputValue('[data-testid="size-w"]'), await p.inputValue('[data-testid="size-h"]'), await p.inputValue('[data-testid="size-ph"]')]).toEqual(['600', '400', '1.33']);
+    await p.waitForFunction(() => {
+      const s = document.querySelector('[data-testid="sheet-size"]');
+      return !!s && s.getAnimations().length === 0 && getComputedStyle(s).opacity === '1';
+    });
     await p.screenshot({ path: join(OUT, 'x1-picture-size-1440.png') });
     await p.click('[data-testid="size-apply"]');
     expect(await px(), 'the pixels stay').toEqual([600, 400]);

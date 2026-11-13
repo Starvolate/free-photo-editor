@@ -11,7 +11,7 @@ import {
   DPI_PICKS, MAX_DPI, MIN_DPI, PRINT_UNITS, docDpi, fromInches, isDpi, printSize, printTarget, resizeDocument, roundDpi, toInches,
   type Command, type Doc, type PrintRequest, type PrintUnit, type Resample,
 } from '@free-photoeditor/core';
-import { h } from './dom';
+import { focusInSheet, h } from './dom';
 
 /** Types with a place for the DPI in the file. GIF, ICO, TGA, SVG and OpenRaster have none. */
 const HOLDS: ReadonlySet<string> = new Set(['png', 'jpeg', 'webp', 'psd', 'tiff', 'pdf', 'bmp', 'avif', 'jxl']);
@@ -186,7 +186,7 @@ export function buildDpiPanel(uid: string, onChange: () => void, maxPixels: numb
     setBest(on) { best = on; bestBox.checked = on; },
     focus(what) {
       const t = what === 'best' ? bestBox : any;
-      later(() => { t.scrollIntoView({ block: 'nearest' }); t.focus({ preventScroll: true }); });
+      later(() => focusInSheet(t));
     },
     problem,
   };

@@ -300,15 +300,102 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     await p.click('[data-testid="export-format-gif"]');
     expect(await p.textContent('[data-testid="export-dpi-note"]')).toContain('no place to store a DPI');
     await p.click('[data-testid="close-export"]');
-    // Phones: the same section from the function map's "Export for print at a DPI".
+    // Phones: the sheet sits at the bottom with its title in view. The cursor that lands in it scrolls only the sheet's
+    // own body, never the editor behind it (X1b: it once moved the whole editor up about 180 px, cutting off the title).
     await p.setViewportSize({ width: 390, height: 844 });
+    const moved = (sheet: string): Promise<string[]> => p.evaluate((id) => {
+      const out: string[] = [], top = document.querySelector('.fpe-shell')?.getBoundingClientRect().top;
+      if (top !== 0) out.push(`shell top ${top}`);
+      for (let el = document.querySelector(`[data-testid="sheet-${id}"]`)?.parentElement ?? null; el; el = el.parentElement)
+        if (el.scrollTop !== 0) out.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')} scrollTop ${el.scrollTop}`);
+      const se = document.scrollingElement;
+      if (se && se.scrollTop !== 0) out.push(`page scrollTop ${se.scrollTop}`);
+      return out;
+    }, sheet);
+    const settle = (sheet: string): Promise<unknown> => p.waitForFunction((id) => {
+      const s = document.querySelector(`[data-testid="sheet-${id}"]`);
+      return !!s && s.getAttribute('data-state') === 'open' && s.getAnimations().length === 0;
+    }, sheet).then(() => p.waitForTimeout(150));
+    for (const [cmd, sheet, focus] of [['file.export-print', 'export', 'export-dpi-input'], ['file.export-best', 'export', null], ['image.resolution', 'size', 'size-dpi']] as const) {
+      await p.evaluate((id) => (window as unknown as Win).fpe.run(id), cmd);
+      await settle(sheet);
+      if (focus) expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid')), `${cmd}: the cursor lands in the box`).toBe(focus);
+      expect(await moved(sheet), `${cmd}: nothing behind the sheet scrolled`).toEqual([]);
+      const r = await p.evaluate((id) => {
+        const s = document.querySelector(`[data-testid="sheet-${id}"]`) as HTMLElement;
+        return { bottom: s.getBoundingClientRect().bottom, title: (s.querySelector('.fpe-sheet-title') as HTMLElement).getBoundingClientRect().top };
+      }, sheet);
+      expect(Math.round(r.bottom), `${cmd}: the sheet reaches the bottom of the screen`).toBe(844);
+      expect(r.title, `${cmd}: the sheet's title is in view`).toBeGreaterThanOrEqual(0);
+      await p.keyboard.press('Escape');
+      expect(await p.evaluate(() => (window as unknown as Win).fpe.state().modal)).toBe(null);
+      expect(await moved(sheet), `${cmd}, then Escape: the editor is back at the top`).toEqual([]);
+    }
+    // The shot: "Export for print at a DPI" with Resize ticked, the sheet's body scrolled (never the page) to File type.
     await p.evaluate(() => (window as unknown as Win).fpe.run('file.export-print'));
+    await settle('export');
     await p.click('[data-testid="export-format-png"]');
     await p.check('[data-testid="export-dpi-resize"]');
-    await p.locator('[data-testid="export-dpi-pixels"]').scrollIntoViewIfNeeded();
+    await p.evaluate(() => {
+      const chip = document.querySelector('[data-testid="export-format-png"]') as HTMLElement, body = chip.closest('.fpe-sheet-body') as HTMLElement;
+      const field = chip.closest('.fpe-field-col') as HTMLElement;
+      body.scrollTop += field.getBoundingClientRect().top - body.getBoundingClientRect().top - 8;
+    });
+    expect(await moved('export'), 'nothing behind the sheet scrolled').toEqual([]);
     await p.screenshot({ path: join(OUT, 'x1-export-dpi-390.png') });
     expect(await p.evaluate(() => document.documentElement.scrollWidth), 'no sideways scroll on a phone').toBeLessThanOrEqual(390);
     await p.keyboard.press('Escape');
+    expect(await moved('export')).toEqual([]);
     await p.setViewportSize({ width: 1440, height: 900 });
+  });
+  it('X1b: Picture size sets the DPI keeping every pixel (one undo brings back 72), or with Resample new pixels and DPI as one step', async () => {
+    const p = page;
+    const step = (): Promise<number> => p.evaluate(() => (window as unknown as Win).fpe.state().step as number);
+    const px = async (): Promise<number[]> => { const i = await info(p); return [i?.width ?? 0, i?.height ?? 0]; };
+    const run = (id: string): Promise<boolean> => p.evaluate((c) => (window as unknown as Win).fpe.run(c), id);
+    const dpiNow = async (): Promise<number> => {
+      await run('image.resolution');
+      const v = Number(await p.inputValue('[data-testid="size-dpi"]'));
+      await p.keyboard.press('Escape');
+      return v;
+    };
+    await waitTabs(p, await open(p, 'x1b-size.png', 'image/png', Buffer.from(encodePng(bmpOf(600, 400, (x, y) => [x % 256, y % 256, 128, 255])))));
+    expect(await dpiNow(), 'a PNG with no DPI opens at 72').toBe(72);
+    const s0 = await step();
+    // "Print resolution" opens with Resample off: the beginner's path keeps every pixel and changes only the print size.
+    await run('image.resolution');
+    expect(await p.isChecked('[data-testid="size-resample"]'), 'Print resolution opens with Resample off').toBe(false);
+    expect(await p.textContent('[data-testid="size-apply"]')).toBe('Set the DPI');
+    expect(await p.isDisabled('[data-testid="size-w"]'), 'the pixels are locked').toBe(true);
+    await p.selectOption('[data-testid="size-unit"]', 'in');
+    await p.fill('[data-testid="size-pw"]', '2');
+    expect(Number(await p.inputValue('[data-testid="size-dpi"]')), '600 pixels across 2 in is 300 DPI').toBe(300);
+    expect([await p.inputValue('[data-testid="size-w"]'), await p.inputValue('[data-testid="size-h"]'), await p.inputValue('[data-testid="size-ph"]')]).toEqual(['600', '400', '1.33']);
+    await p.screenshot({ path: join(OUT, 'x1-picture-size-1440.png') });
+    await p.click('[data-testid="size-apply"]');
+    expect(await px(), 'the pixels stay').toEqual([600, 400]);
+    expect(await step(), 'one undo step').toBe(s0 + 1);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('The pixels stay 600 × 400');
+    expect(await dpiNow()).toBe(300);
+    await run('edit.undo');
+    expect(await step()).toBe(s0);
+    expect(await dpiNow(), 'one undo brings back 72').toBe(72);
+    expect(await px()).toEqual([600, 400]);
+    // The pro path, one tick away: with Resample on, new pixels and the new DPI land together as one undo step.
+    await run('image.resolution');
+    await p.check('[data-testid="size-resample"]');
+    expect(await p.textContent('[data-testid="size-apply"]')).toBe('Resize');
+    await p.selectOption('[data-testid="size-unit"]', 'in');
+    await p.fill('[data-testid="size-dpi"]', '300');
+    await p.fill('[data-testid="size-pw"]', '4');
+    expect([await p.inputValue('[data-testid="size-w"]'), await p.inputValue('[data-testid="size-h"]')], '4 in at 300 DPI, the shape kept').toEqual(['1200', '800']);
+    await p.click('[data-testid="size-apply"]');
+    await expect.poll(px).toEqual([1200, 800]);
+    expect(await step(), 'new pixels and the new DPI are one step').toBe(s0 + 1);
+    expect(await dpiNow()).toBe(300);
+    await run('edit.undo');
+    await expect.poll(px, { message: 'one undo brings back the pixels' }).toEqual([600, 400]);
+    expect(await dpiNow(), 'and the DPI, in the same step').toBe(72);
+    expect(await step()).toBe(s0);
   });
 });

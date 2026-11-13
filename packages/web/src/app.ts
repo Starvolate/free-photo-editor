@@ -18,7 +18,7 @@ import {
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
 } from '@free-photoeditor/core';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
-import { errText, fmtBytes, h, icon, iconButton, type Attrs } from './dom';
+import { errText, fmtBytes, focusInSheet, h, icon, iconButton, type Attrs } from './dom';
 import { UNIT_LABEL, buildDpiPanel, holdsDpi, joinCommands, n2, printCopy, printText, type DpiPanel } from './export-dpi';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
@@ -2797,7 +2797,7 @@ export class Editor {
       const list = exportList(), n = list.length, i = list.indexOf(this.exportFormat);
       this.exportFormat = list[(i + (fwd ? 1 : n - 1)) % n];
       this.renderExport();
-      this.exportChips.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+      focusInSheet(this.exportChips.querySelector<HTMLElement>('[aria-checked="true"]'));
     });
     const q = h('input', { id: id + 'q', type: 'range', min: 10, max: 100, step: 1, value: 92, 'data-testid': 'export-quality' });
     const qOut = h('output', { class: 'fpe-out', for: id + 'q' }, '92%');
@@ -2835,10 +2835,16 @@ export class Editor {
       this.openModal('open-options');
     });
   }
-  /** Picture size, with the cursor in Resolution (DPI) when asked. */
+  /**
+   * Picture size, with the cursor in Resolution (DPI) when asked. "Print resolution" opens it with Resample off, so a
+   * beginner who types 300 keeps every pixel and only the print size changes; ticking Resample is the pro path.
+   */
   openSize(focus?: 'dpi'): void {
     this.openModal('size');
-    if (focus && this.modal === 'size') requestAnimationFrame(() => requestAnimationFrame(() => this.sheets.get('size')?.querySelector<HTMLElement>('[data-testid="size-dpi"]')?.focus()));
+    if (!focus || this.modal !== 'size') return;
+    const s = this.sheets.get('size'), re = s?.querySelector<HTMLInputElement>('[data-testid="size-resample"]');
+    if (re?.checked) { re.checked = false; re.dispatchEvent(new Event('change')); }
+    requestAnimationFrame(() => requestAnimationFrame(() => focusInSheet(s?.querySelector<HTMLElement>('[data-testid="size-dpi"]'))));
   }
   /** Export; `focus` opens it at the DPI choice or with Best quality ticked. */
   openExport(fmt?: string, multi?: boolean, focus?: 'dpi' | 'best'): void {

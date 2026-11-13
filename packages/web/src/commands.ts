@@ -23,7 +23,19 @@ export interface Ctl {
   fills?: ReadonlyArray<Record<string, number>>;
 }
 /** `colors` passes the main and second colours to the filter; `handles` names its on-picture handles (handles.ts). */
-export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field'; }
+/** What a dialog that draws its own controls (the develop sheet, raw-more.ts) gets from the editor. */
+export interface SheetApi {
+  id: string; params: Record<string, number | undefined>; idBase: string;
+  /** A setting moved: preview it. */ input(): void;
+  /** Draw the dialog again (after a tab change or a recalled look). */ rerender(): void;
+  /** The edited area as it looks now (the live preview), or as it was before. */ result(): { width: number; height: number; data: Uint8ClampedArray };
+  /** Called each time a new preview lands. */ onResult(f: () => void): void;
+}
+export interface AdjDef {
+  op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field' | 'spot';
+  /** Draws the controls itself instead of the plain list. */ sheet?: (api: SheetApi) => Node[];
+  /** Settings that only change what the preview shows (the clipping warning): Apply runs again with them off. */ viewOnly?: readonly string[];
+}
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step, unit, group });
@@ -413,6 +425,10 @@ for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocean-ripple filter.lens-flare filter.lighting filter.color-to-alpha filter.dither '
   + 'image.adj-replace image.reduce-colors image.mode-indexed').split(' ');
 for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
+// The second filters batch (13 Nov 2026): census rows whose dialogs also live in adj-more.ts, loaded on first use.
+export const BATCH2_IDS = ('filter.kaleidoscope filter.alien-map filter.bloom filter.edge-detect filter.deinterlace filter.destripe filter.video-degrade '
+  + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias').split(' ');
+for (const id of BATCH2_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));
@@ -422,8 +438,26 @@ const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasP
 for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
   ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
+// Photo developing (raw-more.ts, loaded on first use): one develop sheet; each command opens it at its own section.
+export const RAW_IDS = ('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading '
+  + 'raw.contrast-levels raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping '
+  + 'raw.scopes raw.snapshots raw.presets raw.negative').split(' ');
+for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-more'); return e.openAdjust(id); });
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
+// Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
+for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet']) HANDLERS[id] = H((e) => e.automate(id), always);
+// Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
+// round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
+// edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.
+const pxl = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a); };
+const SM: Record<string, Handler['enabled']> = { d: hasDoc, p: pxl, s: hasSel };
+for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p select.remove-holes:s select.round-corners:s select.distort:s select.float:s '
+  + 'layer.crop-to-content:p layer.remove-alpha:p layer.invert-alpha:p layer.split-by-colour:p layer.reverse:d select.refine:s layer.defringe:p select.editor:d '
+  + 'layer.colour-label:d layer.metadata:d layer.filter:d layer.select-by-state:d').split(' ')) {
+  const [id, k] = w.split(':');
+  HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
+}
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**409 functions: 266 Ready, 143 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**412 functions: 269 Ready, 143 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -25,7 +25,7 @@ one plain line of help, the wish words search understands, where it lives, and w
 | W3 | Remaining tools |
 | W4 | Learn while you edit |
 
-## File (28 Ready, 11 Planned)
+## File (30 Ready, 11 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -47,6 +47,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | File | Ready | 1 |  |
 | file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | File | Ready | 1 | Ctrl+S |
 | file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | File | Ready | W1 | Ctrl+Shift+Alt+S |
+| file.export-print | Export for print at a DPI | Export at resolution | Pick the DPI (300 for print, 500, 600 or any number), see the print size it gives, then save. | dpi, ppi, 300 dpi, 600 dpi, print quality, high resolution, pixels per inch, for print | File | Ready | 7 |  |
+| file.export-best | Export in best quality | Maximum quality | Save at the top setting: a JPEG keeps every colour pixel (4:4:4); WebP, AVIF and JPEG XL lose nothing. | best quality, highest quality, max quality, 100 percent, no compression, sharpest | File | Ready | 7 |  |
 | file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | File › Export as | Ready | 1 |  |
 | file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | File › Export as | Ready | 1 |  |
 | file.export-webp | WebP picture | WebP | Small modern web pictures that can keep see-through areas. | webp, website picture | File › Export as | Ready | 1 |  |
@@ -118,7 +120,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Planned | 11 |  |
 
-## Image (34 Ready, 14 Planned)
+## Image (35 Ready, 14 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
@@ -154,6 +156,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Ready | W1 | Ctrl+Shift+Alt+L |
 | image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | Image | Ready | W1 | Ctrl+Shift+B |
 | image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | Image | Ready | W1 | Ctrl+Alt+I |
+| image.resolution | Print resolution | Resolution (DPI/PPI) | Set how many pixels print in one inch. With Resample off the pixels stay and only the print size changes. | dpi, ppi, print size, pixels per inch, document size, 300 dpi | Image | Ready | 7 |  |
 | image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Planned | 11 |  |
 | image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | Image › Make it bigger | Ready | 11 |  |
 | image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | Image › Make it bigger | Ready | 11 |  |

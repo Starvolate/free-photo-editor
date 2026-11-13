@@ -32,6 +32,8 @@ file.revert | Go back to the opened version | Revert | Undo every change since t
 file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | R | 1
 file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | R | 1 | Ctrl+S
 file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | R | W1 | Ctrl+Shift+Alt+S
+file.export-print | Export for print at a DPI | Export at resolution | Pick the DPI (300 for print, 500, 600 or any number), see the print size it gives, then save. | dpi, ppi, 300 dpi, 600 dpi, print quality, high resolution, pixels per inch, for print | R | 7
+file.export-best | Export in best quality | Maximum quality | Save at the top setting: a JPEG keeps every colour pixel (4:4:4); WebP, AVIF and JPEG XL lose nothing. | best quality, highest quality, max quality, 100 percent, no compression, sharpest | R | 7
 @File > Export as = Save a copy as | Export as | Pick the file type for the copy.
 file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | R | 1
 file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | R | 1
@@ -148,6 +150,7 @@ image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch t
 image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | R | W1 | Ctrl+Shift+B
 --
 image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | R | W1 | Ctrl+Alt+I
+image.resolution | Print resolution | Resolution (DPI/PPI) | Set how many pixels print in one inch. With Resample off the pixels stay and only the print size changes. | dpi, ppi, print size, pixels per inch, document size, 300 dpi | R | 7
 image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | P | 11
 @Image > Make it bigger = Make it bigger | Upscale | Twice or four times the size, with AI drawing in sharp detail on this device.
 image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | R | 11

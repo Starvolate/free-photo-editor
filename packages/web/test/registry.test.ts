@@ -42,6 +42,7 @@ describe('the function map', () => {
     expect(search('make it brighter')[0]?.id).toBe('image.adj-brightness');
     expect(search('black and white').slice(0, 3).map((r) => r.id)).toContain('image.adj-bw');
     expect(search('resize').slice(0, 3).map((r) => r.id)).toContain('image.size');
+    expect(search('dpi').slice(0, 3).map((r) => r.id)).toEqual(expect.arrayContaining(['file.export-print', 'image.resolution']));
   });
   it('asks only for icons the sprite holds', () => {
     const used = new Set<string>();

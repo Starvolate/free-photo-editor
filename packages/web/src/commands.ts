@@ -23,7 +23,11 @@ export interface Ctl {
   fills?: ReadonlyArray<Record<string, number>>;
 }
 /** `colors` passes the main and second colours to the filter; `handles` names its on-picture handles (handles.ts). */
-export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field'; }
+export interface AdjDef {
+  op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field';
+  /** A live line under the help, worked out from the settings and the area's pixels as they were (the readable-text check). */
+  info?: (p: Readonly<Record<string, number | undefined>>, area: Uint8ClampedArray) => string;
+}
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step, unit, group });
@@ -406,6 +410,11 @@ for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocean-ripple filter.lens-flare filter.lighting filter.color-to-alpha filter.dither '
   + 'image.adj-replace image.reduce-colors image.mode-indexed').split(' ');
 for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
+// The light and colour batch (13 Nov 2026): dialogs in light-more.ts, loaded on first use; the .cube file needs a light and colour layer.
+export const LIGHT_IDS = ('image.hue-chroma image.rotate-colours image.colour-contrast image.local-threshold image.retinex image.tone-mapping '
+  + 'image.harmonize image.palette-edit image.gamut-warning').split(' ');
+for (const id of LIGHT_IDS) HANDLERS[id] = H(async (e) => { await import('./light-more'); return e.openAdjust(id); });
+HANDLERS['image.export-lut'] = H(async (e) => (await import('./light-more')).exportLut(e), (e) => !!e.doc?.layers.some((l) => l.kind === 'adjust' && l.visible));
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));

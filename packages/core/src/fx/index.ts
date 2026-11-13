@@ -8,15 +8,17 @@
  */
 import type { Bitmap } from '../document';
 import { BLURS } from './blurs';
+import { LIGHT } from './light';
 import { innerBox, type Fx, type P } from './lib';
 import { LOOKS } from './looks';
 import { MORE } from './more';
 import type { FxKind } from './meta';
 
 export { FX_KINDS, fxReach, type FxKind } from './meta';
+export { contrastRatio, HUES, LEVELS, pressChroma, textColour, toLab, wcagLum } from './light';
 export type { Box } from './lib';
 
-const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE };
+const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE, ...LIGHT };
 
 /** Runs one effect on a bitmap and returns new pixels of the same size. Pixels outside the edited box are kept. */
 export function runEffect(spec: { kind?: string; params?: P }, src: Bitmap): Uint8ClampedArray {

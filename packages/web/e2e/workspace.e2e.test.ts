@@ -48,6 +48,8 @@ const PREP: Record<string, string[]> = {
   'select.from-path': ['select.to-path', 'select.none'],
   // A guide line first, so removing the guides is a visible change.
   'view.guide-clear': ['view.guide-new'],
+  // A light and colour layer first, so its .cube file can be saved.
+  'image.export-lut': ['layer.adj-invert'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

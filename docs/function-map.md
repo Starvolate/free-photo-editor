@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 337 Ready, 338 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 347 Ready, 328 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-258 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+248 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 195 | 455 | 0 |
-| Ready today | 337 | 25 | 158 | 154 | 0 |
+| All functions | 675 | 25 | 200 | 450 | 0 |
+| Ready today | 347 | 25 | 163 | 159 | 0 |
 
 ## The Task ribbon
 
@@ -37,7 +37,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
-| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
+| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 15 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
 | Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
@@ -248,7 +248,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.trim | Cut away empty edges | Trim | Remove see-through or same-colour edges. | remove border, auto crop, white edges | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | Image | File sheet | Ready | W1 |  |
-| image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
+| image.apply | Blend a layer into itself | Apply image | Not built: blending one colour channel into a layer needs separate channels, which the editor does not have yet. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
 | image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · small button | Ready | 5 |  |
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (258 Planned, 3 Ready), by home
+## New functions from the feature census (248 Planned, 13 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -832,22 +832,22 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| image.tone-mapping | U083 | Even out tone ranges for HDR looks | Tone Mapping: Fattal, Mantiuk, Reinhard, Stress | Compress a wide-range picture into a showable one. | tone mapping, hdr look, compress tones, dramatic hdr | Light & colour › More colour tools · More list | Planned | B17 |
-| image.mode-32 | U084 | Work in 32-bit light | 32-bit HDR editing / OpenEXR | Edit and save pictures with light values above pure white. | 32 bit, float, hdr editing, exr, high dynamic range editing | Light & colour › Colour type · More list | Planned | B17 |
-| image.profiles | U085 | Colour profiles | Colour settings, assign and convert profile | Choose working colour spaces, assign, convert, discard and embed ICC profiles, with rendering intent and black point. | colour profile, icc, srgb, adobe rgb, display p3, convert profile | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.soft-proof | U086 | Preview how colours print | Soft Proof (Proof Setup, Proof Colours, Simulate Paper) | Show the picture as a chosen printer, paper or screen would reproduce it. | soft proof, print preview colours, proof colours, paper simulation | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.gamut-warning | U087 | See which colours cannot print | Gamut Warning | Grey out pixels a profile cannot reproduce. | gamut warning, out of gamut, colours that cannot print | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.local-threshold | U194 | Local threshold | Local Threshold | Black and white decided by neighbourhood, not globally. | local threshold, adaptive threshold, scan documents, clean text scan | Light & colour › Light and colour · More list | Planned | T3 |
-| image.retinex | U195 | Even out uneven light and colour | Retinex | Corrects uneven lighting and colour cast. | retinex, uneven light, shadow lift, even out lighting | Light & colour › More colour tools · More list | Planned | T3 |
-| image.hue-chroma | U196 | Hue and chroma sliders | Hue Chroma | Changes hue and chroma in a perceptual space. | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · More list | Planned | T3 |
-| image.rotate-colours | U197 | Spin the colours | Rotate Colors | Cycles a range of hues. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Planned | T3 |
-| image.sample-colorize | U198 | Colour by example | Sample Colorize | Colours a picture from sample gradient taken from another. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
-| image.harmonize | U199 | Harmonise colours | Colour harmonizer | Nudge hues toward a pleasing relationship. | colour harmony, harmonise colours, colour scheme | Light & colour › More colour tools · More list | Planned | T3 |
-| image.colour-contrast | U200 | Colour contrast | Color contrast | Make neighbouring colours stand further apart. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Planned | T3 |
-| image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Exports your colour edits as a .cube table for other apps. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Planned | T3 |
-| image.palette-edit | U202 | Edit the indexed palette | Colormap, Set/Rearrange Colormap, Palette Map | Control the palette of an indexed picture. | edit palette, colormap, indexed palette, gif palette | Light & colour › Colour type · More list | Planned | T3 |
-| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Break a picture into R/G/B, LAB, HSV layers and back. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Planned | T3 |
-| image.spot-channels | U204 | Print inks as separate plates | Spot channels, Duotone, Multichannel | Special inks, two-ink tones and plate channels for press. | spot colour, duotone, multichannel, ink plates, separations | Light & colour › Colour type · More list | Planned | T3 |
+| image.tone-mapping | U083 | Even out tone ranges for HDR looks | Tone Mapping (local) | Squeezes big light and dark differences into the screen's range while keeping the local detail. | tone mapping, hdr look, compress tones, dramatic hdr | Light & colour › More colour tools · small button | Ready | B17 |
+| image.mode-32 | U084 | Work in 32-bit light | 32-bit HDR editing / OpenEXR | Not built: a browser canvas keeps 8 bits per colour, so light above pure white cannot be kept. | 32 bit, float, hdr editing, exr, high dynamic range editing | Light & colour › Colour type · More list | Planned | B17 |
+| image.profiles | U085 | Colour profiles | Colour settings, assign and convert profile | Not built yet: reading and embedding ICC colour profiles needs changes to how files are saved. | colour profile, icc, srgb, adobe rgb, display p3, convert profile | Light & colour › Colour accuracy · More list | Planned | B18 |
+| image.soft-proof | U086 | Preview how colours print | Soft Proof (Proof Setup, Proof Colours, Simulate Paper) | Not built: an honest proof needs a printer's ICC profile, and the editor cannot read one in the browser yet. | soft proof, print preview colours, proof colours, paper simulation | Light & colour › Colour accuracy · More list | Planned | B18 |
+| image.gamut-warning | U087 | See which colours cannot print | Gamut Warning | Greys out colours a typical four-ink press is likely to miss, or pulls them into range. An estimate, not a printer's profile. | gamut warning, out of gamut, colours that cannot print | Light & colour › Colour accuracy · small button | Ready | B18 |
+| image.local-threshold | U194 | Local threshold | Local Threshold | Black and white decided by each pixel's neighbourhood, not the whole picture: clean text from unevenly lit scans. | local threshold, adaptive threshold, scan documents, clean text scan | Light & colour › Light and colour · More list | Ready | T3 |
+| image.retinex | U195 | Lift detail in dark areas | Retinex | Brings dark, unevenly lit places up toward the picture's average light, keeping their colours. | retinex, uneven light, shadow lift, even out lighting | Light & colour › More colour tools · small button | Ready | T3 |
+| image.hue-chroma | U196 | Hue and chroma sliders | Hue Chroma | Turns colours, makes them stronger or weaker, and lighter or darker as the eye sees it (OKLCH). | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · small button | Ready | T3 |
+| image.rotate-colours | U197 | Spin the colours | Rotate Colors | Turns one range of colours, say the oranges, into another, say the blues; the rest stay as they are. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Ready | T3 |
+| image.sample-colorize | U198 | Colour by example | Sample Colorize | Not built yet: it needs a way to choose a second picture as the colour sample. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
+| image.harmonize | U199 | Harmonise colours | Colour harmonizer | Pulls every colour toward a colour scheme built on the picture's main colour. | colour harmony, harmonise colours, colour scheme | Light & colour › More colour tools · More list | Ready | T3 |
+| image.colour-contrast | U200 | Check text contrast | WCAG contrast check | Shows whether text in a chosen colour is readable on this area (WCAG ratio), and lightens or darkens only the parts that fail. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Ready | T3 |
+| image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Saves your light and colour layers as one .cube file that other editors and video apps open. Add one such layer first. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Ready | T3 |
+| image.palette-edit | U202 | Change the main colours | Palette edit | Finds the picture's four main colours and lets you turn, strengthen or lighten each one. | edit palette, colormap, indexed palette, gif palette | Light & colour › Colour type · small button | Ready | T3 |
+| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Not built yet: splitting into channel layers and back needs several layers made in one step. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Planned | T3 |
+| image.spot-channels | U204 | Print inks as separate plates | Spot channels, Duotone, Multichannel | Not built: special inks need separate colour channels, which the editor does not have yet. | spot colour, duotone, multichannel, ink plates, separations | Light & colour › Colour type · More list | Planned | T3 |
 
 ### Filters & blur (34)
 

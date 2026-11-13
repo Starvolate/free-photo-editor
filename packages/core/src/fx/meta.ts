@@ -14,6 +14,7 @@ export const FX_KINDS = [
   'mosaic', 'crystallize', 'pointillize', 'halftone', 'mezzotint', 'facet', 'fragment',
   'clouds', 'diff-clouds', 'fibers', 'high-pass', 'maximum', 'minimum', 'offset', 'custom',
   'spin-blur', 'lens-fix', 'glass', 'ocean-ripple', 'lens-flare', 'lighting', 'color-to-alpha', 'dither', 'replace-color', 'reduce-colors', 'indexed',
+  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning',
 ] as const;
 export type FxKind = (typeof FX_KINDS)[number];
 

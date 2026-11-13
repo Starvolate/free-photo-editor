@@ -43,10 +43,14 @@ const CASES: Record<FxKind, P> = {
   'spin-blur': { angle: 90, size: 100 }, 'lens-fix': { distort: 40, vignette: 40 }, glass: { distort: 10, smooth: 1 }, 'ocean-ripple': { size: 2, amount: 14 },
   'lens-flare': { bright: 150 }, lighting: { bumps: 50 }, 'color-to-alpha': { which: 0 }, dither: { tones: 2 }, 'replace-color': { fuzz: 120, hue: 120, light: 30 },
   'reduce-colors': { count: 4 }, indexed: { palette: 3 },
+  'hue-chroma': { hue: 40, chroma: 30 }, 'rotate-colours': { from: 0, to: 5, width: 180, soft: 20 }, 'text-contrast': { text: 2, level: 0 },
+  'local-threshold': { radius: 6, offset: 0 }, retinex: { radius: 8, amount: 100 }, 'tone-map': { squeeze: 80, radius: 6 }, harmonize: { scheme: 0, amount: 100 },
+  'palette-edit': { h1: 90, h2: 90, h3: 90, h4: 90 }, 'gamut-warning': { margin: -50 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
-  'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed']);
+  'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed',
+  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning']);
 const FILLS = new Set<FxKind>(['clouds', 'fibers']);
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude');
 
@@ -69,7 +73,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(62);
+    expect(FX_KINDS.length).toBe(71);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

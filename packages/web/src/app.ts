@@ -2646,13 +2646,14 @@ export class Editor {
       'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
       h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
+    if (s.def.info) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-info', 'aria-live': 'polite' }, s.def.info(params, s.before)));
     this.dlgCanvas = null;
     if (s.scale < 1) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-small' }, 'This picture is big, so the preview uses a smaller copy to stay quick. Apply then works on every pixel at full size, with a progress bar.'));
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
       this.dlgCanvas = h('canvas', { class: 'fpe-histo', width: 256, height: 96, 'aria-label': 'Graph of dark to light tones in the picture', 'data-testid': 'adj-graph' });
       kids.push(this.dlgCanvas);
     }
-    kids.push(...renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); }, rerender: () => this.renderDialog() }));
+    kids.push(...renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); this.drawInfo(); }, rerender: () => this.renderDialog() }));
     kids.push(h('div', { class: 'fpe-actions' },
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-before', 'aria-pressed': s.showBefore ? 'true' : 'false', 'data-testid': 'adj-before',
         'data-help-title': 'Before and after', 'data-help': 'Show the picture as it was, to compare. Press again to see the change.', onclick: () => this.toggleBefore() },
@@ -2665,6 +2666,10 @@ export class Editor {
     dlg.hidden = false;
     this.drawGraph();
     requestAnimationFrame(() => dlg.querySelector<HTMLElement>('input, select')?.focus({ preventScroll: true }));
+  }
+  private drawInfo(): void {
+    const s = this.session, el = this.dlgEl.querySelector('[data-testid="adj-info"]');
+    if (s?.def.info && el) el.textContent = s.def.info(s.spec.params ?? {}, s.before);
   }
   private drawGraph(): void {
     const c = this.dlgCanvas, s = this.session, ctx = c?.getContext('2d');

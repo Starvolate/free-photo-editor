@@ -259,10 +259,14 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     await q.screenshot({ path: join(OUT, 'w6-s1-phone-390-layers.png') });
     const name = await q.locator('[data-testid="layer-row"]').first().locator('[data-testid="layer-select"]').boundingBox();
     if (!name) throw new Error('no layer row');
-    await q.mouse.move(name.x + name.width / 2, name.y + name.height / 2);
-    await q.mouse.down();
+    const x = name.x + name.width / 2, y = name.y + name.height / 2;
+    // The rows sit at the top of the half-open sheet, so a thumb reaches the first one without scrolling.
+    expect(await q.evaluate(([a, b]) => !!document.elementFromPoint(a, b)?.closest('[data-testid="layer-select"]'), [x, y] as const)).toBe(true);
+    // A real touch held for 0.7 s (the press opens the sheet at 0.48 s).
+    const cdp = await q.context().newCDPSession(q);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await q.waitForTimeout(700);
-    await q.mouse.up();
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]');
     const sheet = q.locator('[data-testid="sheet-layer-actions"]');
     expect(await sheet.textContent()).toContain('Switch the mask off');

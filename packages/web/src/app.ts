@@ -1114,7 +1114,8 @@ export class Editor {
       const pe = e as PointerEvent;
       if (pe.pointerType === 'mouse') return;
       const el = find(e.target);
-      if (!el || el.closest('.fpe-tool')) return;
+      // Tools and layer names have their own long press (variants, the layer actions sheet), so no tip there.
+      if (!el || el.closest('.fpe-tool, .fpe-layer-name')) return;
       pressed = false; sx = pe.clientX; sy = pe.clientY;
       press = window.setTimeout(() => { pressed = true; show(el); }, 520);
     });

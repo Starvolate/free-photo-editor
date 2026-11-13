@@ -435,6 +435,9 @@
 .fpe-mask-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 /* W6 S1 phones: the mask controls are 44 px targets in 56 px rows; the layer actions sheet */
 .fpe[data-layout=phone] .fpe-layer{min-height:56px}
+/* phones: the layer rows and their action row first, the active layer's settings below them */
+.fpe[data-layout=phone] .fpe-layer-list{order:-2;flex:none;max-height:236px}
+.fpe[data-layout=phone] .fpe-layer-tools{order:-1}
 .fpe[data-layout=phone] .fpe-thumb-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
 .fpe[data-layout=phone] .fpe-thumb-btn canvas,.fpe[data-layout=phone] .fpe-layer-thumb{width:40px;height:40px}
 .fpe[data-layout=phone] .fpe-chain{flex:none;width:44px;min-width:44px;height:44px}

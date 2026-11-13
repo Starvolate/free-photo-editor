@@ -193,16 +193,16 @@ layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | 
 layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | R | 3
 layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | R | 3
 layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | R | 3
-layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | P | 3
-layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | P | 3
+layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | R | 3
+layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | R | 3
 layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | R | 3
 layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | R | 3
-layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | P | 3
+layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern, built in or from part of your picture. | texture overlay | R | 3
 layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | R | 3
 @Layer > Fill layer = Colour layer | Fill layer | A layer filled with a colour, fade or pattern you can change later.
 layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | R | 3
-layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | P | 3
-layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | P | 3
+layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | R | 3
+layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | R | 3
 @Layer > Adjustment layer = Editable light and colour | Adjustment layer | An adjustment you can change or remove at any time.
 layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | R | 3
 layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | R | 3
@@ -423,7 +423,7 @@ panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | 
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
 panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | P | 13
-panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | P | 3
+panel.styles | Saved looks | Styles | Save a layer's effects as a named look and put it on other layers; a few ready-made looks to start. | styles, saved effects | R | 3
 panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6
 panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | P | 13

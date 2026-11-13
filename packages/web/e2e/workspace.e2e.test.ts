@@ -45,7 +45,7 @@ const PREP: Record<string, string[]> = {
   'layer.mask-apply': ['layer.mask-from-sel'], 'layer.mask-delete': ['layer.mask-add'], 'layer.mask-toggle': ['layer.mask-add'], 'layer.mask-link': ['layer.mask-add'],
   'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
   // Smart layers: turning one back into pixels needs a smart layer first.
-  'layer.smart-rasterize': ['layer.smart-convert'],
+  'layer.smart-rasterize': ['layer.smart-convert'], 'layer.smart-filters': ['layer.smart-convert'],
   // An outline from the box over the sun, then nothing selected, so the selection made from the outline is a visible change.
   'select.from-path': ['select.to-path', 'select.none'],
   // Shapes & text: an outline round the box over the sun; combining adds a second from everything else (a frame with a hole).

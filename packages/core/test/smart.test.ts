@@ -3,7 +3,8 @@
 /** Smart layers: the kept original comes back exactly after shrinking and growing; convert and rasterize undo cleanly. */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { compositeDoc, createDocument, createLayer, cropDocument, flatten, resizeDocument, transformLayer, quadOfRect, type Doc, type Layer } from '../src/index';
-import { convertToSmart, installSmartHooks, rasterizeSmart, renderSmart, uprightBox } from '../src/smart';
+import { convertToSmart, docQuad, installSmartHooks, rasterizeSmart, renderSmart, updateSmart, uprightBox } from '../src/smart';
+import { commitResult, runJob } from '../src/index';
 import { readPsdDocument, writePsdDocument } from '../src/psd';
 
 /** An 8 × 8 hand pattern: every pixel different, so any resampling shows. Pixel (x, y) = (x*30, y*30, x+y*8, 255). */
@@ -73,6 +74,38 @@ describe('smart layers', () => {
     expect([...src.data]).toEqual([...pattern()]);
   });
 
+  it('a live average (effects engine) survives half size and back; switched off, the original returns exactly', () => {
+    const { doc, l } = docWith();
+    convertToSmart(l);
+    const avg = { id: 'f1', cmd: 'filter.blur-average', spec: { op: 'fx' as const, kind: 'average', params: { strength: 100 } }, on: true };
+    // The job engine alone refuses an effects-engine filter: Picture size would throw without the smart module's runner.
+    expect(() => runJob(avg.spec, { width: 8, height: 8, data: pattern() })).toThrow();
+    const s = l.smart;
+    if (!s) throw new Error('not smart');
+    expect(updateSmart(doc, l, { ...s, filters: [avg] }, docQuad(s, l.x, l.y), 'Live average')).not.toBeNull();
+    // By hand: red and green average 30 × (0+…+7) / 8 = 105; blue averages (0+…+63) / 64 = 31.5, stored as 32.
+    const flat = [...Array(64)].flatMap(() => [105, 105, 32, 255]);
+    expect([...l.data]).toEqual(flat);
+    resizeDocument(doc, 4, 4);
+    expect([doc.layers[0].width, doc.layers[0].height]).toEqual([4, 4]);
+    resizeDocument(doc, 8, 8);
+    const m = doc.layers[0], t = m.smart;
+    expect([...m.data]).toEqual(flat);
+    if (!t) throw new Error('not smart');
+    updateSmart(doc, m, { ...t, filtersOn: false }, docQuad(t, m.x, m.y), 'Switch live filters off');
+    expect([...m.data]).toEqual([...pattern()]);
+  });
+  it("a live filter's preview covers the whole smart layer, whatever is selected", () => {
+    const plain = docWith(), { doc, l } = docWith(), all = { x: 0, y: 0, w: 8, h: 8 }, after = new Uint8ClampedArray(256).fill(9);
+    convertToSmart(l);
+    // A 2 × 2 box selected in the top-left corner.
+    for (const d of [plain.doc, doc]) d.selection = { x: 0, y: 0, w: 2, h: 2, alpha: new Uint8Array(4).fill(255) };
+    commitResult(plain.doc, plain.l, all, pattern(), after, 'Smooth blur');
+    expect([...plain.l.data.subarray(0, 4)]).toEqual([9, 9, 9, 9]);
+    expect([...plain.l.data.subarray(8, 12)]).toEqual([...pattern().subarray(8, 12)]);
+    commitResult(doc, l, all, pattern(), after, 'Live smooth blur');
+    expect([...l.data]).toEqual([...after]);
+  });
   it('Turn back into pixels keeps the picture and drops the original; undo brings the smart layer back', () => {
     const { doc, l } = docWith();
     convertToSmart(l);

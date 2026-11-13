@@ -67,7 +67,8 @@ export function setLayerProps(doc: Doc, id: string, after: LayerProps, label?: s
 }
 /** Mix a result into the layer through a soft selection mask. Plain rectangles need no mixing. */
 function maskInto(l: Layer, r: Rect, before: Uint8ClampedArray, result: Uint8ClampedArray, sel: Selection | null): Uint8ClampedArray {
-  if (!sel || !sel.alpha) return result;
+  // A live filter on a smart layer covers the whole layer, whatever is selected (it is redrawn from the original on Apply).
+  if (!sel || !sel.alpha || l.kind === 'smart') return result;
   const out = new Uint8ClampedArray(result.length);
   for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
     const a = selectionAlpha(sel, r.x + x + l.x, r.y + y + l.y) / 255, i = (y * r.w + x) * 4;

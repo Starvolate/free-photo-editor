@@ -452,6 +452,7 @@ for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-mo
 // Smart layers (smart.ts, loaded on first use): make one from a picture layer, and turn it back into pixels.
 HANDLERS['layer.smart-convert'] = H((e) => e.smart('layer.smart-convert'), (e) => { const a = e.active(); return !!a && (!a.kind || a.kind === 'pixel'); });
 HANDLERS['layer.smart-rasterize'] = H((e) => e.smart('layer.smart-rasterize'), (e) => e.active()?.kind === 'smart');
+HANDLERS['layer.smart-filters'] = H((e) => e.smart('layer.smart-filters'), (e) => { const a = e.active(); return !!a && (!a.kind || a.kind === 'pixel' || a.kind === 'smart'); });
 // Quarter turns and flips redraw pixels without moving a smart layer's kept corners, so they wait (smart-layers-design.md §4):
 // the layer ones while a smart layer is active, the canvas ones while the picture has one.
 for (const id of 'edit.flip-layer-h edit.flip-layer-v edit.rotate-layer-cw edit.rotate-layer-ccw edit.rotate-layer-180 image.rotate-cw image.rotate-ccw image.rotate-180 image.flip-h image.flip-v'.split(' ')) {

@@ -95,13 +95,14 @@ export interface EditorController {
   sheet(id: string, title: string, body: HTMLElement): void;
 }
 
-interface Session {
+export interface Session {
   id: string; def: AdjDef; label: string; spec: JobSpec; layerId: string; r: Rect; padded: Rect; source: Uint8ClampedArray; before: Uint8ClampedArray;
   hist: Uint32Array; running: Promise<void> | null; queued: boolean; ran: boolean;
   /** The last finished preview (cut to `r`), and whether the dialog shows the picture as it was. */
   after: Uint8ClampedArray | null; showBefore: boolean;
   /** Below 1 on a big picture: the preview runs on a copy this many times smaller (`small`), and Apply runs again at full size. */
   scale: number; small: Uint8ClampedArray | null; applying: boolean;
+  /** A live filter on a smart layer (smart.ts): which one it changes, or -1 for a new one. */ live?: number;
 }
 interface Tab { doc: Doc; history: History; name: string; savedId: number; view: View; fitted: boolean; lastSel: Selection | null; hole: Rect | null; }
 interface Clip { width: number; height: number; data: Uint8ClampedArray; x: number; y: number; serial: number; }
@@ -2230,6 +2231,7 @@ export class Editor {
         ...this.layerThumbs(l, on),
         nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
+      if (l.smart?.filters.length && this.smartLib) list.append(...this.smartLib.rows(l, this.toolHost(), this));
     }
     const a = activeLayer(d);
     if (a) {
@@ -2767,6 +2769,7 @@ export class Editor {
       this.pushCmd(withMaskSurface(d, l, 'Negative on the mask', (sd, s) => applyToLayer(sd, s, 'Negative', (b) => adjust(b.data, 'invert'))), true);
       return;
     }
+    if (l?.kind === 'smart') { const s = (this.smartLib ??= await import('./smart')).liveSession(id, def, r.plain, preset, this.toolHost()); if (s) { this.session = s; this.preview(); this.renderDialog(); } return; }
     if (!l || !this.editable(l)) return;
     const reg = editRegion(d, l);
     if (!reg) { this.toast('The selected area is outside this layer.'); return; }
@@ -2877,6 +2880,7 @@ export class Editor {
     if (!s || s.applying) return;
     while (s.running) await s.running;
     if (this.session !== s) return;
+    if (s.live != null) { this.session = null; this.renderDialog(); return this.smartLib?.liveApply(s, this.toolHost()); }
     if (s.showBefore) { s.showBefore = false; this.showResult(s, false); }
     // A setting that only shows something while editing (the clipping warning) is switched off, and Apply runs once more without it.
     const shown = s.def.viewOnly?.filter((k) => s.spec.params?.[k]) ?? [];
@@ -3478,7 +3482,7 @@ export class Editor {
     try {
       const m = this.smartLib ?? (this.smartLib = await import('./smart'));
       m.ensureSmartHooks();
-      if (id) m.runSmart(id, this.toolHost()); else this.renderLayers();
+      if (id) m.runSmart(id, this.toolHost(), this); else this.renderLayers();
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   async fileMore(id: string): Promise<void> {

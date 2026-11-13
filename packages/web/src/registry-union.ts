@@ -11,7 +11,7 @@
 import { addRows, type Row } from './registry';
 
 const SRC = String.raw`
-layer.smart-filters | Effects you can reopen and edit | Live filters | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, smart filters, editable filter, non-destructive filter, reopen effect, change filter later | B1 | Effects & masks > Live effects | U001
+layer.smart-filters | Effects you can reopen and edit | Live filters | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, smart filters, editable filter, non-destructive filter, reopen effect, change filter later | B1 | Effects & masks > Live effects | U001 | R
 raw.white-balance | Fix the colour of the light | White balance (temperature and tint) | Set the scene's light by temperature and tint, or click something grey and let it work out the light. | white balance, temperature, tint, too orange, too blue, grey picker | B6 | Develop RAW > Develop | U002 | R
 raw.local-edits | Edit one area with brush, gradient, range or AI masks | Masking (local adjustments) | Draw an area, or let the AI find one (sky, subject, a colour or brightness range), and give it its own light and colour sliders. | local adjustment, edit one area, brighten only the sky, mask sliders, local edit | B6 | Develop RAW > Edit one area | U003
 ai.generative-fill | Fill a selection by describing it | Generative Fill | Mark an area, type what should be there, and the AI paints it on a new layer, with variations and sliders to tweak the result. | generative fill, fill with words, add something, describe, prompt, ai fill | B8 | AI tools > Make with words | U004

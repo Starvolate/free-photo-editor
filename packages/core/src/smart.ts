@@ -10,12 +10,17 @@ import { SMART, findLayer, type Bitmap, type Doc, type Layer, type SmartLayer } 
 import { homography, mapPoint, quadBounds, quadOfRect, warpBitmap, warpMask, type Placed, type Quad } from './transform';
 import { resizeBitmap } from './imageops';
 import { runJob, type JobSpec } from './jobs';
+import { runEffect } from './fx';
 import type { Rect } from './geometry';
 import type { Command } from './history';
 
-/** Runs one live filter over a picture; the web module passes one that also reaches the lazy effects engine. */
+/** Runs one live filter over a picture. */
 export type FilterRun = (spec: JobSpec, src: Bitmap) => Uint8ClampedArray;
-const plainRun: FilterRun = (spec, src) => runJob(spec, src);
+/** The menu's own engines: the effects engine for `op: 'fx'` (box, motion, lens blur, smart sharpen, …), the job engine for the
+ * rest (smooth blur, sharpen). `runJob` alone throws on 'fx', so Picture size on a layer with a live box blur needs this. */
+export const plainRun: FilterRun = (spec, src) => (spec.op === 'fx' ? runEffect(spec, src) : runJob(spec, src));
+/** How far outside the canvas a smart layer's picture is kept: one canvas size on every side. */
+export const keepArea = (doc: Doc): Rect => { const pad = Math.max(doc.width, doc.height); return { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad }; };
 
 /** The quad as a whole-pixel box when it is upright, not mirrored and lands on whole pixels; otherwise null. */
 export function uprightBox(q: Quad, eps = 1e-3): Rect | null {
@@ -81,8 +86,7 @@ export function rasterizeSmart(l: Layer): Command | null {
 }
 /** Redraw a smart layer after its quad or its filters change, as one undo step. */
 export function updateSmart(doc: Doc, l: Layer, smart: SmartLayer, q: Quad, label: string, run: FilterRun = plainRun): Command | null {
-  const pad = Math.max(doc.width, doc.height), limit = { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad };
-  const r = renderSmart(smart, q, run, limit);
+  const r = renderSmart(smart, q, run, keepArea(doc));
   if (!r) return null;
   const before = smartState(l);
   setState(l, { ...before, ...r.geom, smart: r.smart });
@@ -95,8 +99,7 @@ export function transformSmart(doc: Doc, l: Layer, to: Quad, label = 'Free trans
   const H = homography(quadOfRect({ x: l.x, y: l.y, w: l.width, h: l.height }), to);
   if (!H) return null;
   const q = docQuad(s, l.x, l.y).map((p) => mapPoint(H, p.x, p.y)) as Quad;
-  const pad = Math.max(doc.width, doc.height), limit = { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad };
-  const r = renderSmart(s, q, run, limit);
+  const limit = keepArea(doc), r = renderSmart(s, q, run, limit);
   if (!r) return null;
   const before = smartState(l), mb = l.mask;
   const ma = mb?.linked ? warpMask(mb, { x: l.x, y: l.y, width: l.width, height: l.height }, to, true, limit) : mb;

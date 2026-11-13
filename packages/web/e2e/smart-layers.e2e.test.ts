@@ -126,4 +126,47 @@ suite('Smart layers (headless Chrome)', () => {
     expect(errors).toEqual([]);
     await ctx.close();
   }, 180_000);
+
+  it('a live blur is listed under the layer: its eye, Picture size, reopening and removing all redraw from the original', async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(url);
+    await fresh(p);
+    const orig = await whole(p), { width: W, height: H } = (await st(p)).info;
+    const is = (v: number): Promise<unknown> => p.waitForFunction((x) => { const f = (window as unknown as Win).fpe, s = f.state() as unknown as St;
+      return f.checksum(0, 0, s.info.width, s.info.height) === x; }, v, { timeout: 20_000 });
+    // From a plain layer, "Effects you can reopen and edit" makes it smart and opens Smooth blur as a live filter.
+    await reach(p, 'layer.smart-filters');
+    await p.waitForSelector('[data-testid="adj-apply"]');
+    await p.waitForFunction((o) => { const f = (window as unknown as Win).fpe, s = f.state() as unknown as St; return f.checksum(0, 0, s.info.width, s.info.height) !== o; }, orig, { timeout: 20_000 });
+    await p.click('[data-testid="adj-apply"]');
+    await p.waitForSelector('[data-testid="live-filter"]');
+    expect((await st(p)).layers[0].kind).toBe('smart');
+    expect(await p.textContent('[data-testid="live-filter"]')).toContain('Smooth blur');
+    const blurred = await whole(p);
+    expect(blurred).not.toBe(orig);
+    await p.screenshot({ path: join(OUT, 'smart-live-blur-1440.png') });
+
+    // Its eye: off gives the original exactly, on gives the same blur back.
+    await p.click('[data-testid="live-eye"]');
+    await is(orig);
+    await p.click('[data-testid="live-eye"]');
+    await is(blurred);
+    // Half size and back redraws from the original, so the blur comes back to the same pixels.
+    await pictureSize(p, Math.round(W / 2), Math.round(H / 2));
+    await pictureSize(p, W, H);
+    expect(await whole(p)).toBe(blurred);
+    // Clicking its name reopens the dialog; Cancel keeps the picture as it was.
+    await p.click('[data-testid="live-name"]');
+    await p.waitForSelector('[data-testid="adj-apply"]');
+    await p.click('[data-testid="adj-cancel"]');
+    await is(blurred);
+    // Remove: the row goes and the original is back.
+    await p.click('[data-testid="live-remove"]');
+    await is(orig);
+    expect(await p.locator('[data-testid="live-filter"]').count()).toBe(0);
+    expect(errors).toEqual([]);
+    await ctx.close();
+  }, 180_000);
 });

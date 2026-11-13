@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 452 Ready, 223 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 453 Ready, 222 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-164 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+163 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 232 | 418 | 0 |
-| Ready today | 452 | 25 | 196 | 231 | 0 |
+| Ready today | 453 | 25 | 196 | 232 | 0 |
 
 ## The Task ribbon
 
@@ -307,7 +307,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |
 | layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | Layer › Mask | Effects & masks › Hide parts · More list | Planned | 6 |  |
 | layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text, clipping mask | Layer › Mask | Effects & masks › New · More list | Ready | 2 | Ctrl+Alt+G |
-| layer.smart-convert | Make a smart layer | Keep-original layer | Keep the layer's original pixels safe from resizing; PSD keeps plain pixels. | smart object, convert to smart object | Layer › Smart layer | Effects & masks › Live effects · big button | Ready | 3 |  |
+| layer.smart-convert | Make a smart layer | Keep-original layer | Keep the layer's original pixels safe from resizing; PSD keeps plain pixels. | smart object, convert to smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Ready | 3 |  |
 | layer.smart-edit | Edit the contents | Open the original | Open the original pixels to change them. | edit smart object, edit contents | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
 | layer.smart-replace | Replace the contents | Swap the original | Swap the contents for another picture. | mockup, replace contents | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
 | layer.smart-rasterize | Turn back into pixels | Flatten to pixels | Make the smart layer an ordinary layer. | rasterize, rasterize smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Ready | 3 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (164 Planned, 97 Ready), by home
+## New functions from the feature census (163 Planned, 98 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -600,7 +600,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| layer.smart-filters | U001 | Effects you can reopen and edit | Live filters | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, smart filters, editable filter, non-destructive filter, reopen effect, change filter later | Effects & masks › Live effects · More list | Planned | B1 |
+| layer.smart-filters | U001 | Effects you can reopen and edit | Live filters | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, smart filters, editable filter, non-destructive filter, reopen effect, change filter later | Effects & masks › Live effects · big button | Ready | B1 |
 | layer.transform-mask | U006 | Move or turn a layer without touching pixels | Transform Mask | A mask that moves, rotates, scales or skews a layer non-destructively and can be keyframed. | transform mask, move layer without changing pixels, keyframe move | Effects & masks › Hide parts · More list | Planned | B9 |
 | layer.live-masks | U007 | Mask that is itself a live effect | Live layer masks / compound layer masks | Masks built from several parts or from a live filter, kept editable. | live mask, compound mask, combine masks, mask from filter | Effects & masks › Hide parts · More list | Planned | B9 |
 | layer.mask-edge | U008 | Mask edge and density | Mask refinement (feather, density) | Blur, feather, guided-filter and contrast the mask edge. | mask edge, feather mask, soften mask, mask density | Effects & masks › Hide parts · More list | Planned | B9 |

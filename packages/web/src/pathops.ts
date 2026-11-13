@@ -70,6 +70,8 @@ function pairOf(d: Doc, p: VectorPath): Pair | null {
 function replacePair(d: Doc, k: PathOpsKit, pr: Pair, made: VectorPath[]): void {
   const list = d.paths ?? [], gone = pr.a ? [pr.a, pr.b] : [pr.b], at = Math.min(...gone.map((x) => list.indexOf(x)));
   if (gone.some((x) => x.work)) made[0].work = true;
+  // The first new outline takes the picked one's id, so every try (and every undo back to an earlier try) keeps it picked.
+  made[0].id = pr.b.id;
   d.paths = list.filter((x) => !gone.includes(x));
   d.paths.splice(Math.max(0, at), 0, ...made);
   k.pick(d, made[0].id);

@@ -367,6 +367,9 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     expect(await p.isChecked('[data-testid="size-resample"]'), 'Print resolution opens with Resample off').toBe(false);
     expect(await p.textContent('[data-testid="size-apply"]')).toBe('Set the DPI');
     expect(await p.isDisabled('[data-testid="size-w"]'), 'the pixels are locked').toBe(true);
+    expect(await p.evaluate(() => ['size-w', 'size-h'].map((t) => Number(getComputedStyle(document.querySelector(`[data-testid="${t}"]`) as Element).opacity))
+      .concat(Number(getComputedStyle(document.querySelector('[data-sheet="size"] .fpe-chips .fpe-chip') as Element).opacity))), 'locked boxes and size presets LOOK locked')
+      .toEqual([0.45, 0.45, 0.45]);
     await p.selectOption('[data-testid="size-unit"]', 'in');
     await p.fill('[data-testid="size-pw"]', '2');
     expect(Number(await p.inputValue('[data-testid="size-dpi"]')), '600 pixels across 2 in is 300 DPI').toBe(300);

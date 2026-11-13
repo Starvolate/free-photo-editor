@@ -134,9 +134,40 @@ export function focusMask(px: Pixels, radius = Math.max(2, Math.round(Math.min(p
   for (let i = 0; i < n; i++) if (bin(avg[i]) > t) m.data[i] = 255;
   return m;
 }
+/** A smaller copy whose long side is at most `max`: each pixel is the average of an f by f block (f = 1 keeps the picture). */
+export function shrink(px: Pixels, max = 1536): { px: Pixels; f: number } {
+  const { width: W, height: H, data: s } = px, f = Math.max(1, Math.ceil(Math.max(W, H) / max));
+  if (f === 1) return { px, f };
+  const w = Math.ceil(W / f), hh = Math.ceil(H / f), out = new Uint8ClampedArray(w * hh * 4);
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    let r = 0, gg = 0, b = 0, a = 0, k = 0;
+    for (let yy = y * f; yy < Math.min(H, y * f + f); yy++) for (let xx = x * f; xx < Math.min(W, x * f + f); xx++) {
+      const j = (yy * W + xx) * 4; r += s[j]; gg += s[j + 1]; b += s[j + 2]; a += s[j + 3]; k++;
+    }
+    const i = (y * w + x) * 4; out[i] = r / k; out[i + 1] = gg / k; out[i + 2] = b / k; out[i + 3] = a / k;
+  }
+  return { px: { width: w, height: hh, data: out }, f };
+}
+/** A mask made on a shrunken copy, brought back to the full w by h: each small pixel covers its f by f block. */
+export function growMask(m: Mask, f: number, w: number, hgt: number): Mask {
+  if (m.width === w && m.height === hgt) return m;
+  const data = new Uint8Array(w * hgt);
+  for (let y = 0; y < hgt; y++) {
+    const row = Math.min(m.height - 1, Math.floor(y / f)) * m.width;
+    for (let x = 0; x < w; x++) data[y * w + x] = m.data[row + Math.min(m.width - 1, Math.floor(x / f))];
+  }
+  return { width: w, height: hgt, data };
+}
+/** Select the sharp parts at any picture size: the search runs on a copy no longer than about 1,500 pixels, so a large
+ * photo needs tens of megabytes rather than hundreds, and the mask is scaled back up. */
+export function focusMaskAnySize(px: Pixels, max = 1536): Mask {
+  const s = shrink(px, max);
+  return growMask(focusMask(s.px), s.f, px.width, px.height);
+}
 
 interface Per { guides: Guide[]; markers: Pt[]; notes: Pin[]; ruler: { a: Pt; b: Pt } | null; }
-type Grab = { k: 'oval'; a: Pt; b: Pt; mode: SelMode; round: boolean } | { k: 'ruler' } | { k: 'guide'; g: Guide } | { k: 'marker'; i: number };
+type Grab = { k: 'oval'; a: Pt; b: Pt; mode: SelMode; round: boolean } | { k: 'ruler' } | { k: 'guide'; g: Guide } | { k: 'marker'; i: number }
+  | { k: 'note'; at: Pt };
 export interface ViewKit {
   claims(t: ToolId): boolean;
   busy(): boolean;
@@ -157,7 +188,7 @@ export interface ViewKit {
 export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode, label: string) => void, modeOf: (i: PointerInfo) => SelMode): ViewKit {
   const per = new WeakMap<Doc, Per>();
   const S = { pixelGrid: false, lock: false, snap: false, comp: 0 };
-  let g: Grab | null = null, readout: HTMLElement | null = null;
+  let g: Grab | null = null, readout: HTMLElement | null = null, noteBody: HTMLElement | null = null;
   const doc = (): Doc | null => host.doc();
   const of = (d: Doc): Per => { let x = per.get(d); if (!x) per.set(d, (x = { guides: [], markers: [], notes: [], ruler: null })); return x; };
   const z = (): number => host.view().zoom;
@@ -179,7 +210,7 @@ export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
 
   function openNote(d: Doc, idx: number, at: Pt): void {
     const notes = of(d).notes, n = idx >= 0 ? notes[idx] : null;
-    const text = h('textarea', { rows: 5, class: 'fpe-input', 'data-testid': 'note-text', 'aria-label': 'Note', placeholder: 'Write your note here' });
+    const text = h('textarea', { rows: 5, class: 'fpe-input', 'data-testid': 'note-text', 'aria-label': 'Note', placeholder: 'Write your note here', 'data-autofocus': '' });
     text.value = n?.text ?? '';
     const save = (): void => {
       const t = text.value.trim();
@@ -191,8 +222,10 @@ export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
     const kids: HTMLElement[] = [h('p', { class: 'fpe-note' }, 'Notes stay with this picture while it is open. They are not saved into exported files.'), text,
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'note-save', onclick: save }, 'Save the note')];
     if (n) kids.push(btn('Remove this note', 'note-remove', () => { notes.splice(idx, 1); host.closeSheet(); redraw(); }, 'Take this note off the picture.'));
-    host.sheet('note', n ? `Sticky note ${idx + 1} · Note` : 'New sticky note · Note', h('div', { class: 'fpe-sheet-body' }, ...kids));
-    queueMicrotask(() => text.focus());
+    // The app keeps the body it was first given for a sheet id, so the one body is refilled for each note.
+    noteBody ??= h('div', { class: 'fpe-sheet-body' });
+    noteBody.replaceChildren(...kids);
+    host.sheet('note', n ? `Sticky note ${idx + 1} · Note` : 'New sticky note · Note', noteBody);
   }
 
   function start(p: Pt, i: PointerInfo): void {
@@ -220,7 +253,8 @@ export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
         redraw();
         break;
       }
-      case 'note': { const k = hitPin(o.notes.map((n) => n.at), p, z()); openNote(d, k, p); break; }
+      // The note opens on the lift, as a click does: a sheet opened on the press would cover the canvas before the lift.
+      case 'note': g = { k: 'note', at: p }; break;
       default:
     }
   }
@@ -242,6 +276,7 @@ export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
     g = null;
     if (!d || !q) return;
     const o = of(d);
+    if (q.k === 'note') { host.render(); openNote(d, hitPin(o.notes.map((n) => n.at), q.at, z()), q.at); return; }
     if (q.k === 'oval') {
       const big = Math.abs(q.b.x - q.a.x) * z() >= 2 && Math.abs(q.b.y - q.a.y) * z() >= 2;
       if (big) applyMask(ovalMask(d.width, d.height, q.a, q.b, q.round), q.mode, 'Select an oval');
@@ -376,7 +411,7 @@ export function createViewKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
       }
       case 'select.focus': {
         if (!d) return false;
-        const m = focusMask({ width: d.width, height: d.height, data: compositeDoc(d, docRect(d)) });
+        const m = focusMaskAnySize({ width: d.width, height: d.height, data: compositeDoc(d, docRect(d)) });
         if (!m.data.some((x) => x)) { host.toast('Nothing here is sharper than the rest, so nothing was selected.'); return false; }
         applyMask(m, 'new', 'Select the sharp parts');
         break;

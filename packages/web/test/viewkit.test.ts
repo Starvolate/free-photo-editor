@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { countSelected } from '@free-photoeditor/core';
 import {
-  compositionLines, focusMask, hex, hitGuide, hitPin, lineMask, measure, nextGuide, ovalMask, ovalPoints, pixelGridRange, printZoom, snapPoint,
+  compositionLines, focusMask, focusMaskAnySize, growMask, hex, hitGuide, hitPin, lineMask, measure, nextGuide, ovalMask, ovalPoints, pixelGridRange, printZoom, shrink, snapPoint,
   type Guide,
 } from '../src/viewkit';
 
@@ -113,5 +113,27 @@ describe('Select the sharp parts (focus area)', () => {
   });
   it('selects nothing in a flat picture', () => {
     expect(countSelected(focusMask({ width: 20, height: 20, data: new Uint8ClampedArray(1600).fill(90) }))).toBe(0);
+  });
+  it('averages blocks when it shrinks a picture and repeats pixels when it grows a mask', () => {
+    const grey = [0, 0, 0, 255, 100, 100, 100, 255, 10, 20, 30, 255, 10, 20, 30, 255];
+    const px = { width: 4, height: 2, data: new Uint8ClampedArray([...grey, ...grey]) }, s = shrink(px, 2);
+    expect(s.f).toBe(2);
+    expect([s.px.width, s.px.height, ...s.px.data]).toEqual([2, 1, 50, 50, 50, 255, 10, 20, 30, 255]);
+    expect(shrink(px, 4)).toEqual({ px, f: 1 });
+    expect([...growMask({ width: 2, height: 1, data: new Uint8Array([255, 0]) }, 2, 4, 2).data]).toEqual([255, 255, 0, 0, 255, 255, 0, 0]);
+  });
+  it('searches a large picture on a shrunken copy and gives a full-size mask', () => {
+    const w = 600, hgt = 400, data = new Uint8ClampedArray(w * hgt * 4);
+    for (let y = 0; y < hgt; y++) for (let x = 0; x < w; x++) {
+      const v = x < w / 2 ? ((x >> 3) + (y >> 3)) % 2 ? 230 : 25 : 128 + Math.round((x - w / 2) / 20);
+      data.set([v, v, v, 255], (y * w + x) * 4);
+    }
+    expect(shrink({ width: w, height: hgt, data }, 150).f).toBe(4);
+    const m = focusMaskAnySize({ width: w, height: hgt, data }, 150);
+    expect([m.width, m.height]).toEqual([w, hgt]);
+    let left = 0, right = 0;
+    for (let y = 0; y < hgt; y++) for (let x = 0; x < w; x++) if (m.data[y * w + x]) { if (x < w / 2 - 24) left++; else if (x >= w / 2 + 24) right++; }
+    expect(left / ((w / 2 - 24) * hgt)).toBeGreaterThan(0.9);
+    expect(right).toBe(0);
   });
 });

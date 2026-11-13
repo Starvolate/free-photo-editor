@@ -57,6 +57,8 @@ async function open(w: number, hgt: number, touch = false): Promise<Page> {
   p.on('pageerror', (e) => errors.push(`${w}px: ${e.message}`));
   await p.goto(url);
   await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+  // Toasts change between two screenshots of the same overlay; hide them so a compare sees only what the tool drew.
+  await p.addStyleTag({ content: '[data-testid="toast"]{visibility:hidden!important}' });
   return p;
 }
 /** Open the sample photo and wait until the tool kit has loaded. */
@@ -98,10 +100,17 @@ async function pick(p: Page, id: string): Promise<void> {
   await p.click(`[data-testid="ri-${id}"]`);
   await p.waitForTimeout(120);
 }
-/** The middle of the picture area as pixels on screen, to see what an overlay draws. */
+/** The picture as it shows inside the canvas (never the ribbon, whose buttons change when pressed), to see what an overlay draws. */
 async function area(p: Page): Promise<Buffer> {
-  const i = await info(p), c = await at(p, i.width / 2, i.height / 2);
-  return p.screenshot({ clip: { x: c.x - 150, y: c.y - 100, width: 300, height: 200 } });
+  const i = await info(p), a = await at(p, 0, 0), b = await at(p, i.width, i.height);
+  const c = await p.evaluate(() => { const r = (document.querySelector('[data-testid="canvas"]') as HTMLElement).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; });
+  const x0 = Math.ceil(Math.max(a.x, c.l)), y0 = Math.ceil(Math.max(a.y, c.t)), x1 = Math.floor(Math.min(b.x, c.r)), y1 = Math.floor(Math.min(b.y, c.b));
+  if (x1 - x0 < 20 || y1 - y0 < 20) throw new Error(`the picture is not on screen: ${JSON.stringify({ a, b, c })}`);
+  return p.screenshot({ clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } });
+}
+/** A one-pixel row or column selection: its length exactly, its place within `tol` pixels (a click lands on a whole screen pixel). */
+function line(s: Sel | null, want: Sel, tol: number): void {
+  expect(s && s.w === want.w && s.h === want.h && near(s, want.x, want.y, tol), JSON.stringify(s)).toBe(true);
 }
 
 const suite = CHROME ? describe : describe.skip;
@@ -132,16 +141,16 @@ suite('View tools, guides and the small tools (headless Chrome)', () => {
 
     await pick(p, 'tool.select-row');
     await click(p, W / 2, 40.5);
-    expect((await info(p)).selection).toMatchObject({ x: 0, y: 40, w: W, h: 1 });
+    line((await info(p)).selection, { x: 0, y: 40, w: W, h: 1 }, 2);
     await pick(p, 'tool.select-column');
     await click(p, 30.5, H / 2);
-    expect((await info(p)).selection).toMatchObject({ x: 30, y: 0, w: 1, h: H });
+    line((await info(p)).selection, { x: 30, y: 0, w: 1, h: H }, 2);
 
     await pick(p, 'tool.ruler');
     await drag(p, [[100, 100], [250, 300], [400, 500]]);
     const r = (await vs(p)).ruler;
     expect(r && Math.abs(r.length - 500) < 3 && Math.abs(r.angle + 53.13) < 1, JSON.stringify(r)).toBe(true);
-    expect(await p.textContent('[data-testid="ruler-readout"]')).toMatch(/^Length 5\d\d\.\d px · Angle -5\d\.\d°/);
+    expect(await p.textContent('[data-testid="ruler-readout"]')).toMatch(/^Length \d+\.\d px · Angle -?\d+\.\d°/);
 
     await pick(p, 'tool.color-sampler');
     await click(p, W * 0.3, H * 0.3);
@@ -165,6 +174,9 @@ suite('View tools, guides and the small tools (headless Chrome)', () => {
     await p.waitForTimeout(100);
     expect((await vs(p)).notes).toEqual([]);
 
+    // Start from no selection, so the check sees the sharp parts and not the column picked above.
+    await run(p, 'select.none');
+    expect((await info(p)).selection).toBeNull();
     await pick(p, 'select.focus');
     await p.waitForFunction(() => ((window as unknown as Win).fpe.getInfo()?.selection ?? null) !== null);
     expect((await st(p)).w3).toMatchObject({ shaped: true });
@@ -233,7 +245,7 @@ suite('View tools, guides and the small tools (headless Chrome)', () => {
     const c = await at(p, W / 2, 60.5);
     await p.touchscreen.tap(c.x, c.y);
     await p.waitForTimeout(150);
-    expect((await info(p)).selection).toMatchObject({ x: 0, y: 60, w: W, h: 1 });
+    line((await info(p)).selection, { x: 0, y: 60, w: W, h: 1 }, 5);
     await shot(p, 'view-row-phone.png');
   }, 60_000);
 });

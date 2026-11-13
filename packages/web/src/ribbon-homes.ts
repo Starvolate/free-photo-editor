@@ -6,11 +6,17 @@
  * (registry-union.ts) has exactly one home here; registry.test.ts checks it and writes the reach count into
  * docs/function-map.md. Pure data: no DOM, and nothing on today's screen imports it (the ribbon will).
  *
- * Each group lists its ids in screen order: big buttons, then the ones shown on the tab (small buttons or a live-preview
+ * Each group lists its ids in design order: big buttons, then the ones shown on the tab (small buttons or a live-preview
  * gallery), then its More list. A "family" group is a button that opens a family sheet holding its ids; a "button" group
  * is shrunk to one button that opens its list. A group's `again` names the ids it shows again though they live elsewhere
  * (Select the main subject lives in Select & cut out and is shown again on AI tools).
+ *
+ * On screen a group rests as `restOf` says: only Ready commands in its rows, and every Planned one in its More list under
+ * a quiet "Coming" heading (his 18:54 verdict, 13 Nov 2026: a Planned item never sits in a resting row). `spots()`,
+ * `homes()` and `clicks()` follow that, so what the map promises is what the screen shows.
  */
+import { BY_ID } from './registry';
+import { NEW_ROWS } from './registry-union';
 
 /** How a group shows its commands on the tab. */
 export type Show = 'small' | 'gallery' | 'button' | 'family' | 'none';
@@ -166,6 +172,25 @@ export const CONTEXTUAL: Contextual[] = [
   { plain: 'Smart layer', pro: 'Smart object', when: 'a smart layer', ids: words('layer.smart-filters layer.smart-edit layer.smart-replace') },
 ];
 
+const UNION = new Map(NEW_ROWS.map((r) => [r.id, r]));
+/** Ready in the map (registry.ts) or among the new rows (registry-union.ts), wherever the row is. */
+export const isReady = (id: string): boolean => (BY_ID.get(id) ?? UNION.get(id))?.status === 'ready';
+/** A group as it rests on screen. */
+export interface Rest { big: string[]; shown: string[]; more: string[]; coming: string[]; }
+/**
+ * Only Ready commands sit in a group's rows. The places its Planned ones leave are filled, in order, with Ready ones from
+ * its More list (as big buttons in a group of big buttons only, else as small buttons or tiles), so a row never grows.
+ * Every Planned command goes to the end of the More list, under the "Coming" heading. A group with nothing Ready at all
+ * shows one small "Coming soon" tile that opens that list (ribbon.ts).
+ */
+export function restOf(gr: Group, ready: (id: string) => boolean = isReady): Rest {
+  const big = gr.big.filter(ready), shown = gr.shown.filter(ready), more = gr.more.filter(ready);
+  const coming = [...gr.big, ...gr.shown, ...gr.more].filter((id) => !ready(id));
+  const into = gr.show === 'none' ? big : shown;
+  for (let free = gr.big.length + gr.shown.length - big.length - shown.length; free > 0 && more.length; free--) into.push(more.shift() as string);
+  return { big, shown, more, coming };
+}
+
 /** Where a command lives "Always on screen" when it has no tab or sheet. */
 export const ALWAYS_TAB = 'Always on screen';
 
@@ -173,8 +198,8 @@ export const ALWAYS_TAB = 'Always on screen';
 export function spots(): Spot[] {
   const out: Spot[] = [];
   for (const t of TABS) for (const gr of t.groups) {
-    const shown: Place = gr.show === 'gallery' ? 'gallery' : 'small', rest: Place = gr.show === 'family' ? 'family' : 'more';
-    for (const [list, place] of [[gr.big, 'big'], [gr.shown, shown], [gr.more, rest]] as [string[], Place][]) {
+    const shown: Place = gr.show === 'gallery' ? 'gallery' : 'small', rest: Place = gr.show === 'family' ? 'family' : 'more', r = restOf(gr);
+    for (const [list, place] of [[r.big, 'big'], [r.shown, shown], [[...r.more, ...r.coming], rest]] as [string[], Place][]) {
       for (const id of list) out.push({ id, tab: t.plain, group: gr.plain, place, again: gr.again.includes(id) });
     }
   }
@@ -190,7 +215,7 @@ export function homes(): Map<string, Home> {
   return m;
 }
 
-/** The commands a tab shows at rest, before any More list or family sheet is opened: its big buttons, small buttons and gallery tiles. */
+/** The commands a tab is designed to show at rest (its big buttons, small buttons and gallery tiles) before `restOf` moves its Planned ones to More. */
 export const restingIds = (t: Tab): string[] => t.groups.flatMap((gr) => [...gr.big, ...gr.shown]);
 
 /**

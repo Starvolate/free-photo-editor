@@ -112,6 +112,8 @@
 .fpe-start-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .fpe-start-actions .fpe-btn{height:40px;padding:0 16px}
 .fpe-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;width:min(880px,100%)}
+.fpe[data-layout=desktop] .fpe-start:not(.fpe-start-modal){gap:16px;padding-top:40px}
+.fpe[data-layout=desktop] .fpe-start:not(.fpe-start-modal) .fpe-jobs{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .fpe-job{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-align:left;cursor:pointer}
 .fpe-job:hover{background:var(--hover)}
 .fpe-job[aria-disabled=true]:hover{background:var(--panel)}

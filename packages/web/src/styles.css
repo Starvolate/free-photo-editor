@@ -433,3 +433,11 @@
 .fpe-chain{width:22px;min-width:22px}
 .fpe-mask-head{font-weight:600;margin:8px 0 2px}
 .fpe-mask-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+/* W6 S1 phones: the mask controls are 44 px targets in 56 px rows; the layer actions sheet */
+.fpe[data-layout=phone] .fpe-layer{min-height:56px}
+.fpe[data-layout=phone] .fpe-thumb-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+.fpe[data-layout=phone] .fpe-thumb-btn canvas,.fpe[data-layout=phone] .fpe-layer-thumb{width:40px;height:40px}
+.fpe[data-layout=phone] .fpe-chain{flex:none;width:44px;min-width:44px;height:44px}
+.fpe-sheet-list{display:flex;flex-direction:column;gap:2px}
+.fpe-sheet-item{justify-content:space-between;width:100%;min-height:44px;text-align:left}
+.fpe-sheet-item[aria-disabled=true]{color:var(--muted);cursor:default}

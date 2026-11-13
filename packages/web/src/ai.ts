@@ -11,7 +11,7 @@
 import { AiClient, Cancelled, blendFill, cannotRun, contextBox, downloadSize, estimateSeconds, extrapolateSeconds, fillOnly, mb, minutesText, timeVerdict, type ModelId, type Progress } from '@free-photoeditor/ai';
 import {
   activeLayer, addLayer, compositeDoc, createLayer, docCommand, docRect, expandMask, featherMask, maskBounds, maskFromSelection, pixelCommand, readRegion,
-  resizeBitmap, selectionFromMask, snapshotDoc, writeRegion, type Command, type Doc, type Mask, type Rect, type Selection,
+  resizeBitmap, resizeMask, selectionFromMask, snapshotDoc, writeRegion, type Command, type Doc, type Mask, type Rect, type Selection,
 } from '@free-photoeditor/core';
 import { errText, h } from './dom';
 import { maxPixelsForDevice } from './io';
@@ -186,7 +186,9 @@ export function createAiKit(host: ToolHost): AiKit {
       let done = 0, timed = false;
       for (let k = 0; k < after.layers.length; k++) {
         const l = after.layers[k], nw = l.width * f, nh = l.height * f;
-        if (l.content) { after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: nw, height: nh, data: resizeBitmap(l, nw, nh, 'smooth') }; continue; }
+        // A mask grows with its layer, the way Picture size redraws it.
+        const mask = l.mask ? { mask: resizeMask(l.mask, f, f) } : {};
+        if (l.content) { after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: nw, height: nh, data: resizeBitmap(l, nw, nh, 'smooth'), ...mask }; continue; }
         const big = await client.upscale({ width: l.width, height: l.height, data: l.data.slice() }, f, (p) => {
           const at = done * p.total + p.done, all = total * p.total;
           if (!timed && p.stage === 'work' && at > 0) {
@@ -199,7 +201,7 @@ export function createAiKit(host: ToolHost): AiKit {
           }
           progress({ stage: 'work', done: at, total: all });
         });
-        after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: big.width, height: big.height, data: big.data };
+        after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: big.width, height: big.height, data: big.data, ...mask };
         done++;
       }
       if (!same(d, W, H)) { toast(CHANGED); return; }
@@ -218,7 +220,10 @@ export function createAiKit(host: ToolHost): AiKit {
 
   /** Fill the masked area from its surroundings. One visible layer is changed in place; otherwise the fill goes on a new top layer. */
   async function fill(d: Doc, mask: Mask, title: string): Promise<void> {
-    const W = d.width, H = d.height, hole = expandMask(mask, 3), b = maskBounds(hole, 1);
+    const W = d.width, H = d.height, hole = expandMask(mask, 3), b = maskBounds(hole, 1), a = activeLayer(d);
+    // Painting on a mask: removing changes pixels only, so it refuses in plain words before any AI work (text, shape and
+    // locked layers keep their fill on a new layer).
+    if (a?.mask && !a.content && !a.locked && !host.editable(a, true)) return;
     if (!b) { toast('Paint over what you want gone first.'); return; }
     const r: Rect = contextBox(b, W, H);
     await job('inpaint', title, '', async () => {

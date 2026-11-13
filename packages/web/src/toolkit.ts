@@ -237,7 +237,7 @@ export function createToolKit(host: ToolHost): ToolKit {
   };
   function target(): Layer | null {
     const d = doc(), l = d ? activeLayer(d) : undefined;
-    if (!d || !l || !host.editable(l)) return null;
+    if (!d || !l || !host.editable(l, true)) return null;
     if (!l.visible) { host.toast('This layer is hidden. Show it to change it.'); return null; }
     return l;
   }
@@ -622,6 +622,8 @@ export function createToolKit(host: ToolHost): ToolKit {
     const o = { color: fgc(), tolerance: S.tolerance, contiguous: S.contiguous, allLayers: S.allLayers, opacity: S.bucketOpacity };
     const why = l.locked ? 'is locked' : !l.visible ? 'is hidden' : l.content?.kind === 'text' ? 'is a text layer' : l.content ? 'is a shape layer' : '';
     if (!why) {
+      // The layer is unlocked, shown and plain pixels, so editable() can only refuse here: the mask is the target.
+      if (!host.editable(l, true)) return;
       const cmd = bucketFill(d, l, x, y, o);
       if (cmd) host.push(cmd, true); else host.toast('Nothing to fill there.');
       return;
@@ -727,6 +729,10 @@ export function createToolKit(host: ToolHost): ToolKit {
     switch (t) {
       case 'remove': {
         if (rm?.busy) { host.toast('Wait a moment: the last removal is still working.'); return; }
+        // Removing changes pixels only: while the mask is the target it refuses before any painting (text, shape and locked
+        // layers keep their fill on a new layer).
+        const al = activeLayer(d);
+        if (al?.mask && !al.content && !al.locked && !host.editable(al, true)) return;
         const cv = document.createElement('canvas');
         cv.width = d.width;
         cv.height = d.height;

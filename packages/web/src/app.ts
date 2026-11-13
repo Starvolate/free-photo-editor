@@ -277,6 +277,8 @@ export class Editor {
   private modal: string | null = null;
   private modalReturn: HTMLElement | null = null;
   private popover: HTMLElement | null = null;
+  /** The body of the layer actions sheet (phones and tablets), refilled on each long press. */
+  private layerActBody: HTMLElement | null = null;
   private session: Session | null = null;
   /** Per tab (each has its own History): the step the history brush paints back, by id; none means as opened. */
   private marks = new WeakMap<History, number>();
@@ -1930,13 +1932,16 @@ export class Editor {
     if (!d) { list.append(h('li', { class: 'fpe-note' }, 'Open or create a picture to see its layers.')); return; }
     for (let i = d.layers.length - 1; i >= 0; i--) {
       const l = d.layers[i], on = l.id === d.activeId;
-      list.append(h('li', { class: 'fpe-layer', 'data-testid': 'layer-row', 'data-name': l.name, 'aria-current': on ? 'true' : 'false' },
+      const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name', 'aria-label': `Layer ${l.name}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
+        'data-help-title': 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
+        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') }, h('span', {}, l.name));
+      this.longPress(nameBtn, () => this.layerActions(l.id));
+      list.append(h('li', { class: 'fpe-layer', 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id, 'aria-current': on ? 'true' : 'false' },
         h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn', 'aria-pressed': String(l.visible), 'aria-label': (l.visible ? 'Hide ' : 'Show ') + l.name,
           'data-help-title': l.visible ? 'Hide this layer' : 'Show this layer', 'data-help': 'The eye shows or hides a layer without deleting it.', 'data-testid': 'layer-eye',
           onclick: () => this.toggleVisible(l.id) }, icon(l.visible ? 'eye' : 'eye-off')),
         ...this.layerThumbs(l, on),
-        h('button', { type: 'button', class: 'fpe-btn fpe-layer-name', 'aria-label': `Layer ${l.name}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
-          'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') }, h('span', {}, l.name)),
+        nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
     }
     const a = activeLayer(d);
@@ -1999,6 +2004,38 @@ export class Editor {
         onclick: (ev: Event) => { if ((ev as MouseEvent).shiftKey) { if (this.doc?.activeId !== l.id) this.selectLayer(l.id); this.maskAction('toggle'); } else this.targetMask(l.id, true); } },
       h('canvas', { width: 80, height: 80, 'data-mask-thumb': l.id, 'aria-hidden': 'true' })),
     ];
+  }
+  /**
+   * A layer row's actions (design 6, phones): a bottom sheet on phones and tablets after a long press, a small menu on a
+   * desktop after a right-click. Rows still Planned show visibly disabled with the Planned tag.
+   */
+  private layerActions(id: string): void {
+    const d = this.doc, l = d ? findLayer(d, id) : undefined;
+    if (!d || !l) return;
+    if (d.activeId !== id) this.selectLayer(id);
+    const m = l.mask;
+    const items: [string, string][] = [
+      ['layer.mask-add', 'Add a mask'], ['layer.mask-toggle', m && !m.enabled ? 'Switch the mask on' : 'Switch the mask off'],
+      ['layer.mask-link', m && !m.linked ? 'Link the mask' : 'Unlink the mask'], ['layer.clip', 'Clip to the layer below'],
+      ['layer.fx-shadow', 'Effects…'], ['layer.new-group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'], ['layer.delete', 'Delete'],
+    ];
+    const rows = items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => {
+      const planned = BY_ID.get(cmd)?.status !== 'ready';
+      return { cmd, label, planned, off: planned || !this.isEnabled(cmd) };
+    });
+    if (this.layout === 'desktop') {
+      const at = this.layerList?.querySelector<HTMLElement>(`[data-id="${id}"] [data-testid="layer-select"]`);
+      if (at) this.showPopover(rows.map((r) => ({ label: r.planned ? `${r.label} · Planned` : r.label, cmd: r.cmd, disabled: r.off, run: () => void this.run(r.cmd) })), at);
+      return;
+    }
+    const body = this.layerActBody ?? (this.layerActBody = h('div', { class: 'fpe-sheet-list', role: 'menu', 'aria-label': 'Layer actions' }));
+    body.replaceChildren(...rows.map((r) => {
+      const b = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-sheet-item', role: 'menuitem', 'data-tipcmd': r.cmd, 'data-testid': 'layer-action-' + r.cmd.slice(6),
+        'aria-disabled': r.off ? 'true' : null }, h('span', { class: 'fpe-btn-text' }, r.label), r.planned ? this.tag() : null);
+      b.addEventListener('click', () => { if (r.off) return; this.closeModal(); void this.run(r.cmd); });
+      return b;
+    }));
+    this.toolSheet('layer-actions', `Layer ${l.name}`, body);
   }
   /** Mask thumbnails in grey: the canvas area of each mask, scaled down. */
   private drawMaskThumbs(): void {

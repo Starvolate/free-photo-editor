@@ -1068,7 +1068,9 @@ export class Editor {
         : 'Pick a job and the editor opens the right tool, then shows you where it lives. Or open a photo, drop one here, or paste one.'),
       modal ? null : h('div', { class: 'fpe-start-actions' }, btn('file.open', 'open', 'Open a photo', true, 'start-open'),
         btn('file.sample', 'image', 'Try a sample photo', false, 'start-sample'), btn('file.new', 'file-plus', 'New blank picture', false, 'start-new')),
-      jobs, modal ? null : h('p', { class: 'fpe-fine' }, 'Your pictures stay on this device. Nothing is uploaded.'));
+      jobs, modal ? null : h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-start-all', 'data-testid': 'start-all', onclick: () => this.openModal('start') },
+        `See all ${JOBS.length} jobs`),
+      modal ? null : h('p', { class: 'fpe-fine' }, 'Your pictures stay on this device. Nothing is uploaded.'));
   }
   showStart(): void { if (this.doc) this.openModal('start'); else this.startEl.querySelector<HTMLElement>('.fpe-job')?.focus(); }
   private async runJob(j: Job): Promise<void> {

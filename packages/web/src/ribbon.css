@@ -67,6 +67,8 @@
 .fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rmore{width:40px}
 .fpe-rbody[data-fit="1"] .fpe-rbig{max-width:104px}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig{max-width:92px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) :is(.fpe-rgal,.fpe-rfamrow){gap:4px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rsmalls{column-gap:4px}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig:not(.fpe-rgroupbtn) .fpe-pro{display:none}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile{width:72px;min-width:72px}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile .fpe-rico{height:30px}

@@ -222,8 +222,14 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     }
     expect(grey, 'greyed on the ribbon with no picture').toEqual([]);
     const need = await p.$eval('[data-testid="ribbon-body"] [data-cmd][aria-disabled="true"]', (e) => e.getAttribute('data-testid') ?? '');
-    await p.click(`[data-testid="${need}"]`);
+    // It still says aria-disabled to a screen reader (it cannot run yet), so Playwright's click would wait: click it as a person's click does.
+    await p.$eval(`[data-testid="${need}"]`, (el) => (el as HTMLElement).click());
     expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid')), `${need} brings "Open a photo" forward`).toBe('start-open');
+    // Every job is still one click away: "See all 16 jobs" opens the full list.
+    await p.click('[data-testid="start-all"]');
+    await p.waitForSelector('[data-testid="start-modal"]');
+    expect(await p.locator('[data-testid="start-modal"] .fpe-job').count()).toBeGreaterThan(8);
+    await p.keyboard.press('Escape');
     expect(await p.locator('[data-testid="doc-tab"]').count(), 'and opens nothing by itself').toBe(0);
     // With a picture: the tool chip shows, Export works, and the gallery tiles preview their effect on the picture.
     await rest(p);

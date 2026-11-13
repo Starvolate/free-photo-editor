@@ -33,7 +33,9 @@ import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS,
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
-import { addFolder, addNode, bandRows, createAdjustLayer, createFillLayer, SLICE_PX, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
+import { addFolder, addNode, hasLayerFx, hasPixels, layerFxReach, layerFxReady, layerPixelsChanged, skipMissingLayerFx, bandRows, createAdjustLayer, createFillLayer, SLICE_PX, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
+// The screen may draw a layer without its effects for the moment the effects module takes to load (design 6).
+skipMissingLayerFx(true);
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -1381,6 +1383,9 @@ export class Editor {
   // ---------- rendering ----------
   private markDirty(r: Rect | null): void {
     if (!r || !this.doc) return;
+    let R = 0;
+    for (const l of this.doc.layers) R = Math.max(R, layerFxReach(l));
+    if (R) r = { x: r.x - R, y: r.y - R, w: r.w + 2 * R, h: r.h + 2 * R }; // effects reach past the changed pixels
     const c = intersect(r, docRect(this.doc));
     if (c) this.dirty = union(this.dirty, c);
     this.queueNav();
@@ -1410,6 +1415,7 @@ export class Editor {
       this.dirty = docRect(d);
       this.pend = [];
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; this.pend = []; }
+    if (d && !layerFxReady() && d.layers.some(hasLayerFx)) void this.layerFx();
     if (d && this.dirty) {
       const r = this.dirty;
       this.dirty = null;
@@ -1986,6 +1992,7 @@ export class Editor {
   private pushCmd(cmd: Command | null, all = false): void {
     if (!cmd) return;
     this.history.push(cmd);
+    layerPixelsChanged();
     if (all) this.markAll();
     this.afterEdit();
   }
@@ -2027,6 +2034,7 @@ export class Editor {
     this.toast('Back to the opened version. Redo brings your changes back.');
   }
   private afterHistory(): void {
+    layerPixelsChanged();
     const d = this.doc;
     const resized = !!d && (d.width !== this.rendW || d.height !== this.rendH);
     this.markAll();
@@ -2127,7 +2135,7 @@ export class Editor {
         h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': fa ? 'Pass through lets the layers inside mix with everything below. Any other choice first makes the folder one picture, then mixes it.' : 'How this layer mixes with the layers under it. Normal simply covers them.' },
           h('label', { for: id + 'b' }, 'Blend'), blend),
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
-          h('label', { for: id + 'o' }, 'Opacity'), op, opOut));
+          h('label', { for: id + 'o' }, 'Opacity'), op, opOut), ...(hasPixels(a) ? [this.fillRow(a, id)] : []));
       this.layerProps.append(h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
     }
     if (focused) (this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`) ?? this.layerTop.querySelector<HTMLElement>(`[data-testid="${focused}"]`))?.focus({ preventScroll: true });
@@ -2137,7 +2145,9 @@ export class Editor {
   private layerMore(at: HTMLElement): void {
     const items: [string, string][] = [['file.open-layer', 'Add a picture as a layer'], ['layer.forward', 'Move up'], ['layer.backward', 'Move down'],
       ['layer.merge-down', 'Merge down'], ['layer.lock', 'Lock or unlock'], ['layer.group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'],
-      ['layer.new-group', 'New empty folder'], ['layer.clip', 'Clip to the layer below']];
+      ['layer.new-group', 'New empty folder'], ['layer.clip', 'Clip to the layer below'],
+      ['layer.fx-shadow', 'Add a drop shadow'], ['layer.fx-outer-glow', 'Add an outer glow'], ['layer.fx-stroke', 'Add an outline'], ['layer.fx-color', 'Add a colour overlay'],
+      ['layer.fx-gradient', 'Add a gradient overlay'], ['layer.fx-inner-shadow', 'Add an inner shadow'], ['layer.fx-inner-glow', 'Add an inner glow']];
     this.showPopover(items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => ({ label, cmd,
       disabled: BY_ID.get(cmd)?.status !== 'ready' || !this.isEnabled(cmd), run: () => void this.run(cmd) })), at);
   }
@@ -2344,7 +2354,57 @@ export class Editor {
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
       });
     }
+    if (l.fx) {
+      // Layer effects (W6 S4): one section per effect, the adjustments' control renderer, live while dragging; loaded lazily.
+      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'fx-props' });
+      parts.splice(Math.min(parts.length, 4), 0, box);
+      void Promise.all([import('./fxprops'), this.layerFx()]).then(([m]) => {
+        m.renderFxProps(box, { uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
+          live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg) });
+        if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+      });
+    }
     b.append(...parts);
+  }
+  private fillStart: number | null = null;
+  /** Fill, beside Opacity (W6 S4): how solid the layer's own pixels are; its effects stay. One undo step on release. */
+  private fillRow(a: import('@free-photoeditor/core').Layer, id: string): HTMLElement {
+    const v = Math.round((a.fillOpacity ?? 1) * 100);
+    const inp = h('input', { id: id + 'f', type: 'range', min: 0, max: 100, step: 1, value: v, 'data-testid': 'layer-fill' }) as HTMLInputElement;
+    const out = h('output', { class: 'fpe-out', for: id + 'f' }, v + '%');
+    inp.addEventListener('input', () => {
+      if (this.fillStart === null) this.fillStart = a.fillOpacity ?? 1;
+      const f = Number(inp.value) / 100;
+      if (f >= 1) delete a.fillOpacity; else a.fillOpacity = f;
+      out.textContent = inp.value + '%';
+      this.markDirty(layerRect(a));
+      this.requestRender();
+    });
+    inp.addEventListener('change', () => {
+      const from = this.fillStart, to = a.fillOpacity ?? 1;
+      this.fillStart = null;
+      if (from !== null && from !== to) this.pushCmd(propsCommand(a.id, { fillOpacity: from >= 1 ? undefined : from }, { fillOpacity: a.fillOpacity }, 'Layer fill'));
+    });
+    return h('div', { class: 'fpe-row', 'data-help-title': 'Fill', 'data-help': 'Fill: how solid the layer’s own pixels are; effects stay.' }, h('label', { for: id + 'f' }, 'Fill'), inp, out);
+  }
+  private fxMod: Promise<typeof import('@free-photoeditor/core/layerfx')> | null = null;
+  /** The layer effects engine (core/layerfx), loaded on first use; the screen draws again with the effects once it is in. */
+  layerFx(): Promise<typeof import('@free-photoeditor/core/layerfx')> {
+    this.fxMod ??= import('@free-photoeditor/core/layerfx').then((m) => { m.installLayerFx(); this.markAll(); this.requestRender(); return m; });
+    return this.fxMod;
+  }
+  /** Layer › Shadows, glows and outlines: the effect with its starting settings, one undo step, then its settings in Properties. */
+  async addEffect(kind: import('@free-photoeditor/core/layerfx').LayerFxKind): Promise<void> {
+    const a = this.active();
+    if (!this.doc || !a) return this.needDoc();
+    this.cancelSession();
+    const m = await this.layerFx(), t = this.active(), c = parseHex(this.brush.color) ?? BLACK;
+    if (!t || t.id !== a.id) return;
+    // History.push only records the step, so the layer takes its effect here first (as Opacity and Fill do).
+    const fx = t.fx;
+    t.fx = m.addLayerFx(fx, kind, { r: c.r, g: c.g, b: c.b, a: 255 });
+    this.pushCmd(propsCommand(t.id, { fx }, { fx: t.fx }, 'Add ' + kind.replace('-', ' ')), true);
+    this.showPanelTab('properties');
   }
   private renderColor(): void {
     const b = this.colorBody;
@@ -3543,6 +3603,7 @@ export class Editor {
       flatHash: async () => {
         const d = this.doc;
         if (!d) return '';
+        if (d.layers.some(hasLayerFx)) await this.layerFx();
         const dg = await crypto.subtle.digest('SHA-256', compositeDoc(d, docRect(d)) as BufferSource);
         return Array.from(new Uint8Array(dg), (b) => b.toString(16).padStart(2, '0')).join('');
       },

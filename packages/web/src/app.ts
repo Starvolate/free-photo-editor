@@ -1213,11 +1213,17 @@ export class Editor {
   fitBox(r: { x: number; y: number; w: number; h: number }, m: number): void {
     const v = this.view, zb = this.stage.querySelector('.fpe-zoom')?.getBoundingClientRect().height ?? 0;
     const W = this.stage.clientWidth, H = this.stage.clientHeight - (zb ? zb + 10 : 0);
-    const x0 = v.panX + r.x * v.zoom, y0 = v.panY + r.y * v.zoom, x1 = x0 + r.w * v.zoom, y1 = y0 + r.h * v.zoom;
-    if (x0 >= m && y0 >= m && x1 <= W - m && y1 <= H - m) return;
     const z = clamp(Math.min((W - m * 2) / Math.max(1, r.w), (H - m * 2) / Math.max(1, r.h), v.zoom), 0.01, 16);
+    // The smallest move that brings the box and its margin into view; centred on the box only when the view had to zoom out.
+    const shift = (pan: number, a: number, size: number, room: number): number => {
+      if (z !== v.zoom) return Math.round(room / 2 - (a + size / 2) * z);
+      const lo = pan + a * z, hi = lo + size * z;
+      return Math.round(lo < m ? pan + (m - lo) : hi > room - m ? pan - (hi - (room - m)) : pan);
+    };
+    const panX = shift(v.panX, r.x, r.w, W), panY = shift(v.panY, r.y, r.h, H);
+    if (z === v.zoom && panX === v.panX && panY === v.panY) return;
     this.fitted = false;
-    this.setView({ zoom: z, panX: Math.round(W / 2 - (r.x + r.w / 2) * z), panY: Math.round(H / 2 - (r.y + r.h / 2) * z) });
+    this.setView({ zoom: z, panX, panY });
   }
 
   // ---------- rendering ----------
@@ -2759,9 +2765,9 @@ export class Editor {
         return;
       }
     }
-    // No clear spot (a full panel sheet covers the picture): the top of the picture area.
-    t.style.maxWidth = Math.min(560, Math.max(140, st.width - pad * 2)) + 'px';
-    put(st.left + (st.width - t.offsetWidth) / 2, st.top + pad);
+    // No clear spot (a full panel sheet covers the picture): at the very top, over the top bar, as on phones before.
+    t.style.maxWidth = Math.min(560, Math.max(140, hr.width - 32)) + 'px';
+    put(hr.left + (hr.width - t.offsetWidth) / 2, hr.top + 3);
   }
   /** Lets a dialog be dragged by its title bar, so it never has to cover the part of the picture being changed. */
   private dragHead(head: HTMLElement): HTMLElement {

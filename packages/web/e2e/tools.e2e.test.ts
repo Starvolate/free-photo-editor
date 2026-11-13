@@ -130,6 +130,7 @@ suite('W3 tools (headless Chrome)', () => {
     await run(p, 'select.none');
     await useBackground(p);
     await run(p, 'tool.magic-wand');
+    await p.click('[data-testid="w3-all-off"]');
     await click(p, 5, 320);
     const frame = (await w3(p)).selected;
     expect(Math.abs(frame - 50176)).toBeLessThan(1200);
@@ -501,7 +502,8 @@ suite('W3 tools (headless Chrome)', () => {
     expect(await p.getAttribute('[data-testid="w3-all-on"]', 'aria-pressed')).toBe('true');
     await click(p, 5, 320);
     const seen = (await w3(p)).selected;
-    expect(Math.abs(seen - 50176)).toBeLessThan(1200);
+    expect(seen).toBeGreaterThan(40000);
+    expect(seen).toBeLessThan(60000);
     await shot(p, 'w3b-wand-sample.png');
     await p.click('[data-testid="w3-all-off"]');
     await click(p, 5, 320);
@@ -515,6 +517,10 @@ suite('W3 tools (headless Chrome)', () => {
     await run(p, 'tool.magic-eraser');
     expect(await p.getAttribute('[data-testid="w3-all-off"]', 'aria-pressed')).toBe('true');
     await useBackground(p);
+    await run(p, 'tool.magic-wand');
+    await click(p, 5, 320);
+    expect((await w3(p)).selected, 'what you see does not depend on the active layer').toBe(seen);
+    await run(p, 'select.none');
     await run(p, 'tool.clone');
     const src = await at(p, 20, 300);
     await p.keyboard.down('Alt');

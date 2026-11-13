@@ -12,6 +12,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { show } from './ribbon';
 import { addLayer, createDocument, createLayer } from '@free-photoeditor/core';
 import { writePsdDocument } from '@free-photoeditor/core/psd';
 
@@ -172,14 +173,12 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(accepted).toEqual([]);
   }, 400_000);
 
-  it('opens menus, a submenu and an adjustment dialog, by mouse and by keyboard', async () => {
+  it('opens a ribbon tab, a sheet and an adjustment dialog, by mouse and by keyboard', async () => {
     const p = await open(1440, 900);
     await p.click('[data-testid="start-sample"]');
-    await p.click('[data-testid="menu-top-image"]');
-    await p.hover('[data-testid="sub-image-adjustments"]');
-    await p.waitForSelector('[data-testid="mi-image.adj-brightness"]');
+    await show(p, 'image.adj-brightness');
     await p.screenshot({ path: join(OUT, 'w1-desktop-1440-menu.png') });
-    await p.click('[data-testid="mi-image.adj-brightness"]');
+    await p.click('[data-testid="ri-image.adj-brightness"]');
     await p.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
     const steps = (await state(p)).steps as number;
     await p.$eval('[data-testid="adjust-dialog"] input[type=range]', (el) => {
@@ -190,11 +189,15 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.screenshot({ path: join(OUT, 'w1-desktop-1440-adjust.png') });
     await p.click('[data-testid="adj-apply"]');
     await p.waitForFunction((n) => ((window as unknown as Win).fpe.state().steps as number) > n, steps);
-    await p.focus('[data-testid="menu-top-file"]');
-    await p.keyboard.press('ArrowDown');
-    expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? '')).toMatch(/^mi-file\./);
+    await p.focus('[data-testid="rtab-effects-masks"]');
+    await p.keyboard.press('ArrowRight');
+    expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? '')).toBe('rtab-select-cut-out');
+    expect(await p.getAttribute('[data-testid="rtab-select-cut-out"]', 'aria-selected')).toBe('true');
+    await p.focus('[data-testid="rsheet-file"]');
+    await p.keyboard.press('Enter');
+    expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? '')).toMatch(/^ri-file\./);
     await p.keyboard.press('Escape');
-    expect(await p.locator('[data-testid="menu-drop"]').count()).toBe(0);
+    expect(await p.locator('[data-testid="rlist"]').count()).toBe(0);
     await p.hover('[data-testid="tool-move"]');
     await p.waitForSelector('[data-testid="tip"]:not([hidden])');
     expect(((await p.textContent('[data-testid="tip"]')) ?? '').length).toBeGreaterThan(20);

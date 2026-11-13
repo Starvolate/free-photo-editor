@@ -12,6 +12,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { show } from './ribbon';
 
 interface Cmd { id: string; status: string; }
 interface Fpe {
@@ -158,9 +159,7 @@ suite('W2 filters (headless Chrome)', () => {
     expect(await job.count()).toBe(1);
     expect(await job.getAttribute('aria-disabled')).toBeNull();
     await prepare(p);
-    await p.click('[data-testid="menu-top-filter"]');
-    await p.hover('[data-testid="sub-filter-blur"]');
-    await p.waitForSelector('[data-testid="mi-filter.blur-motion"]');
+    await show(p, 'filter.blur-motion');
     await p.screenshot({ path: join(OUT, 'w2-filter-menu-1440.png') });
     await p.keyboard.press('Escape');
     // The dialog sits over the right of the picture, so the shots and the iris spot use the left half, in full view.

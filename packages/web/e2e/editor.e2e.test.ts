@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { reach } from './ribbon';
 import { AUTHOR_URL, CREDIT, SOURCE_URL, addLayer, createDocument, createLayer, readJpegSoftware, readJpegXmp, readPngText, webpInfo } from '@free-photoeditor/core';
 import { readPsdDocument, writePsdDocument } from '@free-photoeditor/core/psd';
 
@@ -128,12 +129,6 @@ async function exportAs(p: Page, format: string): Promise<{ bytes: Buffer; name:
   await p.click('[data-testid="btn-export"]');
   await p.click(`[data-testid="export-format-${format}"]`);
   return download(p);
-}
-/** Opens a top menu, a submenu if given, and runs the item: the way a person reaches a command on a desktop. */
-async function menu(p: Page, top: string, item: string, sub?: string): Promise<void> {
-  await p.click(`[data-testid="menu-top-${top}"]`);
-  if (sub) await p.hover(`[data-testid="sub-${sub}"]`);
-  await p.click(`[data-testid="mi-${item}"]`);
 }
 async function drag(p: Page, from: [number, number], to: [number, number]): Promise<void> {
   const a = await toClient(p, ...from), b = await toClient(p, ...to);
@@ -313,7 +308,7 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     const brand = page.locator('[data-testid="brand"]');
     expect(await brand.textContent()).toContain('by Bhawesh Tibrewal');
     expect(await brand.getAttribute('href')).toBe(AUTHOR_URL);
-    await menu(page, 'help', 'help.about');
+    await reach(page, 'help.about');
     const about = page.locator('[data-testid="about"]');
     await about.waitFor({ state: 'visible' });
     const text = (await about.textContent()) ?? '';
@@ -348,7 +343,7 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
   });
 
   it('makes a new picture from the File menu; a selection limits delete and paint; eyedropper, move layer and crop', async () => {
-    await menu(page, 'file', 'file.new');
+    await reach(page, 'file.new');
     await page.locator('[data-testid="new-width"]').fill('200');
     await page.locator('[data-testid="new-height"]').fill('150');
     await page.click('[data-testid="new-create"]');
@@ -369,7 +364,7 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     await expect.poll(async () => near(await sample(page, 50, 40), [228, 87, 46, 255], 8), { message: 'painted inside the selection' }).toBe(true);
     expect(await sample(page, 120, 40), 'untouched outside the selection').toEqual([255, 255, 255, 255]);
 
-    await page.click('[data-testid="tool-measure"]');
+    await reach(page, 'tool.eyedropper');
     expect((await info(page))?.tool).toBe('eyedropper');
     const white = await toClient(page, 120, 40);
     await page.mouse.click(white.x, white.y);
@@ -466,11 +461,11 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     });
     expect(await ratio(), 'dark look').toBeGreaterThanOrEqual(4.5);
-    await menu(page, 'edit', 'edit.pref-theme', 'edit-settings');
+    await reach(page, 'edit.pref-theme');
     await expect.poll(() => page.getAttribute('.fpe', 'data-theme')).toBe('light');
     expect(await ratio(), 'light look').toBeGreaterThanOrEqual(4.5);
     await page.screenshot({ path: join(OUT, 'editor-1440-light.png') });
-    await menu(page, 'edit', 'edit.pref-theme', 'edit-settings');
+    await reach(page, 'edit.pref-theme');
     await expect.poll(() => page.getAttribute('.fpe', 'data-theme')).toBe('dark');
   });
 

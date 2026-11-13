@@ -19,6 +19,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page, type Request } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { show } from './ribbon';
 
 interface Info { width: number; height: number; layers: { name: string; visible: boolean }[]; }
 interface Fpe {
@@ -154,11 +155,10 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
       expect(await page.getAttribute('[data-testid="start"] [data-testid="job-remove-the-background"]', 'aria-disabled')).toBe('true');
       await page.screenshot({ path: join(OUT, 'w11-planned-start.png') });
       await freshSample();
-      await page.click('[data-testid="menu-top-select"]');
-      await page.waitForSelector('[data-testid="mi-select.subject"]');
+      await show(page, 'select.subject');
+      expect(await page.getAttribute('[data-testid="ri-select.subject"]', 'aria-disabled')).toBe('true');
+      expect(await page.textContent('[data-testid="ri-select.subject"]')).toContain('Planned');
       await page.screenshot({ path: join(OUT, 'w11-planned-select-menu.png') });
-      await page.keyboard.press('Escape');
-      if (await page.locator('[data-testid="menu-drop"]').count()) await page.click('[data-testid="menu-top-select"]');
       expect(await page.evaluate(() => (window as unknown as Win).fpe.run('select.subject'))).toBe(false);
       expect(await page.textContent('[data-testid="toast"]')).toContain('planned');
     } finally { await cleanUp(); }

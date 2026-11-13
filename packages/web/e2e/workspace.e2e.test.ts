@@ -46,8 +46,16 @@ const PREP: Record<string, string[]> = {
   'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
   // An outline from the box over the sun, then nothing selected, so the selection made from the outline is a visible change.
   'select.from-path': ['select.to-path', 'select.none'],
+  // Shapes & text: an outline round the box over the sun; combining adds a second from everything else (a frame with a hole).
+  'path.boolean': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.combine': ['select.to-path', 'select.inverse', 'select.to-path'],
+  'path.offset': ['select.to-path'], 'path.mirror': ['select.to-path'], 'path.rotate-copies': ['select.to-path'], 'path.roughen': ['select.to-path'],
+  // Shapes & text, part 2: two outlines (the box, then a frame with a hole) or one outline round the box.
+  'path.divide': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.stitch': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.interpolate': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.pattern-along': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.bend': ['select.to-path', 'select.inverse', 'select.to-path'],
+  'path.hatches': ['select.to-path'], 'path.power-stroke': ['select.to-path'], 'path.stroke-style': ['select.to-path'],
   // A guide line first, so removing the guides is a visible change.
   'view.guide-clear': ['view.guide-new'],
+  // A light and colour layer first, so its .cube file can be saved.
+  'image.export-lut': ['layer.adj-invert'],
   // A second layer, so reversing the order is a visible change.
   'layer.reverse': ['layer.new'],
   // The sun merged in, a copy of the photo, and the copy moved 100 px down (its top to the box's): Line up puts it back.

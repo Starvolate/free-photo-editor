@@ -35,6 +35,8 @@ export interface AdjDef {
   op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field' | 'spot';
   /** Draws the controls itself instead of the plain list. */ sheet?: (api: SheetApi) => Node[];
   /** Settings that only change what the preview shows (the clipping warning): Apply runs again with them off. */ viewOnly?: readonly string[];
+  /** A live line under the help, worked out from the settings and the area's pixels as they were (the readable-text check). */
+  info?: (p: Readonly<Record<string, number | undefined>>, area: Uint8ClampedArray) => string;
 }
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
@@ -395,6 +397,11 @@ for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.con
 // Wave 4: outlines (pen.ts). The Paths panel sits in the Layers card, so it is not one of the dock's own tabs.
 HANDLERS['select.from-path'] = w3('select.from-path', (e) => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1)));
 HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
+// Shapes & text path operations: the pen kit loads their file (pathops.ts) on first use.
+const hasPath = (e: Editor): boolean => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1));
+for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen',
+  'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']) HANDLERS[id] = w3(id, hasPath);
+HANDLERS['shape.spiral-star'] = w3('shape.spiral-star');
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
@@ -422,6 +429,12 @@ for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-
 export const BATCH2_IDS = ('filter.kaleidoscope filter.alien-map filter.bloom filter.edge-detect filter.deinterlace filter.destripe filter.video-degrade '
   + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias').split(' ');
 for (const id of BATCH2_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
+// The light and colour batch (13 Nov 2026): dialogs in light-more.ts, loaded on first use; the .cube file needs a light and colour layer.
+export const LIGHT_IDS = ('image.hue-chroma image.rotate-colours image.colour-contrast image.local-threshold image.retinex image.tone-mapping '
+  + 'image.harmonize image.palette-edit image.gamut-warning').split(' ');
+for (const id of LIGHT_IDS) HANDLERS[id] = H(async (e) => { await import('./light-more'); return e.openAdjust(id); });
+HANDLERS['image.export-lut'] = H(async (e) => (await import('./light-more')).exportLut(e), (e) => !!e.doc?.layers.some((l) => l.kind === 'adjust' && l.visible));
+HANDLERS['image.decompose'] = H((e) => e.decompose(), (e) => { const a = e.active(); return !!a && hasPixels(a); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));

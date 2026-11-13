@@ -3,6 +3,8 @@
 /**
  * Line up layers automatically (Auto-align layers): find the same points in two pictures of one scene, work out the map
  * between them, and move or turn every other shown picture layer onto the bottom one, as one undo step.
+ * Also Stitch a panorama (Photomerge) and Blend photos automatically (Auto-blend layers): the same matching, then a mask on
+ * each upper photo that fades it into the ones below along the middle of their overlap.
  * Loaded only by automate.ts (as '@free-photoeditor/core/align'), never from the core barrel, so the first screen stays small.
  *
  * Steps: grey and shrink to at most 1024 px (box average, then a light blur); Harris corners (Sobel, a 5 × 5 window, k 0.04,
@@ -12,10 +14,10 @@
  * best; RANSAC with a seeded generator for a shift (1 point), a shift and turn (2 points) and a perspective map (4 points),
  * each refitted by least squares on the points that agree; then the simplest map that explains nearly as many points.
  */
-import { findLayer, hasPixels, isFolder, layerRect, type Bitmap, type Doc, type Layer } from './document';
-import type { Command } from './history';
+import { findLayer, hasPixels, isFolder, layerRect, type Bitmap, type Doc, type Layer, type LayerMask } from './document';
+import { docCommand, snapshotDoc, type Command } from './history';
 import { lockedInTree } from './tree';
-import { combineCommands, homography, mapPoint, moveNode, quadOfRect, transformNode, type Quad } from './transform';
+import { combineCommands, homography, invert3, mapPoint, moveNode, quadOfRect, transformNode, warpBitmap, type Quad } from './transform';
 
 const MAXG = 1024, PR = 7, OR = 9, EDGE = OR + 3, WANT = 300, GRID = 8, MIN_INLIERS = 8;
 
@@ -294,4 +296,133 @@ export function autoAlign(doc: Doc, label = 'Line up layers automatically'): Ali
   }
   r.cmd = combineCommands(label, cmds);
   return r;
+}
+
+// ---- Stitch a panorama, and blend the seams ------------------------------------------------------------------------------
+/** How wide the fade along a seam is, in picture pixels (narrower where the overlap is narrower). */
+export const FEATHER = 40;
+/** Distance to the nearest marked pixel (two passes, steps of 1 and the square root of 2); very far when none is marked. */
+function distTo(set: Uint8Array, w: number, h: number): Float32Array {
+  const d = new Float32Array(w * h), D = Math.SQRT2;
+  for (let i = 0; i < w * h; i++) d[i] = set[i] ? 0 : 1e9;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    let v = d[i];
+    if (!v) continue;
+    if (x > 0) v = Math.min(v, d[i - 1] + 1);
+    if (y > 0) { v = Math.min(v, d[i - w] + 1); if (x > 0) v = Math.min(v, d[i - w - 1] + D); if (x < w - 1) v = Math.min(v, d[i - w + 1] + D); }
+    d[i] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const i = y * w + x;
+    let v = d[i];
+    if (!v) continue;
+    if (x < w - 1) v = Math.min(v, d[i + 1] + 1);
+    if (y < h - 1) { v = Math.min(v, d[i + w] + 1); if (x < w - 1) v = Math.min(v, d[i + w + 1] + D); if (x > 0) v = Math.min(v, d[i + w - 1] + D); }
+    d[i] = v;
+  }
+  return d;
+}
+const solidAt = (l: Layer, x: number, y: number): boolean => {
+  const lx = x - l.x, ly = y - l.y;
+  return lx >= 0 && ly >= 0 && lx < l.width && ly < l.height && l.data[(ly * l.width + lx) * 4 + 3] >= 128;
+};
+/**
+ * The seam mask for layer `l` over the layers below it: it shows `l` where nothing below covers, hides it near its own
+ * edges where the photos below go on, and fades over FEATHER px along the middle of the overlap (the line as far from its
+ * own edge as from theirs). Null when there is no seam: no overlap, or one covers the other completely.
+ */
+export function seamMask(l: Layer, below: readonly Layer[]): LayerMask | null {
+  const w = l.width + 2, h = l.height + 2, E = new Uint8Array(w * h), F = new Uint8Array(w * h), both = new Uint8Array(w * h);
+  let nE = 0, nF = 0, nB = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const X = l.x + x - 1, Y = l.y + y - 1, me = solidAt(l, X, Y), lo = below.some((b) => solidAt(b, X, Y)), i = y * w + x;
+    if (lo && !me) { E[i] = 1; nE++; } else if (me && !lo) { F[i] = 1; nF++; } else if (me && lo) { both[i] = 1; nB++; }
+  }
+  if (!nB || !nE || !nF) return null;
+  const dE = distTo(E, w, h), dF = distTo(F, w, h), data = new Uint8Array(l.width * l.height).fill(255);
+  for (let y = 0; y < l.height; y++) for (let x = 0; x < l.width; x++) {
+    const i = (y + 1) * w + x + 1;
+    if (!both[i]) continue;
+    const a = dE[i], b = dF[i], k = 0.5 + (a - b) / Math.max(1, Math.min(FEATHER, a + b));
+    data[y * l.width + x] = Math.round(255 * Math.max(0, Math.min(1, k)));
+  }
+  return { x: l.x, y: l.y, width: l.width, height: l.height, data, outside: 255, enabled: true, linked: true, density: 1, feather: 0 };
+}
+/** Give every upper layer of `st` (bottom first) its seam mask; returns the names that got one. */
+function maskSeams(st: Layer[]): string[] {
+  const out: string[] = [];
+  st.forEach((l, t) => { const m = t ? seamMask(l, st.slice(0, t)) : null; if (m) { l.mask = m; out.push(l.name); } });
+  return out;
+}
+
+const isShift = (m: number[]): boolean => Math.abs(m[0] - 1) < 1e-9 && Math.abs(m[1]) < 1e-9 && Math.abs(m[3]) < 1e-9 && Math.abs(m[4] - 1) < 1e-9 && !m[6] && !m[7];
+/** What Stitch did: the photo the others were matched to, the photos placed (all of them, the reference too), those left out. */
+export interface StitchResult { cmd: Command | null; ref: string; placed: string[]; missed: string[]; }
+/**
+ * Stitch a panorama from the shown picture layers: every pair is matched; the photo most points agree with stays as it is
+ * (the lowest one on a tie); each other photo is moved, turned or bent onto it, directly or through a third photo; the
+ * canvas grows to hold them all; each upper photo gets a seam mask. One undo step. Null when fewer than two can be used.
+ */
+export function stitch(doc: Doc, label = 'Stitch a panorama'): StitchResult | null {
+  const ls = doc.layers.filter((l) => usable(l) && !l.locked && !lockedInTree(doc.layers, l));
+  if (ls.length < 2) return null;
+  const f = shrinkFor(ls), F = ls.map((l) => features(l, f)), fits = new Map<string, Fit>(), score = ls.map(() => 0);
+  for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+    const fit = F[i].length && F[j].length ? fitPair(F[i], F[j], ls[j].width, ls[j].height, f) : null;
+    if (fit) { fits.set(i + ',' + j, fit); score[i] += fit.inliers; score[j] += fit.inliers; }
+  }
+  /** The map from photo b's pixels into photo a's. */
+  const toward = (a: number, b: number): number[] | null => { const x = fits.get(Math.min(a, b) + ',' + Math.max(a, b)); return !x ? null : a < b ? x.m : invert3(x.m); };
+  const r = score.indexOf(Math.max(...score)), ref = ls[r], res: StitchResult = { cmd: null, ref: ref.name, placed: [], missed: [] };
+  const placed = new Map<string, { x: number; y: number; width: number; height: number; data: Uint8ClampedArray }>();
+  ls.forEach((l, k) => {
+    let m = k === r ? shiftM(0, 0) : toward(r, k);
+    for (let j = 0; !m && j < ls.length; j++) { const a = j !== r && j !== k ? toward(r, j) : null, b = a ? toward(j, k) : null; if (a && b) m = mul3(a, b); }
+    if (!m) { res.missed.push(l.name); return; }
+    const p = isShift(m) ? { x: Math.round(m[2]), y: Math.round(m[5]), width: l.width, height: l.height, data: l.data }
+      : warpBitmap(l, quadOfRect({ x: 0, y: 0, w: l.width, h: l.height }).map((q) => mapPoint(m as number[], q.x, q.y)) as Quad);
+    if (p) placed.set(l.id, p); else res.missed.push(l.name);
+  });
+  if (placed.size < 2) return { ...res, missed: ls.filter((l) => l !== ref).map((l) => l.name) };
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, area = 0;
+  for (const [id, p] of placed) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + p.width); y1 = Math.max(y1, p.y + p.height);
+    const l = findLayer(doc, id) as Layer;
+    area += l.width * l.height;
+  }
+  // A canvas far bigger than the photos means a wrong match, never a panorama.
+  if ((x1 - x0) * (y1 - y0) > 4 * area) return { ...res, missed: ls.filter((l) => l !== ref).map((l) => l.name) };
+  const before = snapshotDoc(doc), dx = -x0 - ref.x, dy = -y0 - ref.y;
+  doc.layers = doc.layers.map((l) => {
+    const p = placed.get(l.id);
+    if (!p) return { ...l, x: l.x + dx, y: l.y + dy, ...(l.mask ? { mask: { ...l.mask, x: l.mask.x + dx, y: l.mask.y + dy } } : {}) };
+    const n: Layer = { ...l, x: p.x - x0, y: p.y - y0, width: p.width, height: p.height, data: p.data };
+    delete n.mask;
+    return n;
+  });
+  doc.width = x1 - x0; doc.height = y1 - y0; doc.selection = null;
+  const st = doc.layers.filter((l) => placed.has(l.id));
+  maskSeams(st);
+  res.placed = st.map((l) => l.name);
+  res.cmd = docCommand(label, before, snapshotDoc(doc));
+  return res;
+}
+/** What Blend photos did: the layers that got a seam mask, and those with no seam (no overlap, or covered completely). */
+export interface BlendResult { cmd: Command | null; blended: string[]; none: string[]; }
+/**
+ * Blend photos automatically: the shown picture layers stay where they are, and each upper one gets a seam mask (an old
+ * mask is replaced), so overlapping photos fade into each other. One undo step. Null when fewer than two can be used.
+ */
+export function blendSeams(doc: Doc, label = 'Blend photos automatically'): BlendResult | null {
+  const ids = new Set(doc.layers.filter((l) => usable(l) && !l.locked && !lockedInTree(doc.layers, l)).map((l) => l.id));
+  if (ids.size < 2) return null;
+  const before = snapshotDoc(doc);
+  doc.layers = doc.layers.map((l) => (ids.has(l.id) ? { ...l } : l));
+  const st = doc.layers.filter((l) => ids.has(l.id)), had = new Map(st.map((l) => [l.id, l.mask]));
+  for (const l of st) delete l.mask;
+  const blended = maskSeams(st), none = st.slice(1).filter((l) => !l.mask).map((l) => l.name);
+  for (const l of st) if (!l.mask && had.get(l.id)) l.mask = had.get(l.id);
+  if (!blended.length) { doc.layers = before.layers.map((l) => ({ ...l })); return { cmd: null, blended, none }; }
+  return { cmd: docCommand(label, before, snapshotDoc(doc)), blended, none };
 }

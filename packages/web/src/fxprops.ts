@@ -90,8 +90,11 @@ export function renderFxProps(el: HTMLElement, host: MaskPropsHost): void {
     if (t?.fx && from && from !== t.fx) host.push(propsCommand(t.id, { fx: from }, { fx: t.fx }, label));
   };
   const now = (label: string, next: (fx: LayerEffects) => LayerEffects): void => {
-    const t = host.layer();
-    if (t?.fx) host.push(propsCommand(t.id, { fx: t.fx }, { fx: next(t.fx) }, label));
+    const t = host.layer(), from = t?.fx;
+    if (!t || !from) return;
+    // The push only records the step: the layer takes the change first (Show, Show the effects, Remove).
+    t.fx = next(from);
+    host.push(propsCommand(t.id, { fx: from }, { fx: t.fx }, label));
   };
   const uid = `fpe-${host.uid}-fx-`, allId = uid + 'all';
   const all = h('input', { id: allId, type: 'checkbox', checked: f.on, 'data-testid': 'fx-all' }) as HTMLInputElement;

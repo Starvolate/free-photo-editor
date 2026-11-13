@@ -2396,7 +2396,10 @@ export class Editor {
     this.cancelSession();
     const m = await this.layerFx(), t = this.active(), c = parseHex(this.brush.color) ?? BLACK;
     if (!t || t.id !== a.id) return;
-    this.pushCmd(propsCommand(t.id, { fx: t.fx }, { fx: m.addLayerFx(t.fx, kind, { r: c.r, g: c.g, b: c.b, a: 255 }) }, 'Add ' + kind.replace('-', ' ')), true);
+    // History.push only records the step, so the layer takes its effect here first (as Opacity and Fill do).
+    const fx = t.fx;
+    t.fx = m.addLayerFx(fx, kind, { r: c.r, g: c.g, b: c.b, a: 255 });
+    this.pushCmd(propsCommand(t.id, { fx }, { fx: t.fx }, 'Add ' + kind.replace('-', ' ')), true);
     this.showPanelTab('properties');
   }
   private renderColor(): void {

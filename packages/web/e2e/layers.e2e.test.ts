@@ -19,6 +19,8 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { BY_ID } from '../src/registry';
+import { reach } from './ribbon';
 
 interface MaskInfo { x: number; y: number; w: number; h: number; outside: number; enabled: boolean; linked: boolean; density: number; feather: number; sum: number; }
 interface LayerState {
@@ -346,7 +348,11 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     const sheet = q.locator('[data-testid="sheet-layer-actions"]');
     expect(await sheet.textContent()).toContain('Switch the mask off');
     expect((await sheet.locator('.fpe-sheet-title').textContent())?.trim()).toBe('Layer 2');
-    expect(await sheet.locator('.fpe-tag').count()).toBeGreaterThan(0);
+    // Every Planned item in the sheet carries the Planned tag, and every Ready one does not (Effects… is Ready since W6 S4).
+    const items = await sheet.locator('.fpe-sheet-item').evaluateAll((els) => els.map((e) => ({ cmd: (e as HTMLElement).dataset.tipcmd ?? '', tag: !!e.querySelector('.fpe-tag') })));
+    expect(items.length).toBeGreaterThan(0);
+    for (const x of items) expect(x.tag, x.cmd).toBe(BY_ID.get(x.cmd)?.status !== 'ready');
+    expect(items.find((x) => x.cmd === 'layer.fx-shadow')?.tag).toBe(false);
     await q.waitForTimeout(250);
     await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s1-phone-390-layer-actions.png') });
@@ -628,7 +634,8 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await run(q, 'layer.new-copy')).toBe(true);
     const plain = await hash(q);
     expect((await px(q, 130, 100))[0]).toBe(255);
-    expect(await run(q, 'layer.fx-shadow')).toBe(true);
+    // As a person does: the Drop shadow button on the ribbon (Effects & masks › Shadows and glows), not fpe.run.
+    await reach(q, 'layer.fx-shadow');
     const ctl = '[data-testid="fx-props"] [data-testid="fx-dropShadow-0"] [data-testid="ctl-distance"]';
     await q.waitForSelector(ctl);
     const first = await hash(q);

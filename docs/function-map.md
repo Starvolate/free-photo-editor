@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**404 functions: 258 Ready, 146 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**405 functions: 258 Ready, 147 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -71,7 +71,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Planned | 13 |  |
 | file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Planned | 13 |  |
 
-## Edit (29 Ready, 10 Planned)
+## Edit (29 Ready, 11 Planned)
 
 Groups: Turn and flip · Transform; Settings · Preferences.
 
@@ -116,6 +116,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-hints | Show help lines | Tooltips | Show one plain line of help when you point at, focus or hold a control. | tips, hints, help text | Edit › Settings | Ready | W1 |  |
 | edit.pref-theme | Light or dark look | Theme | Switch between the dark and the light look. | dark mode, light mode, theme | Edit › Settings | Ready | 1 |  |
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Planned | 13 |  |
+| edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Planned | 11 |  |
 
 ## Image (34 Ready, 14 Planned)
 

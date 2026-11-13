@@ -3,8 +3,10 @@
 /** The AI add-on's own steps with a tiny stand-in model (the real models run in the browser test, e2e/ai.e2e.test.ts). */
 import { selectionAlpha, selectionFromMask } from '@free-photoeditor/core';
 import { describe, expect, it } from 'vitest';
-import { downloadSize, estimateSeconds, mb } from '../src/index';
-import { MODELS, ORT_VERSION, RUNTIMES } from '../src/models';
+import { createHash as hashOf } from 'node:crypto';
+import { readFile as readBytes } from 'node:fs/promises';
+import { REFUSE_SECONDS, WARN_SECONDS, downloadSize, estimateSeconds, extrapolateSeconds, mb, minutesText, timeVerdict } from '../src/index';
+import { ENGINE, MODELS, ORT_VERSION } from '../src/models';
 import {
   IMAGENET_MEAN, IMAGENET_STD, blendFill, contextBox, fillOnly, halve, inpaintInputs, maskFromPrediction, maskInput, planTiles, toPlanes, upscaleTiled, type Rgba,
 } from '../src/process';
@@ -121,14 +123,36 @@ describe('downloads', () => {
       expect(['MIT', 'Apache-2.0', 'BSD-3-Clause']).toContain(m.licence);
       expect(m.url.toLowerCase()).not.toMatch(/rmbg|briaai/);
     }
-    for (const r of Object.values(RUNTIMES)) { expect(r.url).toContain(`onnxruntime-web@${ORT_VERSION}/`); expect(r.sha256).toMatch(/^[0-9a-f]{64}$/); }
+    expect(ENGINE.url).toBe(`https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.wasm`);
+    expect(ENGINE.sha256).toMatch(/^[0-9a-f]{64}$/);
   });
-  it('says the first download in plain megabytes and estimates the time', async () => {
-    expect(await downloadSize('subject', 'wasm')).toBe(RUNTIMES.wasm.transfer + MODELS.subject.transfer);
-    expect(mb(RUNTIMES.wasm.transfer + MODELS.subject.transfer)).toBe('7.8');
-    expect(mb(RUNTIMES.webgpu.transfer + MODELS.inpaint.transfer)).toBe('33');
-    expect(await downloadSize('subject', 'wasm', true)).toBe(0);
-    expect(estimateSeconds('upscale', 1e6, 'wasm')).toBeCloseTo(60);
-    expect(estimateSeconds('upscale', 1e6, 'webgpu')).toBeCloseTo(4);
+  it('pins the engine to the file in node_modules: same version, bytes and SHA-256, so a version bump fails here', async () => {
+    const dir = new URL('../../../node_modules/onnxruntime-web/', import.meta.url);
+    expect((JSON.parse(await readBytes(new URL('package.json', dir), 'utf8')) as { version: string }).version).toBe(ORT_VERSION);
+    const wasm = await readBytes(new URL('dist/ort-wasm-simd-threaded.wasm', dir));
+    expect(wasm.length).toBe(ENGINE.bytes);
+    expect(hashOf('sha256').update(wasm).digest('hex')).toBe(ENGINE.sha256);
+  });
+  it('says the first download in plain megabytes, as the hosts really send it (jsDelivr compresses the engine)', async () => {
+    expect(ENGINE.transfer).toBe(3_195_270);
+    expect(await downloadSize('upscale')).toBe(ENGINE.transfer + MODELS.upscale.transfer);
+    expect(mb(ENGINE.transfer + MODELS.upscale.transfer)).toBe('8.1');
+    expect(mb(ENGINE.transfer + MODELS.inpaint.transfer)).toBe('31');
+    expect(mb(ENGINE.transfer + MODELS.subject.transfer)).toBe('7.8');
+    expect(mb(MODELS.inpaint.transfer)).toBe('28');
+    expect(await downloadSize('upscale', true)).toBe(0);
+  });
+  it('times the first tile and extrapolates: says the minutes over about 30 seconds, refuses over about 20 minutes', () => {
+    expect(extrapolateSeconds(2000, 1, 30)).toBeCloseTo(60);
+    expect(extrapolateSeconds(1500, 3, 12)).toBeCloseTo(6);
+    expect(extrapolateSeconds(900, 0, 12)).toBe(0);
+    expect([WARN_SECONDS, REFUSE_SECONDS]).toEqual([30, 1200]);
+    expect([timeVerdict(30), timeVerdict(31), timeVerdict(1200), timeVerdict(1201)]).toEqual(['go', 'warn', 'warn', 'refuse']);
+    expect(timeVerdict(extrapolateSeconds(1100, 1, 40))).toBe('warn');
+    expect(timeVerdict(extrapolateSeconds(12_000, 1, 120))).toBe('refuse');
+    expect([minutesText(31), minutesText(60), minutesText(61), minutesText(19.5 * 60)]).toEqual(['about 1 minute', 'about 1 minute', 'about 2 minutes', 'about 20 minutes']);
+    expect(estimateSeconds('upscale', 1e6)).toBeCloseTo(60);
+    expect(estimateSeconds('upscale', 1e6, 1.5e-4)).toBeCloseTo(150);
+    expect(estimateSeconds('inpaint', 1e6)).toBe(2);
   });
 });

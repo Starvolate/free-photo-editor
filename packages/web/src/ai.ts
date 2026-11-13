@@ -8,13 +8,14 @@
  * down, once; the photo itself never leaves this device. No caller ever waits on the person: `cmd()` resolves as soon as
  * the sheet is open, and closing the sheet while it waits for a yes counts as no.
  */
-import { AiClient, Cancelled, blendFill, cannotRun, contextBox, detectBackend, downloadSize, estimateSeconds, fillOnly, mb, type Backend, type ModelId, type Progress } from '@free-photoeditor/ai';
+import { AiClient, Cancelled, blendFill, cannotRun, contextBox, downloadSize, estimateSeconds, extrapolateSeconds, fillOnly, mb, minutesText, timeVerdict, type ModelId, type Progress } from '@free-photoeditor/ai';
 import {
   activeLayer, addLayer, compositeDoc, createLayer, docCommand, docRect, expandMask, featherMask, maskBounds, maskFromSelection, pixelCommand, readRegion,
   resizeBitmap, selectionFromMask, snapshotDoc, writeRegion, type Command, type Doc, type Mask, type Rect, type Selection,
 } from '@free-photoeditor/core';
 import { errText, h } from './dom';
 import { maxPixelsForDevice } from './io';
+import { keepFiles } from './offline';
 import type { ToolHost } from './toolkit';
 
 export interface AiKit {
@@ -28,12 +29,18 @@ const TITLE: Record<string, string> = {
   'select.subject': 'Select the main subject', 'image.remove-bg': 'Remove the background', 'edit.smart-fill': 'Fill from the surroundings',
   'image.upscale-2x': 'Make it twice as big', 'image.upscale-4x': 'Make it four times as big', 'tool.remove': 'Remove an object',
 };
-const timeText = (s: number): string => (s < 90 ? `${Math.max(10, Math.round(s / 10) * 10)} seconds` : `${Math.round(s / 60)} minutes`);
+/** The refusal for a job over about 20 minutes, and the warning for one over about 30 seconds, in plain words. */
+const tooSlow = (secs: number): string => `This device is too slow for this picture: it would take ${minutesText(secs)}. Make the picture smaller first, or use a computer.`;
+const slowNote = (secs: number): string => `On this device this takes ${minutesText(secs)}. You can keep looking around, or press Cancel at any time.`;
 const CHANGED = 'The picture changed while the AI was working, so nothing was applied. Try again.';
 
 export function createAiKit(host: ToolHost): AiKit {
   const client = new AiClient();
-  let backend: Backend | null = null, running = false, current = '', asked = 0, watched = false, answer: ((go: boolean) => void) | null = null;
+  let running = false, current = '', asked = 0, watched = false, answer: ((go: boolean) => void) | null = null;
+  /** Why the editor stopped the running job (too slow for this device), said instead of "Stopped." */
+  let stopText: string | null = null;
+  /** Seconds per picture pixel that making a picture bigger took on this device, timed on the last job's first tile. */
+  let pace: number | undefined;
   /** `cmd()` calls still waiting for the sheet to open. */
   const waiting = new Set<() => void>();
   const msg = h('p', { class: 'fpe-ai-msg', 'data-testid': 'ai-message' });
@@ -82,8 +89,7 @@ export function createAiKit(host: ToolHost): AiKit {
     go.hidden = true;
     bar.hidden = true;
     show(title);
-    backend ??= await detectBackend();
-    const size = await downloadSize(model, backend, client.loaded.has(model));
+    const size = await downloadSize(model, client.loaded.has(model));
     if (mine !== asked || !shown()) return false;
     if (size <= 0) { msg.textContent = 'Your photo never leaves this device.'; bar.hidden = false; return true; }
     msg.textContent = `This downloads once, about ${mb(size)} MB. Your photo never leaves this device.`;
@@ -100,12 +106,14 @@ export function createAiKit(host: ToolHost): AiKit {
     if (!(await ask(model, title, slow))) return;
     running = true;
     current = title;
+    stopText = null;
     try {
       working('Getting the AI ready on this device…');
-      backend = await client.prepare(model, backend ?? 'wasm', progress);
+      // The worker's own file is not in the page's list of loaded files: ask the offline worker to keep it too.
+      keepFiles(await client.prepare(model, progress));
       await work();
     } catch (e) {
-      if (e instanceof Cancelled) toast('Stopped. Nothing was changed.');
+      if (e instanceof Cancelled) toast(stopText ?? 'Stopped. Nothing was changed.');
       else { console.warn('[ai]', e); toast(`The AI could not finish: ${errText(e)}`); }
     } finally {
       running = false;
@@ -157,26 +165,40 @@ export function createAiKit(host: ToolHost): AiKit {
     });
   }
 
-  /** Make every layer f times bigger: painted layers through the AI, text and shape layers smoothly. */
+  /**
+   * Make every layer f times bigger: painted layers through the AI, text and shape layers smoothly. The first tile is timed
+   * on this device and the rest extrapolated from it: a job over about 30 seconds says how many minutes it takes, and one
+   * over about 20 minutes stops with the reason.
+   */
   async function bigger(d: Doc, f: 2 | 4): Promise<void> {
     const W = d.width, H = d.height, title = TITLE[f === 2 ? 'image.upscale-2x' : 'image.upscale-4x'];
     if (W * f * H * f > maxPixelsForDevice()) {
       toast(f === 4 ? 'Four times as big would be too large for this device. Try twice as big.' : 'Twice as big would be too large for this device. Make the picture smaller first.');
       return;
     }
-    backend ??= await detectBackend();
-    const px = d.layers.reduce((a, l) => a + (l.content ? 0 : l.width * l.height), 0), secs = estimateSeconds('upscale', px, backend);
-    if (secs > 20 * 60) { toast(`This device is too slow for this picture: it would take about ${timeText(secs)}. Make the picture smaller first, or use a computer.`); return; }
-    const slow = secs > 40 ? `On this device this takes about ${timeText(secs)}. You can keep looking around, or press Cancel at any time.` : '';
-    await job('upscale', title, slow, async () => {
+    const px = d.layers.reduce((a, l) => a + (l.content ? 0 : l.width * l.height), 0), secs = estimateSeconds('upscale', px, pace);
+    if (timeVerdict(secs) === 'refuse') { toast(tooSlow(secs)); return; }
+    await job('upscale', title, timeVerdict(secs) === 'warn' ? slowNote(secs) : '', async () => {
       working('Making it bigger…');
       const before = snapshotDoc(d), after = snapshotDoc(d), total = Math.max(1, d.layers.filter((l) => !l.content).length);
-      let done = 0;
+      // The work starts now: the download and the loading are behind it, so the first tile times this device fairly.
+      const t0 = performance.now();
+      let done = 0, timed = false;
       for (let k = 0; k < after.layers.length; k++) {
         const l = after.layers[k], nw = l.width * f, nh = l.height * f;
         if (l.content) { after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: nw, height: nh, data: resizeBitmap(l, nw, nh, 'smooth') }; continue; }
-        const big = await client.upscale({ width: l.width, height: l.height, data: l.data.slice() }, f,
-          (p) => progress({ stage: 'work', done: done * p.total + p.done, total: total * p.total }));
+        const big = await client.upscale({ width: l.width, height: l.height, data: l.data.slice() }, f, (p) => {
+          const at = done * p.total + p.done, all = total * p.total;
+          if (!timed && p.stage === 'work' && at > 0) {
+            timed = true;
+            const est = extrapolateSeconds(performance.now() - t0, at, all), verdict = timeVerdict(est);
+            pace = est / Math.max(1, px);
+            if (verdict === 'refuse') { stopText = tooSlow(est); client.cancel(); return; }
+            note.textContent = verdict === 'warn' ? slowNote(est) : '';
+            note.hidden = verdict !== 'warn';
+          }
+          progress({ stage: 'work', done: at, total: all });
+        });
         after.layers[k] = { ...l, x: l.x * f, y: l.y * f, width: big.width, height: big.height, data: big.data };
         done++;
       }

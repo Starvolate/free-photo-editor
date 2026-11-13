@@ -216,3 +216,13 @@ export class AppShell {
     this.note?.remove();
   }
 }
+
+/**
+ * Ask the offline worker to save these files of the editor's folder, for example the AI worker's own file, which the page's
+ * list of loaded files does not show. They then work without the internet. Does nothing where there is no offline worker.
+ */
+export function keepFiles(urls: string[]): void {
+  const sw = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker;
+  if (!sw || !urls.length) return;
+  sw.ready.then((reg) => reg.active?.postMessage({ type: 'keep', urls })).catch(() => undefined);
+}

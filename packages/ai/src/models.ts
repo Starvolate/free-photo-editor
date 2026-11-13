@@ -3,18 +3,21 @@
 /**
  * What the AI add-on downloads, from where, and under which licence (THIRD-PARTY-NOTICES.md quotes each one). Every file
  * is pinned to an exact version or commit and checked by its byte count, and by its SHA-256 where the browser allows it,
- * so what runs is what was reviewed. These files come down once and are kept on the device; the photo is never sent.
+ * so what runs is what was reviewed. These files come down once and are kept on the device, so the AI tools work without
+ * the internet from then on; the photo is never sent.
  */
 export const ORT_VERSION = '1.31.1';
-const ORT = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
-export type Backend = 'webgpu' | 'wasm';
-/** `bytes` is the file's real size; `transfer` is about what comes over the network (the host may compress it). */
+/** `bytes` is the file's real size; `transfer` is what comes over the network (the host may compress it). */
 export interface FileDef { url: string; bytes: number; sha256?: string; transfer: number; }
-export interface RuntimeDef extends FileDef { backend: Backend; script: string; }
-/** ONNX Runtime Web (MIT, Microsoft) runs the models: WebGPU when the device offers it, else WebAssembly. */
-export const RUNTIMES: Record<Backend, RuntimeDef> = {
-  webgpu: { backend: 'webgpu', script: ORT + 'ort.webgpu.min.mjs', url: ORT + 'ort-wasm-simd-threaded.asyncify.wasm', bytes: 28_747_738, transfer: 4_800_000, sha256: 'ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec' },
-  wasm: { backend: 'wasm', script: ORT + 'ort.wasm.min.mjs', url: ORT + 'ort-wasm-simd-threaded.wasm', bytes: 14_848_852, transfer: 3_200_000, sha256: '4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d' },
+/**
+ * The engine: ONNX Runtime Web's WebAssembly file (MIT, Microsoft). Its loader is part of this build, bundled into the AI
+ * worker; this 14.8 MB file is not. It downloads once from jsDelivr, which sends it brotli-compressed: 3,195,270 bytes
+ * (checked 13 Nov 2026). A unit test checks that it is the same file as node_modules/onnxruntime-web, so a version bump
+ * fails loudly. Using the graphics chip (WebGPU) is Planned: untested, and it needs its own 28.7 MB file.
+ */
+export const ENGINE: FileDef = {
+  url: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.wasm`, bytes: 14_848_852, transfer: 3_195_270,
+  sha256: '4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d',
 };
 export type ModelId = 'subject' | 'inpaint' | 'upscale';
 export interface ModelDef extends FileDef { id: ModelId; name: string; does: string; licence: string; authors: string; source: string; converted: string; }

@@ -108,6 +108,7 @@ edit.pref-pro-names | Show pro names first | Pro names first | Put the usual pro
 edit.pref-hints | Show help lines | Tooltips | Show one plain line of help when you point at, focus or hold a control. | tips, hints, help text | R | W1
 edit.pref-theme | Light or dark look | Theme | Switch between the dark and the light look. | dark mode, light mode, theme | R | 1
 edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | P | 13
+edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | P | 11
 
 @Image = Image | Image | Size, turning and colour of the whole picture.
 @Image > Mode = Colour type | Mode | How the colours are stored.

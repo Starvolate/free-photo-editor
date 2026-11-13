@@ -5,46 +5,57 @@
  * this device: the engine and each model download once from their public hosts and are kept in the browser, and the
  * photo never leaves the device.
  */
-import { MODELS, RUNTIMES, type Backend, type ModelId } from './models';
+import { ENGINE, MODELS, type ModelId } from './models';
 import type { Rgba } from './process';
 import type { FromWorker, Progress, ToWorker } from './protocol';
 import { hasFile } from './store';
 
-export { MODELS, ORT_VERSION, RUNTIMES, type Backend, type FileDef, type ModelDef, type ModelId } from './models';
+export { ENGINE, MODELS, ORT_VERSION, type FileDef, type ModelDef, type ModelId } from './models';
 export type { Progress, Stage } from './protocol';
 export * from './process';
 
 export class Cancelled extends Error { constructor() { super('Stopped.'); this.name = 'Cancelled'; } }
-type GpuNav = { gpu?: { requestAdapter(): Promise<unknown> } };
-/** WebGPU when the browser hands out a graphics adapter, else WebAssembly. */
-export async function detectBackend(): Promise<Backend> {
-  const gpu = (globalThis.navigator as unknown as GpuNav | undefined)?.gpu;
-  if (!gpu) return 'wasm';
-  // A browser that never answers counts as no graphics chip, so an AI command never waits on it.
-  const none = new Promise<null>((resolve) => { setTimeout(() => resolve(null), 2000); });
-  try { return (await Promise.race([gpu.requestAdapter(), none])) ? 'webgpu' : 'wasm'; } catch { return 'wasm'; }
-}
 /** Why this browser can't run the AI tools, in plain words, or null when it can. */
 export function cannotRun(): string | null {
   return typeof WebAssembly === 'object' && typeof Worker === 'function' && typeof fetch === 'function' ? null
     : "This browser can't run the AI tools. Try a recent Chrome, Edge, Firefox or Safari.";
 }
 /** About how many bytes the first use of `model` downloads (0 when the engine and the model are already on this device). */
-export async function downloadSize(model: ModelId, backend: Backend, loaded = false): Promise<number> {
+export async function downloadSize(model: ModelId, loaded = false): Promise<number> {
   if (loaded) return 0;
   let n = 0;
-  for (const f of [RUNTIMES[backend], MODELS[model]]) if (!(await hasFile(f.url))) n += f.transfer;
+  for (const f of [ENGINE, MODELS[model]]) if (!(await hasFile(f.url))) n += f.transfer;
   return n;
 }
 /** Megabytes in plain words: one decimal under 10. */
 export const mb = (bytes: number): string => { const v = bytes / 1e6; return String(v < 10 ? Math.max(0.1, Math.round(v * 10) / 10) : Math.round(v)); };
 /**
- * About how long a job takes, in seconds. Measured on one WebAssembly thread (the slowest path): 4x enlarging costs about
- * 60 microseconds per picture pixel, finding the subject or filling a gap a second or two. WebGPU is far quicker.
+ * About how long a job takes, in seconds, before it starts. Making a picture bigger costs about `pace` seconds per picture
+ * pixel: 60 microseconds as measured on one WebAssembly thread, or what the last job's first tile measured on this device.
+ * Finding the subject or filling a gap takes a second or two.
  */
-export function estimateSeconds(job: ModelId, pixels: number, backend: Backend): number {
-  const cpu = job === 'upscale' ? pixels * 6e-5 : 2;
-  return backend === 'webgpu' ? cpu / 15 : cpu;
+export function estimateSeconds(job: ModelId, pixels: number, pace = 6e-5): number {
+  return job === 'upscale' ? pixels * pace : 2;
+}
+/** Over this many seconds a job says how long it takes, in minutes, before the long part runs. */
+export const WARN_SECONDS = 30;
+/** Over this many seconds (about 20 minutes) a job is refused as too slow for this device. */
+export const REFUSE_SECONDS = 20 * 60;
+/** Go ahead quietly, warn with the time in minutes, or refuse. */
+export function timeVerdict(secs: number): 'go' | 'warn' | 'refuse' {
+  return secs > REFUSE_SECONDS ? 'refuse' : secs > WARN_SECONDS ? 'warn' : 'go';
+}
+/**
+ * The whole job's time in seconds, extrapolated from how it started: `ms` from the start of the work (the download and the
+ * loading left out) to the `done`th of `total` tiles. The first tile also pays for warming up, so this errs on the long side.
+ */
+export function extrapolateSeconds(ms: number, done: number, total: number): number {
+  return done > 0 && total > 0 ? (ms / 1000) * (total / done) : 0;
+}
+/** Whole minutes in plain words, rounded up: "about 1 minute", "about 4 minutes". */
+export function minutesText(secs: number): string {
+  const m = Math.max(1, Math.ceil(secs / 60));
+  return `about ${m} minute${m === 1 ? '' : 's'}`;
 }
 
 type Ask = ToWorker extends infer T ? (T extends unknown ? Omit<T, 'id'> : never) : never;
@@ -81,11 +92,11 @@ export class AiClient {
     for (const j of this.jobs.values()) j.reject(err);
     this.jobs.clear();
   }
-  /** Download what is missing (once) and load the model. Resolves with the engine in use. */
-  async prepare(model: ModelId, backend: Backend, progress?: (p: Progress) => void): Promise<Backend> {
-    const r = await this.call({ type: 'prepare', model, backend }, progress);
+  /** Download what is missing (once) and load the model. Resolves with the same-origin files the worker loaded, for the offline worker to keep. */
+  async prepare(model: ModelId, progress?: (p: Progress) => void): Promise<string[]> {
+    const r = await this.call({ type: 'prepare', model }, progress);
     this.loaded.add(model);
-    return r.type === 'ready' ? r.backend : backend;
+    return r.type === 'ready' ? r.files : [];
   }
   /** A mask (0 to 255, one byte per pixel) of the main subject. */
   async subject(src: Rgba, progress?: (p: Progress) => void): Promise<Uint8Array> {

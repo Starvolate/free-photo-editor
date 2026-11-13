@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
-/** The small part of ONNX Runtime Web's API the add-on uses. The runtime itself is loaded at first use (models.ts). */
+/** The small part of ONNX Runtime Web's API the add-on uses. Its loader is bundled into the AI worker (worker.ts); the engine file downloads once (models.ts). */
 export interface OrtTensor { readonly data: unknown; readonly dims: readonly number[]; readonly type: string; }
 export interface OrtSession {
   readonly inputNames: readonly string[];

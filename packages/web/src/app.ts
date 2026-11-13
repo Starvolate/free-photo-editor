@@ -74,7 +74,8 @@ export interface EditorController {
   checksum(x: number, y: number, w: number, h: number): number;
   /** Everything a person could notice changing, as plain data. */
   state(): Record<string, unknown>;
-  openSample(): void;
+  /** Open the practice photo; a `scale` below 1 opens a smaller copy (256 / 960 is the one Make it bigger starts with). */
+  openSample(scale?: number): void;
   setZoom(zoom: number): void;
   select(x: number, y: number, w: number, h: number): void;
   /** Offline, install and safety-copy status, for automation and tests. */
@@ -141,11 +142,14 @@ const CONTEXT = ['edit.undo', 'edit.redo', 'select.all', 'select.none', 'select.
 let counter = 0;
 let clipSerial = 0;
 
-/** A practice photo drawn in code: sky, hills, a lake, a white frame, and a sun on its own layer that pokes past the edge. */
-function makeSample(): Doc {
-  const W = 960, H = 640, F = 16, hz = 0.58 * H, data = new Uint8ClampedArray(W * H * 4);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const i = (y * W + x) * 4;
+/**
+ * A practice photo drawn in code: sky, hills, a lake, a white frame, and a sun on its own layer that pokes past the edge.
+ * `k` scales it: every pixel is drawn from the 960 x 640 plan, so 256 / 960 gives the same picture at 256 x 171.
+ */
+function makeSample(k = 1): Doc {
+  const Ws = Math.round(960 * k), Hs = Math.round(640 * k), data = new Uint8ClampedArray(Ws * Hs * 4);
+  for (let py = 0; py < Hs; py++) for (let px = 0; px < Ws; px++) {
+    const W = 960, H = 640, F = 16, hz = 0.58 * H, x = (px + 0.5) / k - 0.5, y = (py + 0.5) / k - 0.5, i = (py * Ws + px) * 4;
     let r: number, g: number, b: number;
     if (x < F || y < F || x >= W - F || y >= H - F) { r = 250; g = 250; b = 248; }
     else {
@@ -157,13 +161,13 @@ function makeSample(): Doc {
     }
     data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
   }
-  const doc = documentFromBitmap({ width: W, height: H, data });
-  const S = 180, sun = new Uint8ClampedArray(S * S * 4);
+  const doc = documentFromBitmap({ width: Ws, height: Hs, data });
+  const S = Math.round(180 * k), sun = new Uint8ClampedArray(S * S * 4);
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     const dd = Math.hypot(x - S / 2 + 0.5, y - S / 2 + 0.5) / (S / 2), a = dd < 0.8 ? 1 : dd < 1 ? (1 - dd) / 0.2 : 0, i = (y * S + x) * 4;
     sun[i] = 255; sun[i + 1] = 200 + 40 * Math.max(0, 1 - dd); sun[i + 2] = 110; sun[i + 3] = a * 255;
   }
-  addLayer(doc, createLayer('Sun', S, S, { data: sun, x: W - S + 60, y: 90 }), 1, 'Sun');
+  addLayer(doc, createLayer('Sun', S, S, { data: sun, x: Ws - S + Math.round(60 * k), y: Math.round(90 * k) }), 1, 'Sun');
   return doc;
 }
 function combine(label: string, cmds: (Command | null)[]): Command | null {
@@ -993,13 +997,15 @@ export class Editor {
   showStart(): void { if (this.doc) this.openModal('start'); else this.startEl.querySelector<HTMLElement>('.fpe-job')?.focus(); }
   private async runJob(j: Job): Promise<void> {
     if (this.modal) this.closeModal(false);
-    if (!this.doc) this.openSample();
+    const opened = !this.doc;
+    if (opened) this.openSample(j.sample);
     if (j.ratio) {
       await this.run('tool.crop');
       this.ratio = j.ratio;
       this.startRatioCrop();
     } else await this.run(j.cmd);
     this.highlight(j.cmd);
+    if (opened && j.hint) this.toast(j.hint, 6000);
   }
   private startRatioCrop(): void {
     const d = this.doc;
@@ -2730,7 +2736,11 @@ export class Editor {
 
   // ---------- pictures and tabs ----------
   pickFile(asLayer: boolean): void { this.fileAsLayer = asLayer && !!this.doc; this.fileInput.click(); }
-  openSample(): void { this.addTab(makeSample(), 'Sample photo'); this.toast('Sample photo opened: two layers, a landscape and a sun.'); }
+  openSample(k = 1): void {
+    const small = k < 1;
+    this.addTab(makeSample(k), small ? 'Small sample photo' : 'Sample photo');
+    this.toast(small ? 'Small sample photo opened: a landscape and a sun, small enough to make bigger in seconds.' : 'Sample photo opened: two layers, a landscape and a sun.');
+  }
   private stash(): void {
     this.tk?.abort();
     const t = this.tabs[this.cur];
@@ -3127,7 +3137,7 @@ export class Editor {
           w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
         };
       },
-      openSample: () => this.openSample(),
+      openSample: (k?: number) => this.openSample(k),
       setZoom: (z) => this.zoomTo(z),
       appState: () => ({ ...this.appShell.info(), autosave: { enabled: this.saver.enabled, writes: this.saver.writes, error: this.saver.lastError }, left: this.left.map((m) => m.name) }),
       saveNow: () => this.saver.flush(),

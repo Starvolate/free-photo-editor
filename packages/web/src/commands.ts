@@ -354,7 +354,13 @@ for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
-export interface Job { title: string; cmd: string; icon: string; ratio?: number; help?: string; }
+export interface Job {
+  title: string; cmd: string; icon: string; ratio?: number; help?: string;
+  /** With no picture open, the sample photo opens first at this scale (1 by default; below 1 a smaller copy). */
+  sample?: number;
+  /** Said once the job's picture is open, so a beginner knows what to try. */
+  hint?: string;
+}
 export const JOBS: Job[] = [
   { title: 'Make it brighter or darker', cmd: 'image.adj-brightness', icon: 'sun' },
   { title: 'Fix the light in one click', cmd: 'image.auto-tone', icon: 'sparkles' },
@@ -367,8 +373,9 @@ export const JOBS: Job[] = [
   { title: 'Draw or paint', cmd: 'tool.brush', icon: 'brush' },
   { title: 'Combine two photos', cmd: 'file.open-layer', icon: 'image-plus' },
   { title: 'Remove the background', cmd: 'image.remove-bg', icon: 'scissors' },
-  { title: 'Remove an object', cmd: 'tool.remove', icon: 'eraser' },
-  { title: 'Make it bigger', cmd: 'image.upscale-2x', icon: 'fit' },
+  { title: 'Remove an object', cmd: 'tool.remove', icon: 'eraser', hint: 'Try it: paint over the sun and let go. It disappears into the sky.' },
+  // A small picture (256 x 171): twice as big takes seconds, and the sharper result shows at once.
+  { title: 'Make it bigger', cmd: 'image.upscale-2x', icon: 'fit', sample: 256 / 960 },
   { title: 'Remove a spot', cmd: 'tool.spot-heal', icon: 'bandage' },
   { title: 'Add text', cmd: 'tool.type', icon: 'type' },
   { title: 'Blur the background', cmd: 'filter.blur-iris', icon: 'focus' },

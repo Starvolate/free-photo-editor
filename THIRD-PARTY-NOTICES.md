@@ -31,21 +31,26 @@ editor adds the credit to the finished file as an XMP item.
 
 ## On-device AI (`packages/ai`)
 
-The AI commands (Select the main subject, Remove the background, Remove an object, Fill from the surroundings, Make it
-bigger) load only when one is first used. They run on the person's own device with ONNX Runtime Web, in a Web Worker:
-WebGPU when the device has it, else WebAssembly. Before the first download the editor says how much comes down. The
-engine and each model then download once from the public hosts below, are checked by their exact size and SHA-256
-(`packages/ai/src/models.ts` pins every file to a version or a commit), and are kept in the browser (IndexedDB). The
-photo is never uploaded. Every licence below allows free and commercial use and is GPLv3-compatible, so the AGPL-3.0
-editor may use these parts. Models under non-commercial terms (for example BRIA's RMBG-1.4 and RMBG-2.0) are not used.
+The AI commands load only when one is first used: Remove an object, Fill from the surroundings and Make it bigger (Select
+the main subject and Remove the background are Planned). They run on the person's own device with ONNX Runtime Web on
+WebAssembly, in a Web Worker. Before the first download the editor says how much comes down. The engine file and each
+model then download once from the public hosts below, are checked by their exact size and SHA-256
+(`packages/ai/src/models.ts` pins every file to a version or a commit), and are kept in the browser (IndexedDB), so the
+AI tools work without the internet from then on. The photo is never uploaded. Every licence below allows free and
+commercial use and is GPLv3-compatible, so the AGPL-3.0 editor may use these parts. Models under non-commercial terms
+(for example BRIA's RMBG-1.4 and RMBG-2.0) are not used.
 
-| Part | Exact file | Licence, quoted from the authors' own repository | What it does here |
+| Part | How it reaches the browser | Licence, quoted from its source | What it does here |
 |---|---|---|---|
-| ONNX Runtime Web 1.31.1 | npm `onnxruntime-web@1.31.1` from cdn.jsdelivr.net: `ort.wasm.min.mjs` with `ort-wasm-simd-threaded.wasm` (14,848,852 bytes), or `ort.webgpu.min.mjs` with `ort-wasm-simd-threaded.asyncify.wasm` (28,747,738 bytes) | "MIT License / Copyright (c) Microsoft Corporation" (github.com/microsoft/onnxruntime, `LICENSE`) | Runs the models |
-| U²-Net small (u2netp) | huggingface.co/BritishWerewolf/U-2-Netp at commit 7112208dbac3, `onnx/model.onnx` (4,574,861 bytes) | "Apache License, Version 2.0, January 2004" (github.com/xuebinqin/U-2-Net, `LICENSE`) | Finds the main subject: Select the main subject, Remove the background |
-| MI-GAN, ONNX pipeline v2 | huggingface.co/andraniksargsyan/migan at commit 406830d0fa60, `migan_pipeline_v2.onnx` (28,079,181 bytes) | "MIT License / Copyright (c) 2024 Picsart AI Research (PAIR)" (github.com/Picsart-AI-Research/MI-GAN, `LICENSE`) | Fills in what you remove: the Remove tool, Fill from the surroundings |
-| Real-ESRGAN general x4v3 | huggingface.co/CoderViking/realesr-general-x4v3-onnx at commit c6a971706797, `realesr-general-x4v3.onnx` (4,866,417 bytes) | "BSD 3-Clause License / Copyright (c) 2021, Xintao Wang" (github.com/xinntao/Real-ESRGAN, `LICENSE`) | Makes pictures twice or four times as big |
+| ONNX Runtime Web 1.31.1, the loader: npm `onnxruntime-web@1.31.1`, `dist/ort.wasm.bundle.min.mjs` (onnxruntime-common and the Emscripten-built start-up code are inside it; no other package) | Part of this build: bundled, unchanged, into the AI worker's file in `dist/assets/`. Its own header reads "ONNX Runtime Web v1.31.1 / Copyright (c) Microsoft Corporation. All rights reserved. / Licensed under the MIT License." | "MIT License / Copyright (c) Microsoft Corporation" (github.com/microsoft/onnxruntime at tag v1.31.1, `LICENSE`) | Loads the engine and runs the models |
+| ONNX Runtime Web 1.31.1, the engine: `ort-wasm-simd-threaded.wasm` (14,848,852 bytes) | Downloaded once from cdn.jsdelivr.net (npm `onnxruntime-web@1.31.1`), which sends it brotli-compressed: 3,195,270 bytes | The same MIT licence | The compiled engine the models run on |
+| MI-GAN, ONNX pipeline v2 | Downloaded once from huggingface.co/andraniksargsyan/migan at commit 406830d0fa60, `migan_pipeline_v2.onnx` (28,079,181 bytes) | "MIT License / Copyright (c) 2024 Picsart AI Research (PAIR)" (github.com/Picsart-AI-Research/MI-GAN, `LICENSE`) | Fills in what you remove: the Remove tool, Fill from the surroundings |
+| Real-ESRGAN general x4v3 | Downloaded once from huggingface.co/CoderViking/realesr-general-x4v3-onnx at commit c6a971706797, `realesr-general-x4v3.onnx` (4,866,417 bytes) | "BSD 3-Clause License / Copyright (c) 2021, Xintao Wang" (github.com/xinntao/Real-ESRGAN, `LICENSE`) | Makes pictures twice or four times as big |
+| U²-Net small (u2netp) | Downloaded only by Select the main subject and Remove the background. Both are Planned, so today only the browser test downloads it, through the automation hook `fpe.aiCmd`: huggingface.co/BritishWerewolf/U-2-Netp at commit 7112208dbac3, `onnx/model.onnx` (4,574,861 bytes) | "Apache License, Version 2.0, January 2004" (github.com/xuebinqin/U-2-Net, `LICENSE`) | Finds the main subject |
 
-The U²-Net and Real-ESRGAN files are ONNX conversions of the authors' published weights, made and hosted by the
-Hugging Face accounts named; the MI-GAN file is published by one of its authors. The licence that applies to each is the
-authors' licence quoted above. Apache-2.0, MIT and BSD-3-Clause are all GPLv3-compatible.
+ONNX Runtime's loader and engine are built from ONNX Runtime and the open-source parts it lists in its own notices file,
+`ThirdPartyNotices.txt` at tag v1.31.1 (github.com/microsoft/onnxruntime/blob/v1.31.1/ThirdPartyNotices.txt). Using the
+graphics chip (WebGPU) is Planned and not shipped, so its 28.7 MB engine file is never downloaded. The U²-Net and
+Real-ESRGAN files are ONNX conversions of the authors' published weights, made and hosted by the Hugging Face accounts
+named; the MI-GAN file is published by one of its authors. The licence that applies to each is the authors' licence
+quoted above. Apache-2.0, MIT and BSD-3-Clause are all GPLv3-compatible.

@@ -13,6 +13,7 @@ import { LOOKS } from './looks';
 import { MORE } from './more';
 import { MORE2 } from './more2';
 import { MORE3 } from './more3';
+import { RAW } from './raw';
 import type { FxKind } from './meta';
 
 export { FX_KINDS, fxReach, type FxKind } from './meta';
@@ -22,7 +23,7 @@ const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE, ...MORE2, ...MORE3
 
 /** Runs one effect on a bitmap and returns new pixels of the same size. Pixels outside the edited box are kept. */
 export function runEffect(spec: { kind?: string; params?: P }, src: Bitmap): Uint8ClampedArray {
-  const f = FX[spec.kind as FxKind];
+  const f = FX[spec.kind as FxKind] ?? RAW[spec.kind ?? ''];
   if (!f) throw new Error(`Unknown effect: ${spec.kind ?? '(none)'}.`);
   if (!src.width || !src.height) return src.data.slice();
   const p = spec.params ?? {};

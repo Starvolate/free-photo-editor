@@ -99,7 +99,8 @@ type Src = { key: number; w: number; h: number; bmp: Bitmap };
  */
 async function preview(id: string, s: Src): Promise<ImageData | null> {
   const def = ADJ[id] ?? ADJ[id.replace(/^layer\.adj-/, 'image.adj-')];
-  if (!def || def.colors) return null;
+  // The develop sheet (raw-more.ts) rests at no change and mixes many settings, so its tiles keep their icon instead of a preview.
+  if (!def || def.colors || def.sheet) return null;
   const params: Record<string, number> = {};
   for (const c of def.controls) params[c.key] = (!c.type || c.type === 'range') && c.value === 0 && (c.max ?? 0) > 0 ? Math.round((c.max ?? 0) / 3) : c.value;
   const spec = { op: def.op, kind: def.kind, params } as JobSpec;

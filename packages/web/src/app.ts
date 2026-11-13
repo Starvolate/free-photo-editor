@@ -230,6 +230,8 @@ export class Editor {
   private tipEl!: HTMLElement;
   private dlgEl!: HTMLElement;
   private dlgCanvas: HTMLCanvasElement | null = null;
+  /** The develop sheet's redraw after each preview (its scopes). */
+  private sheetHook: (() => void) | null = null;
   private undoBtn!: HTMLButtonElement;
   private redoBtn!: HTMLButtonElement;
   private fileInput!: HTMLInputElement;
@@ -320,6 +322,8 @@ export class Editor {
   lastSel: Selection | null = null;
   private hole: Rect | null = null;
   lastFilter: { id: string; params: JobParams } | null = null;
+  /** Recorded steps (automate.ts): while recording, each command that ran, with a dialog's settings once applied. */
+  onStep: ((id: string, p?: JobParams) => void) | null = null;
   proNames = false;
   hints = true;
   screen: Screen = 'standard';
@@ -1244,6 +1248,7 @@ export class Editor {
     this.closeMenus();
     this.closePopover();
     await hd.run(this);
+    this.onStep?.(id);
     this.syncChrome();
     return true;
   }
@@ -1748,6 +1753,8 @@ export class Editor {
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
     this.hdrag = best;
+    const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
+    if (!best && s && set?.press && b && set.press(p.x, p.y, (s.spec.params ??= {}), b)) { this.syncControls(); this.preview(); this.requestRender(); return true; }
     return !!best;
   }
   private handleMove(p: Pt): void {
@@ -2708,7 +2715,10 @@ export class Editor {
       this.dlgCanvas = h('canvas', { class: 'fpe-histo', width: 256, height: 96, 'aria-label': 'Graph of dark to light tones in the picture', 'data-testid': 'adj-graph' });
       kids.push(this.dlgCanvas);
     }
-    kids.push(...renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); }, rerender: () => this.renderDialog() }));
+    this.sheetHook = null;
+    kids.push(...(s.def.sheet ? s.def.sheet({ id: s.id, params, idBase: id, input: () => this.preview(), rerender: () => this.renderDialog(),
+      result: () => ({ width: s.r.w, height: s.r.h, data: s.after ?? s.before }), onResult: (f) => { this.sheetHook = f; } })
+      : renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); }, rerender: () => this.renderDialog() })));
     kids.push(h('div', { class: 'fpe-actions' },
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-before', 'aria-pressed': s.showBefore ? 'true' : 'false', 'data-testid': 'adj-before',
         'data-help-title': 'Before and after', 'data-help': 'Show the picture as it was, to compare. Press again to see the change.', onclick: () => this.toggleBefore() },
@@ -2763,6 +2773,7 @@ export class Editor {
       commitResult(d, l, s.r, s.before, s.after, s.label);
       this.markDirty({ x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h });
       this.requestRender();
+      this.sheetHook?.();
     }).catch((e: unknown) => { if (!(e instanceof JobStopped)) this.toast(errText(e)); }).finally(() => {
       done();
       s.running = null;
@@ -2775,12 +2786,16 @@ export class Editor {
     while (s.running) await s.running;
     if (this.session !== s) return;
     if (s.showBefore) { s.showBefore = false; this.showResult(s, false); }
-    if (s.scale < 1 && !(await this.applyFull(s))) return;
+    // A setting that only shows something while editing (the clipping warning) is switched off, and Apply runs once more without it.
+    const shown = s.def.viewOnly?.filter((k) => s.spec.params?.[k]) ?? [];
+    for (const k of shown) (s.spec.params ??= {})[k] = 0;
+    if ((s.scale < 1 || shown.length > 0) && !(await this.applyFull(s))) return;
     this.session = null;
     this.renderDialog();
     if (s.ran) {
       this.history.push(pixelCommand(s.label, s.layerId, s.r, s.before));
       if (s.id.startsWith('filter.')) this.lastFilter = { id: s.id, params: { ...s.spec.params } };
+      this.onStep?.(s.id, { ...s.spec.params });
       this.afterEdit();
       this.toast(`${s.label}: done.`);
     }
@@ -2958,7 +2973,11 @@ export class Editor {
       const out = lib.sizeRows(d, { fid, w, hh, keep, note: rows[0] as HTMLElement, actions }, {
         toast: (m) => this.toast(m),
         setDpi: (make) => { this.closeModal(); this.pushCmd(make()); },
-        resize: (make) => { this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit(); },
+        resize: (make) => {
+          const sw = d.width, sh = d.height;
+          this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit();
+          this.onStep?.('image.size', { w: d.width, h: d.height, sw, sh });
+        },
       }, maxPixelsForDevice());
       rows.unshift(out.presets);
       rows.push(...out.rows);
@@ -3364,6 +3383,13 @@ export class Editor {
     try {
       const m = await import('./file-more');
       m.runFileMore(id, { ...this.toolHost(), name: () => this.name, open: (f, n) => this.openFile(f, n) });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
+  /** Recorded steps and the many-pictures functions (automate.ts), loaded on first use. */
+  async automate(id: string): Promise<void> {
+    try {
+      const m = await import('./automate');
+      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; } });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */

@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS } from '../src/commands';
 import { ICON_NAMES } from '../src/icons';
-import { BY_ID, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, counts, functionMapMarkdown, search } from '../src/registry';
+import { BY_ID, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, counts, search } from '../src/registry';
+// Loading the new Planned functions adds them to ROWS, as search does on first use, so every check below covers all of them.
+import { NEW_PHASES, NEW_ROWS } from '../src/registry-union';
+import { functionMapMarkdown } from '../src/function-map';
+import { ALWAYS, CONTEXTUAL, TABS, homes, reach, spots } from '../src/ribbon-homes';
 
 const MAP = fileURLToPath(new URL('../../../docs/function-map.md', import.meta.url));
 const APP = readFileSync(fileURLToPath(new URL('../src/app.ts', import.meta.url)), 'utf8');
@@ -81,5 +85,66 @@ describe('the function map', () => {
     const c = counts();
     expect(c.ready + c.planned).toBe(c.total);
     expect(c.total).toBe(ROWS.length);
+  });
+});
+
+describe('the Task ribbon', () => {
+  const ids = (): string[] => ROWS.map((r) => r.id);
+  it('gives every function exactly one home', () => {
+    const count = new Map<string, number>();
+    for (const s of spots()) if (!s.again && s.place !== 'always') count.set(s.id, (count.get(s.id) ?? 0) + 1);
+    const always = new Set(ALWAYS.flatMap((a) => a.ids));
+    const none = ids().filter((id) => !count.has(id) && !always.has(id));
+    const twice = [...count].filter(([, n]) => n > 1).map(([id]) => id);
+    const unknown = spots().map((s) => s.id).filter((id) => !BY_ID.has(id));
+    const againWithoutHome = spots().filter((s) => s.again && !count.has(s.id)).map((s) => s.id);
+    const againNotShown = TABS.flatMap((t) => t.groups.flatMap((g) => g.again.filter((id) => ![...g.big, ...g.shown, ...g.more].includes(id))));
+    expect({ none, twice, unknown, againWithoutHome, againNotShown }).toEqual({ none: [], twice: [], unknown: [], againWithoutHome: [], againNotShown: [] });
+    expect(homes().size).toBe(ROWS.length);
+  });
+  it('names twelve tabs without repeating a word', () => {
+    expect(TABS.map((t) => t.plain)).toEqual(['Effects & masks', 'Select & cut out', 'Retouch & remove', 'Develop RAW', 'AI tools', 'Paint & draw',
+      'Shapes & text', 'Automate & batch', 'Arrange layers', 'Crop & resize', 'Light & colour', 'Filters & blur']);
+    const seen = new Map<string, string>(), repeats: string[] = [];
+    for (const t of TABS) for (const w of t.plain.toLowerCase().split(/[^a-z]+/).filter(Boolean)) {
+      const had = seen.get(w);
+      if (had) repeats.push(`${w}: ${had} and ${t.plain}`); else seen.set(w, t.plain);
+    }
+    expect(repeats).toEqual([]);
+  });
+  it('holds at most 70 commands on a tab, except Filters & blur, which nests its effects in family sheets', () => {
+    const size = (t: (typeof TABS)[number]): number => t.groups.reduce((n, g) => n + g.big.length + g.shown.length + g.more.length, 0);
+    expect(TABS.filter((t) => size(t) > 70).map((t) => t.plain)).toEqual(['Filters & blur']);
+    const fx = TABS.find((t) => t.plain === 'Filters & blur')!;
+    const loose = fx.groups.filter((g) => g.show !== 'family').reduce((n, g) => n + g.big.length + g.shown.length + g.more.length, 0);
+    expect(loose).toBeLessThanOrEqual(20);
+    for (const g of fx.groups.filter((x) => x.show === 'family')) expect(g.more.length, g.plain).toBeLessThanOrEqual(20);
+  });
+  it('reaches every function within three clicks, and writes the count into the map', () => {
+    const r = reach(ids());
+    expect(r.searchOnly).toBe(0);
+    expect(r.one).toBe(new Set(ALWAYS.flatMap((a) => a.ids)).size);
+    expect(r.one + r.two + r.three).toBe(ROWS.length);
+    expect(functionMapMarkdown()).toContain(`| All functions | ${ROWS.length} | ${r.one} | ${r.two} | ${r.three} | ${r.searchOnly} |`);
+  });
+  it('puts only homed commands on the contextual tabs', () => {
+    const h = homes();
+    expect(CONTEXTUAL.flatMap((c) => c.ids).filter((id) => !h.has(id))).toEqual([]);
+  });
+  it('keeps the new Planned functions out of the menu bar, each with its names, wishes, phase and home', () => {
+    const inMenus = new Set([...MENU_ITEMS.values()].flat().flatMap((e) => (e.type === 'item' ? [e.row.id] : [])));
+    const h = homes();
+    expect(NEW_ROWS.length).toBe(261);
+    for (const r of NEW_ROWS) {
+      expect(inMenus.has(r.id), r.id).toBe(false);
+      expect([r.status, r.key, r.kind], r.id).toEqual(['planned', '', 'command']);
+      expect(r.wish.split(',').length, r.id).toBeGreaterThanOrEqual(2);
+      expect(NEW_PHASES[r.phase], r.id).toBeTruthy();
+      const home = h.get(r.id)!;
+      expect(r.place, r.id).toBe(home.place === 'sheet' ? `${home.tab} sheet` : `${home.tab} > ${home.group}`);
+    }
+    expect(search('select the sky')[0]?.id).toBe('select.sky');
+    expect(search('remove haze')[0]?.id).toBe('raw.dehaze');
+    expect(search('panorama').slice(0, 3).map((r) => r.id)).toContain('auto.panorama');
   });
 });

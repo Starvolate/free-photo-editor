@@ -270,7 +270,7 @@ view.reference | Reference images | Reference Images Tool and Docker | Pin pictu
 view.task-sets | Reusable task layouts | Task Sets | Saved sets of tools for a job. | task layout, workspace layout, saved workspace | T3 | View sheet | U257
 view.slideshow | Slideshow | Slideshow view | Play a collection full-screen. | slideshow, full screen photos, present photos | T3 | View sheet | U258
 view.focus-peaking | Show where focus is sharp | Focus peaking | Highlight the sharpest edges. | focus peaking, what is sharp, in focus check | T3 | View sheet | U259
-view.composition-guides | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | T3 | View sheet | U260
+view.composition-guides | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | T3 | View sheet | U260 | R
 view.colour-check | Colour-check the screen | Colour assessment | Switch to a neutral surround to judge colours fairly. | colour check, screen calibration, colour assessment, grey surround | T3 | View sheet | U261
 `;
 

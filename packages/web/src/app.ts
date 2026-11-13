@@ -1641,6 +1641,7 @@ export class Editor {
     return false;
   }
   private toolStart(p: Pt, i: PointerInfo): void {
+    this.pointer = p; // a touch has no hover before it, and the tool kit's claims read the pointer
     const d = this.doc;
     this.closePopover();
     this.closeMenus();

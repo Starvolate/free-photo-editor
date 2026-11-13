@@ -1,0 +1,8 @@
+{
+ "_note": "Fixed on 13 Nov 2026 before any Segment Anything family model ran on these photos, and not changed after. Same photos, regions.json and bar as rounds 1 to 3.",
+ "tap A": "One positive tap at the centre of subject rectangle A. The kept mask is the one the model rates best (highest predicted IoU, SAM's own default).",
+ "tap B": "The same with subject rectangle B.",
+ "subject, largest": "The primary rule for Select the main subject: u2netp (the pinned subject model) finds the subject; one positive tap goes at the deepest pixel of its mask (farthest from the mask's edge, mask >= 128); the kept SAM mask is the largest of its candidates (the whole object); the answer is u2netp's mask joined with it (the larger value per pixel).",
+ "subject, best": "The one variant: the same, keeping the candidate the model rates best instead of the largest.",
+ "masks": "0 or 255: the model's score cut at 0, enlarged smoothly to the photo first. Meta's MobileSAM export also returns its single-answer mask first; with three others following, only those three are candidates."
+}

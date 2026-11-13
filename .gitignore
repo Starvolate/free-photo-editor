@@ -9,3 +9,4 @@ packages/cli/ADDITIONAL-TERMS.md
 packages/mcp/LICENSE
 packages/mcp/ADDITIONAL-TERMS.md
 *.tgz
+packages/ai/model-check/out/

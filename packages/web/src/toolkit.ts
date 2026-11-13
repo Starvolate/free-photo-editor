@@ -94,6 +94,7 @@ type Gesture =
   | { k: 'lasso'; pts: Pt[]; mode: SelMode; label: string }
   | { k: 'quick'; pts: Pt[]; mode: SelMode; base: Mask | null; before: Selection | null; src: Pixels; at: number }
   | { k: 'drag'; t: ToolId; a: Pt; b: Pt; shift: boolean }
+  | { k: 'obj'; a: Pt; b: Pt; mode: SelMode }
   | { k: 'patch'; a: Pt; b: Pt }
   | { k: 'fx'; s: EffectStroke; t: ToolId; off?: Pt; l?: Layer; warned?: boolean }
   | { k: 'press'; p: Pt; i: PointerInfo; t: ToolId; timer: number }
@@ -776,6 +777,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         host.render();
         break;
       }
+      case 'object-select': g = { k: 'obj', a: p, b: p, mode: modeOf(i) }; break;
       case 'lasso': g = { k: 'lasso', pts: [p], mode: modeOf(i), label: 'Draw around it' }; break;
       case 'lasso-poly': polyClick(p, i); break;
       case 'quick-select': {
@@ -802,6 +804,20 @@ export function createToolKit(host: ToolHost): ToolKit {
     }
     host.render();
   }
+  /**
+   * Select an object: a tap (a drag under 4 screen pixels) finds the thing under it, a drag finds the thing inside the box.
+   * The AI answers with a mask, which meets the old selection the way Shift (adds) and Alt (takes away) say.
+   */
+  const boxed = (q: { a: Pt; b: Pt }): boolean => Math.max(Math.abs(q.b.x - q.a.x), Math.abs(q.b.y - q.a.y)) * z() >= 4;
+  function objSelect(d: Doc, q: { a: Pt; b: Pt; mode: SelMode }): void {
+    const box = boxed(q);
+    if (!box && (q.a.x < 0 || q.a.y < 0 || q.a.x >= d.width || q.a.y >= d.height)) return;
+    const prompt = box
+      ? { points: [], box: { x: Math.min(q.a.x, q.b.x), y: Math.min(q.a.y, q.b.y), w: Math.abs(q.b.x - q.a.x), h: Math.abs(q.b.y - q.a.y) } }
+      : { points: [{ x: q.a.x, y: q.a.y, add: true }] };
+    void host.ai().then((k) => k.objectSelect(prompt)).then((m) => { if (m && doc() === d) applyMask(m, q.mode, 'Select an object'); },
+      () => host.toast('The AI tools could not load. Check the connection and try again.'));
+  }
   function move(p: Pt, i: PointerInfo): void {
     const q = g;
     if (!q) return;
@@ -823,6 +839,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (q.k === 'lasso') { const l = q.pts[q.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) * z() >= 2) q.pts.push(p); host.render(); return; }
     if (q.k === 'quick') { q.pts.push(p); quickUpdate(false); return; }
     if (q.k === 'drag') { q.b = p; q.shift = i.shift; host.render(); return; }
+    if (q.k === 'obj') { q.b = p; host.render(); return; }
     if (q.k === 'patch') { q.b = p; host.render(); return; }
     if (q.k === 'press') {
       if (Math.hypot(p.x - q.p.x, p.y - q.p.y) * z() < 8) return;
@@ -857,6 +874,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       applyMask(polygonMask(d.width, d.height, q.pts), q.mode, q.label);
       return;
     }
+    if (q.k === 'obj') { objSelect(d, q); return; }
     if (q.k === 'quick') { q.pts.push(p); quickUpdate(true); return; }
     if (q.k === 'patch') {
       const l = target();
@@ -1058,6 +1076,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     };
     const d = doc(), al = d ? activeLayer(d) : undefined;
     switch (t) {
+      case 'object-select': bar.append(modes(), hint('Tap a thing, or drag a box round it. Shift adds, Alt takes away.')); break;
       case 'lasso': bar.append(modes(), sl('Soft edge', 'Feather new selections by this many pixels.', 0, 100, S.feather, ' px', (v) => { S.feather = v; }, 'w3-feather'), hint('Drag around what you want. Shift adds, Alt takes away.')); break;
       case 'lasso-poly':
         bar.append(modes(), hint(poly ? `${poly.pts.length} corners. Tap the first corner, double-click or press Enter to close.` : 'Click from corner to corner. Close at the first corner.'));
@@ -1157,6 +1176,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (rm) { ctx.save(); ctx.globalAlpha = rm.busy ? 0.3 : 0.45; ctx.imageSmoothingEnabled = false; ctx.drawImage(rm.cv, v.panX, v.panY, d.width * v.zoom, d.height * v.zoom); ctx.restore(); }
     const q = g;
     if (q?.k === 'lasso') { path(q.pts, false); ants(); }
+    if (q?.k === 'obj' && boxed(q)) { path([q.a, { x: q.b.x, y: q.a.y }, q.b, { x: q.a.x, y: q.b.y }], true); ants(); }
     if (poly) {
       const ptr = host.pointer();
       path(ptr ? [...poly.pts, ptr] : poly.pts, false); ants();

@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 341 Ready, 334 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 344 Ready, 331 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-258 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+255 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 199 | 451 | 0 |
-| Ready today | 341 | 25 | 162 | 154 | 0 |
+| All functions | 675 | 25 | 200 | 450 | 0 |
+| Ready today | 344 | 25 | 163 | 156 | 0 |
 
 ## The Task ribbon
 
@@ -34,7 +34,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
-| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 4 |
+| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 5 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
@@ -148,7 +148,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · small button | Ready | 13 |  |
 | file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · small button | Ready | 13 |  |
-| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
+| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
 ## Edit (29 Ready, 11 Planned)
 
@@ -187,8 +187,8 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | Edit | Crop & resize › Bend and push · More list | Planned | 11 |  |
 | edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
 | edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
-| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
-| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
 | edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | Edit | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | Edit | Paint & draw › Fill · More list | Planned | 4 |  |
 | edit.pref-pro-names | Show pro names first | Pro names first | Put the usual professional names before the plain names. | expert names, professional names | Edit › Settings | Help sheet | Ready | W1 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (258 Planned, 3 Ready), by home
+## New functions from the feature census (255 Planned, 6 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -784,19 +784,19 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
 | auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Paste a saved set of edits onto a selection of photos. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · More list | Planned | B7 |
-| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. Not built: needs automatic alignment first. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. Not built: needs automatic alignment, and the editor holds 8 bits per colour. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
 | auto.stacks | U080 | Stack photos to remove moving objects or noise | Image stacks (median, mean, exposure merge) | Combines many shots of one scene to drop passers-by, cut noise or blend exposures. | stack photos, remove tourists by stacking, median stack, noise stack | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
+| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. Not built: outside code needs a safe sandbox first. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
 | auto.record-painting | U166 | Record a painting | Recorder Docker | Records the painting session into a timelapse. | record painting, timelapse, record strokes | Automate & batch › Record steps · More list | Planned | T3 |
-| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.watermark | U168 | Watermark | Watermark | Stamp a logo or text on export. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
+| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. Not built yet; use Edit many pictures the same way. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
+| auto.watermark | U168 | Watermark | Watermark | Stamp your text or logo on this picture as a movable layer, or on many pictures at once. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · small button | Ready | T3 |
+| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. Not built: needs automatic alignment first. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. Not built: needs pixel-exact alignment first. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. Not built: scripts need a safe sandbox first. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
 | auto.filter-graph | U172 | Draw-your-own filter graph | GEGL Graph, GEGL Operation tool | Type a chain of filters and run it. | node editor, filter graph, node based, gegl graph | Automate & batch › Scripts and data · More list | Planned | T3 |
-| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Planned | T3 |
-| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Crops and lays out photos to passport rules. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Planned | T3 |
+| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Ready | T3 |
+| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Fills a print page with copies of your photo at a passport size. Check your own country's rules: only the size is set. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Ready | T3 |
 
 ### Arrange layers (16)
 

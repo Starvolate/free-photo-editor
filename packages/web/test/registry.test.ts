@@ -157,7 +157,7 @@ describe('the Task ribbon', () => {
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
     const BUILT = new Set(['select.from-path', 'select.to-path', 'view.composition-guides',
       // Shapes & text (pathops.ts).
-      'type.styles', 'type.opentype', 'type.in-shape',
+      'type.styles', 'type.opentype', 'type.in-shape', 'shape.qr',
       'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
       'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
       'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',

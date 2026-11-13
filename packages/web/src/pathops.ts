@@ -4,14 +4,15 @@
  * Shapes & text, path operations (13 Nov 2026): combine two shapes, join or split pieces, grow or shrink, mirror, copies
  * round a centre, a hand-drawn wobble, star and spiral outlines; then (part 2) slice a shape with another, hatch lines,
  * stitch lines, in-between shapes, repeat or bend a shape along a line, thick-and-thin strokes, and drawing an outline as
- * a dashed or arrowed line on a layer. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
+ * a dashed or arrowed line on a layer; then (part 6) QR codes from our own encoder (core qr.ts). The pen kit (pen.ts) loads this file the first time one of them runs, so neither
  * the first screen nor the tool kit carries it.
  *
  * Each command works at once with the numbers it used last (one undo step), then shows a small sheet: a choice button
  * redoes it that way at once, and "Update" redoes it with changed numbers. Each redo starts again from the outlines as
  * they were before the command, so trying numbers never stacks one result on another; each is its own undo step.
  */
-import { addLayer, clonePaths, createLayer, findLayer, geomOf, indexOfLayer, newPathId, setGeom, type Doc, type LayerGeom, type Subpath, type VectorPath } from '@free-photoeditor/core';
+import { addLayer, clonePaths, combineCommands, createLayer, findLayer, geomOf, indexOfLayer, newPathId, setGeom, type Command, type Doc, type LayerGeom, type Subpath, type VectorPath } from '@free-photoeditor/core';
+import { qrEncode, qrPixels, qrSubpaths, type QrLevel } from '@free-photoeditor/core/qr';
 import {
   arrowHead, booleanSubpaths, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, mirrorSubpaths, offsetSubpaths, patternAlong, powerStroke,
   ringPoints, rotateCopies, roughenSubpaths, sliceWalk, spiralSubpath, splitPieces, starSubpath, stitchSubpaths, subpathsBounds, walk,
@@ -35,6 +36,7 @@ export const S = {
   copies: 6, around: 'self' as 'self' | 'picture', amount: 4, size: 8, seed: 1, kind: 'star' as 'star' | 'spiral', points: 5, inner: 45, turns: 3,
   gap: 10, angle: 45, cross: false, keep: true, stitches: 12, steps: 3, along: 0, w0: 2, w1: 16, w2: 2,
   width: 6, dash: 'dash' as Dash, cap: 'round' as CanvasLineCap, corner: 'round' as CanvasLineJoin, ends: 'none' as 'none' | 'end' | 'both',
+  qrText: 'https://example.com', qrLevel: 'M' as QrLevel, qrModule: 0,
 };
 
 const TITLES: Record<string, [string, string]> = {
@@ -53,6 +55,7 @@ const TITLES: Record<string, [string, string]> = {
   'path.bend': ['Bend a shape along a line', 'Bend'],
   'path.power-stroke': ['Thick and thin line', 'Power stroke'],
   'path.stroke-style': ['Draw the outline as a line', 'Stroke style: dashes, ends, corners, arrowheads'],
+  'shape.qr': ['QR code', 'QR code shape'],
 };
 const LABELS: Record<BoolOp, string> = { unite: 'Merge', subtract: 'Cut out', intersect: 'Keep the overlap', exclude: 'Keep what does not overlap' };
 /** Commands that work on two shapes: the picked outline and the one above it, or the first piece of one outline and the rest. */
@@ -82,7 +85,7 @@ const copy = (subs: readonly Subpath[]): Subpath[] => subs.map((s) => ({ closed:
 
 /** Why a command cannot run on this picture now, in plain words, or null when it can. */
 export function blocked(id: string, d: Doc, p: VectorPath | null): string | null {
-  if (id === 'shape.spiral-star') return null;
+  if (id === 'shape.spiral-star' || id === 'shape.qr') return null;
   if (!p || !p.subpaths.some((s) => s.anchors.length > 1)) return 'Draw an outline first: pick Draw curves (Pen), or make one from a selection in Outlines.';
   if (TWO.has(id) && !pairOf(d, p)) return 'This needs two shapes: draw a second outline, or a second piece in this one.';
   if (id === 'path.combine' && (d.paths ?? []).length < 2 && splitPieces(p.subpaths).length < 2) return 'This is one outline in one piece: draw a second outline to join it to.';
@@ -167,6 +170,7 @@ function apply(id: string, d: Doc, pid: string | null, k: PathOpsKit): string | 
 /** Run a path operation: at once with the last numbers, then the sheet to try others. */
 export function runPathOp(id: string, k: PathOpsKit): void {
   if (id === 'path.stroke-style') { runLineStyle(k); return; }
+  if (id === 'shape.qr') { runQr(k); return; }
   const host = k.host, d = host.doc();
   if (!d) return;
   const first = k.picked(d), why = blocked(id, d, first);
@@ -261,6 +265,50 @@ function runLineStyle(k: PathOpsKit): void {
   show(k, `${plain} (${pro})`, sheet('path.stroke-style', k, go));
 }
 
+// ---- QR codes --------------------------------------------------------------------------------------------------------
+const changeGeom = (label: string, id: string, before: LayerGeom, after: LayerGeom): Command => {
+  const set = (x: Doc, v: LayerGeom): void => { const l = findLayer(x, id); if (l) setGeom(l, v); };
+  return { label, bytes: after.data.length + before.data.length, undo: (x) => set(x, before), redo: (x) => set(x, after) };
+};
+/**
+ * A QR code of the words in S, centred in the picture: black squares on a white border on a new layer (so a phone scans
+ * it), and the same squares as an outline. Making it, and each Update, is one undo step for both.
+ */
+function runQr(k: PathOpsKit): void {
+  const host = k.host, d = host.doc();
+  if (!d) return;
+  const [plain, pro] = TITLES['shape.qr'];
+  let pid: string | null = null, lid: string | null = null;
+  const go = (): void => {
+    const dd = host.doc();
+    if (dd !== d || !dd) { host.closeSheet(); return; }
+    const text = S.qrText.trim(), code = qrEncode(text, S.qrLevel);
+    if (!code) {
+      host.toast(text ? 'Too long for one QR code here: shorten the words, or pick a lower damage level.' : 'Type the words or web address the code should hold.');
+      return;
+    }
+    if (S.qrModule <= 0) S.qrModule = Math.max(1, Math.floor((Math.min(dd.width, dd.height) * 0.6) / (code.size + 8)));
+    const m = S.qrModule, px = qrPixels(code, m, 4, [0, 0, 0, 255], [255, 255, 255, 255]);
+    const x0 = Math.round((dd.width - px.width) / 2), y0 = Math.round((dd.height - px.width) / 2);
+    const g: LayerGeom = { x: x0, y: y0, width: px.width, height: px.width, data: px.data }, subs = qrSubpaths(code, x0 + 4 * m, y0 + 4 * m, m);
+    const before = clonePaths(dd.paths);
+    let path = pid ? dd.paths?.find((x) => x.id === pid) : undefined;
+    if (path) path.subpaths = subs;
+    else { path = { id: newPathId(), name: nameFor(dd, 'QR code'), subpaths: subs }; (dd.paths ??= []).push(path); pid = path.id; }
+    const after = clonePaths(dd.paths), anchors = (ps: VectorPath[]): number => ps.reduce((n, q) => n + q.subpaths.reduce((a, s) => a + s.anchors.length, 0), 0);
+    const paths: Command = { label: plain, bytes: 64 * (anchors(before) + anchors(after)) + 64, undo: (x) => { x.paths = clonePaths(before); }, redo: (x) => { x.paths = clonePaths(after); } };
+    const old = lid ? findLayer(dd, lid) : undefined;
+    let layer: Command;
+    if (old) { const was = geomOf(old); setGeom(old, g); layer = changeGeom(plain, old.id, was, g); }
+    else { const l = createLayer(path.name, g.width, g.height, { x: g.x, y: g.y, data: g.data }); lid = l.id; layer = addLayer(dd, l, indexOfLayer(dd, dd.activeId) + 1, plain); }
+    k.pick(dd, path.id);
+    host.push(combineCommands(plain, [paths, layer]), true);
+    host.render();
+  };
+  go();
+  show(k, `${plain} (${pro})`, sheet('shape.qr', k, go));
+}
+
 function seg<T extends string>(label: string, help: string, opts: readonly [T, string][], cur: () => T, set: (v: T) => void, redo: () => void, tid: string): HTMLElement {
   const wrap = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label, title: help, style: 'display:flex;flex-wrap:wrap;gap:4px' });
   const paint = (): void => { for (const b of Array.from(wrap.children)) b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.v === cur())); };
@@ -274,7 +322,7 @@ function check(label: string, help: string, get: () => boolean, set: (v: boolean
   return h('label', { title: help, style: 'display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px' }, box, label);
 }
 
-type Num = 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
+type Num = 'qrModule' | 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
 function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
   const host = k.host, rows: HTMLElement[] = [];
   const num = (label: string, help: string, min: number, max: number, key: Num, unit: string): HTMLElement =>
@@ -352,6 +400,17 @@ function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
         num('Width in the middle', 'Pixels across halfway along.', 0, 200, 'w1', ' px'),
         num('Width at the end', 'Pixels across at the end of the line.', 0, 200, 'w2', ' px'));
       break;
+    case 'shape.qr': {
+      note = 'Black squares on a white border, on a new layer in the middle of the picture, so a phone can scan it; the same squares are also an outline you can fill or reshape. Scan it with your phone before you print it.';
+      const ta = h('textarea', { rows: 3, 'data-testid': 'pathop-qr-text', 'aria-label': 'Words or web address', style: 'width:100%;box-sizing:border-box;font:inherit;font-size:13px',
+        oninput: () => { S.qrText = ta.value; } });
+      ta.value = S.qrText;
+      rows.push(h('label', { style: 'display:grid;gap:4px;font-size:13px' }, 'Words or web address (Update makes the new code)', ta),
+        seg('How much damage it survives (error correction)', 'More lets a phone read the code when part of it is covered or dirty, but packs the squares tighter.',
+          [['L', 'Low, 7%'], ['M', 'Medium, 15%'], ['Q', 'High, 25%'], ['H', 'Highest, 30%']] as const, () => S.qrLevel, (v) => { S.qrLevel = v; }, redo, 'pathop-qr-level'),
+        num('Square size', 'Pixels across each small square of the code.', 1, 40, 'qrModule', ' px'));
+      break;
+    }
     case 'path.stroke-style':
       note = 'The picked outline is drawn as a line on a new layer in the main colour. Update redraws that layer.';
       rows.push(num('Width', 'How thick the line is, in pixels.', 1, 100, 'width', ' px'),

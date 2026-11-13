@@ -154,6 +154,36 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     expect([s.count, s.anchors, s.closed]).toEqual([1, 25, [false]]);
   });
 
+  it('makes a QR code: a square layer with a white border and the same squares as an outline; new words and undo are one step each', async () => {
+    const p = await open();
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    const layers = (): Promise<{ n: number; top: { width: number; height: number; x: number; y: number } }> => p.evaluate(() => {
+      const ls = (window as unknown as Win).fpe.getInfo()!.layers as { width: number; height: number; x: number; y: number }[];
+      return { n: ls.length, top: ls[ls.length - 1] };
+    });
+    const n0 = (await layers()).n;
+    await click(p, 'shape.qr');
+    let s = await until(p, (x) => x.picked === 'QR code 1', 'qr');
+    // "https://example.com" is 19 bytes: version 2, 25 squares a side, plus a border of 4 on each side.
+    const a = await layers(), m = a.top.width / 33;
+    expect([a.n, a.top.width === a.top.height, Number.isInteger(m)]).toEqual([n0 + 1, true, true]);
+    expect(box(s)).toEqual([a.top.x + 4 * m, a.top.y + 4 * m, a.top.x + 29 * m, a.top.y + 29 * m]);
+    await p.screenshot({ path: join(OUT, 'shapes-text-qr.png') });
+    // "HELLO" fits version 1: 21 squares, so the layer shrinks to 29 squares; one undo brings version 2 back.
+    await p.fill('[data-testid="pathop-qr-text"]', 'HELLO');
+    await p.click('[data-testid="pathop-update"]');
+    for (let i = 0; i < 100 && (await layers()).top.width !== 29 * m; i++) await p.waitForTimeout(50);
+    expect((await layers()).top.width).toBe(29 * m);
+    s = await paths(p);
+    expect(box(s)[2] - box(s)[0]).toBe(21 * m);
+    expect(await undo(p)).toBe(true);
+    expect((await layers()).top.width).toBe(33 * m);
+    expect(await undo(p)).toBe(true);
+    expect((await layers()).n).toBe(n0);
+    expect((await paths(p)).count).toBe(0);
+    await p.click('[data-testid="pathop-done"]');
+  });
+
   it('grows, mirrors, spins copies of and roughens a 100 px square outline, each undone before the next', async () => {
     const p = await open();
     await outlines(p, [300, 200, 100, 100]);

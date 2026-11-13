@@ -399,7 +399,7 @@ HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
 const hasPath = (e: Editor): boolean => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1));
 for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen',
   'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']) HANDLERS[id] = w3(id, hasPath);
-HANDLERS['shape.spiral-star'] = w3('shape.spiral-star');
+for (const id of ['shape.spiral-star', 'shape.qr']) HANDLERS[id] = w3(id);
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 // Add text clears a pending "Add up-down text" in the tool kit, so the next words are straight again.
 HANDLERS['type.add'] = H((e) => { if (e.tk) e.tk.cmd('type.add'); else e.setTool('type'); });

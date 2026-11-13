@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 337 Ready, 338 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 349 Ready, 326 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-258 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+246 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 195 | 455 | 0 |
-| Ready today | 337 | 25 | 158 | 154 | 0 |
+| Ready today | 349 | 25 | 158 | 166 | 0 |
 
 ## The Task ribbon
 
@@ -367,7 +367,7 @@ Groups: Change the selection · Modify.
 | select.contract | Shrink by pixels | Contract | Make the selection smaller by a number of pixels. | smaller selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.feather | Soften the edge | Feather | Make the selection fade out gently at its edge. | soft edge, feather | Select › Modify | Select & cut out › Change it · More list | Ready | W3 | Shift+F6 |
 | select.grow | Grow into similar colours | Grow | Add nearby pixels of similar colour. | grow | Select | Select & cut out › Change it · More list | Ready | W3 |  |
-| select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
+| select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | Select | Select & cut out › By colour or light · More list | Ready | W3 |  |
 | select.transform | Resize the selection | Transform selection | Change the size and angle of the selection. | resize selection | Select | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.quick-mask | Paint a selection | Quick mask | Paint where to select, then switch back to a selection. | paint selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 | Q |
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (258 Planned, 3 Ready), by home
+## New functions from the feature census (246 Planned, 15 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -627,16 +627,16 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | select.people | U015 | Select people and body parts | Select People (hair, skin, eyes, teeth, clothes) | Pick a person, or only their hair, skin or teeth, for local edits. | select person, select hair, select skin, select face, teeth, eyes, clothes | Select & cut out › Select with AI · More list | Planned | B10 |
 | select.depth | U016 | Select by distance from camera | Depth range mask | Select near, middle or far parts using the picture's estimated depth. | depth mask, select by distance, near and far, background by depth | Select & cut out › Select with AI · More list | Planned | B10 |
 | select.foreground | U017 | Cut out the subject by painting rough marks | Foreground Select | Paint rough in/out strokes and it separates a subject with matting. | foreground select, rough cut out, scribble to cut out, matting | Select & cut out › Draw or paint · More list | Planned | B10 |
-| select.luminance | U018 | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | Select & cut out › By colour or light · More list | Planned | B10 |
+| select.luminance | U018 | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | Select & cut out › By colour or light · small button | Ready | B10 |
 | select.from-path | U019 | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | Select & cut out › Perfect and keep · More list | Ready | B4 |
 | select.to-path | U020 | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | Select & cut out › Perfect and keep · More list | Ready | B4 |
-| select.from-alpha | U021 | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's opacity or mask, combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | Select & cut out › Perfect and keep · More list | Planned | B10 |
-| select.remove-holes | U103 | Fill holes in a selection | Remove Holes | Closes small unselected gaps inside a selection. | fill holes in selection, close gaps in selection, solid selection | Select & cut out › Change it · More list | Planned | T3 |
-| select.distort | U104 | Roughen the selection edge | Distort selection | Makes a selection edge irregular and hand-torn. | rough edge, torn edge, distort selection, irregular selection | Select & cut out › Change it · More list | Planned | T3 |
-| select.round-corners | U105 | Rounded corners on a selection | Rounded Rectangle | Rounds the corners of the current selection. | rounded selection, round corners, rounded rectangle selection | Select & cut out › Change it · More list | Planned | T3 |
+| select.from-alpha | U021 | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's opacity or mask, combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | Select & cut out › Perfect and keep · More list | Ready | B10 |
+| select.remove-holes | U103 | Fill holes in a selection | Remove Holes | Closes small unselected gaps inside a selection. | fill holes in selection, close gaps in selection, solid selection | Select & cut out › Change it · More list | Ready | T3 |
+| select.distort | U104 | Roughen the selection edge | Distort selection | Makes a selection edge irregular and hand-torn. | rough edge, torn edge, distort selection, irregular selection | Select & cut out › Change it · More list | Ready | T3 |
+| select.round-corners | U105 | Rounded corners on a selection | Rounded Rectangle | Rounds the corners of the current selection. | rounded selection, round corners, rounded rectangle selection | Select & cut out › Change it · More list | Ready | T3 |
 | select.editor | U106 | Selection editor with preview | Selection Editor | A panel showing the selection as a picture. | selection editor, see selection, selection preview | Select & cut out › Perfect and keep · More list | Planned | T3 |
-| select.float | U107 | Float a selection into a loose layer | Float | Lifts the selected pixels into a temporary layer you can move. | float selection, floating layer, lift pixels | Select & cut out › Perfect and keep · More list | Planned | T3 |
-| select.from-channel | U108 | Select from a colour channel | Selection from channels | Turns one colour channel into a selection. | channel selection, select from red channel, channel to selection | Select & cut out › Perfect and keep · More list | Planned | T3 |
+| select.float | U107 | Float a selection into a loose layer | Float | Lifts the selected pixels into a temporary layer you can move. | float selection, floating layer, lift pixels | Select & cut out › Perfect and keep · More list | Ready | T3 |
+| select.from-channel | U108 | Select from a colour channel | Selection from channels | Turns one colour channel into a selection. | channel selection, select from red channel, channel to selection | Select & cut out › Perfect and keep · More list | Ready | T3 |
 
 ### Retouch & remove (7)
 
@@ -802,13 +802,13 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| layer.crop-to-content | U175 | Crop a layer to its content | Crop Layers to Content | Shrinks the layer to the non-empty pixels. | crop layer, trim layer, shrink layer to content | Arrange layers › This layer · More list | Planned | T3 |
-| layer.remove-alpha | U176 | Remove the see-through channel | Remove Alpha Channel | Fills transparency with the background colour. | remove transparency, remove alpha, flatten transparency | Arrange layers › This layer · More list | Planned | T3 |
-| layer.invert-alpha | U177 | Invert see-through areas | Invert Alpha | Swaps opaque and clear areas. | invert transparency, invert alpha, swap see-through | Arrange layers › This layer · More list | Planned | T3 |
-| layer.split-by-colour | U178 | Split layer by colour | Split Layer | Cut a layer into one layer per colour field. | split layer by colour, separate colours into layers | Arrange layers › This layer · More list | Planned | T3 |
+| layer.crop-to-content | U175 | Crop a layer to its content | Crop Layers to Content | Shrinks the layer to the non-empty pixels. | crop layer, trim layer, shrink layer to content | Arrange layers › This layer · More list | Ready | T3 |
+| layer.remove-alpha | U176 | Remove the see-through channel | Remove Alpha Channel | Fills transparency with the background colour. | remove transparency, remove alpha, flatten transparency | Arrange layers › This layer · More list | Ready | T3 |
+| layer.invert-alpha | U177 | Invert see-through areas | Invert Alpha | Swaps opaque and clear areas. | invert transparency, invert alpha, swap see-through | Arrange layers › This layer · More list | Ready | T3 |
+| layer.split-by-colour | U178 | Split layer by colour | Split Layer | Cut a layer into one layer per colour field. | split layer by colour, separate colours into layers | Arrange layers › This layer · More list | Ready | T3 |
 | layer.convert | U179 | Convert a layer to another kind | Convert a layer to... | Turn a layer into a paint, mask or file layer. | convert layer, change layer type, turn into vector layer | Arrange layers › This layer · More list | Planned | T3 |
 | layer.colour-space | U180 | Change colour space of one layer | Convert Layer Color Space | Different colour model for one layer only. | layer colour space, convert layer profile | Arrange layers › This layer · More list | Planned | T3 |
-| layer.reverse | U181 | Reverse the layer order | Reverse Layer Order | Flips the stack upside down. | reverse layers, flip layer order, reverse order | Arrange layers › Order · More list | Planned | T3 |
+| layer.reverse | U181 | Reverse the layer order | Reverse Layer Order | Flips the stack upside down. | reverse layers, flip layer order, reverse order | Arrange layers › Order · More list | Ready | T3 |
 | layer.filter | U182 | Search the Layers panel by kind | Layers filter (kind, name, effect, colour, smart object) | Show only layers of a chosen kind or label. | find layer, search layers, filter layers, layer by kind | Arrange layers › Find and versions · More list | Planned | T3 |
 | layer.colour-label | U183 | Colour-label layers | Layer colour labels | Tag layers with colours to find them. | layer colour, colour label, tag layer, mark layer | Arrange layers › Find and versions · More list | Planned | T3 |
 | layer.select-by-state | U184 | Select layers by state | Select hidden / locked / unlocked layers | Pick all hidden or locked layers at once. | select hidden layers, select locked layers, select layers by state | Arrange layers › Find and versions · More list | Planned | T3 |

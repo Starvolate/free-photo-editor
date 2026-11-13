@@ -261,7 +261,7 @@ layer.hide | Hide the layer | Hide layers | Hide the active layer without deleti
 layer.merge-down | Merge into the layer below | Merge down | Combine the active layer with the one under it. | combine layers, merge | R | W1 | Ctrl+E
 layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | R | W1 | Ctrl+Shift+E
 layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | R | W1
-layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | P | 2
+layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | R | 2
 layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | P | 13
 
 @Type = Type | Type | Add and style text.
@@ -286,7 +286,7 @@ select.subject | Select the main subject | Subject | Find the person or thing in
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | R | 11
 --
-select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
+select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection: the edge follows the picture, then smooth, soften or move it. | hair, fur, edge | R | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
 select.border | Edge band | Border | Select a band along the selection edge. | border selection | R | W3
 select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | R | W3

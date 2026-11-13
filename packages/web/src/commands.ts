@@ -423,6 +423,17 @@ export const WARP_IDS = 'edit.warp edit.perspective-warp edit.pin-warp edit.cage
 for (const id of WARP_IDS) HANDLERS[id] = H(async (e) => { await e.settleTransform(); await import('./warpkit'); return e.openAdjust(id); });
 HANDLERS['image.fit-canvas'] = H((e) => e.fitCanvasAction());
 HANDLERS['edit.transform-again'] = w3('edit.transform-again');
+// Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
+// round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
+// edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.
+const pxl = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a); };
+const SM: Record<string, Handler['enabled']> = { d: hasDoc, p: pxl, s: hasSel };
+for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p select.remove-holes:s select.round-corners:s select.distort:s select.float:s '
+  + 'layer.crop-to-content:p layer.remove-alpha:p layer.invert-alpha:p layer.split-by-colour:p layer.reverse:d select.refine:s layer.defringe:p select.editor:d '
+  + 'layer.colour-label:d layer.metadata:d layer.filter:d layer.select-by-state:d').split(' ')) {
+  const [id, k] = w.split(':');
+  HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
+}
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

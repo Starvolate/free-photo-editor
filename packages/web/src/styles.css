@@ -112,6 +112,8 @@
 .fpe-start-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .fpe-start-actions .fpe-btn{height:40px;padding:0 16px}
 .fpe-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;width:min(880px,100%)}
+.fpe[data-layout=desktop] .fpe-start:not(.fpe-start-modal){gap:16px;padding-top:40px}
+.fpe[data-layout=desktop] .fpe-start:not(.fpe-start-modal) .fpe-jobs{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .fpe-job{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-align:left;cursor:pointer}
 .fpe-job:hover{background:var(--hover)}
 .fpe-job[aria-disabled=true]:hover{background:var(--panel)}
@@ -166,7 +168,7 @@
 .fpe[data-wide]:not([data-layout=phone]) .fpe-dock{flex-direction:row}
 .fpe[data-wide]:not([data-layout=phone]) .fpe-dcol{display:flex;flex-direction:column;gap:8px;flex:1 1 0;min-width:0;min-height:0}
 .fpe[data-wide]:not([data-layout=phone]) .fpe-dcol+.fpe-dcol{flex-grow:1.1}
-.fpe[data-wide] .fpe-group[data-group=props]{flex:1 1 auto}
+.fpe[data-wide] .fpe-group[data-group=props]{flex:1 1 0;min-height:280px}
 .fpe[data-wide] .fpe-group[data-group=history]{flex:0 1 auto;max-height:178px}
 .fpe[data-wide] .fpe-group[data-group=layers]{flex:1 1 auto;min-height:0}
 .fpe[data-wide] .fpe-group[data-group=nav] .fpe-gbody{max-height:200px}
@@ -191,6 +193,10 @@
 /* a light and colour layer's Properties: its controls first, the plain note about it under them */
 [data-testid=adjust-props]{display:flex;flex-direction:column}
 [data-testid=adjust-props]>.fpe-note{order:1}
+/* the card dock owns the Properties height: the ribbon's 140 px cap was for the old stacked dock and cut the 3rd slider */
+.fpe[data-ribbon]:not([data-layout=phone]) .fpe-group[data-group=props] .fpe-gbody{max-height:none}
+/* a slider spans its field exactly: Chrome's 2 px side margin pushed it past the field's edge */
+.fpe-dock .fpe-field>input[type=range]{margin-left:0;margin-right:0}
 .fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-top:6px}
 .fpe-props .fpe-row>label{flex-basis:56px}
 /* the rows come first and at least three 46 px rows stay in view */

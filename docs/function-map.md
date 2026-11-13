@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 344 Ready, 331 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 352 Ready, 323 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-251 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+243 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 200 | 450 | 0 |
-| Ready today | 344 | 25 | 163 | 156 | 0 |
+| All functions | 675 | 25 | 201 | 449 | 0 |
+| Ready today | 352 | 25 | 164 | 163 | 0 |
 
 ## The Task ribbon
 
@@ -33,7 +33,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
-| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 13 |
+| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (251 Planned, 10 Ready), by home
+## New functions from the feature census (243 Planned, 18 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -749,7 +749,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | shape.vector-layer | U069 | Vector layer | Vector Layer | A layer holding editable shapes and text that stay sharp. | vector layer, sharp shapes, scalable drawing | Shapes & text › Shapes · More list | Planned | B15 |
 | path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Merges the picked outline with the one above it in Outlines, cuts it out of that one, or keeps only the overlap or only what does not overlap. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · small button | Ready | B4 |
 | path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins the picked outline and the one above it into one outline, or splits an outline into its separate pieces (a hole stays with its shape). | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · small button | Ready | B4 |
-| path.stroke-style | U072 | Arrowheads and dash styles | Arrowheads, Dot/dash line styles | Line ends and patterns. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · More list | Planned | B15 |
+| path.stroke-style | U072 | Arrowheads and dash styles | Stroke style: dashes, line ends, corners, arrowheads | Draws the picked outline as a line on a new layer: solid, dashed or dotted, flat, round or square ends, sharp, round or cut corners, and arrowheads. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · small button | Ready | B15 |
 | path.effects | U073 | Non-destructive path effects, stackable | Live Path Effects | Adds editable effects to a path that update when the path changes; effects can be stacked. | path effects, live path effect, non-destructive path | Shapes & text › Live shape effects · More list | Planned | B15 |
 | type.opentype | U074 | Variable fonts and OpenType features | Variable fonts, ligatures, stylistic sets | Weight and width sliders and type features for fonts. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Planned | B15 |
 | type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Planned | B15 |
@@ -759,18 +759,18 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | shape.qr | U144 | Draw QR codes | QR code shape | Generates an editable QR code. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.generate | U145 | Generate shapes (barcodes, grids, gears) | Render extensions | Creates new objects from numbers. | barcode, grid, gear, generate shapes | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draw and edit comic panel frames. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Planned | T3 |
-| path.divide | U147 | Slice a shape with another shape | Division and Cut Path | Cuts the lower shape into pieces along the upper one. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Planned | T3 |
-| path.bend | U148 | Bend a shape along a curve | LPE Bend | Deforms an object along a custom path. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.hatches | U149 | Hatches | LPE Hatches | Fills a shape with adjustable hatch lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.interpolate | U150 | Blend between parts of a path | LPE Interpolate Sub-Paths | Creates in-between steps between two parts of one path. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.divide | U147 | Slice a shape with another shape | Division | Slices the outline above the picked one along the picked one's edge: the parts outside it and the parts inside it each become their own outline. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Ready | T3 |
+| path.bend | U148 | Bend a shape along a curve | Bend | Bends the outline above the picked line along it, stretched to the line's length. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.hatches | U149 | Hatch lines | Hatches | Fills the picked outline with evenly spaced lines (holes stay empty): pick the gap, the angle, and crossed lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.interpolate | U150 | Blend between two shapes | Interpolate sub-paths | Adds in-between shapes that blend the outline above into the picked one (or one piece into the next) in the number of steps you pick. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.knot | U151 | Over-and-under crossings | LPE Knot | Makes gaps where a path crosses itself, like a knot. | knot, over and under, weave lines | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Four corner handles tilt a flat object in 3D space. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.stitch | U154 | Stitch lines between two paths | LPE Stitch Sub-Paths | Adds cross lines between two paths. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.pattern-along | U155 | Repeat a shape along a line | LPE Pattern Along Path | Repeats and bends a shape to follow a path. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · small button | Ready | T3 |
-| path.power-stroke | U157 | Strokes with changing thickness | LPE Power Stroke | Handles set stroke width at points along a path. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.rotate-copies | U158 | Copies around a circle | Rotate copies | Spins copies of an outline round its own centre or the picture's centre and joins them, for flowers and mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.stitch | U154 | Stitch lines between two paths | Stitch sub-paths | Adds straight lines across from the outline above to the picked one, spaced evenly along both, like string art. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.pattern-along | U155 | Repeat a shape along a line | Pattern along path | Repeats the outline above along the picked line, each copy bent to follow it, with the gap you pick. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.power-stroke | U157 | Strokes with changing thickness | Power stroke | Turns the picked line into a shape that is thick and thin along its length: sliders set the width at the start, the middle and the end. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.rotate-copies | U158 | Copies around a circle | Rotate copies | Spins copies of an outline round its own centre or the picture's centre and joins them, for flowers and mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.roughen | U159 | Hand-drawn wobble | Roughen | Gives an outline a hand-drawn wobble: pick how far points move, how fine the wobble is, and another random pattern. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.sketch | U160 | Sketch look from a path | LPE Sketch | Turns a path into several pencil-like lines. | sketch path, sketchy lines, pencil look from path | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.tiling | U161 | Tile many copies in a grid | LPE Tiling | Makes rows and columns of copies with gaps and offsets. | tile copies, grid of copies, repeat in grid | Shapes & text › Live shape effects · More list | Planned | T3 |

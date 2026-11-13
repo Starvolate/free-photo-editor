@@ -2,16 +2,19 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * Shapes & text, path operations (13 Nov 2026): combine two shapes, join or split pieces, grow or shrink, mirror, copies
- * round a centre, a hand-drawn wobble, and star and spiral outlines. The pen kit (pen.ts) loads this file the first time
- * one of them runs, so neither the first screen nor the tool kit carries it.
+ * round a centre, a hand-drawn wobble, star and spiral outlines; then (part 2) slice a shape with another, hatch lines,
+ * stitch lines, in-between shapes, repeat or bend a shape along a line, thick-and-thin strokes, and drawing an outline as
+ * a dashed or arrowed line on a layer. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
+ * the first screen nor the tool kit carries it.
  *
  * Each command works at once with the numbers it used last (one undo step), then shows a small sheet: a choice button
  * redoes it that way at once, and "Update" redoes it with changed numbers. Each redo starts again from the outlines as
  * they were before the command, so trying numbers never stacks one result on another; each is its own undo step.
  */
-import { clonePaths, newPathId, type Doc, type Subpath, type VectorPath } from '@free-photoeditor/core';
+import { addLayer, clonePaths, createLayer, findLayer, geomOf, indexOfLayer, newPathId, setGeom, type Doc, type LayerGeom, type Subpath, type VectorPath } from '@free-photoeditor/core';
 import {
-  booleanSubpaths, mirrorSubpaths, offsetSubpaths, rotateCopies, roughenSubpaths, spiralSubpath, splitPieces, starSubpath, subpathsBounds,
+  arrowHead, booleanSubpaths, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, mirrorSubpaths, offsetSubpaths, patternAlong, powerStroke,
+  ringPoints, rotateCopies, roughenSubpaths, sliceWalk, spiralSubpath, splitPieces, starSubpath, stitchSubpaths, subpathsBounds, walk,
   type BoolOp, type MirrorAxis,
 } from '@free-photoeditor/core/pathops';
 import type { ToolHost } from './toolkit';
@@ -25,10 +28,13 @@ export interface PathOpsKit {
   edit(label: string, run: (d: Doc) => void): void;
 }
 
+type Dash = 'solid' | 'dash' | 'dot' | 'dashdot';
 /** The numbers each command used last (they stay for the next run in this tab). */
 export const S = {
   op: 'unite' as BoolOp, combine: 'auto' as 'auto' | 'join' | 'split', offset: 10, axis: 'right' as MirrorAxis, join: true,
   copies: 6, around: 'self' as 'self' | 'picture', amount: 4, size: 8, seed: 1, kind: 'star' as 'star' | 'spiral', points: 5, inner: 45, turns: 3,
+  gap: 10, angle: 45, cross: false, keep: true, stitches: 12, steps: 3, along: 0, w0: 2, w1: 16, w2: 2,
+  width: 6, dash: 'dash' as Dash, cap: 'round' as CanvasLineCap, corner: 'round' as CanvasLineJoin, ends: 'none' as 'none' | 'end' | 'both',
 };
 
 const TITLES: Record<string, [string, string]> = {
@@ -39,8 +45,18 @@ const TITLES: Record<string, [string, string]> = {
   'path.rotate-copies': ['Copies around a circle', 'Rotate copies'],
   'path.roughen': ['Hand-drawn wobble', 'Roughen'],
   'shape.spiral-star': ['Star or spiral outline', 'Star and spiral'],
+  'path.divide': ['Slice a shape with another', 'Division'],
+  'path.hatches': ['Hatch lines', 'Hatches'],
+  'path.stitch': ['Stitch lines between two lines', 'Stitch sub-paths'],
+  'path.interpolate': ['In-between shapes', 'Interpolate'],
+  'path.pattern-along': ['Repeat a shape along a line', 'Pattern along path'],
+  'path.bend': ['Bend a shape along a line', 'Bend'],
+  'path.power-stroke': ['Thick and thin line', 'Power stroke'],
+  'path.stroke-style': ['Draw the outline as a line', 'Stroke style: dashes, ends, corners, arrowheads'],
 };
 const LABELS: Record<BoolOp, string> = { unite: 'Merge', subtract: 'Cut out', intersect: 'Keep the overlap', exclude: 'Keep what does not overlap' };
+/** Commands that work on two shapes: the picked outline and the one above it, or the first piece of one outline and the rest. */
+const TWO = new Set(['path.boolean', 'path.divide', 'path.stitch', 'path.interpolate', 'path.pattern-along', 'path.bend']);
 
 /** The two shapes a combine works on: the picked outline and the one above it in Outlines, or the pieces of one outline. */
 interface Pair { a: VectorPath | null; b: VectorPath; aSubs: Subpath[]; bSubs: Subpath[]; }
@@ -50,22 +66,23 @@ function pairOf(d: Doc, p: VectorPath): Pair | null {
   if (p.subpaths.length >= 2) return { a: null, b: p, aSubs: [p.subpaths[0]], bSubs: p.subpaths.slice(1) };
   return null;
 }
-/** Put one outline where two were (at the upper one's place), and pick it. */
-function replacePair(d: Doc, k: PathOpsKit, pr: Pair, subs: Subpath[]): void {
-  const list = d.paths ?? [], a = pr.a as VectorPath, at = Math.min(list.indexOf(a), list.indexOf(pr.b));
-  const np: VectorPath = { id: newPathId(), name: a.name, subpaths: subs };
-  if (a.work || pr.b.work) np.work = true;
-  d.paths = list.filter((x) => x !== a && x !== pr.b);
-  d.paths.splice(Math.max(0, at), 0, np);
-  k.pick(d, np.id);
+/** Put new outlines where the pair was (at the upper one's place, or in place of the one outline), and pick the first. */
+function replacePair(d: Doc, k: PathOpsKit, pr: Pair, made: VectorPath[]): void {
+  const list = d.paths ?? [], gone = pr.a ? [pr.a, pr.b] : [pr.b], at = Math.min(...gone.map((x) => list.indexOf(x)));
+  if (gone.some((x) => x.work)) made[0].work = true;
+  d.paths = list.filter((x) => !gone.includes(x));
+  d.paths.splice(Math.max(0, at), 0, ...made);
+  k.pick(d, made[0].id);
 }
+const one = (pr: Pair, subs: Subpath[]): VectorPath[] => [{ id: newPathId(), name: (pr.a ?? pr.b).name, subpaths: subs }];
 const nameFor = (d: Doc, base: string): string => { let n = 1; while ((d.paths ?? []).some((p) => p.name === `${base} ${n}`)) n++; return `${base} ${n}`; };
+const copy = (subs: readonly Subpath[]): Subpath[] => subs.map((s) => ({ closed: s.closed, anchors: s.anchors.map((a) => ({ ...a })) }));
 
 /** Why a command cannot run on this picture now, in plain words, or null when it can. */
 export function blocked(id: string, d: Doc, p: VectorPath | null): string | null {
   if (id === 'shape.spiral-star') return null;
   if (!p || !p.subpaths.some((s) => s.anchors.length > 1)) return 'Draw an outline first: pick Draw curves (Pen), or make one from a selection in Outlines.';
-  if (id === 'path.boolean' && !pairOf(d, p)) return 'Combining needs two shapes: draw a second outline, or a second piece in this one.';
+  if (TWO.has(id) && !pairOf(d, p)) return 'This needs two shapes: draw a second outline, or a second piece in this one.';
   if (id === 'path.combine' && (d.paths ?? []).length < 2 && splitPieces(p.subpaths).length < 2) return 'This is one outline in one piece: draw a second outline to join it to.';
   return null;
 }
@@ -82,18 +99,18 @@ function apply(id: string, d: Doc, pid: string | null, k: PathOpsKit): string | 
     return null;
   }
   if (!p) return null;
+  const pr = TWO.has(id) ? pairOf(d, p) : null;
+  if (TWO.has(id) && !pr) return null;
   switch (id) {
     case 'path.boolean': {
-      const pr = pairOf(d, p);
-      if (!pr) return null;
-      const out = booleanSubpaths(pr.aSubs, pr.bSubs, S.op);
-      if (pr.a) replacePair(d, k, pr, out); else p.subpaths = out;
+      const out = booleanSubpaths(pr!.aSubs, pr!.bSubs, S.op);
+      if (pr!.a) replacePair(d, k, pr!, one(pr!, out)); else p.subpaths = out;
       return out.length ? null : 'Nothing is left: the two shapes do not overlap. Undo, or pick another way to combine them.';
     }
     case 'path.combine': {
-      const pr = pairOf(d, p), pieces = splitPieces(p.subpaths);
+      const pc = pairOf(d, p), pieces = splitPieces(p.subpaths);
       const how = S.combine !== 'auto' ? S.combine : list.length >= 2 ? 'join' : 'split';
-      if (how === 'join' && pr?.a) { replacePair(d, k, pr, [...pr.a.subpaths, ...pr.b.subpaths].map((s) => ({ closed: s.closed, anchors: s.anchors.map((a) => ({ ...a })) }))); return null; }
+      if (how === 'join' && pc?.a) { replacePair(d, k, pc, one(pc, copy([...pc.a.subpaths, ...pc.b.subpaths]))); return null; }
       if (how === 'split' && pieces.length > 1) {
         const at = list.indexOf(p), made = pieces.map((g, i): VectorPath => ({ id: i ? newPathId() : p.id, name: i ? `${p.name} piece ${i + 1}` : p.name, subpaths: g }));
         if (p.work) made[0].work = true;
@@ -113,12 +130,41 @@ function apply(id: string, d: Doc, pid: string | null, k: PathOpsKit): string | 
       return null;
     }
     case 'path.roughen': p.subpaths = roughenSubpaths(p.subpaths, S.amount, S.size, S.seed); return null;
+    case 'path.divide': {
+      const groups = divideSubpaths(pr!.aSubs, pr!.bSubs), base = (pr!.a ?? p).name;
+      if (!groups.length) return 'Nothing is left to slice.';
+      replacePair(d, k, pr!, groups.map((g, i): VectorPath => ({ id: newPathId(), name: `${base} piece ${i + 1}`, subpaths: g })));
+      return groups.length < 2 ? 'The edge did not cut it: it stays one piece.' : null;
+    }
+    case 'path.hatches': {
+      const lines = hatchSubpaths(p.subpaths.filter((s) => s.closed), S.gap, S.angle, S.cross);
+      if (!lines.length) return 'Hatch lines need a closed outline with room inside it.';
+      p.subpaths = [...(S.keep ? copy(p.subpaths) : []), ...lines];
+      return null;
+    }
+    case 'path.stitch': case 'path.interpolate': {
+      const a = pr!.aSubs.find((s) => s.anchors.length > 1), b = pr!.bSubs.find((s) => s.anchors.length > 1);
+      if (!a || !b) return null;
+      const extra = id === 'path.stitch' ? stitchSubpaths(a, b, S.stitches) : interpolateSubpaths(a, b, S.steps);
+      if (pr!.a) replacePair(d, k, pr!, one(pr!, [...copy(pr!.aSubs), ...extra, ...copy(pr!.bSubs)])); else p.subpaths = [...copy(p.subpaths), ...extra];
+      return null;
+    }
+    case 'path.pattern-along': case 'path.bend': {
+      const line = pr!.bSubs.find((s) => s.anchors.length > 1);
+      if (!line) return null;
+      const out = patternAlong(pr!.aSubs, line, S.along, id === 'path.bend');
+      if (!out.length) return 'The shape to repeat has no width.';
+      replacePair(d, k, pr!, [{ id: newPathId(), name: nameFor(d, id === 'path.bend' ? 'Bent shape' : 'Pattern'), subpaths: out }]);
+      return null;
+    }
+    case 'path.power-stroke': p.subpaths = p.subpaths.filter((s) => s.anchors.length > 1).flatMap((s) => powerStroke(s, S.w0, S.w1, S.w2)); return null;
   }
   return null;
 }
 
 /** Run a path operation: at once with the last numbers, then the sheet to try others. */
 export function runPathOp(id: string, k: PathOpsKit): void {
+  if (id === 'path.stroke-style') { runLineStyle(k); return; }
   const host = k.host, d = host.doc();
   if (!d) return;
   const first = k.picked(d), why = blocked(id, d, first);
@@ -136,6 +182,72 @@ export function runPathOp(id: string, k: PathOpsKit): void {
   host.sheet('pathop', `${plain} (${pro})`, sheet(id, k, go));
 }
 
+// ---- drawing an outline as a line on a layer -------------------------------------------------------------------------
+const PATTERN: Record<Dash, (w: number, butt: boolean) => number[]> = {
+  solid: () => [1, 0], dash: (w) => [3 * w, 2 * w], dot: (w, butt) => (butt ? [w, w] : [0, 2 * w]), dashdot: (w, butt) => [3 * w, 2 * w, butt ? w : 0, 2 * w],
+};
+/** The outline drawn as a line in `color` with the style in S, as layer pixels just big enough to hold it. */
+function lineGeom(subs: readonly Subpath[], color: string): LayerGeom | null {
+  const b = subpathsBounds(subs), head = S.width * 3 + 6;
+  if (!b) return null;
+  const pad = Math.ceil(S.width * 2 + head + 2), x0 = Math.floor(b.x - pad), y0 = Math.floor(b.y - pad);
+  const w = Math.ceil(b.w + 2 * pad) + 1, hh = Math.ceil(b.h + 2 * pad) + 1;
+  if (w * hh > 25_000_000 || w > 16384 || hh > 16384) return null;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = hh;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  if (!x) return null;
+  x.translate(-x0, -y0);
+  x.strokeStyle = x.fillStyle = color; x.lineWidth = S.width; x.lineCap = S.cap; x.lineJoin = S.corner; x.miterLimit = 10;
+  const pat = PATTERN[S.dash](S.width, S.cap === 'butt');
+  for (const s of subs) {
+    const pts = ringPoints(s);
+    if (pts.length < 2) continue;
+    const arrows = !s.closed && S.ends !== 'none', wk = walk(pts, s.closed);
+    // The line stops a little short of an arrowhead's tip, so its end never pokes out past the point.
+    const run = arrows ? sliceWalk(wk, S.ends === 'both' ? head * 0.6 : 0, Math.max(0, wk.length - head * 0.6)) : pts;
+    for (const dash of dashLine(run, s.closed && !arrows, pat)) {
+      x.beginPath();
+      dash.forEach((q, i) => (i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y)));
+      if (S.dash === 'solid' && s.closed) x.closePath();
+      x.stroke();
+    }
+    if (arrows) for (const atStart of S.ends === 'both' ? [false, true] : [false]) {
+      const t = arrowHead(pts, atStart, head);
+      x.beginPath(); x.moveTo(t[0].x, t[0].y); x.lineTo(t[1].x, t[1].y); x.lineTo(t[2].x, t[2].y); x.closePath(); x.fill();
+    }
+  }
+  return { x: x0, y: y0, width: w, height: hh, data: x.getImageData(0, 0, w, hh).data };
+}
+/** Draw the picked outline as a line on a new layer; each Update redraws that layer (one undo step each). */
+function runLineStyle(k: PathOpsKit): void {
+  const host = k.host, d = host.doc();
+  if (!d) return;
+  const p = k.picked(d), why = blocked('path.stroke-style', d, p);
+  if (why || !p) { host.toast(why ?? ''); return; }
+  const pid = p.id, [plain, pro] = TITLES['path.stroke-style'];
+  let lid: string | null = null;
+  const go = (): void => {
+    const dd = host.doc(), path = dd?.paths?.find((x) => x.id === pid);
+    if (dd !== d || !dd || !path) { host.closeSheet(); return; }
+    const g = lineGeom(path.subpaths, host.fg());
+    if (!g) { host.toast('This outline is too big to draw as a line here.'); return; }
+    const old = lid ? findLayer(dd, lid) : undefined;
+    if (old) {
+      const before = geomOf(old), id = old.id, set = (x: Doc, v: LayerGeom): void => { const l = findLayer(x, id); if (l) setGeom(l, v); };
+      setGeom(old, g);
+      host.push({ label: 'Line style', bytes: g.data.length, undo: (x) => set(x, before), redo: (x) => set(x, g) }, true);
+    } else {
+      const l = createLayer(path.name + ' line', g.width, g.height, { x: g.x, y: g.y, data: g.data });
+      lid = l.id;
+      host.push(addLayer(dd, l, indexOfLayer(dd, dd.activeId) + 1, 'Draw the outline as a line'), true);
+    }
+    host.render();
+  };
+  go();
+  host.sheet('pathop', `${plain} (${pro})`, sheet('path.stroke-style', k, go));
+}
+
 function seg<T extends string>(label: string, help: string, opts: readonly [T, string][], cur: () => T, set: (v: T) => void, redo: () => void, tid: string): HTMLElement {
   const wrap = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label, title: help, style: 'display:flex;flex-wrap:wrap;gap:4px' });
   const paint = (): void => { for (const b of Array.from(wrap.children)) b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.v === cur())); };
@@ -149,10 +261,12 @@ function check(label: string, help: string, get: () => boolean, set: (v: boolean
   return h('label', { title: help, style: 'display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px' }, box, label);
 }
 
+type Num = 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
 function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
   const host = k.host, rows: HTMLElement[] = [];
-  const num = (label: string, help: string, min: number, max: number, key: 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns', unit: string): HTMLElement =>
+  const num = (label: string, help: string, min: number, max: number, key: Num, unit: string): HTMLElement =>
     host.slider(label, help, min, max, S[key], unit, (v) => { S[key] = v; }, `pathop-${key}`);
+  const pair = 'The outline above the picked one in Outlines (A) and the picked one (B); with one outline, its first piece and the next.';
   let note = '';
   switch (id) {
     case 'path.boolean':
@@ -194,6 +308,44 @@ function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
         num('Points (star)', 'How many tips the star has.', 3, 50, 'points', ''),
         num('Inner size', 'Star: how far in the corners between the tips sit, against the tips. Spiral: where it starts.', 5, 95, 'inner', '%'),
         num('Turns (spiral)', 'How many times the spiral winds round.', 1, 20, 'turns', ''));
+      break;
+    case 'path.divide':
+      note = `A is sliced along B's edge: the parts outside B and the parts inside it each become their own outline, and B is used up. ${pair}`;
+      break;
+    case 'path.hatches':
+      note = 'Evenly spaced lines fill the inside of the picked outline (holes stay empty). Draw them with "Arrowheads and dash styles", or make a selection from them.';
+      rows.push(num('Gap', 'Pixels between the lines.', 2, 200, 'gap', ' px'),
+        num('Angle', 'Which way the lines run: 0 is level, 90 is upright.', -90, 90, 'angle', '°'),
+        check('Cross the lines', 'Adds a second set at right angles.', () => S.cross, (v) => { S.cross = v; }, redo, 'pathop-cross'),
+        check('Keep the outline', 'Off leaves only the lines.', () => S.keep, (v) => { S.keep = v; }, redo, 'pathop-keep'));
+      break;
+    case 'path.stitch':
+      note = `Straight lines go across from A to B, spaced evenly along both, like string art. ${pair}`;
+      rows.push(num('Lines', 'How many lines go across.', 2, 200, 'stitches', ''));
+      break;
+    case 'path.interpolate':
+      note = `In-between shapes blend A into B in even steps. ${pair}`;
+      rows.push(num('Steps', 'How many in-between shapes.', 1, 50, 'steps', ''));
+      break;
+    case 'path.pattern-along': case 'path.bend':
+      note = id === 'path.bend'
+        ? `A is bent along the line B and stretched to its length. ${pair}`
+        : `Copies of A are laid along the line B, each bent to follow it; on a closed line they spread evenly. ${pair}`;
+      if (id === 'path.pattern-along') rows.push(num('Gap', 'Pixels between copies.', 0, 200, 'along', ' px'));
+      break;
+    case 'path.power-stroke':
+      note = 'The picked line becomes a shape that is thick and thin along its length; fill it from Outlines. Widths change evenly between the three points.';
+      rows.push(num('Width at the start', 'Pixels across at the start of the line.', 0, 200, 'w0', ' px'),
+        num('Width in the middle', 'Pixels across halfway along.', 0, 200, 'w1', ' px'),
+        num('Width at the end', 'Pixels across at the end of the line.', 0, 200, 'w2', ' px'));
+      break;
+    case 'path.stroke-style':
+      note = 'The picked outline is drawn as a line on a new layer in the main colour. Update redraws that layer.';
+      rows.push(num('Width', 'How thick the line is, in pixels.', 1, 100, 'width', ' px'),
+        seg('Pattern', 'A solid line, dashes, dots, or dash and dot.', [['solid', 'Solid'], ['dash', 'Dashes'], ['dot', 'Dots'], ['dashdot', 'Dash and dot']] as const, () => S.dash, (v) => { S.dash = v; }, redo, 'pathop-dash'),
+        seg('Line ends', 'Flat ends stop at the point; round and square ends reach half the width past it.', [['butt', 'Flat'], ['round', 'Round'], ['square', 'Square']] as const, () => S.cap, (v) => { S.cap = v; }, redo, 'pathop-cap'),
+        seg('Corners', 'Sharp, round or cut-off corners.', [['miter', 'Sharp'], ['round', 'Round'], ['bevel', 'Cut off']] as const, () => S.corner, (v) => { S.corner = v; }, redo, 'pathop-corner'),
+        seg('Arrowheads', 'An arrowhead at the end of an open line, at both ends, or none.', [['none', 'None'], ['end', 'At the end'], ['both', 'Both ends']] as const, () => S.ends, (v) => { S.ends = v; }, redo, 'pathop-ends'));
       break;
   }
   return h('div', { 'data-testid': 'pathop-sheet', 'data-cmd': id, style: 'display:grid;gap:4px;min-width:min(340px,100%)' },

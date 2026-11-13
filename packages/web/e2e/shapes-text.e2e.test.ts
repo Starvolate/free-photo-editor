@@ -3,7 +3,8 @@
 /**
  * Shapes & text in a real headless Chrome, each path operation reached with real clicks from its ribbon home: combine
  * two shapes (merge, keep the overlap, undo), a star and a spiral, grow, mirror, copies round a centre, a wobble, and
- * join then split two outlines. The outlines are checked by their corner points.
+ * join then split two outlines; then slice, in-between shapes, stitch lines, repeat and bend along a line, hatch lines, a
+ * thick-and-thin line, and an outline drawn as a dashed line on a layer. The outlines are checked by their corner points.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts shapes-text
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -15,7 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { reach } from './ribbon';
 
 interface Paths { count: number; names: string[]; picked: string | null; anchors: number; closed: boolean[]; points: { x: number; y: number }[]; }
-interface Fpe { run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; select(x: number, y: number, w: number, h: number): void; }
+interface Fpe {
+  run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; select(x: number, y: number, w: number, h: number): void;
+  getInfo(): { layers: unknown[] } | null;
+}
 type Win = Window & { fpe: Fpe };
 
 const WEB = fileURLToPath(new URL('..', import.meta.url));
@@ -152,5 +156,64 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await click(p, 'path.combine');
     s = await until(p, (x) => x.count === 2, 'split');
     expect(s.names.length).toBe(2);
+  });
+  it('slices, blends, stitches, repeats and bends with two outlines, each undone before the next', async () => {
+    const p = await open();
+    await outlines(p, [100, 100, 200, 200], [200, 200, 200, 200]);
+    await click(p, 'path.divide');
+    // The square 100..300 cut along the edge of 200..400: the part outside (an L, 6 corners) and the overlap 200..300.
+    let s = await until(p, (x) => x.count === 2 && x.names.every((n) => n.includes('piece')), 'divide');
+    expect([s.anchors, box(s)]).toEqual([6, [100, 100, 300, 300]]);
+    await p.click('[data-testid="pathop-done"]');
+    await undo(p);
+    await until(p, (x) => x.count === 2 && !x.names.some((n) => n.includes('piece')), 'undo divide');
+
+    const q = await open();
+    await outlines(q, [100, 100, 200, 200], [150, 150, 100, 100]);
+    await click(q, 'path.interpolate');
+    // Three in-between squares from 100..300 to 150..250: 5 squares of 4 corners in one outline.
+    s = await until(q, (x) => x.count === 1 && x.anchors === 20, 'interpolate');
+    expect(box(s)).toEqual([100, 100, 300, 300]);
+    await undo(q);
+    await click(q, 'path.stitch');
+    s = await until(q, (x) => x.count === 1 && x.closed.length === 14, 'stitch');
+    expect(s.closed.filter((c) => !c).length).toBe(12);
+    await undo(q);
+
+    const r = await open();
+    await outlines(r, [100, 100, 20, 20], [300, 100, 200, 200]);
+    await click(r, 'path.pattern-along');
+    // A 20 px square round a 200 px square ring (800 px round): 40 copies, all inside a band 10 px either side of the ring.
+    s = await until(r, (x) => x.count === 1 && x.closed.length === 40, 'pattern');
+    expect(near(box(s), [290, 90, 510, 310], 1)).toBe(true);
+    await undo(r);
+    await click(r, 'path.bend');
+    s = await until(r, (x) => x.count === 1 && x.picked === 'Bent shape 1', 'bend');
+    expect(near(box(s), [290, 90, 510, 310], 1)).toBe(true);
+  });
+
+  it('hatches a square, turns it into a thick-and-thin shape, and draws it as a dashed line on a new layer', async () => {
+    const p = await open();
+    await outlines(p, [300, 200, 300, 200]);
+    await click(p, 'path.hatches');
+    let s = await until(p, (x) => x.closed.length > 10, 'hatches');
+    expect(s.closed[0]).toBe(true);
+    expect(s.closed.slice(1).every((c) => !c)).toBe(true);
+    expect(near(box(s), [300, 200, 600, 400], 1)).toBe(true);
+    await undo(p);
+    await click(p, 'path.power-stroke');
+    // A closed ring becomes two rings (outside and inside edge of the band).
+    s = await until(p, (x) => x.closed.length === 2, 'power stroke');
+    expect(s.closed).toEqual([true, true]);
+    await undo(p);
+    const layers = (): Promise<number> => p.evaluate(() => (window as unknown as Win).fpe.getInfo()?.layers.length ?? 0);
+    const before = await layers();
+    await click(p, 'path.stroke-style');
+    await p.waitForFunction((n) => ((window as unknown as Win).fpe.getInfo()?.layers.length ?? 0) === n + 1, before);
+    // Another pattern redraws the same layer rather than adding one.
+    await p.click('[data-testid="pathop-dash-dashdot"]');
+    expect(await layers()).toBe(before + 1);
+    await p.click('[data-testid="pathop-done"]');
+    await p.screenshot({ path: join(OUT, 'shapes-text-paths2.png') });
   });
 });

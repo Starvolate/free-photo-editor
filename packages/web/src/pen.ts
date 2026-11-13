@@ -18,7 +18,8 @@ import type { PointerInfo, Pt } from './input';
 import type { ToolHost } from './toolkit';
 
 /** Shapes & text path operations: the pen kit runs them through pathops.ts, loaded on first use. */
-export const PATH_OPS = new Set<string>(['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star']);
+export const PATH_OPS = new Set<string>(['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star',
+  'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']);
 export const PEN_TOOLS = new Set<ToolId>(['pen', 'path-select', 'direct-select', 'anchor-add', 'anchor-delete', 'anchor-convert']);
 
 type DragKind = 'pen' | 'close' | 'anchor' | 'handle' | 'path' | 'pull';

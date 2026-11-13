@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 323 Ready, 352 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 344 Ready, 331 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+238 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 194 | 456 | 0 |
-| Ready today | 323 | 25 | 148 | 150 | 0 |
+| All functions | 675 | 25 | 200 | 450 | 0 |
+| Ready today | 344 | 25 | 154 | 165 | 0 |
 
 ## The Task ribbon
 
@@ -30,7 +30,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 13 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
-| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
+| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (259 Planned, 2 Ready), by home
+## New functions from the feature census (238 Planned, 23 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -654,38 +654,38 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| raw.white-balance | U002 | Fix the colour of the light | White balance (temperature and tint) | Set the scene's light by temperature and tint, or click something grey and let it work out the light. | white balance, temperature, tint, too orange, too blue, grey picker | Develop RAW › Develop · More list | Planned | B6 |
+| raw.white-balance | U002 | Fix the colour of the light | White balance (temperature and tint) | Set the scene's light by temperature and tint, or click something grey and let it work out the light. | white balance, temperature, tint, too orange, too blue, grey picker | Develop RAW › Develop · big button | Ready | B6 |
 | raw.local-edits | U003 | Edit one area with brush, gradient, range or AI masks | Masking (local adjustments) | Draw an area, or let the AI find one (sky, subject, a colour or brightness range), and give it its own light and colour sliders. | local adjustment, edit one area, brighten only the sky, mask sliders, local edit | Develop RAW › Edit one area · More list | Planned | B6 |
-| raw.camera-profile | U028 | Choose how the camera's colours are read | Camera profile and calibration | Adjust how the camera's colours are rendered. | camera profile, calibration, camera colours, colour profile for raw | Develop RAW › Develop · More list | Planned | B12 |
-| raw.negative | U029 | Fix film negatives | Negadoctor / film negative | Turn a scan or photo of a film negative into a positive. | film negative, scan negative, invert film, negative to positive | Develop RAW › Develop · More list | Planned | B12 |
+| raw.camera-profile | U028 | Choose how the camera's colours are read | Camera profile and calibration | Adjust how the camera's colours are rendered. Not built yet: it needs measured colour profiles for each camera. | camera profile, calibration, camera colours, colour profile for raw | Develop RAW › Develop · More list | Planned | B12 |
+| raw.negative | U029 | Fix film negatives | Negadoctor / film negative | Turn a scan or photo of a film negative into a positive. | film negative, scan negative, invert film, negative to positive | Develop RAW › Develop · small button | Ready | B12 |
 | raw.filmic | U030 | Natural-looking bright-to-dark curve | Filmic RGB / Sigmoid / AgX tone mapping | Squeeze a wide brightness range into a screen so highlights roll off softly. | filmic, tone mapping, highlight roll off, sigmoid, agx | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.tone-equalizer | U031 | Brighten by zone with a slider per zone | Tone equalizer | Raise or lower brightness separately for dark, mid and bright zones with a mask-friendly graph. | tone equalizer, zone brightness, dodge and burn by zones | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.highlights | U032 | Rescue blown-out bright areas | Highlight reconstruction | Rebuild detail where the sensor clipped to white. | blown highlights, burnt sky, clipped white, rebuild highlights | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.dehaze | U033 | Remove haze | Haze Removal | Lifts fog or haze from a landscape. | dehaze, haze, fog, foggy, mist, smog | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.colour-grading | U034 | Colour wheels for shadows, mids, highlights | Colour Grading | Three colour wheels plus blending and balance for cinematic looks. | colour grading, colour wheels, split toning, cinematic look, teal and orange | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.colour-mixer | U035 | Change one colour by picking it | Colour mixer (point colour, colour zones) | Pick a colour or a hue band and shift its hue, strength and lightness, with a graph. | colour mixer, hsl, point colour, change one colour, colour zones | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.ai-denoise | U036 | Remove noise with AI | AI Denoise | An on-device model removes grain from high-ISO and low-light shots while keeping detail. | ai denoise, noisy photo, grainy, high iso, night photo, remove noise with ai | Develop RAW › Detail and lens · More list | Planned | B13 |
-| raw.denoise-profiled | U037 | Noise clean-up tuned to your camera and ISO | Denoise (profiled) | Remove noise using a measured noise profile of each camera model. | profiled denoise, camera noise, iso noise, noise reduction for raw | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.capture-sharpen | U038 | Sharpen using the raw capture | Capture sharpening / deconvolution | Undo lens and sensor blur on raw data before other edits. | capture sharpening, deconvolution, raw sharpen, lens blur fix | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.contrast-levels | U039 | Contrast at each detail size | Contrast equalizer / contrast by detail levels / wavelets | Boost or calm texture, medium and large shapes separately. | contrast by detail size, wavelets, texture, local contrast levels | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.clarity | U040 | Add punch to mid-size detail | Clarity / local contrast | Add punch to mid-sized contrast without touching the whole picture. | clarity, local contrast, punch, texture, crisp | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.upright | U041 | Straighten and fix the angle in one tool | Rotate and perspective | Level the horizon and correct keystone with guide lines drawn on the photo. | upright, level horizon, straighten building, keystone, fix tilted | Develop RAW › Detail and lens · More list | Planned | B12 |
+| raw.tone-equalizer | U031 | Brighten by zone with a slider per zone | Tone equalizer | Raise or lower brightness separately for five zones, from blacks to whites, without halos. | tone equalizer, zone brightness, dodge and burn by zones | Develop RAW › Light and tone · small button | Ready | B12 |
+| raw.highlights | U032 | Rescue bright and dark areas | Highlights and shadows | Calm bright areas and open up dark ones, each with its own slider; detail the camera never recorded cannot come back. | blown highlights, burnt sky, clipped white, rebuild highlights | Develop RAW › Light and tone · small button | Ready | B12 |
+| raw.dehaze | U033 | Remove haze | Haze Removal | Lifts fog or haze from a landscape. | dehaze, haze, fog, foggy, mist, smog | Develop RAW › Light and tone · More list | Ready | B12 |
+| raw.colour-grading | U034 | Colour wheels for shadows, mids, highlights | Colour grading | Three colour wheels (darks, middle tones, lights) as hue and amount sliders, plus balance, for cinematic looks. | colour grading, colour wheels, split toning, cinematic look, teal and orange | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.colour-mixer | U035 | Change one colour by picking it | Colour mixer (point colour, colour zones) | Pick one of eight colour bands and shift its hue, strength and lightness. | colour mixer, hsl, point colour, change one colour, colour zones | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.ai-denoise | U036 | Remove noise with AI | AI Denoise | Removes grain from high-ISO and night shots with an on-device model. Not built yet: the model's licence must be checked first. | ai denoise, noisy photo, grainy, high iso, night photo, remove noise with ai | Develop RAW › Detail and lens · More list | Planned | B13 |
+| raw.denoise-profiled | U037 | Clean up grain measured from the photo | Denoise (measured) | Measures the grain in this photo and smooths it while keeping edges, without AI; there are no per-camera noise profiles yet. | profiled denoise, camera noise, iso noise, noise reduction for raw | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.capture-sharpen | U038 | Sharpen using the raw capture | Capture sharpening / deconvolution | Undo slight lens and sensor softness with a few rounds of deconvolution. | capture sharpening, deconvolution, raw sharpen, lens blur fix | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.contrast-levels | U039 | Contrast at each detail size | Contrast equalizer / contrast by detail levels / wavelets | Boost or calm texture, medium and large shapes separately. | contrast by detail size, wavelets, texture, local contrast levels | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.clarity | U040 | Add punch to mid-size detail | Clarity / local contrast | Add punch to mid-sized contrast without touching the whole picture. | clarity, local contrast, punch, texture, crisp | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.upright | U041 | Level a tilted picture | Upright (auto level and straighten) | Level the picture by its strongest straight lines, or turn it by hand; it zooms in just enough to hide the corners. | upright, level horizon, straighten building, keystone, fix tilted | Develop RAW › Detail and lens · More list | Ready | B12 |
 | raw.wide-angle | U042 | Straighten a wide-angle picture | Adaptive Wide Angle | Correct curved lines and stretch from wide lenses. | wide angle, bent lines, curved lines, wide lens fix | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.clipping | U043 | Warn about burnt areas | Clipping warning / raw overexposed warning | Overlay that marks pixels that are pure white or black. | clipping warning, blown out, overexposed warning, burnt areas | Develop RAW › Check · More list | Planned | B12 |
-| raw.scopes | U044 | Colour scopes | Waveform, vectorscope and colour readouts | Read colour numbers and see the picture's tone spread. | waveform, vectorscope, scopes, parade, colour readout | Develop RAW › Check · More list | Planned | B12 |
-| raw.snapshots | U045 | Compare before and after snapshots | Snapshots | Keep a state of the edit and slide it against the live one. | snapshot, before and after, save state, compare versions | Develop RAW › Check · More list | Planned | B12 |
-| raw.presets | U046 | Save an edit as a reusable look | Presets (Adaptive profiles, Adaptive presets, Creative presets) | Save slider settings and pick looks that adapt to each photo. | preset, look, save edit, reusable look, filter preset | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.black-white-points | U110 | Set black and white points of the sensor | Raw black/white point | Fix the darkest and brightest values the sensor recorded. | sensor black point, raw white point, raw levels | Develop RAW › Develop · More list | Planned | T3 |
+| raw.clipping | U043 | Warn about burnt areas | Clipping warning / raw overexposed warning | Marks pure white in red and pure black in blue while you edit; Apply never keeps the marks. | clipping warning, blown out, overexposed warning, burnt areas | Develop RAW › Check · small button | Ready | B12 |
+| raw.scopes | U044 | Colour scopes | Waveform, vectorscope and colour readouts | See the tones as a waveform, or the colours as a vectorscope, live as you edit. | waveform, vectorscope, scopes, parade, colour readout | Develop RAW › Check · More list | Ready | B12 |
+| raw.snapshots | U045 | Keep and recall snapshots of an edit | Snapshots | Keep named states of the develop settings and go back to any of them while the page is open. | snapshot, before and after, save state, compare versions | Develop RAW › Check · More list | Ready | B12 |
+| raw.presets | U046 | Save an edit as your own look | Presets | Save your develop settings under a name and apply them to any photo; they stay in this browser. | preset, look, save edit, reusable look, filter preset | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.black-white-points | U110 | Set black and white points of the sensor | Raw black/white point | Choose which tone becomes pure black and which pure white, for any photo. | sensor black point, raw white point, raw levels | Develop RAW › Develop · small button | Ready | T3 |
 | raw.colour-rescue | U111 | Rescue clipped colours | Colour reconstruction | Bring back believable colour in areas that clipped. | clipped colours, rescue colour, colour reconstruction | Develop RAW › Light and tone · More list | Planned | T3 |
-| raw.base-curve | U112 | Starting curve for a camera | Base curve | The first brightness curve applied to a raw file, one per camera. | base curve, camera curve, starting curve | Develop RAW › Light and tone · More list | Planned | T3 |
-| raw.colour-checker | U113 | Fix colours with a chart photo | Colour checker calibration | Build a custom colour correction from a photo of a standard colour chart, with an accuracy report. | colour checker, colour chart, calibrate with chart | Develop RAW › Colour and looks · More list | Planned | T3 |
+| raw.base-curve | U112 | Starting curve for a camera | Base curve | Start from a gentle, medium, strong or film-like brightness curve; there are no per-camera curves yet. | base curve, camera curve, starting curve | Develop RAW › Light and tone · More list | Ready | T3 |
+| raw.colour-checker | U113 | Fix colours with a chart photo | Colour checker calibration | Build a colour correction from a photo of a standard colour chart. Not built yet: it needs reference values for the chart's patches. | colour checker, colour chart, calibrate with chart | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.colour-match | U114 | Match one patch's colour across photos | Area colour mapping | Pick a target colour in one photo and match it in others, useful for batches. | match colour across photos, colour mapping, same colour in every photo | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.colour-appearance | U115 | Colour by how it looks to the eye | Colour appearance model (CIECAM02 / CAM16, JzCzHz) | Change brightness, colourfulness and lightness in a model of human vision. | colour appearance, cam16, ciecam, how the eye sees colour | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.gamut-compress | U116 | Soft-clip very vivid colours | Gamut compression (ACES) | Pull oversaturated colours back before editing. | vivid colours clipping, neon colours, gamut compression, aces | Develop RAW › Colour and looks · More list | Planned | T3 |
-| raw.hot-pixels | U117 | Remove stuck bright dots | Hot pixels | Find and hide sensor pixels that are always lit. | hot pixels, stuck pixels, bright dots, dead pixels | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.defish | U118 | Flatten a fisheye picture | De-fish | Turn a fisheye shot into a normal-looking one. | fisheye, defish, flatten fisheye, fisheye correction | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.vignette | U119 | Add or remove dark corners | Vignetting | Darken or lighten the picture's edges. | vignette, dark corners, remove vignetting, corner shading | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.community-looks | U120 | Copy and share community looks | Community filters | Browse and apply filters made by other users. | community looks, shared filters, download looks, share preset | Develop RAW › Colour and looks · More list | Planned | T3 |
+| raw.hot-pixels | U117 | Remove stuck bright dots | Hot pixels | Find and hide sensor pixels that are always lit. | hot pixels, stuck pixels, bright dots, dead pixels | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.defish | U118 | Flatten a fisheye picture | De-fish | Turn a fisheye shot into a normal-looking one, set by the lens's field of view. | fisheye, defish, flatten fisheye, fisheye correction | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.vignette | U119 | Add or remove dark corners | Vignetting | Darken or lighten the picture's edges. | vignette, dark corners, remove vignetting, corner shading | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.community-looks | U120 | Copy and share community looks | Community filters | Browse and apply filters made by other users. Not built yet: sharing looks needs a place to host them. | community looks, shared filters, download looks, share preset | Develop RAW › Colour and looks · More list | Planned | T3 |
 
 ### AI tools (23)
 

@@ -117,7 +117,8 @@ export class Autosave {
       let key = this.keys.get(p.tab);
       if (!key) { key = `${this.session}:${++this.n}`; this.keys.set(p.tab, key); }
       live.add(key);
-      const sig = `${p.state}|${p.name}|${i}|${this.idOf(p.doc)}|${p.doc.layers.length}`;
+      // Closing a folder is no undo step, so the closed folders join the signature: a reload brings them back closed.
+      const sig = `${p.state}|${p.name}|${i}|${this.idOf(p.doc)}|${p.doc.layers.length}|${p.doc.layers.filter((l) => l.open === false).map((l) => l.id).join(',')}`;
       sigs.set(key, sig);
       if (this.saved.get(key) !== sig) {
         writes.push([{ key, session: this.session, name: p.name, order: i, width: p.doc.width, height: p.doc.height, layers: p.doc.layers.length, savedAt: Date.now() }, p.doc]);

@@ -33,7 +33,7 @@ import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, 
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
-import { addFolder, arrangeNode, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, StrokeCache, toggleClip, ungroupNode } from '@free-photoeditor/core';
+import { addFolder, ancestors, arrangeNode, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, siblingAbove, StrokeCache, subtreeOf, toggleClip, ungroupNode } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -1954,15 +1954,29 @@ export class Editor {
     this.layerProps.replaceChildren();
     if (!d) { list.append(h('li', { class: 'fpe-note' }, 'Open or create a picture to see its layers.')); return; }
     for (let i = d.layers.length - 1; i >= 0; i--) {
-      const l = d.layers[i], on = l.id === d.activeId;
-      const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name', 'aria-label': `Layer ${l.name}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
-        'data-help-title': 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
-        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') }, h('span', {}, l.name));
+      const l = d.layers[i], on = l.id === d.activeId, folder = isFolder(l), open = l.open !== false, up = ancestors(d.layers, l.id);
+      // A closed folder hides every row inside it, however deep (design 6).
+      if (up.some((a) => a.open === false)) continue;
+      let clipped = 0;
+      for (let s = siblingAbove(d.layers, l.id); s?.clip; s = siblingAbove(d.layers, s.id)) clipped++;
+      const n = folder ? subtreeOf(d.layers, l.id).length - 1 : 0, nl = (k: number): string => `${k} layer${k === 1 ? '' : 's'}`;
+      const sub = folder ? `Folder, ${open ? 'open' : 'closed'} · ${nl(n)}` : l.clip ? 'Clipped to the layer below' : clipped ? `${nl(clipped)} clipped to it` : '';
+      const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name' + (sub ? ' fpe-layer-two' : ''),
+        'aria-label': `${folder ? 'Folder' : 'Layer'} ${l.name}${folder ? `, ${open ? 'open' : 'closed'}, ${nl(n)} inside` : ''}${l.clip ? ', clipped to the layer below' : ''}${clipped ? `, ${nl(clipped)} clipped to it` : ''}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
+        'data-help-title': folder ? 'Choose this folder' : 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
+        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') },
+        h('span', {}, l.name), sub ? h('small', { class: 'fpe-layer-sub' }, sub) : null);
       this.longPress(nameBtn, () => this.layerActions(l.id));
-      list.append(h('li', { class: 'fpe-layer', 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id, 'aria-current': on ? 'true' : 'false' },
+      list.append(h('li', { class: 'fpe-layer' + (l.clip ? ' fpe-clipped' : ''), style: `--depth:${up.length}`, 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id,
+        'data-depth': up.length, 'data-kind': folder ? 'folder' : 'layer', 'aria-current': on ? 'true' : 'false' },
         h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn', 'aria-pressed': String(l.visible), 'aria-label': (l.visible ? 'Hide ' : 'Show ') + l.name,
           'data-help-title': l.visible ? 'Hide this layer' : 'Show this layer', 'data-help': 'The eye shows or hides a layer without deleting it.', 'data-testid': 'layer-eye',
           onclick: () => this.toggleVisible(l.id) }, icon(l.visible ? 'eye' : 'eye-off')),
+        up.length || l.clip ? h('span', { class: 'fpe-indent', 'aria-hidden': 'true' }) : null,
+        l.clip ? h('span', { class: 'fpe-clip-arrow', 'aria-hidden': 'true', 'data-testid': 'clip-arrow' }, icon('clip')) : null,
+        folder ? h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-layer-arrow', 'aria-expanded': String(open), 'aria-label': `${open ? 'Close' : 'Open'} the folder ${l.name}`,
+          'data-help-title': open ? 'Close the folder' : 'Open the folder', 'data-help': 'Shows or hides the rows inside. The picture does not change.', 'data-testid': 'folder-arrow',
+          onclick: () => this.toggleOpen(l.id) }, icon(open ? 'chev-down' : 'chev-right')) : null,
         ...this.layerThumbs(l, on),
         nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
@@ -1986,11 +2000,17 @@ export class Editor {
         this.opacityStart = null;
         if (from !== null && from !== a.opacity) this.pushCmd(propsCommand(a.id, { opacity: from }, { opacity: a.opacity }, 'Layer opacity'));
       });
-      const blend = h('select', { id: id + 'b', 'data-testid': 'layer-blend' },
-        ...BLEND_GROUPS.map((g) => h('optgroup', { label: g.label }, ...g.modes.map((m) => h('option', { value: m, selected: m === a.blendMode }, BLEND_LABELS[m])))));
-      blend.addEventListener('change', () => { const v = blend.value; if (isBlendMode(v)) this.pushCmd(setLayerProps(d, a.id, { blendMode: v }), true); });
+      // A folder's first choice is Pass through: the layers inside mix with everything below as if there were no folder.
+      const fa = isFolder(a), pass = fa && !!a.passThrough;
+      const blend = h('select', { id: id + 'b', 'data-testid': 'layer-blend' }, fa ? h('option', { value: 'pass', selected: pass }, 'Pass through') : null,
+        ...BLEND_GROUPS.map((g) => h('optgroup', { label: g.label }, ...g.modes.map((m) => h('option', { value: m, selected: !pass && m === a.blendMode }, BLEND_LABELS[m])))));
+      blend.addEventListener('change', () => {
+        const v = blend.value;
+        if (v === 'pass') this.pushCmd(setLayerProps(d, a.id, { passThrough: true }, 'Folder mixes: pass through'), true);
+        else if (isBlendMode(v)) this.pushCmd(setLayerProps(d, a.id, fa ? { passThrough: false, blendMode: v } : { blendMode: v }), true);
+      });
       this.layerProps.append(
-        h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': 'How this layer mixes with the layers under it. Normal simply covers them.' },
+        h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': fa ? 'Pass through lets the layers inside mix with everything below. Any other choice first makes the folder one picture, then mixes it.' : 'How this layer mixes with the layers under it. Normal simply covers them.' },
           h('label', { for: id + 'b' }, 'Blend'), blend),
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
           h('label', { for: id + 'o' }, 'Opacity'), op, opOut),
@@ -2001,7 +2021,8 @@ export class Editor {
   }
   /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
   private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
-    const pic = h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
+    const pic = isFolder(l) ? h('span', { class: 'fpe-layer-thumb fpe-layer-folder', 'aria-hidden': 'true' }, icon(l.open === false ? 'folder' : 'open'))
+      : h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
     const m = l.mask;
     if (!m) return [pic];
     const maskOn = on && this.maskTarget;
@@ -2019,6 +2040,16 @@ export class Editor {
         onclick: (ev: Event) => { if ((ev as MouseEvent).shiftKey) { if (this.doc?.activeId !== l.id) this.selectLayer(l.id); this.maskAction('toggle'); } else this.targetMask(l.id, true); } },
       h('canvas', { width: 80, height: 80, 'data-mask-thumb': l.id, 'aria-hidden': 'true' })),
     ];
+  }
+  /** Open or close a folder's rows: a view choice, not an undo step. The safety copy keeps it. */
+  private toggleOpen(id: string): void {
+    const d = this.doc, l = d ? findLayer(d, id) : undefined;
+    if (!d || !l || !isFolder(l)) return;
+    l.open = l.open === false;
+    // Closing the folder that holds the active layer makes the folder active, so the active row stays in view.
+    if (!l.open && ancestors(d.layers, d.activeId).some((a) => a.id === id)) this.selectLayer(id);
+    this.renderLayers();
+    this.saver?.touch();
   }
   /**
    * A layer row's actions (design 6, phones): a bottom sheet on phones and tablets after a long press, a small menu on a
@@ -2151,6 +2182,7 @@ export class Editor {
       h('h3', { class: 'fpe-group-title' }, 'Picture'),
       h('p', { class: 'fpe-kv' }, `${d.width} × ${d.height} px · ${d.layers.length} layer${d.layers.length === 1 ? '' : 's'}`),
       h('div', { class: 'fpe-btnrow' }, this.cmdBtn('image.size', null, 'Picture size…'), this.cmdBtn('image.canvas-size', null, 'Canvas size…'))];
+    const own = parts[1];
     if (l.mask) {
       // The mask's settings live here (design 6): first while the mask is the target, after the layer's own otherwise.
       const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'mask-props' });
@@ -2159,6 +2191,18 @@ export class Editor {
         m.renderMaskProps(box, {
           uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
           live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg),
+        });
+        if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+      });
+    }
+    if (isFolder(l)) {
+      // A folder has no pixels of its own: its section (how it mixes, opacity, open) replaces X, Y and size, loaded lazily.
+      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'folder-props' });
+      parts.splice(parts.indexOf(own) - 1, 4, box);
+      void import('./layerprops').then((m) => {
+        m.renderFolderProps(box, {
+          uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
+          live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg), toggleOpen: (fid) => this.toggleOpen(fid),
         });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
       });
@@ -3428,7 +3472,8 @@ export class Editor {
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
           w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
           maskTarget: !!this.active()?.mask && this.maskTarget,
-          layers: this.doc ? this.doc.layers.map((l) => ({ id: l.id, x: l.x, y: l.y, w: l.width, h: l.height, mask: l.mask ? maskSummary(l.mask) : null })) : [],
+          layers: this.doc ? this.doc.layers.map((l) => ({ id: l.id, x: l.x, y: l.y, w: l.width, h: l.height, mask: l.mask ? maskSummary(l.mask) : null,
+            name: l.name, kind: l.kind ?? 'pixel', parentId: l.parentId ?? null, clip: !!l.clip, open: l.open !== false, passThrough: !!l.passThrough, opacity: l.opacity, blendMode: l.blendMode })) : [],
         };
       },
       openSample: (k?: number) => this.openSample(k),

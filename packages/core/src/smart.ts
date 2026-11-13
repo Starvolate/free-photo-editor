@@ -30,11 +30,29 @@ export function uprightBox(q: Quad, eps = 1e-3): Rect | null {
   return n(q[0].x, x0) && n(q[3].x, x0) && n(q[1].x, x1) && n(q[2].x, x1) && n(q[0].y, y0) && n(q[1].y, y0) && n(q[2].y, y1) && n(q[3].y, y1)
     ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
 }
-/** The original picture with its corners on `q` (document space). Upright at its own size = a byte-for-byte copy. */
+/**
+ * The original on a quad whose corners sit on whole pixels with its sides along the axes: upright, quarter-turned or mirrored
+ * (all 8 ways). Each pixel is copied, never blended, so turning and flipping back gives the same bytes. Null for any other quad.
+ */
+export function gridPlace(src: Bitmap, q: Quad, eps = 1e-3): Placed | null {
+  if (!q.every((p) => Math.abs(p.x - Math.round(p.x)) < eps && Math.abs(p.y - Math.round(p.y)) < eps)) return null;
+  const [a, b, c, d] = q.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+  // e: where the original's top edge runs, f: where its left edge runs. Each lies along one axis, and they differ.
+  const ex = b.x - a.x, ey = b.y - a.y, fx = d.x - a.x, fy = d.y - a.y;
+  if (!!ex === !!ey || !!fx === !!fy || !!ex === !!fx || c.x !== b.x + fx || c.y !== b.y + fy) return null;
+  const sw = Math.abs(ex + ey), sh = Math.abs(fx + fy), W = ex ? sw : sh, H = ex ? sh : sw;
+  const x0 = Math.min(a.x, c.x), y0 = Math.min(a.y, c.y), img = sw === src.width && sh === src.height ? src.data : resizeBitmap(src, sw, sh);
+  if (ex > 0 && fy > 0) return { x: x0, y: y0, width: W, height: H, data: img === src.data ? img.slice() : img };
+  const out = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = x0 + x + 0.5 - a.x, py = y0 + y + 0.5 - a.y, u = Math.floor((px * ex + py * ey) / sw), v = Math.floor((px * fx + py * fy) / sh), j = (v * sw + u) * 4;
+    out.set(img.subarray(j, j + 4), (y * W + x) * 4);
+  }
+  return { x: x0, y: y0, width: W, height: H, data: out };
+}
+/** The original picture with its corners on `q` (document space). On whole pixels along the axes it is copied, else warped. */
 export function placeSource(src: Bitmap, q: Quad, limit?: Rect): Placed | null {
-  const r = uprightBox(q);
-  if (r) return { x: r.x, y: r.y, width: r.w, height: r.h, data: r.w === src.width && r.h === src.height ? src.data.slice() : resizeBitmap(src, r.w, r.h) };
-  return warpBitmap(src, q, true, limit);
+  return gridPlace(src, q) ?? warpBitmap(src, q, true, limit);
 }
 /** The smart layer's corners in document space, for a layer at (x, y). */
 export const docQuad = (s: SmartLayer, x: number, y: number): Quad => s.quad.map((p) => ({ x: p.x + x, y: p.y + y })) as Quad;
@@ -115,8 +133,24 @@ export function resizeSmart(l: Layer, sx: number, sy: number, run: FilterRun = p
   const r = renderSmart(s, q, run, { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 2 });
   return r ? { ...r.geom, smart: r.smart } : null;
 }
-/** Lets Free transform and Picture size (always loaded) reach smart layers once this module is loaded. */
+/**
+ * A quarter turn or flip of a smart layer: each corner moves inside the box `r` the way the pixels do (imageops turnPixels), the
+ * box landing with its top-left at (nx, ny), and the picture is redrawn from the original. Turning back gives the same bytes.
+ */
+export function turnSmart(l: Layer, t: string, r: Rect, nx: number, ny: number, run: FilterRun = plainRun): Partial<Layer> | null {
+  const s = l.smart;
+  if (!s) return null;
+  const q = docQuad(s, l.x, l.y).map((p) => {
+    const u = p.x - r.x, v = p.y - r.y;
+    const [x, y] = t === 'cw' ? [r.h - v, u] : t === 'ccw' ? [v, r.w - u] : t === '180' ? [r.w - u, r.h - v] : t === 'flip-h' ? [r.w - u, v] : [u, r.h - v];
+    return { x: nx + x, y: ny + y };
+  }) as Quad;
+  const b = quadBounds(q), g = renderSmart(s, q, run, { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 2 });
+  return g ? { ...g.geom, smart: g.smart } : null;
+}
+/** Lets Free transform, Picture size and the turns (always loaded) reach smart layers once this module is loaded. */
 export function installSmartHooks(run: FilterRun = plainRun): void {
   SMART.transform = (doc, l, to, label) => transformSmart(doc, l, to as Quad, label, run);
   SMART.resize = (l, sx, sy) => resizeSmart(l, sx, sy, run);
+  SMART.turn = (l, t, r, nx, ny) => turnSmart(l, t, r, nx, ny, run);
 }

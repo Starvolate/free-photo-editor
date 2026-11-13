@@ -349,7 +349,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         // A folder: one box around everything inside; each layer keeps its starting pixels for the preview and Esc.
         const box = effectiveBox(d.layers, l);
         if (!box) { host.toast('This folder has nothing in it to transform yet.'); return; }
-        const kids = subtreeNodes(d.layers, l.id).filter((c) => hasPx(c)).map((c) => ({ id: c.id, orig: { ...geomOf(c) } }));
+        const kids = subtreeNodes(d.layers, l.id).filter((c) => hasPx(c) || c.kind === 'smart').map((c) => ({ id: c.id, orig: { ...geomOf(c) } }));
         xf = { target, id: l.id, mode, orig: null, kids, sel0: null, base: quadOfRect(box), q: quadOfRect(box), raf: 0 };
       } else xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
     }

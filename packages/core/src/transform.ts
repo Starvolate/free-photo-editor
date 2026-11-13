@@ -4,7 +4,7 @@
  * Free transform and friends: a layer (or the selection) is redrawn so its four corners land anywhere. Scale, turn, slant,
  * pull corners and perspective are all the same map (a 3 × 3 projective matrix). Also lining layers up and spacing them out.
  */
-import { SMART, docRect, findLayer, geomOf, hasPixels, isFolder, layerRect, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
+import { SMART, docRect, drawsPixels, findLayer, geomOf, isFolder, layerRect, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
 import { placeLayer, plusMask } from './mask';
 import { intersect, union, type Point, type Rect } from './geometry';
 import { geomCommand, propsCommand, type Command } from './history';
@@ -221,7 +221,7 @@ export function moveNode(doc: Doc, id: string, dx: number, dy: number, label = '
 export function nodeContentBounds(doc: Doc, l: Layer): Rect | null {
   if (!isFolder(l)) return contentBounds(l);
   let u: Rect | null = null;
-  for (const c of subtreeOf(doc.layers, l.id)) if (c !== l && hasPixels(c)) { const b = contentBounds(c); if (b) u = union(u, b); }
+  for (const c of subtreeOf(doc.layers, l.id)) if (c !== l && drawsPixels(c)) { const b = contentBounds(c); if (b) u = union(u, b); }
   return u;
 }
 /** Where a rectangle's corners go when the box `from` is warped onto `to`: one projective map for every layer in a folder. */
@@ -241,7 +241,7 @@ export function transformNode(doc: Doc, id: string, to: Quad, label = 'Free tran
   if (!from || !homography(from, to)) return null;
   const cmds: (Command | null)[] = [];
   for (const c of subtreeOf(doc.layers, id)) {
-    const q = hasPixels(c) ? carryQuad(from, to, layerRect(c)) : null;
+    const q = drawsPixels(c) ? carryQuad(from, to, layerRect(c)) : null;
     if (!q) continue;
     const had = !!c.content;
     cmds.push(transformLayer(doc, c, q, label, smooth));

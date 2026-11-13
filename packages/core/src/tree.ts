@@ -6,7 +6,7 @@
  * is derived here when needed and never stored. Every structure edit goes through this file, and a node always moves with
  * its whole subtree.
  */
-import { createFolder, hasPixels, isFolder, layerRect, newId, nextLayerName, type Doc, type Layer } from './document';
+import { createFolder, drawsPixels, hasPixels, isFolder, layerRect, newId, nextLayerName, type Doc, type Layer } from './document';
 import { union, type Rect } from './geometry';
 import type { Command } from './history';
 
@@ -85,9 +85,9 @@ export function siblingAbove(layers: readonly Layer[], id: string): Layer | null
 }
 /** Where a node can change the picture: its pixels, or for a folder everything inside it. Null when it has nothing. */
 export function effectiveBox(layers: readonly Layer[], l: Layer): Rect | null {
-  if (!isFolder(l)) return hasPixels(l) ? layerRect(l) : null;
+  if (!isFolder(l)) return drawsPixels(l) ? layerRect(l) : null;
   let u: Rect | null = null;
-  for (const c of subtreeOf(layers, l.id)) if (c !== l && hasPixels(c)) u = union(u, layerRect(c));
+  for (const c of subtreeOf(layers, l.id)) if (c !== l && drawsPixels(c)) u = union(u, layerRect(c));
   return u;
 }
 /** The number of layers with pixels (folders and other nodes aside). */

@@ -2667,10 +2667,8 @@ export class Editor {
   flattenAction(): void { const d = this.doc; if (d) this.pushCmd(flattenDocument(d, parseHex(this.bgColor) ?? WHITE), true); }
   turnLayerAction(t: Turn): void {
     const d = this.doc, l = this.active();
-    if (!d || !l || !this.editable(l)) return;
-    const old = layerRect(l), cmd = turnLayer(d, t);
-    this.pushCmd(cmd);
-    this.markDirty(union(old, layerRect(l)));
+    // A smart layer turns too: its kept corners move and it is redrawn from the original.
+    if (d && l && this.editable(l, l.kind !== 'smart')) this.pushCmd(turnLayer(d, t), true);
   }
   turnCanvas(t: Turn): void {
     const d = this.doc;

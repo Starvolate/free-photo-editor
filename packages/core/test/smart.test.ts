@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { compositeDoc, createDocument, createLayer, cropDocument, flatten, resizeDocument, transformLayer, quadOfRect, type Doc, type Layer } from '../src/index';
 import { convertToSmart, docQuad, installSmartHooks, rasterizeSmart, renderSmart, updateSmart, uprightBox } from '../src/smart';
 import { commitResult, runJob } from '../src/index';
+import { createFolder, effectiveBox, layerAt, mergeDown, mergeDownRefusal, mergeVisible, transformNode, turnDocument, turnLayer } from '../src/index';
 import { readPsdDocument, writePsdDocument } from '../src/psd';
 
 /** An 8 × 8 hand pattern: every pixel different, so any resampling shows. Pixel (x, y) = (x*30, y*30, x+y*8, 255). */
@@ -135,5 +136,130 @@ describe('smart layers', () => {
     const back = readPsdDocument(writePsdDocument(doc)).doc;
     expect(back.layers[0].kind ?? 'pixel').toBe('pixel');
     expect([...flatten(back).data]).toEqual([...flatten(doc).data]);
+  });
+});
+
+/** A smart layer from a w × h picture whose red channel counts 1, 2, 3, … row by row (green 0, blue 0, opaque). */
+function counted(w: number, h: number): { doc: Doc; l: Layer } {
+  const doc = createDocument(w, h, null), l = doc.layers[0];
+  l.data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) l.data.set([i + 1, 0, 0, 255], i * 4);
+  convertToSmart(l);
+  return { doc, l };
+}
+const reds = (l: Layer): number[] => [...l.data].filter((_, i) => i % 4 === 0);
+const smartOf = (doc: Doc): Layer => doc.layers.find((x) => x.kind === 'smart') as Layer;
+
+describe('smart layers: merges, auto-pick, folders, turns and flips', () => {
+  it('Merge down and Merge visible give plain pixels with hand-checked values; undo brings the smart layer back', () => {
+    for (const how of ['down', 'visible'] as const) {
+      const doc = createDocument(2, 1, null), base = doc.layers[0];
+      base.data = new Uint8ClampedArray([10, 20, 30, 255, 40, 50, 60, 255]);
+      convertToSmart(base);
+      const top = createLayer('Top', 2, 1, { data: new Uint8ClampedArray([0, 0, 0, 0, 200, 100, 0, 255]) });
+      doc.layers.push(top);
+      doc.activeId = top.id;
+      expect(mergeDownRefusal(doc)).toBeNull();
+      const c = how === 'down' ? mergeDown(doc) : mergeVisible(doc);
+      expect(c).not.toBeNull();
+      expect(doc.layers).toHaveLength(1);
+      const m = doc.layers[0];
+      expect(m.kind).toBeUndefined();
+      expect(m.smart).toBeUndefined();
+      expect([...m.data]).toEqual([10, 20, 30, 255, 200, 100, 0, 255]);
+      c?.undo(doc);
+      expect(doc.layers).toHaveLength(2);
+      expect(doc.layers[0].kind).toBe('smart');
+    }
+    // A smart layer on top merges into a plain one below it.
+    const doc = createDocument(1, 1, null);
+    doc.layers[0].data = new Uint8ClampedArray([1, 2, 3, 255]);
+    const up = createLayer('Up', 1, 1, { data: new Uint8ClampedArray([9, 8, 7, 255]) });
+    doc.layers.push(up);
+    convertToSmart(up);
+    doc.activeId = up.id;
+    mergeDown(doc);
+    expect(doc.layers.map((l) => [l.kind, [...l.data]])).toEqual([[undefined, [9, 8, 7, 255]]]);
+  });
+
+  it("The Move tool's auto-pick finds a smart layer under the pointer, and skips its see-through pixels", () => {
+    const doc = createDocument(2, 1, null);
+    doc.layers[0].data = new Uint8ClampedArray([5, 5, 5, 255, 5, 5, 5, 255]);
+    const up = createLayer('Up', 2, 1, { data: new Uint8ClampedArray([0, 0, 0, 0, 90, 90, 90, 255]) });
+    doc.layers.push(up);
+    convertToSmart(up);
+    expect(layerAt(doc, 1.5, 0.5)?.id).toBe(up.id);
+    expect(layerAt(doc, 0.5, 0.5)?.id).toBe(doc.layers[0].id);
+  });
+
+  it('A folder counts its smart layers: its box, and Free transform on the folder moves the corners and gives the original back', () => {
+    const { doc, l } = docWith();
+    l.width = l.height = 4;
+    l.data = pattern().slice(0, 64);
+    convertToSmart(l);
+    const f = createFolder('Group');
+    l.parentId = f.id;
+    doc.layers.push(f);
+    expect(effectiveBox(doc.layers, f)).toEqual({ x: 0, y: 0, w: 4, h: 4 });
+    const src = [...(l.smart?.source.data ?? [])];
+    transformNode(doc, f.id, quadOfRect({ x: 0, y: 0, w: 8, h: 8 }));
+    const big = smartOf(doc);
+    expect([big.x, big.y, big.width, big.height]).toEqual([0, 0, 8, 8]);
+    transformNode(doc, f.id, quadOfRect({ x: 2, y: 1, w: 4, h: 4 }));
+    const back = smartOf(doc);
+    expect([back.x, back.y, back.width, back.height]).toEqual([2, 1, 4, 4]);
+    expect([...back.data]).toEqual(src);
+  });
+
+  it('Turns and flips move the kept corners: hand-checked pixels, four right turns or two flips give the same bytes, undo restores', () => {
+    // 3 × 2 picture [1 2 3 / 4 5 6].
+    const { doc, l } = counted(3, 2), quad0 = JSON.stringify(l.smart?.quad), bytes0 = [...l.data];
+    const c = turnLayer(doc, 'cw') as NonNullable<ReturnType<typeof turnLayer>>;
+    let s = smartOf(doc);
+    expect([s.width, s.height]).toEqual([2, 3]);
+    expect(reds(s)).toEqual([4, 1, 5, 2, 6, 3]);
+    turnLayer(doc, 'flip-h');
+    expect(reds(smartOf(doc))).toEqual([1, 4, 2, 5, 3, 6]); // a turn then a mirror: the original read down its columns
+    turnLayer(doc, 'flip-h');
+    turnLayer(doc, 'cw'); turnLayer(doc, 'cw'); turnLayer(doc, 'cw');
+    s = smartOf(doc);
+    expect([s.width, s.height]).toEqual([3, 2]);
+    expect([...s.data]).toEqual(bytes0);
+    expect(JSON.stringify(s.smart?.quad)).toBe(quad0);
+    // Undo of a single turn puts the corners back.
+    const d2 = counted(3, 2), t = turnLayer(d2.doc, '180');
+    expect(reds(smartOf(d2.doc))).toEqual([6, 5, 4, 3, 2, 1]);
+    t?.undo(d2.doc);
+    expect(JSON.stringify(smartOf(d2.doc).smart?.quad)).toBe(quad0);
+    expect(reds(smartOf(d2.doc))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(c).not.toBeNull();
+  });
+
+  it('Turning the whole picture moves a smart layer and its corners; right then left with a live blur gives the same bytes', () => {
+    const doc = createDocument(4, 3, null), l = doc.layers[0];
+    l.width = 2; l.height = 1; l.x = 1; l.y = 1;
+    l.data = new Uint8ClampedArray([7, 0, 0, 255, 8, 0, 0, 255]);
+    convertToSmart(l);
+    turnDocument(doc, 'cw');
+    let s = smartOf(doc);
+    expect([doc.width, doc.height, s.x, s.y, s.width, s.height]).toEqual([3, 4, 1, 1, 1, 2]);
+    expect(reds(s)).toEqual([7, 8]);
+    turnDocument(doc, 'flip-v');
+    expect(reds(smartOf(doc))).toEqual([8, 7]);
+    turnDocument(doc, 'flip-v');
+    turnDocument(doc, 'ccw');
+    s = smartOf(doc);
+    expect([doc.width, doc.height, s.x, s.y, s.width, s.height]).toEqual([4, 3, 1, 1, 2, 1]);
+    expect(reds(s)).toEqual([7, 8]);
+    // With a live Smooth blur on, a right turn then a left turn gives back the same bytes.
+    const b = docWith();
+    convertToSmart(b.l);
+    const sm = b.l.smart as NonNullable<Layer['smart']>;
+    const blur = { id: 'f1', cmd: 'filter.blur-gaussian', spec: { op: 'gaussian-blur' as const, params: { radius: 2 } }, on: true };
+    updateSmart(b.doc, b.l, { ...sm, filters: [blur] }, docQuad(sm, 0, 0), 'Live blur');
+    const blurred = [...smartOf(b.doc).data];
+    turnDocument(b.doc, 'cw');
+    turnDocument(b.doc, 'ccw');
+    expect([...smartOf(b.doc).data]).toEqual(blurred);
   });
 });

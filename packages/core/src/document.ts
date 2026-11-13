@@ -107,9 +107,13 @@ export interface LiveFilter { id: string; cmd: string; spec: JobSpec; on: boolea
 export const SMART: {
   transform?: (doc: Doc, l: Layer, to: Point[], label: string) => Command | null;
   resize?: (l: Layer, sx: number, sy: number) => Partial<Layer> | null;
+  /** A quarter turn or flip inside the box `r`, landing with its top-left at (nx, ny). */
+  turn?: (l: Layer, t: string, r: Rect, nx: number, ny: number) => Partial<Layer> | null;
 } = {};
 /** True for nodes with pixels of their own to paint on: plain pixel, text and shape layers. */
 export const hasPixels = (l: { kind?: LayerKind }): boolean => !l.kind || l.kind === 'pixel';
+/** True for layers whose own pixels are drawn as they are: plain, text, shape and smart layers (a smart layer's are its finished picture). */
+export const drawsPixels = (l: { kind?: LayerKind }): boolean => hasPixels(l) || l.kind === 'smart';
 export const isFolder = (l: { kind?: LayerKind } | undefined): boolean => l?.kind === 'folder';
 /** A layer mask: a grey picture over the document. 255 shows the layer, 0 hides it. */
 export interface LayerMask {

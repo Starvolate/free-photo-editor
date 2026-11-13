@@ -6,7 +6,7 @@
  */
 import { WHITE, type RGBA } from './color';
 import { compositeRect } from './composite';
-import { SMART, activeLayer, hasPixels, isFolder, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
+import { SMART, activeLayer, drawsPixels, hasPixels, isFolder, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
   type LayerMask, type Selection } from './document';
 import { plusMask, shiftMask } from './mask';
 import { union, type Rect } from './geometry';
@@ -160,13 +160,14 @@ export function turnPixels(b: Bitmap, t: Turn): Bitmap {
 }
 /** Turn or flip the whole picture: every layer and the canvas. */
 export function turnDocument(doc: Doc, t: Turn): Command {
-  const W = doc.width, H = doc.height, before = snapshotDoc(doc);
+  const W = doc.width, H = doc.height, before = snapshotDoc(doc), R = { x: 0, y: 0, w: W, h: H };
   const layers = doc.layers.map((l) => {
-    const p = turnPixels(l, t);
+    // A smart layer's corners turn with it and it is redrawn from its original (smart.ts).
+    const p = turnPixels(l, t), sm = (l.kind === 'smart' && SMART.turn?.(l, t, R, 0, 0)) || null;
     let x = l.x, y = l.y;
     if (t === 'cw') { x = H - (l.y + l.height); y = l.x; } else if (t === 'ccw') { x = l.y; y = W - (l.x + l.width); }
     else if (t === '180') { x = W - (l.x + l.width); y = H - (l.y + l.height); } else if (t === 'flip-h') x = W - (l.x + l.width); else y = H - (l.y + l.height);
-    return { ...l, x, y, width: p.width, height: p.height, data: p.data, ...withMask(l, (m) => turnMask(m, { x: 0, y: 0, w: W, h: H }, 0, 0, t)) };
+    return { ...l, x, y, width: p.width, height: p.height, data: p.data, ...sm, ...withMask(l, (m) => turnMask(m, R, 0, 0, t)) };
   });
   const swap = t === 'cw' || t === 'ccw';
   return commit(doc, TURN_LABEL[t], before, { width: swap ? H : W, height: swap ? W : H, layers, activeId: doc.activeId, selection: null });
@@ -177,6 +178,10 @@ export function turnLayer(doc: Doc, t: Turn): Command | null {
   if (!l) return null;
   const p = turnPixels(l, t), cx = l.x + l.width / 2, cy = l.y + l.height / 2, nx = Math.round(cx - p.width / 2), ny = Math.round(cy - p.height / 2);
   const mb = l.mask, ma = mb?.linked ? turnMask(mb, layerRect(l), nx, ny, t) : mb;
+  if (l.kind === 'smart') {
+    const sm = SMART.turn?.(l, t, layerRect(l), nx, ny), before = snapshotDoc(doc);
+    return sm ? commit(doc, TURN_LABEL[t], before, { ...before, layers: before.layers.map((c) => (c.id === l.id ? { ...c, ...sm, ...(ma && { mask: ma }) } : c)) }) : null;
+  }
   const g = geomCommand(TURN_LABEL[t], l.id, geomOf(l), { x: nx, y: ny, width: p.width, height: p.height, data: p.data });
   const cmd = ma === mb ? g : plusMask(g, l.id, mb, ma);
   cmd.redo(doc);
@@ -217,11 +222,11 @@ export function mergeDownRefusal(doc: Doc): string | null {
   const a = activeLayer(doc);
   if (!a) return 'Choose a layer first.';
   if (isFolder(a)) return null; // merges the folder into one layer
-  if (!hasPixels(a)) return 'This layer has no pixels of its own to merge.';
+  if (!drawsPixels(a)) return 'This layer has no pixels of its own to merge.';
   const below = siblingBelow(doc.layers, a.id);
   if (!below) return 'There is no layer below it in the same folder.';
   if (isFolder(below)) return 'The layer below is a folder: open it, or merge the folder first.';
-  if (!hasPixels(below)) return 'The layer below has no pixels of its own.';
+  if (!drawsPixels(below)) return 'The layer below has no pixels of its own.';
   return null;
 }
 /**
@@ -240,7 +245,9 @@ export function mergeDown(doc: Doc): Command | null {
   delete upper.parentId;
   const data = compositeRect([base, upper], r, null);
   const merged: Layer = { ...below, x: r.x, y: r.y, width: r.w, height: r.h, data };
-  delete merged.mask; // the masks are drawn into the merged pixels
+  delete merged.mask; // the masks are drawn into the merged pixels; a smart layer's original goes, the result is plain pixels
+  delete merged.smart;
+  delete merged.kind;
   const layers = doc.layers.slice();
   layers.splice(i - 1, 2, merged);
   return commit(doc, 'Merge down', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
@@ -262,7 +269,7 @@ export function mergeFolder(doc: Doc, id: string): Command | null {
 }
 /** Combine every shown node into one layer, placed where the lowest shown layer was. Hidden layers stay as they are. */
 export function mergeVisible(doc: Doc): Command | null {
-  const shown = doc.layers.filter((l) => hasPixels(l) && shownInTree(doc.layers, l));
+  const shown = doc.layers.filter((l) => drawsPixels(l) && shownInTree(doc.layers, l));
   if (shown.length < 2) return null;
   let u: Rect | null = null;
   for (const l of shown) u = union(u, layerRect(l));
@@ -271,6 +278,8 @@ export function mergeVisible(doc: Doc): Command | null {
   delete merged.mask;
   delete merged.parentId;
   delete merged.clip;
+  delete merged.smart;
+  delete merged.kind;
   // Kept: hidden nodes with what is inside them. A kept node whose folder is merged moves to the nearest kept folder.
   const keep = doc.layers.filter((l) => !shownInTree(doc.layers, l) || (isFolder(l) && !subtreeOf(doc.layers, l.id).some((c) => shown.includes(c))));
   const kept = new Set(keep), byId = new Map(doc.layers.map((l) => [l.id, l]));

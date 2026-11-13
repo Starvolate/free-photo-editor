@@ -12,7 +12,7 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
@@ -796,11 +796,12 @@ export class Editor {
     if (pid === 'layers') {
       this.layerList = h('ul', { class: 'fpe-layer-list', 'aria-label': 'Layers, top first', 'data-testid': 'layer-list' });
       this.layerProps = h('div', { class: 'fpe-props' });
-      b.append(this.layerProps, this.layerList, h('div', { class: 'fpe-layer-tools', role: 'toolbar', 'aria-label': 'Layer actions' },
+      // Rows first in every layout, so the layers are always in view; then the action row; then the active layer's settings.
+      b.append(this.layerList, h('div', { class: 'fpe-layer-tools', role: 'toolbar', 'aria-label': 'Layer actions' },
         this.cmdBtn('layer.new', 'plus', null, { 'data-testid': 'layer-add' }), this.cmdBtn('layer.duplicate', 'copy', null, { 'data-testid': 'layer-duplicate' }),
         this.cmdBtn('file.open-layer', 'image-plus', null, { 'data-testid': 'layer-image' }), this.cmdBtn('layer.forward', 'arrow-up', null, { 'data-testid': 'layer-up' }),
         this.cmdBtn('layer.backward', 'arrow-down', null, { 'data-testid': 'layer-down' }), this.cmdBtn('layer.merge-down', 'merge', null, { 'data-testid': 'layer-merge' }),
-        this.cmdBtn('layer.lock', 'lock', null, { 'data-testid': 'layer-lock' }), this.cmdBtn('layer.delete', 'trash', null, { 'data-testid': 'layer-delete' })));
+        this.cmdBtn('layer.lock', 'lock', null, { 'data-testid': 'layer-lock' }), this.cmdBtn('layer.delete', 'trash', null, { 'data-testid': 'layer-delete' })), this.layerProps);
     } else if (pid === 'history') {
       this.histList = h('ol', { class: 'fpe-hist', 'data-testid': 'history-list', 'aria-label': 'Steps, oldest first' });
       b.append(this.histList);
@@ -1366,7 +1367,9 @@ export class Editor {
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
     const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
-    s.hint.textContent = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '';
+    const tip = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '', ml = d ? activeLayer(d) : undefined;
+    // While the mask is the target the status line says so first, in plain words (design 6), then the tool's own line.
+    s.hint.textContent = ml && this.onMask(ml) ? `Editing the mask of ${ml.name}: black hides, white shows, grey half shows. ${tip}` : tip;
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -1431,7 +1434,7 @@ export class Editor {
       root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
       fg: () => this.brush.color, bg: () => this.bgColor, push: (c, all) => this.pushCmd(c, all), dirty: (r) => { this.markDirty(r); this.requestRender(); },
       all: () => { this.markAll(); this.requestRender(); }, render: () => this.requestRender(), selectionChanged: () => this.afterSelection(),
-      refreshOptions: () => this.renderOptions(), toast: (m) => this.toast(m), editable: (l, px) => this.editable(l, px), setTool: (t) => this.setTool(t),
+      refreshOptions: () => this.renderOptions(), toast: (m) => this.toast(m), editable: (l, px, om) => this.editable(l, px, om), onMask: (l) => this.onMask(l), setTool: (t) => this.setTool(t),
       tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
       slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
       forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
@@ -1493,7 +1496,7 @@ export class Editor {
   private editable(l: Layer, pixels = true, onMask = false): boolean {
     const mask = this.maskTarget && !!l.mask;
     if (pixels && mask && !onMask && !l.locked) {
-      this.toast('You are editing the mask. Brush, pencil, eraser, Fill and Delete work on it; for this one, click the picture thumbnail in the Layers panel to edit pixels.');
+      this.toast('You are editing the mask. Brush, pencil, eraser, Fill, Delete, Colour fade (Gradient) and Negative (Invert) work on it; for this one, click the picture thumbnail in the Layers panel to edit pixels.');
       return false;
     }
     if (pixels && !mask && l.content && !l.locked) {
@@ -1923,6 +1926,7 @@ export class Editor {
     this.renderColor();
     this.renderInfo();
     this.queueNav();
+    if (this.stat.hint) this.renderStatus();
   }
   private renderLayers(): void {
     const d = this.doc, list = this.layerList;
@@ -1973,14 +1977,6 @@ export class Editor {
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
           h('label', { for: id + 'o' }, 'Opacity'), op, opOut),
         h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
-    }
-    if (a?.mask) {
-      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'mask-props' });
-      this.layerProps.append(box);
-      void import('./layerprops').then((m) => m.renderMaskProps(box, {
-        uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (id) => void this.run(id),
-        live: () => { this.markAll(); this.requestRender(); },
-      }));
     }
     if (focused) this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`)?.focus({ preventScroll: true });
     this.queueThumbs();
@@ -2036,7 +2032,7 @@ export class Editor {
       b.addEventListener('click', () => { if (r.off) return; this.closeModal(); void this.run(r.cmd); });
       return b;
     }));
-    this.toolSheet('layer-actions', `Layer ${l.name}`, body);
+    this.toolSheet('layer-actions', l.name, body);
   }
   /** Mask thumbnails in grey: the canvas area of each mask, scaled down. */
   private drawMaskThumbs(): void {
@@ -2052,6 +2048,7 @@ export class Editor {
         img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);
+      c.dataset.drawn = '1';
     }
   }
   private queueThumbs(): void { clearTimeout(this.thumbTimer); this.thumbTimer = window.setTimeout(() => { this.drawThumbs(); this.drawMaskThumbs(); }, 180); }
@@ -2077,6 +2074,7 @@ export class Editor {
         img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);
+      c.dataset.drawn = '1';
     }
   }
   private renderHistory(): void {
@@ -2128,12 +2126,26 @@ export class Editor {
       });
       return h('div', { class: 'fpe-row', 'data-help-title': label, 'data-help': help }, h('label', { for: id + key }, label), inp);
     };
-    b.append(h('h3', { class: 'fpe-group-title' }, 'Layer: ' + l.name),
+    const focused = (document.activeElement as HTMLElement | null)?.dataset?.testid;
+    const parts: HTMLElement[] = [h('h3', { class: 'fpe-group-title' }, 'Layer: ' + l.name),
       num('x', 'Left (X)', 'How far the layer sits from the left edge, in pixels.'), num('y', 'Top (Y)', 'How far the layer sits from the top edge, in pixels.'),
       h('p', { class: 'fpe-kv' }, `${l.width} × ${l.height} px · opacity ${Math.round(l.opacity * 100)}% · ${BLEND_LABELS[l.blendMode]}${l.locked ? ' · locked' : ''}${l.visible ? '' : ' · hidden'}`),
       h('h3', { class: 'fpe-group-title' }, 'Picture'),
       h('p', { class: 'fpe-kv' }, `${d.width} × ${d.height} px · ${d.layers.length} layer${d.layers.length === 1 ? '' : 's'}`),
-      h('div', { class: 'fpe-btnrow' }, this.cmdBtn('image.size', null, 'Picture size…'), this.cmdBtn('image.canvas-size', null, 'Canvas size…')));
+      h('div', { class: 'fpe-btnrow' }, this.cmdBtn('image.size', null, 'Picture size…'), this.cmdBtn('image.canvas-size', null, 'Canvas size…'))];
+    if (l.mask) {
+      // The mask's settings live here (design 6): first while the mask is the target, after the layer's own otherwise.
+      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'mask-props' });
+      if (this.onMask(l)) parts.unshift(box); else parts.splice(4, 0, box);
+      void import('./layerprops').then((m) => {
+        m.renderMaskProps(box, {
+          uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
+          live: () => { this.markAll(); this.requestRender(); },
+        });
+        if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+      });
+    }
+    b.append(...parts);
   }
   private renderColor(): void {
     const b = this.colorBody;
@@ -2298,6 +2310,11 @@ export class Editor {
     if (this.stroke) return;
     this.cancelSession();
     const l = activeLayer(d);
+    // Negative on the mask (W6 S1): the grey-surface route the brush uses, so only the mask changes and one undo step comes back.
+    if (l && id === 'image.adj-invert' && this.onMask(l) && !l.locked) {
+      this.pushCmd(withMaskSurface(d, l, 'Negative on the mask', (sd, s) => applyToLayer(sd, s, 'Negative', (b) => adjust(b.data, 'invert'))), true);
+      return;
+    }
     if (!l || !this.editable(l)) return;
     const reg = editRegion(d, l);
     if (!reg) { this.toast('The selected area is outside this layer.'); return; }

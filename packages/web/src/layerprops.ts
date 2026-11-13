@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * Properties of a layer's mask (W6 S1). Loaded only when the active layer has a mask, so the first screen stays small.
+ * Properties of a layer's mask (W6 S1), shown in the Properties panel (design 6). Loaded only when the active layer has a
+ * mask, so the first screen stays small. Each slider's label sits on its own line above the slider, plain name then pro name.
  * Sliders show their change live and add one undo step when released; buttons run the Layer menu's own functions.
  */
 import { makeMask, maskCommand, type Command, type Doc, type Layer, type LayerMask } from '@free-photoeditor/core';
@@ -52,7 +53,7 @@ export function renderMaskProps(el: HTMLElement, host: MaskPropsHost): void {
     if (next) { next.linked = t.mask.linked; host.push(maskCommand('Mask from the selection', t.id, t.mask, next)); }
   };
   el.replaceChildren(
-    h('div', { class: 'fpe-mask-head' }, 'Mask ', h('small', { class: 'fpe-pro' }, m.enabled ? 'on' : 'switched off')),
+    h('div', { class: 'fpe-mask-head' }, `Mask of ${l.name} `, h('small', { class: 'fpe-pro' }, m.enabled ? 'on' : 'switched off')),
     slider(host, 'density', 'How strongly the mask hides', 'Density', 'At 100% hidden parts are fully hidden; lower lets them half show.', 100, '%',
       (x) => Math.round(x.density * 100), (x, v) => ({ ...x, density: v / 100 })),
     slider(host, 'feather', 'Soft edge', 'Feather', 'Softens the mask’s edges as it is drawn; the mask itself is not changed.', 100, ' px',

@@ -23,6 +23,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 interface Info { width: number; height: number; layers: { name: string; visible: boolean }[]; }
 interface Fpe {
   getInfo(): Info | null; sample(x: number, y: number): number[] | null; run(id: string): Promise<boolean>; aiCmd(id: string): Promise<void>;
+  newDocument(w: number, h: number, bg?: string | null): void; select(x: number, y: number, w: number, h: number): void;
+  state(): { layers: { mask: { w: number; h: number } | null }[] };
   selectionAt(x: number, y: number): number; toClient(x: number, y: number): { x: number; y: number } | null; openSample(): void;
   openFile(file: Blob, name?: string): Promise<void>; commands(): { id: string; status: string }[];
 }
@@ -219,6 +221,29 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
       console.log(`W11 make it bigger 2x from the start screen: ${i?.width} x ${i?.height}, ${Date.now() - t0} ms with the download`);
       expect([i?.width, i?.height]).toEqual([512, 342]);
       await p.screenshot({ path: join(OUT, 'w11-bigger-2x.png') });
+      // W6 S1: on a layer with a mask, the mask grows with the picture. The model is on this device by now, so it is quick.
+      const m0 = await p.evaluate(async () => {
+        const f = (window as unknown as Win).fpe;
+        f.newDocument(40, 30, '#ffffff');
+        for (const id of ['layer.new', 'tool.default-colors']) await f.run(id);
+        f.select(10, 10, 20, 10);
+        for (const id of ['edit.fill', 'select.none', 'layer.mask-add']) await f.run(id);
+        f.select(16, 12, 8, 6);
+        for (const id of ['edit.fill', 'select.none']) await f.run(id);
+        return f.state().layers[1].mask;
+      });
+      expect(m0?.w).toBeGreaterThan(0);
+      await p.evaluate(() => { void (window as unknown as Win).fpe.aiCmd('image.upscale-2x'); });
+      await p.waitForFunction(() => {
+        if ((window as unknown as Win).fpe.getInfo()?.width === 80) return true;
+        const b = document.querySelector<HTMLElement>('[data-testid="ai-download"]');
+        if (b?.offsetParent) b.click();
+        return false;
+      }, undefined, { timeout: 120_000, polling: 250 });
+      await settled(60_000, p);
+      const m1 = await p.evaluate(() => (window as unknown as Win).fpe.state().layers[1].mask);
+      console.log(`W6 make it bigger on a masked layer: mask ${m0?.w} x ${m0?.h} became ${m1?.w} x ${m1?.h}`);
+      expect([m1?.w, m1?.h]).toEqual([(m0?.w ?? 0) * 2, (m0?.h ?? 0) * 2]);
     } finally { await cleanUp(p); await p.close(); }
   }, 240_000);
 

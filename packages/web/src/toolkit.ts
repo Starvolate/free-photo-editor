@@ -10,7 +10,7 @@
 import {
   BLACK, DEFAULT_TEXT_STYLE, EffectStroke, activeLayer, addLayer, alignLayer, arrowHead, borderMask, bucketFill, clamp, colorRangeMask,
   combineCommands, combineMasks, compositeDoc, contentCommand, contractMask, countSelected, createLayer, currentContent, distributeLayers, docRect,
-  expandMask, featherMask, fillGradient, findLayer, fontString, geomOf, growMask, indexOfLayer, layerOnCanvas, layerRect, layoutText, magicErase,
+  expandMask, featherMask, fillGradient, findLayer, fontString, withMaskSurface, geomOf, growMask, indexOfLayer, layerOnCanvas, layerRect, layoutText, magicErase,
   maskFromSelection, nextLayerName, parseHex, patchArea, polygonMask, quadOfRect, quickSelectMask, redEye, selectionAlpha, selectionFromMask, setGeom, shapeBounds,
   shapePoints, similarMask, smoothMask, strokeSelection, transformLayer, transformSelection, union, wandMask, warpBitmap,
   type AlignEdge, type Command, type Doc, type EffectKind, type GradientKind, type History, type Layer, type LayerContent, type LayerGeom, type Mask,
@@ -41,7 +41,10 @@ export interface ToolHost {
   selectionChanged(): void;
   refreshOptions(): void;
   toast(msg: string): void;
-  editable(l: Layer, pixels?: boolean): boolean;
+  /** `onMask` tools (the brush, the colour fade) also accept the mask while it is the target. */
+  editable(l: Layer, pixels?: boolean, onMask?: boolean): boolean;
+  /** True when tools edit this layer's mask rather than its pixels. */
+  onMask(l: Layer): boolean;
   setTool(t: ToolId): void;
   tool(): ToolId;
   sheet(id: string, title: string, body: HTMLElement): void;
@@ -235,9 +238,9 @@ export function createToolKit(host: ToolHost): ToolKit {
     const l = activeLayer(d);
     return all || !l ? { width: d.width, height: d.height, data: compositeDoc(d, docRect(d)) } : layerOnCanvas(l, d.width, d.height);
   };
-  function target(): Layer | null {
+  function target(onMask = false): Layer | null {
     const d = doc(), l = d ? activeLayer(d) : undefined;
-    if (!d || !l || !host.editable(l, true)) return null;
+    if (!d || !l || !host.editable(l, true, onMask)) return null;
     if (!l.visible) { host.toast('This layer is hidden. Show it to change it.'); return null; }
     return l;
   }
@@ -833,12 +836,14 @@ export function createToolKit(host: ToolHost): ToolKit {
     }
     if (q.k === 'drag') {
       if (q.t === 'gradient') {
-        const l = target();
+        const l = target(true);
         if (!l || Math.hypot(q.b.x - q.a.x, q.b.y - q.a.y) < 2) { host.render(); return; }
         let b = q.b;
         if (i.shift) { const ang = Math.round(Math.atan2(b.y - q.a.y, b.x - q.a.x) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(b.x - q.a.x, b.y - q.a.y); b = { x: q.a.x + Math.cos(ang) * len, y: q.a.y + Math.sin(ang) * len }; }
         const bg = parseHex(host.bg()) ?? BLACK;
-        host.push(fillGradient(d, l, { kind: S.grad.kind, from: q.a, to: b, stops: GRADS[S.grad.preset][1](fgc(), bg), opacity: S.grad.opacity, reverse: S.grad.reverse }), true);
+        const g = { kind: S.grad.kind, from: q.a, to: b, stops: GRADS[S.grad.preset][1](fgc(), bg), opacity: S.grad.opacity, reverse: S.grad.reverse };
+        // On the mask (W6 S1) the fade is drawn in greys through the mask's grey surface, so the layer's pixels stay.
+        host.push(host.onMask(l) ? withMaskSurface(d, l, 'Colour fade on the mask', (sd, s) => fillGradient(sd, s, g)) : fillGradient(d, l, g), true);
       } else makeShape(q.t, q.a, q.b, i.shift);
       return;
     }

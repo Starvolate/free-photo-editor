@@ -105,6 +105,19 @@ async function masked(p: Page): Promise<void> {
   expect(await run(p, 'layer.mask-add')).toBe(true);
   expect((await state(p)).maskTarget).toBe(true);
 }
+/** Wait until every layer and mask thumbnail is drawn, so a screenshot never catches an empty square. */
+const thumbs = (p: Page): Promise<unknown> => p.waitForFunction(() =>
+  [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-thumb], canvas[data-mask-thumb]')].every((c) => c.dataset.drawn === '1'));
+/** A checksum of the active layer's own pixels (its mask left out), read at every second pixel of a w x h picture. */
+const ownPixels = (p: Page, w: number, hgt: number): Promise<number> => p.evaluate(([W, H]) => {
+  const f = (window as unknown as Win).fpe;
+  let s = 0;
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
+    const v = f.sample(x, y, true);
+    if (v) s = (s * 31 + v[0] + 3 * v[1] + 5 * v[2] + 7 * v[3]) % 2147483647;
+  }
+  return s;
+}, [w, hgt] as const);
 /** Fill the area (50,30 to 80,50) of the target with the main colour (black), then select nothing. */
 async function fillBlack(p: Page): Promise<void> {
   await select(p, 50, 30, 30, 20);
@@ -144,6 +157,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect((await px(p, 35, 26))[0]).toBeGreaterThan(100);
     expect(await px(p, 35, 26, true)).toEqual(BLACK);
     const h2 = await hash(p), s2 = top(await state(p)).mask?.sum;
+    await thumbs(p);
     await p.screenshot({ path: join(OUT, 'w6-s1-mask-painted-1440.png') });
     const seen: string[] = [];
     for (let i = 0; i < 6 && (await hash(p)) !== h0; i++) { expect(await run(p, 'edit.undo')).toBe(true); seen.push(await hash(p)); }
@@ -177,6 +191,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     // The hole stays put while the black box moves right.
     expect(await px(p, 60, 40)).toEqual(WHITE);
     expect(await px(p, 22, 40)).toEqual(WHITE);
+    await thumbs(p);
     await p.screenshot({ path: join(OUT, 'w6-s1-unlinked-move-1440.png') });
   });
 
@@ -196,24 +211,78 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     p = q;
   });
 
-  it('the paint bucket, the colour fade and Fill from the surroundings refuse while the mask is the target', async () => {
+  it('on the mask the colour fade and Negative change only the mask; the paint bucket and Fill from the surroundings still refuse', async () => {
     await p.click('[data-testid="layer-mask"]');
     expect((await state(p)).maskTarget).toBe(true);
-    const h = await hash(p);
+    expect(await p.textContent('[data-testid="status"]')).toContain('Editing the mask of Layer 2');
+    const h = await hash(p), own = await ownPixels(p, 120, 80), m0 = top(await state(p)).mask;
     expect(await run(p, 'tool.bucket')).toBe(true);
     await click(p, 30, 40);
     await p.waitForFunction(() => (window as unknown as Win).fpe.state().w3 !== null);
     await click(p, 30, 40);
-    expect(await toast(p)).toContain('You are editing the mask');
+    // The refusal lists exactly what works on the mask.
+    expect(await toast(p)).toContain('Brush, pencil, eraser, Fill, Delete, Colour fade (Gradient) and Negative (Invert) work on it');
     expect(await hash(p)).toBe(h);
+    // Colour fade: black to white across the picture, drawn in greys on the mask; the layer's own pixels stay.
     expect(await run(p, 'tool.gradient')).toBe(true);
-    await drag(p, [[25, 25], [95, 55]]);
+    await drag(p, [[25, 40], [95, 40]]);
+    const m1 = top(await state(p)).mask;
+    expect(m1?.sum).not.toBe(m0?.sum);
+    expect(await hash(p)).not.toBe(h);
+    expect(await ownPixels(p, 120, 80)).toBe(own);
+    expect(await run(p, 'edit.undo')).toBe(true);
+    expect(top(await state(p)).mask).toEqual(m0);
+    expect(await hash(p)).toBe(h);
+    // Negative (Invert, Ctrl+I) swaps what the mask shows and hides; the pixels stay.
+    expect(await run(p, 'image.adj-invert')).toBe(true);
+    const m2 = top(await state(p)).mask;
+    expect(m2?.sum).not.toBe(m0?.sum);
+    expect(await hash(p)).not.toBe(h);
+    expect(await ownPixels(p, 120, 80)).toBe(own);
+    expect(await run(p, 'edit.undo')).toBe(true);
+    expect(top(await state(p)).mask).toEqual(m0);
     expect(await hash(p)).toBe(h);
     await select(p, 25, 25, 10, 10);
     await p.evaluate(() => (window as unknown as Win).fpe.aiCmd('edit.smart-fill'));
     expect(await toast(p)).toContain('You are editing the mask');
     expect(await hash(p)).toBe(h);
-    await p.screenshot({ path: join(OUT, 'w6-s1-mask-target-1440.png') });
+    expect(errors).toEqual([]);
+  });
+
+  it('at 1440 x 900 the layer rows come first and three are fully in view; the mask settings sit in Properties, one line per label', async () => {
+    const q = await open(1440, 900);
+    await masked(q);
+    expect(await run(q, 'layer.new')).toBe(true);
+    await q.locator('[data-testid="layer-row"][data-name="Layer 2"] [data-testid="layer-mask"]').click();
+    expect((await state(q)).maskTarget).toBe(true);
+    expect(await run(q, 'tool.gradient')).toBe(true);
+    await drag(q, [[10, 40], [110, 40]]);
+    const list = await q.locator('[data-testid="layer-list"]').boundingBox(), rows = q.locator('[data-testid="layer-row"]');
+    if (!list) throw new Error('no layer list');
+    expect(await rows.count()).toBe(3);
+    for (let i = 0; i < 3; i++) {
+      const b = await rows.nth(i).boundingBox();
+      expect(!!b && b.y >= list.y - 0.5 && b.y + b.height <= list.y + list.height + 0.5 && b.y + b.height <= 900, `row ${i + 1} fully in view`).toBe(true);
+    }
+    // The rows come before Blend, Opacity and Name.
+    const blend = await q.locator('[data-testid="layer-blend"]').boundingBox();
+    expect((blend?.y ?? 0) > list.y).toBe(true);
+    // The mask's settings are in the Properties panel, each label plain name then pro name on one line, at 12 px or more.
+    const props = q.locator('[data-testid="panel-properties"] [data-testid="mask-props"]');
+    await props.locator('label').first().waitFor();
+    expect(await q.locator('[data-testid="panel-layers"] [data-testid="mask-props"]').count()).toBe(0);
+    const labels = await props.locator('label').evaluateAll((ls) => ls.map((l) => ({
+      text: l.textContent ?? '', h: l.getBoundingClientRect().height, fs: parseFloat(getComputedStyle(l).fontSize), cut: l.scrollWidth > l.clientWidth + 1,
+    })));
+    expect(labels.map((l) => l.text)).toEqual(['How strongly the mask hides Density', 'Soft edge Feather']);
+    for (const l of labels) {
+      expect(l.fs, l.text).toBeGreaterThanOrEqual(12);
+      expect(l.h, l.text + ': one line').toBeLessThan(l.fs * 2);
+      expect(l.cut, l.text + ': not cut off').toBe(false);
+    }
+    expect(await q.textContent('[data-testid="status"]')).toContain('Editing the mask of Layer 2');
+    await thumbs(q);
+    await q.screenshot({ path: join(OUT, 'w6-s1-mask-target-1440.png') });
     expect(errors).toEqual([]);
   });
 
@@ -235,6 +304,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     const want = shape(await state(q)), h = await hash(q);
     expect(want[3].mask?.linked).toBe(false);
     await q.evaluate(() => (window as unknown as Win).fpe.saveNow());
+    await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s1-fixture-1440.png') });
     await q.reload();
     await q.waitForFunction(() => !!(window as unknown as Win).fpe);
@@ -256,6 +326,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
       expect(b, sel).not.toBeNull();
       expect(Math.min(b?.width ?? 0, b?.height ?? 0), sel).toBeGreaterThanOrEqual(44);
     }
+    await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s1-phone-390-layers.png') });
     const name = await q.locator('[data-testid="layer-row"]').first().locator('[data-testid="layer-select"]').boundingBox();
     if (!name) throw new Error('no layer row');
@@ -270,8 +341,10 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]');
     const sheet = q.locator('[data-testid="sheet-layer-actions"]');
     expect(await sheet.textContent()).toContain('Switch the mask off');
+    expect((await sheet.locator('.fpe-sheet-title').textContent())?.trim()).toBe('Layer 2');
     expect(await sheet.locator('.fpe-tag').count()).toBeGreaterThan(0);
     await q.waitForTimeout(250);
+    await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s1-phone-390-layer-actions.png') });
     await q.tap('[data-testid="layer-action-mask-toggle"]');
     expect(top(await state(q)).mask?.enabled).toBe(false);

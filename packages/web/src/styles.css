@@ -144,10 +144,11 @@
 .fpe-group[data-group=layers] .fpe-gbody{display:flex;flex-direction:column;flex:1 1 auto;max-height:none;overflow:hidden}
 .fpe-pbody{display:none;padding:8px 10px}
 .fpe-pbody[data-active]{display:block}
-.fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:6px 8px}
-.fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-bottom:6px}
+.fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:6px 8px;overflow-y:auto}
+.fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-top:6px}
 .fpe-props .fpe-row>label{flex-basis:56px}
-.fpe-layer-list{flex:1 1 auto;min-height:92px;margin:0;padding:0;overflow-y:auto;list-style:none;border:1px solid var(--line);border-radius:6px}
+/* the rows come first and at least three 46 px rows stay in view */
+.fpe-layer-list{flex:1 1 auto;min-height:143px;margin:0;padding:0;overflow-y:auto;list-style:none;border:1px solid var(--line);border-radius:6px}
 .fpe-layer{display:flex;align-items:center;gap:4px;min-height:46px;padding:2px 6px 2px 2px;border-bottom:1px solid var(--line)}
 .fpe-layer:last-child{border-bottom:0}
 .fpe-layer[aria-current=true]{background:var(--sel)}
@@ -433,11 +434,13 @@
 .fpe-chain{width:22px;min-width:22px}
 .fpe-mask-head{font-weight:600;margin:8px 0 2px}
 .fpe-mask-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+/* mask sliders in Properties: the label on one line above its slider, never a tall wrapped stack */
+.fpe-mask-props .fpe-row{flex-wrap:wrap;row-gap:2px}
+.fpe-mask-props .fpe-row>label{flex:1 0 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* W6 S1 phones: the mask controls are 44 px targets in 56 px rows; the layer actions sheet */
 .fpe[data-layout=phone] .fpe-layer{min-height:56px}
-/* phones: the layer rows and their action row first, the active layer's settings below them */
-.fpe[data-layout=phone] .fpe-layer-list{order:-2;flex:none;max-height:236px}
-.fpe[data-layout=phone] .fpe-layer-tools{order:-1}
+/* phones: the rows keep their own scroll; the action row and the active layer's settings follow (the order is the DOM's) */
+.fpe[data-layout=phone] .fpe-layer-list{flex:none;min-height:56px;max-height:236px}
 .fpe[data-layout=phone] .fpe-thumb-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
 .fpe[data-layout=phone] .fpe-thumb-btn canvas,.fpe[data-layout=phone] .fpe-layer-thumb{width:40px;height:40px}
 .fpe[data-layout=phone] .fpe-chain{flex:none;width:44px;min-width:44px;height:44px}

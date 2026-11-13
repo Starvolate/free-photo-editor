@@ -413,7 +413,8 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     expect(i.layers.length).toBe(3);
     const a0 = i.active;
     expect(a0).toBeGreaterThan(0);
-    await page.click('[data-testid="layer-down"]');
+    await page.click('[data-testid="layer-more"]');
+    await page.click('.fpe-pop [data-tipcmd="layer.backward"]');
     expect((await now()).active).toBe(a0 - 1);
     await page.locator('[data-testid="layer-eye"]').first().click();
     i = await now();

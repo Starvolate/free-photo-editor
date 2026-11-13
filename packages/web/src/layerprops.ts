@@ -6,7 +6,7 @@
  * Sliders show their change live and add one undo step when released; buttons run the Layer menu's own functions.
  */
 import {
-  BLEND_GROUPS, BLEND_LABELS, isBlendMode, isFolder, makeMask, maskCommand, propsCommand, setLayerProps, subtreeOf,
+  carriesLocked, effectiveBox, isFolder, moveNode, makeMask, maskCommand, subtreeOf,
   type Command, type Doc, type Layer, type LayerMask,
 } from '@free-photoeditor/core';
 import { h } from './dom';
@@ -85,44 +85,31 @@ export interface FolderPropsHost extends MaskPropsHost {
   toggleOpen(id: string): void;
 }
 
-/** A folder's section: how it mixes (Pass through or a blend), how solid it is, open or closed, and taking it apart. */
+/** A folder's section: where it sits (X and Y move everything inside), open or closed, and taking it apart. Blend and
+ * opacity are at the top of the Layers card, so they show once. */
 export function renderFolderProps(el: HTMLElement, host: FolderPropsHost): void {
   const d = host.doc(), f = host.layer();
   if (!d || !f || !isFolder(f)) return;
   const id = `fpe-${host.uid}-folder`, n = subtreeOf(d.layers, f.id).length - 1, open = f.open !== false, pass = !!f.passThrough;
-  const mix = h('select', { id: id + 'm', 'data-testid': 'folder-mix' }, h('option', { value: 'pass', selected: pass }, 'Pass through'),
-    ...BLEND_GROUPS.map((g) => h('optgroup', { label: g.label }, ...g.modes.map((m) => h('option', { value: m, selected: !pass && m === f.blendMode }, BLEND_LABELS[m])))));
-  mix.addEventListener('change', () => {
-    const t = host.layer(), doc = host.doc(), v = mix.value;
-    if (!t || !doc) return;
-    if (v === 'pass') host.push(setLayerProps(doc, t.id, { passThrough: true }, 'Folder mixes: pass through'));
-    else if (isBlendMode(v)) host.push(setLayerProps(doc, t.id, { passThrough: false, blendMode: v }, 'Folder blend'));
-  });
-  const op = h('input', { id: id + 'o', type: 'range', min: 0, max: 100, step: 1, value: Math.round(f.opacity * 100), 'data-testid': 'folder-opacity' }) as HTMLInputElement;
-  const out = h('output', { class: 'fpe-out', for: id + 'o' }, Math.round(f.opacity * 100) + '%');
-  let start: number | null = null;
-  op.addEventListener('input', () => {
-    const t = host.layer();
-    if (!t) return;
-    start ??= t.opacity;
-    t.opacity = Number(op.value) / 100;
-    out.textContent = op.value + '%';
-    host.live();
-  });
-  op.addEventListener('change', () => {
-    const t = host.layer(), from = start;
-    start = null;
-    if (t && from !== null && from !== t.opacity) host.push(propsCommand(t.id, { opacity: from }, { opacity: t.opacity }, 'Folder opacity'));
-  });
+  // X and Y are the top-left of everything inside; a change moves the folder with all its layers, as one undo step.
+  const box = effectiveBox(d.layers, f);
+  const num = (key: 'x' | 'y', label: string, help: string): HTMLElement => {
+    const inp = h('input', { id: id + key, type: 'number', value: box ? box[key] : 0, step: 1, 'data-testid': 'prop-' + key }) as HTMLInputElement;
+    if (!box) inp.disabled = true;
+    inp.addEventListener('change', () => {
+      const t = host.layer(), doc = host.doc(), b = t && doc ? effectiveBox(doc.layers, t) : null, v = Math.round(Number(inp.value));
+      if (!t || !doc || !b || !Number.isFinite(v) || v === b[key]) return;
+      if (carriesLocked(doc, t.id)) { host.toast('Something in this folder is locked: unlock it first.'); inp.value = String(b[key]); return; }
+      host.push(moveNode(doc, t.id, key === 'x' ? v - b.x : 0, key === 'y' ? v - b.y : 0, 'Move layer'));
+    });
+    return h('div', { class: 'fpe-row', 'data-help-title': label, 'data-help': help }, h('label', { for: id + key }, label), inp);
+  };
   const btn = (label: string, pro: string, help: string, testid: string, run: () => void): HTMLElement =>
     h('button', { type: 'button', class: 'fpe-btn', 'data-testid': testid, 'data-help-title': `${label} · ${pro}`, 'data-help': help, onclick: run }, label);
   el.replaceChildren(
     h('div', { class: 'fpe-mask-head' }, `Folder: ${f.name} `, h('small', { class: 'fpe-pro' }, `${n} layer${n === 1 ? '' : 's'} inside`)),
-    h('div', { class: 'fpe-row', 'data-help-title': 'How the folder mixes · Blend mode',
-      'data-help': 'Pass through lets the layers inside mix with everything below, as if there were no folder. Any other choice first makes the folder one picture, then mixes it.' },
-    h('label', { for: id + 'm' }, 'How it mixes ', h('small', { class: 'fpe-pro' }, 'Blend mode')), mix),
-    h('div', { class: 'fpe-row', 'data-help-title': 'How solid the folder is · Opacity', 'data-help': 'Lower lets the layers below the folder show through everything in it.' },
-      h('label', { for: id + 'o' }, 'How solid ', h('small', { class: 'fpe-pro' }, 'Opacity')), op, out),
+    num('x', 'Left (X)', 'Where everything in the folder starts from the left edge, in pixels. Change it to move the folder and all its layers.'),
+    num('y', 'Top (Y)', 'Where everything in the folder starts from the top edge, in pixels. Change it to move the folder and all its layers.'),
     h('div', { class: 'fpe-mask-actions' },
       btn(open ? 'Close the folder' : 'Open the folder', 'Collapse group', 'Hides or shows the rows inside in the Layers panel. The picture does not change.', 'folder-toggle', () => host.toggleOpen(f.id)),
       btn('Take out of the folder', 'Ungroup layers', 'The layers inside move out, in the same order, and the folder goes.', 'folder-ungroup', () => host.run('layer.ungroup'))));

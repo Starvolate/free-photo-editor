@@ -100,7 +100,11 @@ type Gesture =
   | { k: 'press'; p: Pt; i: PointerInfo; t: ToolId; timer: number }
   | { k: 'qm'; last: Pt; erase: boolean; size: number; hard: number }
   | { k: 'xf'; hd: string; p0: Pt; q0: Quad };
-interface Xf { target: 'layer' | 'selection'; id: string; mode: XfMode; orig: LayerGeom | null; sel0: Selection | null; base: Quad; q: Quad; raf: number; }
+import { carryQuad, effectiveBox, hasPixels as hasPx, isFolder as isFolderNode, subtreeOf as subtreeNodes, transformNode } from '@free-photoeditor/core';
+
+interface Xf { target: 'layer' | 'selection'; id: string; mode: XfMode; orig: LayerGeom | null; sel0: Selection | null; base: Quad; q: Quad; raf: number;
+  /** A folder: every layer inside with its starting pixels, for the preview and Esc. */
+  kids?: { id: string; orig: LayerGeom }[]; }
 interface TextEdit { id: string; add: Command | null; before: Snap; content: TextContent; area: HTMLTextAreaElement; }
 
 const FX: Partial<Record<ToolId, EffectKind>> = {
@@ -333,7 +337,13 @@ export function createToolKit(host: ToolHost): ToolKit {
       const l = activeLayer(d);
       if (!l || !host.editable(l, false)) return;
       if (l.locked) return;
-      xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
+      if (isFolderNode(l)) {
+        // A folder: one box around everything inside; each layer keeps its starting pixels for the preview and Esc.
+        const box = effectiveBox(d.layers, l);
+        if (!box) { host.toast('This folder has nothing in it to transform yet.'); return; }
+        const kids = subtreeNodes(d.layers, l.id).filter((c) => hasPx(c)).map((c) => ({ id: c.id, orig: { ...geomOf(c) } }));
+        xf = { target, id: l.id, mode, orig: null, kids, sel0: null, base: quadOfRect(box), q: quadOfRect(box), raf: 0 };
+      } else xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
     }
     const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys), v0 = { ...host.view() }, f0 = host.fitted();
     host.fitBox({ x: bx, y: by, w: Math.max(...xs) - bx, h: Math.max(...ys) - by }, host.layout() === 'phone' ? 44 : 36);
@@ -350,6 +360,20 @@ export function createToolKit(host: ToolHost): ToolKit {
       const d = doc();
       if (!d || xf !== x) return;
       if (x.target === 'selection' && x.sel0) { d.selection = transformSelection(x.sel0, x.q, d.width, d.height); host.render(); return; }
+      if (x.kids) {
+        const pad = Math.max(d.width, d.height), lim = { x: -pad, y: -pad, w: d.width + 2 * pad, h: d.height + 2 * pad };
+        let r: ReturnType<typeof layerRect> | null = null;
+        for (const k of x.kids) {
+          const c = findLayer(d, k.id), g = k.orig, q = carryQuad(x.base, x.q, { x: g.x, y: g.y, w: g.width, h: g.height });
+          const pl = c && q ? warpBitmap({ width: g.width, height: g.height, data: g.data }, q, false, lim) : null;
+          if (!c || !pl) continue;
+          const old = layerRect(c);
+          setGeom(c, pl);
+          r = union(r, union(old, layerRect(c)));
+        }
+        if (r) host.dirty(r);
+        return;
+      }
       const l = findLayer(d, x.id), o = x.orig;
       if (!l || !o) return;
       const old = layerRect(l), pad = Math.max(d.width, d.height);
@@ -371,7 +395,14 @@ export function createToolKit(host: ToolHost): ToolKit {
       else host.selectionChanged();
     } else {
       const l = findLayer(d, x.id);
-      if (l && x.orig) {
+      if (x.kids) {
+        for (const k of x.kids) { const c = findLayer(d, k.id); if (c) setGeom(c, k.orig); }
+        const had = x.kids.some((k) => !!findLayer(d, k.id)?.content);
+        if (apply && !same) {
+          host.push(transformNode(d, x.id, x.q, 'Free transform', true), true);
+          if (had) host.toast('Transformed. Text and shapes in the folder are plain pixels now.');
+        } else host.all();
+      } else if (l && x.orig) {
         setGeom(l, x.orig);
         if (apply && !same) {
           const hadContent = !!l.content, cmd = transformLayer(d, l, x.q, 'Free transform', true);

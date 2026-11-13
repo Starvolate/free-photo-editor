@@ -252,7 +252,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(errors).toEqual([]);
   });
 
-  it('at 1440 x 900 the layer rows come first and three are fully in view; the mask settings sit in Properties, one line per label', async () => {
+  it('at 1440 x 900 Blend and Opacity sit above the layer rows and three rows are fully in view; the mask settings sit in Properties, one line per label', async () => {
     const q = await open(1440, 900);
     await masked(q);
     expect(await run(q, 'layer.new')).toBe(true);
@@ -267,9 +267,10 @@ suite('W6 S1 layer masks in headless Chrome', () => {
       const b = await rows.nth(i).boundingBox();
       expect(!!b && b.y >= list.y - 0.5 && b.y + b.height <= list.y + list.height + 0.5 && b.y + b.height <= 900, `row ${i + 1} fully in view`).toBe(true);
     }
-    // The rows come before Blend, Opacity and Name.
-    const blend = await q.locator('[data-testid="layer-blend"]').boundingBox();
-    expect((blend?.y ?? 0) > list.y).toBe(true);
+    // Blend and Opacity sit in one strip at the top of the card, above the rows, as in the approved picture (a-deep,
+    // 13 Nov 2026); the three rows above stay fully in view.
+    const top = await q.locator('[data-testid="layer-top"]').boundingBox();
+    expect(!!top && top.y + top.height <= list.y + 0.5, 'Blend and Opacity above the rows').toBe(true);
     // The mask's settings are in the Properties panel, each label plain name then pro name on one line, at 12 px or more.
     const props = q.locator('[data-testid="panel-properties"] [data-testid="mask-props"]');
     await props.locator('label').first().waitFor();
@@ -388,8 +389,10 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     const grey = await px(q, 60, 40), passHash = await hash(q);
     expect(grey.slice(0, 3)).toEqual([128, 128, 128]);
     await pick(q, (l) => l.id === f.id);
-    await q.waitForSelector('[data-testid="folder-mix"]');
-    expect(await q.textContent('[data-testid="folder-props"]')).toContain('How it mixes');
+    await q.waitForSelector('[data-testid="folder-props"] [data-testid="prop-x"]');
+    // Blend shows once for a folder: at the top of the Layers card, where Pass through is its first choice.
+    expect(await q.locator('[data-testid="folder-mix"]').count()).toBe(0);
+    expect(await q.inputValue('[data-testid="layer-top"] [data-testid="layer-blend"]')).toBe('pass');
     await q.selectOption('[data-testid="layer-blend"]', 'normal');
     expect((await px(q, 60, 40)).slice(0, 3)).toEqual([0, 0, 0]);
     const normalHash = await hash(q);
@@ -398,12 +401,11 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await hash(q)).toBe(passHash);
     expect(await run(q, 'edit.redo')).toBe(true);
     expect(await hash(q)).toBe(normalHash);
-    await q.waitForSelector('[data-testid="folder-mix"]');
-    await q.selectOption('[data-testid="folder-mix"]', 'pass');
+    await q.selectOption('[data-testid="layer-blend"]', 'pass');
     expect(top(await state(q)).passThrough).toBe(true);
     expect(await hash(q)).toBe(passHash);
     // The folder's opacity is one undo step.
-    await q.fill('[data-testid="folder-opacity"]', '50');
+    await q.fill('[data-testid="layer-opacity"]', '50');
     expect(top(await state(q)).opacity).toBe(0.5);
     expect(await run(q, 'edit.undo')).toBe(true);
     expect(top(await state(q)).opacity).toBe(1);
@@ -437,7 +439,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s2-clipped-1440.png') });
     await pick(q, (l) => l.id === f.id);
-    await q.waitForSelector('[data-testid="folder-mix"]');
+    await q.waitForSelector('[data-testid="folder-props"] [data-testid="prop-x"]');
     await thumbs(q);
     await q.screenshot({ path: join(OUT, 'w6-s2-folder-open-1440.png') });
     // Arrange: up from the top of the folder leaves it; down again goes back in. Each is one undo step.
@@ -465,6 +467,56 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await hash(q)).toBe(clipHash);
     expect(await rowIds(q)).toEqual([f.id, s.layers[0].id]);
     expect(errors).toEqual([]);
+  });
+
+  it('Put in a folder from the Layer menu; the folder carries its layer through X in Properties and Align, one undo each; the card has labelled actions', async () => {
+    const q = await open(1440, 900);
+    await q.evaluate(() => (window as unknown as Win).fpe.newDocument(120, 80, '#808080'));
+    expect(await run(q, 'layer.new')).toBe(true);
+    expect(await run(q, 'tool.default-colors')).toBe(true);
+    await select(q, 10, 10, 20, 20);
+    expect(await run(q, 'edit.fill')).toBe(true);
+    expect(await run(q, 'select.none')).toBe(true);
+    // The Layers card as in the approved layout: Blend and Opacity on top, the count by the title, four actions with words and More.
+    for (const [t, w] of [['layer-add', 'New'], ['layer-mask-add', 'Mask'], ['layer-duplicate', 'Copy'], ['layer-delete', 'Delete'], ['layer-more', 'More']]) {
+      expect((await q.textContent(`[data-testid="${t}"]`))?.trim()).toBe(w);
+    }
+    expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-blend"]').count()).toBe(1);
+    expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-opacity"]').count()).toBe(1);
+    expect(await q.textContent('[data-testid="layer-count"]')).toBe('2');
+    // Put in a folder from the menu bar: Layer > New > Put in a new folder.
+    await q.click('[data-testid="menu-top-layer"]');
+    await q.hover('[data-testid="sub-layer-new"]');
+    await q.click('[data-testid="mi-layer.group"]');
+    const s = await state(q), f = s.layers.find((l) => l.kind === 'folder'), kid = s.layers.find((l) => !!f && l.parentId === f.id);
+    if (!f || !kid) throw new Error('no folder from the menu');
+    expect(await q.textContent('[data-testid="layer-count"]')).toBe('3');
+    const start = await hash(q), x0 = kid.x;
+    expect((await px(q, 12, 12)).slice(0, 3)).toEqual([0, 0, 0]);
+    // X in Properties moves the folder with its layer: one step, and undo brings the exact picture back.
+    await pick(q, (l) => l.id === f.id);
+    const xs = '[data-testid="folder-props"] [data-testid="prop-x"]';
+    await q.waitForSelector(xs);
+    expect(await q.inputValue(xs)).toBe(String(x0));
+    await q.fill(xs, String(x0 + 15));
+    await q.locator(xs).dispatchEvent('change');
+    await expect.poll(async () => (await state(q)).layers.find((l) => l.id === kid.id)?.x).toBe(x0 + 15);
+    expect((await px(q, 12, 12)).slice(0, 3)).toEqual([128, 128, 128]);
+    expect((await px(q, 40, 15)).slice(0, 3)).toEqual([0, 0, 0]);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === kid.id)?.x).toBe(x0);
+    expect(await hash(q)).toBe(start);
+    // Align right on the folder lines up what is inside it with the picture's right edge.
+    expect(await run(q, 'layer.align-right')).toBe(true);
+    await expect.poll(async () => (await state(q)).layers.find((l) => l.id === kid.id)?.x).toBe(x0 + 90);
+    expect((await px(q, 115, 15)).slice(0, 3)).toEqual([0, 0, 0]);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(await hash(q)).toBe(start);
+    // The rest of the actions sit behind More.
+    await q.click('[data-testid="layer-more"]');
+    expect(await q.locator('.fpe-pop [data-tipcmd="layer.backward"]').count()).toBe(1);
+    expect(await q.locator('.fpe-pop [data-tipcmd="layer.group"]').count()).toBe(1);
+    await q.keyboard.press('Escape');
   });
 
   it('on a phone a long press on a layer inside a folder offers Take out of the folder, and it works', async () => {

@@ -4,10 +4,12 @@
  * Free transform and friends: a layer (or the selection) is redrawn so its four corners land anywhere. Scale, turn, slant,
  * pull corners and perspective are all the same map (a 3 × 3 projective matrix). Also lining layers up and spacing them out.
  */
-import { docRect, findLayer, geomOf, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
+import { docRect, findLayer, geomOf, hasPixels, isFolder, layerRect, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
 import { placeLayer, plusMask } from './mask';
-import { intersect, type Point, type Rect } from './geometry';
+import { intersect, union, type Point, type Rect } from './geometry';
 import { geomCommand, propsCommand, type Command } from './history';
+import { effectiveBox, lockedInTree, subtreeOf } from './tree';
+import { contentCommand } from './vector';
 
 export type Quad = [Point, Point, Point, Point];
 export const quadOfRect = (r: Rect): Quad => [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }];
@@ -180,12 +182,71 @@ function moveBy(l: Layer, dx: number, dy: number, label: string): Command | null
   placeLayer(l, after.x, after.y);
   return propsCommand(l.id, before, after, label);
 }
-/** Line up a layer's visible part with `to` (the selection or the whole picture). */
+/** Line up a layer's visible part with `to` (the selection or the whole picture). A folder lines up everything inside it. */
 export function alignLayer(doc: Doc, id: string, to: Rect | null, how: AlignEdge): Command | null {
-  const l = findLayer(doc, id), b = l ? contentBounds(l) : null;
+  const l = findLayer(doc, id), b = l ? nodeContentBounds(doc, l) : null;
   if (!l || !b) return null;
   const s = alignShift(b, to ?? docRect(doc), how);
-  return moveBy(l, s.x, s.y, 'Line up layers');
+  return moveNode(doc, id, s.x, s.y, 'Line up layers');
+}
+/** The nodes a move carries: the node itself and, for a folder, everything inside it, however deep (bottom to top). */
+export const carriedNodes = (doc: Doc, id: string): Layer[] => subtreeOf(doc.layers, id);
+/** True when moving the node would move something locked: the node, a folder it sits in, or any layer inside it. */
+export function carriesLocked(doc: Doc, id: string): boolean {
+  const l = findLayer(doc, id);
+  return !l || lockedInTree(doc.layers, l) || carriedNodes(doc, id).some((c) => !!c.locked);
+}
+/** Where a node and everything it carries sit before a drag starts. */
+export interface Spot { id: string; x: number; y: number; }
+export const spotsOf = (doc: Doc, id: string): Spot[] => carriedNodes(doc, id).map((l) => ({ id: l.id, x: l.x, y: l.y }));
+/** Put every carried node at its start plus (dx, dy), for a live drag (moveNode makes the undo step). Returns the area that changed. */
+export function placeSpots(doc: Doc, spots: readonly Spot[], dx: number, dy: number): Rect | null {
+  let r: Rect | null = null;
+  for (const s of spots) {
+    const l = findLayer(doc, s.id);
+    if (!l) continue;
+    const old = layerRect(l);
+    placeLayer(l, s.x + dx, s.y + dy);
+    if (!isFolder(l)) r = union(r, union(old, layerRect(l)));
+  }
+  return r;
+}
+/** Move a node by (dx, dy) as one undo step. A folder carries every layer inside it; linked masks follow. */
+export function moveNode(doc: Doc, id: string, dx: number, dy: number, label = 'Move layer'): Command | null {
+  if (!dx && !dy) return null;
+  return combineCommands(label, carriedNodes(doc, id).map((l) => moveBy(l, dx, dy, label)));
+}
+/** A node's visible part in picture coordinates: a layer's own, or for a folder the union of every layer inside it. */
+export function nodeContentBounds(doc: Doc, l: Layer): Rect | null {
+  if (!isFolder(l)) return contentBounds(l);
+  let u: Rect | null = null;
+  for (const c of subtreeOf(doc.layers, l.id)) if (c !== l && hasPixels(c)) { const b = contentBounds(c); if (b) u = union(u, b); }
+  return u;
+}
+/** Where a rectangle's corners go when the box `from` is warped onto `to`: one projective map for every layer in a folder. */
+export function carryQuad(from: Quad, to: Quad, r: Rect): Quad | null {
+  const m = homography(from, to);
+  return m ? (quadOfRect(r).map((p) => mapPoint(m, p.x, p.y)) as Quad) : null;
+}
+/**
+ * Free transform of a folder: every layer inside is warped by the one map that takes the folder's box to `to`, as one
+ * undo step. Text and shape layers inside become plain pixels, as a single transformed one does. A layer is done by transformLayer.
+ */
+export function transformNode(doc: Doc, id: string, to: Quad, label = 'Free transform', smooth = true): Command | null {
+  const l = findLayer(doc, id);
+  if (!l) return null;
+  if (!isFolder(l)) return transformLayer(doc, l, to, label, smooth);
+  const box = effectiveBox(doc.layers, l), from = box ? quadOfRect(box) : null;
+  if (!from || !homography(from, to)) return null;
+  const cmds: (Command | null)[] = [];
+  for (const c of subtreeOf(doc.layers, id)) {
+    const q = hasPixels(c) ? carryQuad(from, to, layerRect(c)) : null;
+    if (!q) continue;
+    const had = !!c.content;
+    cmds.push(transformLayer(doc, c, q, label, smooth));
+    if (had) cmds.push(contentCommand(doc, c.id, null, null, 'Turn into pixels'));
+  }
+  return combineCommands(label, cmds);
 }
 /** Space three or more layers so their centres are evenly apart, keeping the first and the last where they are. */
 export function distributeLayers(doc: Doc, ids: string[], axis: 'h' | 'v'): Command | null {

@@ -254,7 +254,7 @@ export const W3_TOOLS: Record<string, ToolId> = {
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
-export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'info', 'character', 'paragraph'] as const;
+export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'histogram', 'info', 'character', 'paragraph'] as const;
 export type PanelId = (typeof DOCK_PANELS)[number];
 
 export const HANDLERS: Record<string, Handler> = {
@@ -422,6 +422,17 @@ for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-sha
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
+// Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
+// round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
+// edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.
+const pxl = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a); };
+const SM: Record<string, Handler['enabled']> = { d: hasDoc, p: pxl, s: hasSel };
+for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p select.remove-holes:s select.round-corners:s select.distort:s select.float:s '
+  + 'layer.crop-to-content:p layer.remove-alpha:p layer.invert-alpha:p layer.split-by-colour:p layer.reverse:d select.refine:s layer.defringe:p select.editor:d '
+  + 'layer.colour-label:d layer.metadata:d layer.filter:d layer.select-by-state:d').split(' ')) {
+  const [id, k] = w.split(':');
+  HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
+}
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

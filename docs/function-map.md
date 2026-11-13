@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 349 Ready, 326 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 378 Ready, 297 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-246 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+220 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 195 | 455 | 0 |
-| Ready today | 349 | 25 | 158 | 166 | 0 |
+| All functions | 675 | 25 | 199 | 451 | 0 |
+| Ready today | 378 | 25 | 162 | 191 | 0 |
 
 ## The Task ribbon
 
@@ -30,12 +30,12 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
-| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
+| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 2 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
-| Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
+| Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (59 Ready, 13 Planned)
+## Layer (60 Ready, 12 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -329,7 +329,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.merge-down | Merge into the layer below | Merge down | Combine the active layer with the one under it. | combine layers, merge | Layer | Arrange layers › Combine · small button | Ready | W1 | Ctrl+E |
 | layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | Layer | Arrange layers › Combine · small button | Ready | W1 | Ctrl+Shift+E |
 | layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | Layer | Arrange layers › Combine · small button | Ready | W1 |  |
-| layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | Layer | Select & cut out › Perfect and keep · More list | Planned | 2 |  |
+| layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | Layer | Select & cut out › Perfect and keep · More list | Ready | 2 |  |
 | layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | Layer | Arrange layers › Animate · More list | Planned | 13 |  |
 
 ## Type (3 Ready, 7 Planned)
@@ -347,7 +347,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Planned | 6 |  |
 
-## Select (18 Ready, 1 Planned)
+## Select (19 Ready, 0 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -360,17 +360,17 @@ Groups: Change the selection · Modify.
 | select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | Select | Select & cut out › Select with AI · big button | Ready | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
 | select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · small button | Ready | 11 |  |
-| select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Select & cut out › Perfect and keep · More list | Planned | 2 |  |
+| select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection: the edge follows the picture, then smooth, soften or move it. | hair, fur, edge | Select | Select & cut out › Perfect and keep · big button | Ready | 2 |  |
 | select.border | Edge band | Border | Select a band along the selection edge. | border selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.expand | Grow by pixels | Expand | Make the selection bigger by a number of pixels. | bigger selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.contract | Shrink by pixels | Contract | Make the selection smaller by a number of pixels. | smaller selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.feather | Soften the edge | Feather | Make the selection fade out gently at its edge. | soft edge, feather | Select › Modify | Select & cut out › Change it · More list | Ready | W3 | Shift+F6 |
 | select.grow | Grow into similar colours | Grow | Add nearby pixels of similar colour. | grow | Select | Select & cut out › Change it · More list | Ready | W3 |  |
-| select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
+| select.similar | Select similar colours everywhere | Similar | Add every pixel in the picture of a similar colour. | similar | Select | Select & cut out › By colour or light · More list | Ready | W3 |  |
 | select.transform | Resize the selection | Transform selection | Change the size and angle of the selection. | resize selection | Select | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.quick-mask | Paint a selection | Quick mask | Paint where to select, then switch back to a selection. | paint selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 | Q |
-| select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 |  |
+| select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 
 ## Filter (64 Ready, 5 Planned)
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (11 Ready, 11 Planned)
+## Panels (Window menu and the dock) (12 Ready, 10 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -510,7 +510,7 @@ Groups: Screen mode · Screen mode.
 | panel.character | Text style | Character | Font, size and spacing of text. | font size | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |
-| panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · More list | Planned | W2 |  |
+| panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · small button | Ready | W2 |  |
 | panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | Window | Automate & batch › Record steps · More list | Planned | 13 |  |
 | panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | Window | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (246 Planned, 15 Ready), by home
+## New functions from the feature census (220 Planned, 41 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -627,16 +627,16 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | select.people | U015 | Select people and body parts | Select People (hair, skin, eyes, teeth, clothes) | Pick a person, or only their hair, skin or teeth, for local edits. | select person, select hair, select skin, select face, teeth, eyes, clothes | Select & cut out › Select with AI · More list | Planned | B10 |
 | select.depth | U016 | Select by distance from camera | Depth range mask | Select near, middle or far parts using the picture's estimated depth. | depth mask, select by distance, near and far, background by depth | Select & cut out › Select with AI · More list | Planned | B10 |
 | select.foreground | U017 | Cut out the subject by painting rough marks | Foreground Select | Paint rough in/out strokes and it separates a subject with matting. | foreground select, rough cut out, scribble to cut out, matting | Select & cut out › Draw or paint · More list | Planned | B10 |
-| select.luminance | U018 | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | Select & cut out › By colour or light · More list | Planned | B10 |
+| select.luminance | U018 | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | Select & cut out › By colour or light · small button | Ready | B10 |
 | select.from-path | U019 | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | Select & cut out › Perfect and keep · More list | Ready | B4 |
 | select.to-path | U020 | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | Select & cut out › Perfect and keep · More list | Ready | B4 |
-| select.from-alpha | U021 | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's opacity or mask, combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | Select & cut out › Perfect and keep · More list | Planned | B10 |
-| select.remove-holes | U103 | Fill holes in a selection | Remove Holes | Closes small unselected gaps inside a selection. | fill holes in selection, close gaps in selection, solid selection | Select & cut out › Change it · More list | Planned | T3 |
-| select.distort | U104 | Roughen the selection edge | Distort selection | Makes a selection edge irregular and hand-torn. | rough edge, torn edge, distort selection, irregular selection | Select & cut out › Change it · More list | Planned | T3 |
-| select.round-corners | U105 | Rounded corners on a selection | Rounded Rectangle | Rounds the corners of the current selection. | rounded selection, round corners, rounded rectangle selection | Select & cut out › Change it · More list | Planned | T3 |
-| select.editor | U106 | Selection editor with preview | Selection Editor | A panel showing the selection as a picture. | selection editor, see selection, selection preview | Select & cut out › Perfect and keep · More list | Planned | T3 |
-| select.float | U107 | Float a selection into a loose layer | Float | Lifts the selected pixels into a temporary layer you can move. | float selection, floating layer, lift pixels | Select & cut out › Perfect and keep · More list | Planned | T3 |
-| select.from-channel | U108 | Select from a colour channel | Selection from channels | Turns one colour channel into a selection. | channel selection, select from red channel, channel to selection | Select & cut out › Perfect and keep · More list | Planned | T3 |
+| select.from-alpha | U021 | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's solid parts (and its layer mask, when it is on), combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | Select & cut out › Perfect and keep · More list | Ready | B10 |
+| select.remove-holes | U103 | Fill holes in a selection | Remove Holes | Closes small unselected gaps inside a selection. | fill holes in selection, close gaps in selection, solid selection | Select & cut out › Change it · More list | Ready | T3 |
+| select.distort | U104 | Roughen the selection edge | Distort selection | Makes a selection edge irregular and hand-torn. | rough edge, torn edge, distort selection, irregular selection | Select & cut out › Change it · More list | Ready | T3 |
+| select.round-corners | U105 | Rounded corners on a selection | Rounded Rectangle | Rounds the corners of the current selection. | rounded selection, round corners, rounded rectangle selection | Select & cut out › Change it · More list | Ready | T3 |
+| select.editor | U106 | Selection editor with preview | Selection Editor | Shows the selection as a grey picture (white selected, black not) to paint, blur or invert, then turns it back into a selection. | selection editor, see selection, selection preview | Select & cut out › Perfect and keep · More list | Ready | T3 |
+| select.float | U107 | Float a selection into a loose layer | Float | Lifts the selected pixels into a new layer just above, cutting them from the original, so you can move them. | float selection, floating layer, lift pixels | Select & cut out › Perfect and keep · More list | Ready | T3 |
+| select.from-channel | U108 | Select from a colour channel | Selection from channels | Turns one colour channel into a selection. | channel selection, select from red channel, channel to selection | Select & cut out › Perfect and keep · More list | Ready | T3 |
 
 ### Retouch & remove (7)
 
@@ -802,17 +802,17 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| layer.crop-to-content | U175 | Crop a layer to its content | Crop Layers to Content | Shrinks the layer to the non-empty pixels. | crop layer, trim layer, shrink layer to content | Arrange layers › This layer · More list | Planned | T3 |
-| layer.remove-alpha | U176 | Remove the see-through channel | Remove Alpha Channel | Fills transparency with the background colour. | remove transparency, remove alpha, flatten transparency | Arrange layers › This layer · More list | Planned | T3 |
-| layer.invert-alpha | U177 | Invert see-through areas | Invert Alpha | Swaps opaque and clear areas. | invert transparency, invert alpha, swap see-through | Arrange layers › This layer · More list | Planned | T3 |
-| layer.split-by-colour | U178 | Split layer by colour | Split Layer | Cut a layer into one layer per colour field. | split layer by colour, separate colours into layers | Arrange layers › This layer · More list | Planned | T3 |
+| layer.crop-to-content | U175 | Crop a layer to its content | Crop Layers to Content | Shrinks the layer to the non-empty pixels. | crop layer, trim layer, shrink layer to content | Arrange layers › This layer · More list | Ready | T3 |
+| layer.remove-alpha | U176 | Remove the see-through channel | Remove Alpha Channel | Fills transparency with the background colour. | remove transparency, remove alpha, flatten transparency | Arrange layers › This layer · More list | Ready | T3 |
+| layer.invert-alpha | U177 | Invert see-through areas | Invert Alpha | Swaps opaque and clear areas. | invert transparency, invert alpha, swap see-through | Arrange layers › This layer · More list | Ready | T3 |
+| layer.split-by-colour | U178 | Split layer by colour | Split Layer | Cut a layer into one layer per colour field. | split layer by colour, separate colours into layers | Arrange layers › This layer · More list | Ready | T3 |
 | layer.convert | U179 | Convert a layer to another kind | Convert a layer to... | Turn a layer into a paint, mask or file layer. | convert layer, change layer type, turn into vector layer | Arrange layers › This layer · More list | Planned | T3 |
 | layer.colour-space | U180 | Change colour space of one layer | Convert Layer Color Space | Different colour model for one layer only. | layer colour space, convert layer profile | Arrange layers › This layer · More list | Planned | T3 |
-| layer.reverse | U181 | Reverse the layer order | Reverse Layer Order | Flips the stack upside down. | reverse layers, flip layer order, reverse order | Arrange layers › Order · More list | Planned | T3 |
-| layer.filter | U182 | Search the Layers panel by kind | Layers filter (kind, name, effect, colour, smart object) | Show only layers of a chosen kind or label. | find layer, search layers, filter layers, layer by kind | Arrange layers › Find and versions · More list | Planned | T3 |
-| layer.colour-label | U183 | Colour-label layers | Layer colour labels | Tag layers with colours to find them. | layer colour, colour label, tag layer, mark layer | Arrange layers › Find and versions · More list | Planned | T3 |
-| layer.select-by-state | U184 | Select layers by state | Select hidden / locked / unlocked layers | Pick all hidden or locked layers at once. | select hidden layers, select locked layers, select layers by state | Arrange layers › Find and versions · More list | Planned | T3 |
-| layer.metadata | U185 | Edit layer metadata | Edit Metadata | Notes and tags attached to one layer. | layer metadata, layer notes, layer info | Arrange layers › Find and versions · More list | Planned | T3 |
+| layer.reverse | U181 | Reverse the layer order | Reverse Layer Order | Flips the stack upside down. | reverse layers, flip layer order, reverse order | Arrange layers › Order · More list | Ready | T3 |
+| layer.filter | U182 | Find layers by kind, label or words | Layers filter (kind, name, effect, colour) | Find layers by name, notes, tags, kind, colour label or effects, and click one to work on it. | find layer, search layers, filter layers, layer by kind | Arrange layers › Find and versions · small button | Ready | T3 |
+| layer.colour-label | U183 | Colour-label layers | Layer colour labels | Tag the active layer with a colour, to find it again with Find layers. | layer colour, colour label, tag layer, mark layer | Arrange layers › Find and versions · small button | Ready | T3 |
+| layer.select-by-state | U184 | Select layers by state | Select hidden / locked / unlocked layers | Lists every hidden, shown, locked or unlocked layer at once; show or unlock them all in one step, or click one to work on it. | select hidden layers, select locked layers, select layers by state | Arrange layers › Find and versions · small button | Ready | T3 |
+| layer.metadata | U185 | Edit layer metadata | Edit Metadata | Write notes and tags on the active layer; Find layers searches them. | layer metadata, layer notes, layer info | Arrange layers › Find and versions · More list | Ready | T3 |
 | layer.video | U186 | Edit video on a timeline | Video Timeline (clips, keyframes, transitions, audio, render video) | A timeline for clips, keyframed effects and audio. | video editing, video timeline, clips, transitions, audio | Arrange layers › Animate · More list | Planned | T3 |
 | layer.keyframes | U187 | Animate with keyframes on layers | Timeline layer keyframes (position, opacity, style, mask) | Animate layer properties over time. | keyframe, animate position, animate opacity, motion | Arrange layers › Animate · More list | Planned | T3 |
 | layer.onion-skin | U188 | See neighbour frames | Onion Skin | Shows previous frames in red and next in green to draw in-betweens. | onion skin, see previous frame, animation ghost | Arrange layers › Animate · More list | Planned | T3 |
@@ -839,9 +839,9 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | image.gamut-warning | U087 | See which colours cannot print | Gamut Warning | Grey out pixels a profile cannot reproduce. | gamut warning, out of gamut, colours that cannot print | Light & colour › Colour accuracy · More list | Planned | B18 |
 | image.local-threshold | U194 | Local threshold | Local Threshold | Black and white decided by neighbourhood, not globally. | local threshold, adaptive threshold, scan documents, clean text scan | Light & colour › Light and colour · More list | Planned | T3 |
 | image.retinex | U195 | Even out uneven light and colour | Retinex | Corrects uneven lighting and colour cast. | retinex, uneven light, shadow lift, even out lighting | Light & colour › More colour tools · More list | Planned | T3 |
-| image.hue-chroma | U196 | Hue and chroma sliders | Hue Chroma | Changes hue and chroma in a perceptual space. | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · More list | Planned | T3 |
-| image.rotate-colours | U197 | Spin the colours | Rotate Colors | Cycles a range of hues. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Planned | T3 |
-| image.sample-colorize | U198 | Colour by example | Sample Colorize | Colours a picture from sample gradient taken from another. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
+| image.hue-chroma | U196 | Hue and chroma sliders | Hue and chroma | Changes hue and chroma in a perceptual space. | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · More list | Planned | T3 |
+| image.rotate-colours | U197 | Spin the colours | Hue range rotation | Cycles a range of hues. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Planned | T3 |
+| image.sample-colorize | U198 | Colour by example | Colour from a sample | Colours a picture from sample gradient taken from another. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
 | image.harmonize | U199 | Harmonise colours | Colour harmonizer | Nudge hues toward a pleasing relationship. | colour harmony, harmonise colours, colour scheme | Light & colour › More colour tools · More list | Planned | T3 |
 | image.colour-contrast | U200 | Colour contrast | Color contrast | Make neighbouring colours stand further apart. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Planned | T3 |
 | image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Exports your colour edits as a .cube table for other apps. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Planned | T3 |
@@ -853,40 +853,40 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| filter.depth-blur | U088 | Add depth blur from a depth map | Depth Blur | Blur by distance with focal distance and strength sliders. | depth blur, background blur, portrait mode, bokeh, blur background by depth | Filters & blur › Camera blurs · family sheet | Planned | B13 |
-| filter.blur-variable | U205 | Blur by a map | Variable Blur | Blur strength set by a second layer. | variable blur, blur by map, gradient blur | Filters & blur › Blur · family sheet | Planned | T3 |
-| filter.blur-edge-keep | U206 | Edge-keeping blurs | Mean Curvature, Selective Gaussian, Symmetric Nearest Neighbor | Smooth noise while keeping edges. | edge preserving blur, smooth skin blur, selective blur, bilateral | Filters & blur › Blur · family sheet | Ready | T3 |
-| filter.blur-sketch | U207 | Sketchy brush-stroke blur | Sketch Blur | Coarse painted look from median estimation. | sketch blur, brush stroke blur, painterly blur | Filters & blur › Blur · family sheet | Planned | T3 |
-| filter.blur-tileable | U208 | Make a tile repeat without seams (blur edge) | Tileable Blur | Blurs edges so a pattern tiles. | tileable blur, seamless blur, wrap edges blur | Filters & blur › Blur · family sheet | Planned | T3 |
-| filter.diffuse-sharpen | U209 | Diffuse or sharpen detail | Diffuse or sharpen | A flexible tool that sharpens, deblurs, softens or adds bloom by spreading detail. | diffuse, sharpen detail, local sharpen, soften detail | Filters & blur › Sharpen · family sheet | Planned | T3 |
-| filter.destripe | U210 | Remove stripes from a picture | Destripe | Removes vertical stripes from scans. | destripe, stripes, scan lines, banding | Filters & blur › Grain and specks · family sheet | Ready | T3 |
+| filter.depth-blur | U088 | Add depth blur from a depth map | Blur by depth | Blur by distance with focal distance and strength sliders. | depth blur, background blur, portrait mode, bokeh, blur background by depth | Filters & blur › Camera blurs · family sheet | Planned | B13 |
+| filter.blur-variable | U205 | Blur by a map | Blur from a map | Blur strength set by a second layer. | variable blur, blur by map, gradient blur | Filters & blur › Blur · family sheet | Planned | T3 |
+| filter.blur-edge-keep | U206 | Edge-keeping blurs | Bilateral (edge-keeping) blur | Smooth noise while keeping edges. | edge preserving blur, smooth skin blur, selective blur, bilateral | Filters & blur › Blur · family sheet | Ready | T3 |
+| filter.blur-sketch | U207 | Sketchy brush-stroke blur | Stroke median blur | Coarse painted look from median estimation. | sketch blur, brush stroke blur, painterly blur | Filters & blur › Blur · family sheet | Ready | T3 |
+| filter.blur-tileable | U208 | Make a tile repeat without seams (blur edge) | Wrap-around blur | Blurs edges so a pattern tiles. | tileable blur, seamless blur, wrap edges blur | Filters & blur › Blur · family sheet | Ready | T3 |
+| filter.diffuse-sharpen | U209 | Diffuse or sharpen detail | Detail diffusion | A flexible tool that sharpens, deblurs, softens or adds bloom by spreading detail. | diffuse, sharpen detail, local sharpen, soften detail | Filters & blur › Sharpen · family sheet | Planned | T3 |
+| filter.destripe | U210 | Remove stripes from a picture | Stripe removal | Removes vertical stripes from scans. | destripe, stripes, scan lines, banding | Filters & blur › Grain and specks · family sheet | Ready | T3 |
 | filter.deinterlace | U211 | Fix interlace lines | Deinterlace | Removes line artefacts from video frames. | deinterlace, interlace lines, video lines, tv lines | Filters & blur › Grain and specks · family sheet | Ready | T3 |
 | filter.kaleidoscope | U212 | Kaleidoscope | Kaleidoscope | Mirror slices around a centre. | kaleidoscope, mirror pattern, mandala effect | Filters & blur › Bend and twist · family sheet | Ready | T3 |
-| filter.panorama-projection | U213 | Flat panorama to 3D view | Panorama Projection | Projects a 360 picture into a view. | little planet, panorama projection, 360 photo, tiny planet | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.page-curl | U214 | Page curl and curve bend | Page Curl, Curve Bend | Peel a corner; bend along a curve. | page curl, curl corner, bend picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.illusion | U215 | Illusion and recursive transform | Illusion, Recursive Transform | Repeating mirrored and nested copies. | illusion, recursive, droste, infinite picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.fractal-trace | U216 | Crumple and fractal looks | Fractal Trace, Value Propagate | Odd mapped and spread-colour effects. | fractal trace, crumple, crumpled paper, value propagate | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.dents | U217 | Dents and tile reflection | Dents, Tile Reflection | Water-like and mirrored-tile distortions. | dents, tile reflection, bumpy glass | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.newsprint | U218 | Newsprint and engrave | Newsprint, Engrave | Halftone and line-engraved looks. | newsprint, engrave, comic dots, print dots | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
-| filter.video-degrade | U219 | Video degradation | Video Degradation | Old TV pixel-pattern look. | vhs, old tv, video glitch, retro screen | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
-| filter.superpixels | U220 | Superpixels | SLIC, Waterpixels | Group pixels into regions. | superpixels, cells, low poly look | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
-| filter.star-burst | U221 | Star burst | Supernova, Gradient Flare, Sparkle | Bright star and flare effects. | star burst, sparkle, supernova, light rays, gradient flare | Filters & blur › Patterns and light · family sheet | Ready | T3 |
-| filter.bump-map | U222 | Bump map and normal map | Bump Map, Normal Map | Create 3D-looking shading or game normal maps from a picture. | bump map, normal map, texture relief | Filters & blur › Patterns and light · family sheet | Ready | T3 |
-| filter.noise-patterns | U223 | Noise patterns | Cell, Perlin, Simplex, Solid, Plasma | Generated organic textures. | perlin noise, cell noise, plasma, solid noise, random texture | Filters & blur › Patterns and light · family sheet | Planned | T3 |
-| filter.fractals | U224 | Fractals | Julia, Mandelbrot, Fractal Explorer, IFS, Flame | Generated fractal art. | fractal, mandelbrot, julia set, flame fractal | Filters & blur › Patterns and light · family sheet | Planned | T3 |
-| filter.patterns | U225 | Patterns: grid, checkerboard, maze, spiral, sinus, jigsaw | Render patterns | Generates geometric backgrounds. | checkerboard, grid pattern, maze, spiral pattern, jigsaw | Filters & blur › Patterns and light · family sheet | Planned | T3 |
+| filter.panorama-projection | U213 | Flat panorama to 3D view | Panorama reprojection | Projects a 360 picture into a view. | little planet, panorama projection, 360 photo, tiny planet | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.page-curl | U214 | Page curl and curve bend | Peeled corner, bend | Peel a corner; bend along a curve. | page curl, curl corner, bend picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.illusion | U215 | Illusion and recursive transform | Rotated copies, Droste | Repeating mirrored and nested copies. | illusion, recursive, droste, infinite picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.fractal-trace | U216 | Crumple and fractal looks | Fractal remap, value spread | Odd mapped and spread-colour effects. | fractal trace, crumple, crumpled paper, value propagate | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.dents | U217 | Dents and tile reflection | Dented glass, mirror tiles | Water-like and mirrored-tile distortions. | dents, tile reflection, bumpy glass | Filters & blur › Bend and twist · family sheet | Ready | T3 |
+| filter.newsprint | U218 | Newsprint and engrave | Halftone dots, engraving | Halftone and line-engraved looks. | newsprint, engrave, comic dots, print dots | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
+| filter.video-degrade | U219 | Video degradation | Old TV look | Old TV pixel-pattern look. | vhs, old tv, video glitch, retro screen | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
+| filter.superpixels | U220 | Superpixels | SLIC, watershed cells | Group pixels into regions. | superpixels, cells, low poly look | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
+| filter.star-burst | U221 | Star burst | Star burst, light flare, sparkle | Bright star and flare effects. | star burst, sparkle, supernova, light rays, gradient flare | Filters & blur › Patterns and light · family sheet | Ready | T3 |
+| filter.bump-map | U222 | Bump map and normal map | Bump map, normal map | Create 3D-looking shading or game normal maps from a picture. | bump map, normal map, texture relief | Filters & blur › Patterns and light · family sheet | Ready | T3 |
+| filter.noise-patterns | U223 | Noise patterns | Cell, Perlin, simplex, cloud, plasma | Generated organic textures. | perlin noise, cell noise, plasma, solid noise, random texture | Filters & blur › Patterns and light · family sheet | Planned | T3 |
+| filter.fractals | U224 | Fractals | Julia, Mandelbrot, IFS, flame fractals | Generated fractal art. | fractal, mandelbrot, julia set, flame fractal | Filters & blur › Patterns and light · family sheet | Planned | T3 |
+| filter.patterns | U225 | Patterns: grid, checkerboard, maze, spiral, sinus, jigsaw | Generated patterns | Generates geometric backgrounds. | checkerboard, grid pattern, maze, spiral pattern, jigsaw | Filters & blur › Patterns and light · family sheet | Ready | T3 |
 | filter.bloom | U226 | Glow around lights | Bloom / Soft glow | Spreads light from bright areas. | bloom, glow, soft glow, dreamy, glowing lights | Filters & blur › Graphic looks · family sheet | Ready | T3 |
-| filter.long-shadow | U227 | Long cast shadow | Long Shadow | Flat long shadow behind an object. | long shadow, flat design shadow, cast shadow | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.tile-seamless | U228 | Seamless tiling | Tile Seamless, Tile, Small Tiles, Paper Tile | Make or build repeating textures. | seamless tile, make tileable, repeat texture | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.edge-detect | U229 | Edge detectors | Difference of Gaussians, Sobel, Laplace, Neon, Edge | Different line-finding methods. | edge detect, sobel, laplace, neon edges, outline edges | Filters & blur › Graphic looks · family sheet | Ready | T3 |
-| filter.outline-relief | U230 | Outline and relief | Outline, Relief | Edge tracing and edge-blended emboss. | outline, relief, carved, emboss outline | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.alien-map | U231 | Weird colour shift | Alien Map | Rotates colours in a non-natural way. | alien map, psychedelic, weird colours, trippy | Filters & blur › Graphic looks · family sheet | Ready | T3 |
-| filter.lowlight | U232 | Simulate a dark-adapted eye | Lowlight vision | Show how a night scene looks to the eye. | night vision, dark adapted, lowlight, blue night look | Filters & blur › Graphic looks · family sheet | Ready | T3 |
-| filter.cartoon | U233 | Cartoon, photocopy, cubism, glass tile | Cartoon, Photocopy, Cubism, Glass Tile | Graphic and painterly restyles. | cartoon, photocopy, cubism, glass tiles, comic look | Filters & blur › Artistic · family sheet | Planned | T3 |
-| filter.ink-sketch | U234 | Ink sketch and pencil sketch | Ink Sketch, Pencil Sketch | Drawn looks. | pencil sketch, ink sketch, drawing from photo, sketch effect | Filters & blur › Artistic · family sheet | Planned | T3 |
-| filter.linocut | U235 | Linocut and stained glass | Linocut, Stained Glass | Block print and leaded-glass looks. | linocut, woodcut, stained glass, print block | Filters & blur › Artistic · family sheet | Planned | T3 |
+| filter.long-shadow | U227 | Long cast shadow | Long cast shadow | Flat long shadow behind an object. | long shadow, flat design shadow, cast shadow | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.tile-seamless | U228 | Seamless tiling | Seamless, repeated, mirrored, scattered tiles | Make or build repeating textures. | seamless tile, make tileable, repeat texture | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.edge-detect | U229 | Edge detectors | Sobel, Prewitt, Roberts, Laplace edges | Different line-finding methods. | edge detect, sobel, laplace, neon edges, outline edges | Filters & blur › Graphic looks · family sheet | Ready | T3 |
+| filter.outline-relief | U230 | Outline and relief | Traced outline, relief | Edge tracing and edge-blended emboss. | outline, relief, carved, emboss outline | Filters & blur › Graphic looks · family sheet | Ready | T3 |
+| filter.alien-map | U231 | Weird colour shift | Sine colour remap | Rotates colours in a non-natural way. | alien map, psychedelic, weird colours, trippy | Filters & blur › Graphic looks · family sheet | Ready | T3 |
+| filter.lowlight | U232 | Simulate a dark-adapted eye | Night vision | Show how a night scene looks to the eye. | night vision, dark adapted, lowlight, blue night look | Filters & blur › Graphic looks · family sheet | Ready | T3 |
+| filter.cartoon | U233 | Cartoon, photocopy, cubism, glass tile | Cartoon, photocopy, cubist, glass blocks | Graphic and painterly restyles. | cartoon, photocopy, cubism, glass tiles, comic look | Filters & blur › Artistic · family sheet | Ready | T3 |
+| filter.ink-sketch | U234 | Ink sketch and pencil sketch | Ink and pencil drawing | Drawn looks. | pencil sketch, ink sketch, drawing from photo, sketch effect | Filters & blur › Artistic · family sheet | Ready | T3 |
+| filter.linocut | U235 | Linocut and stained glass | Lino print, leaded glass | Block print and leaded-glass looks. | linocut, woodcut, stained glass, print block | Filters & blur › Artistic · family sheet | Ready | T3 |
 | filter.frames-overlays | U236 | Frames, borders, texture, light leaks, bokeh overlays | Photo Frames / Texture Background / Overlays | Add frames and texture overlays with blend control. | photo frame, border, light leaks, bokeh overlay, texture overlay | Filters & blur › Artistic · family sheet | Planned | T3 |
-| filter.antialias | U237 | Smooth jagged edges | Antialias | Softens stair-stepped edges. | antialias, smooth jaggies, jagged edges, staircase edges | Filters & blur › More effects · family sheet | Ready | T3 |
+| filter.antialias | U237 | Smooth jagged edges | Anti-aliasing | Softens stair-stepped edges. | antialias, smooth jaggies, jagged edges, staircase edges | Filters & blur › More effects · family sheet | Ready | T3 |
 
 ### File sheet (12)
 

@@ -5,7 +5,9 @@
  * Recorded steps (record a flip and a filter by hand, stop, play on the original: the same pixels, as one undo step),
  * Edit many pictures the same way and Resize many pictures (one ZIP, names in the picked order, the right sizes), and
  * the Sheet of small photos (one new picture, a layer per photo), Watermark (this picture and many), Collage and the
- * Passport photo sheet.
+ * Passport photo sheet, and Line up layers automatically (a real photo turned 7° and moved goes back onto itself; the
+ * practice photo's copy moved 100 px down goes back to the same pixels), Stitch a panorama (two overlapping pieces of the
+ * real photo come back as the photo, one undo step) and Blend photos automatically (a seam mask, one undo step).
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts automate
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -18,10 +20,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { reach } from './ribbon';
 import { decodePng, encodePng } from '@free-photoeditor/formats/png';
 import { unzipSync } from '@free-photoeditor/formats/zip';
+import { addLayer, createLayer, documentFromBitmap, warpBitmap } from '@free-photoeditor/core';
+import { writePsdDocument } from '@free-photoeditor/core/psd';
 
 interface Fpe {
   run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; flatHash(): Promise<string>;
   getInfo(): { layers: unknown[]; width: number; height: number } | null;
+  select(x: number, y: number, w: number, h: number): void; sample(x: number, y: number, only?: boolean): number[] | null;
 }
 type Win = Window & { fpe: Fpe; __n: { dl: number }; __blob: Blob | null; __name: string };
 
@@ -256,8 +261,9 @@ suite('Automate and batch (headless Chrome)', () => {
     const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
     expect([info?.width, info?.height]).toEqual([2400, 1600]);
     expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
-    // Let the view finish drawing the new picture (big pictures draw in bands over a few frames) before the shot.
-    await p.waitForTimeout(600);
+    // Every layer row shows its thumbnail (they draw on a short timer), then the view has a moment to finish the big picture.
+    await p.waitForFunction(() => { const c = [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-thumb]')]; return c.length > 0 && c.every((x) => x.dataset.drawn === '1'); });
+    await p.waitForTimeout(300);
     await p.screenshot({ path: join(OUT, 'automate-collage-1440.png') });
     expect(errors).toEqual([]);
   }, 60_000);
@@ -322,6 +328,14 @@ suite('Automate and batch (headless Chrome)', () => {
     await reach(p, 'file.recent');
     await p.waitForSelector('[data-testid="recent-item"]');
     expect(await p.textContent('[data-testid="recent-list"]')).toContain('wide.png');
+    // The row reads as one line: name, size and date take the room, and Open sits at the right at its own size.
+    const row = await p.evaluate(() => {
+      const li = document.querySelector('[data-testid="recent-item"]') as HTMLElement, sp = li.querySelector('span') as HTMLElement, b = li.querySelector('button') as HTMLElement;
+      return { li: li.getBoundingClientRect().width, span: sp.getBoundingClientRect().width, spanH: sp.getBoundingClientRect().height, btn: b.getBoundingClientRect().width };
+    });
+    expect(row.btn).toBeLessThan(row.li / 3);
+    expect(row.span).toBeGreaterThan(row.li / 2);
+    expect(row.spanH).toBeLessThan(48);
     await p.screenshot({ path: join(OUT, 'automate-recent-1440.png') });
     await p.click('[data-testid="recent-open"]');
     await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 3);
@@ -333,5 +347,103 @@ suite('Automate and batch (headless Chrome)', () => {
     await p.waitForSelector('[data-testid="recent-empty"]');
     expect(errors).toEqual([]);
   }, 60_000);
-});
+  it('Line up layers automatically: a real photo turned 7° and moved goes back onto the photo, as one undo step', async () => {
+    const png = decodePng(await readFile(join(WEB, 'e2e', 'fixtures', 'mug.png')));
+    const photo = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data) }, W = photo.width, H = photo.height;
+    const a = 7 * Math.PI / 180, cx = W / 2, cy = H / 2;
+    const T = (x: number, y: number): { x: number; y: number } => ({ x: cx + (x - cx) * Math.cos(a) - (y - cy) * Math.sin(a) + 12, y: cy + (x - cx) * Math.sin(a) + (y - cy) * Math.cos(a) - 8 });
+    const g = warpBitmap(photo, [T(0, 0), T(W, 0), T(W, H), T(0, H)]);
+    if (!g) throw new Error('The test shot could not be made');
+    const doc = documentFromBitmap(photo);
+    addLayer(doc, createLayer('Second shot', g.width, g.height, { data: g.data, x: g.x, y: g.y }), 1);
+    const p = await open();
+    await p.setInputFiles('[data-testid="file-input"]', { name: 'two-shots.psd', mimeType: 'image/vnd.adobe.photoshop', buffer: Buffer.from(writePsdDocument(doc)) });
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 2 && (window as unknown as Win).fpe.getInfo()?.layers.length === 2);
+    // The mean red difference from the photo over an inner grid of the picture: large while the shot is turned, small once lined up.
+    const pts: [number, number][] = [];
+    for (let y = 60; y < H - 60; y += 20) for (let x = 60; x < W - 60; x += 20) pts.push([x, y]);
+    const ref = pts.map(([x, y]) => photo.data[(y * W + x) * 4]);
+    const off = (): Promise<number> => p.evaluate(([q, r]) => {
+      const f = (window as unknown as Win).fpe;
+      return q.reduce((s, [x, y], i) => s + Math.abs((f.sample(x, y)?.[0] ?? 0) - r[i]), 0) / q.length;
+    }, [pts, ref] as const);
+    const before = await off(), h0 = await hash(p), n0 = await steps(p);
+    expect(before).toBeGreaterThan(15);
+    await reach(p, 'edit.auto-align');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0, { timeout: 20_000 });
+    expect(await off()).toBeLessThan(6);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('Lined up');
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'automate-auto-align-1440.png') });
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(h0);
+    expect(errors).toEqual([]);
+  }, 60_000);
 
+  it('Line up layers automatically: the practice photo, its copy moved 100 px down, goes back to the very same pixels', async () => {
+    const p = await open();
+    type S = { info: { active: number }; layers: { x: number; y: number }[] };
+    const act = (): Promise<{ x: number; y: number }> => p.evaluate(() => { const s = (window as unknown as Win).fpe.state() as unknown as S; return s.layers[s.info.active]; });
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.select(850, 100, 100, 100); await f.run('layer.merge-down'); await f.run('layer.duplicate'); });
+    const lined = await hash(p);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('layer.align-top'));
+    expect(await act()).toMatchObject({ x: 0, y: 100 });
+    expect(await hash(p)).not.toBe(lined);
+    const n0 = await steps(p);
+    await reach(p, 'edit.auto-align');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0, { timeout: 20_000 });
+    expect(await act()).toMatchObject({ x: 0, y: 0 });
+    expect(await hash(p)).toBe(lined);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Stitch a panorama: two overlapping pieces of a real photo become the photo again, as one undo step', async () => {
+    const png = decodePng(await readFile(join(WEB, 'e2e', 'fixtures', 'mug.png'))), W = png.width, H = png.height;
+    const piece = async (name: string, x0: number, w: number): Promise<string> => {
+      const data = new Uint8ClampedArray(w * H * 4);
+      for (let y = 0; y < H; y++) data.set(png.data.subarray((y * W + x0) * 4, (y * W + x0 + w) * 4), y * w * 4);
+      const file = join(dir, name);
+      await writeFile(file, encodePng({ width: w, height: H, data }));
+      return file;
+    };
+    const two = [await piece('left.png', 0, 230), await piece('right.png', 130, 230)];
+    const p = await open();
+    await reach(p, 'auto.panorama');
+    await pickFiles(p, 'auto.panorama', two);
+    await p.click('[data-testid="auto.panorama-make"]');
+    await p.waitForFunction((w) => (window as unknown as Win).fpe.getInfo()?.width === w, W, { timeout: 20_000 });
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height, info?.layers.length]).toEqual([W, H, 2]);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('Stitched 2 photos');
+    // Across the whole picture, seam included, the pixels are the photo's (mean red difference under 2 on a 20 px grid).
+    const pts: [number, number][] = [];
+    for (let y = 10; y < H; y += 20) for (let x = 10; x < W; x += 20) pts.push([x, y]);
+    const ref = pts.map(([x, y]) => png.data[(y * W + x) * 4]);
+    const off = await p.evaluate(([q, r]) => {
+      const f = (window as unknown as Win).fpe;
+      return q.reduce((s, [x, y], i) => s + Math.abs((f.sample(x, y)?.[0] ?? 0) - r[i]), 0) / q.length;
+    }, [pts, ref] as const);
+    expect(off).toBeLessThan(2);
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'automate-panorama-1440.png') });
+    const h1 = await hash(p);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width).toBe(230);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.redo'));
+    expect(await hash(p)).toBe(h1);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Blend photos automatically: the practice photo\'s copy 100 px down gets a seam mask, as one undo step', async () => {
+    const p = await open();
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.select(850, 100, 100, 100); await f.run('layer.merge-down'); await f.run('layer.duplicate'); await f.run('layer.align-top'); });
+    const h0 = await hash(p), n0 = await steps(p);
+    await reach(p, 'edit.auto-blend');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0, { timeout: 20_000 });
+    expect(await p.textContent('[data-testid="toast"]')).toContain('Blended');
+    expect(await hash(p)).not.toBe(h0);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(h0);
+    expect(errors).toEqual([]);
+  }, 60_000);
+});

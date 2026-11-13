@@ -460,8 +460,8 @@ export const WARP_IDS = WARP_ALL.slice(0, 7);
 for (const id of WARP_ALL) HANDLERS[id] = H((e) => e.warpMore(id));
 HANDLERS['edit.transform-again'] = w3('edit.transform-again');
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
-for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits'])
-  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' || id === 'auto.copy-edits' ? hasDoc : always);
+for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits', 'edit.auto-align', 'edit.auto-blend', 'auto.panorama'])
+  HANDLERS[id] = H((e) => e.automate(id), /^(auto.passport|auto.copy-edits|edit.auto-)/.test(id) ? hasDoc : always);
 // Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
 // round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
 // edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.

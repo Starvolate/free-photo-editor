@@ -161,11 +161,18 @@ describe('the Task ribbon', () => {
       ...('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading raw.contrast-levels '
         + 'raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping raw.scopes raw.snapshots '
         + 'raw.presets raw.negative').split(' '),
+      // Batch light-and-colour (light-more.ts).
+      'image.hue-chroma', 'image.rotate-colours', 'image.colour-contrast', 'image.local-threshold', 'image.retinex', 'image.tone-mapping',
+      'image.harmonize', 'image.palette-edit', 'image.export-lut', 'image.gamut-warning', 'image.decompose',
       // Batch select-and-layers (selmore.ts).
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
       // Batch paint (paintkit.ts): the Brush extras sheet.
-      'paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'paint.enclose-fill', 'paint.colorize-mask']);
+      'paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'paint.enclose-fill', 'paint.colorize-mask',
+      // Batch shapes-text (pathops).
+      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
+      // Automate and batch (automate.ts).
+      'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

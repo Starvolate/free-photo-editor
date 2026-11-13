@@ -2713,6 +2713,7 @@ export class Editor {
       'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
       h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
+    if (s.def.info) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-info', 'aria-live': 'polite' }, s.def.info(params, s.before)));
     this.dlgCanvas = null;
     if (s.scale < 1) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-small' }, 'This picture is big, so the preview uses a smaller copy to stay quick. Apply then works on every pixel at full size, with a progress bar.'));
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
@@ -2722,7 +2723,7 @@ export class Editor {
     this.sheetHook = null;
     kids.push(...(s.def.sheet ? s.def.sheet({ id: s.id, params, idBase: id, input: () => this.preview(), rerender: () => this.renderDialog(),
       result: () => ({ width: s.r.w, height: s.r.h, data: s.after ?? s.before }), onResult: (f) => { this.sheetHook = f; } })
-      : renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); }, rerender: () => this.renderDialog() })));
+      : renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); this.drawInfo(); }, rerender: () => this.renderDialog() })));
     kids.push(h('div', { class: 'fpe-actions' },
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-before', 'aria-pressed': s.showBefore ? 'true' : 'false', 'data-testid': 'adj-before',
         'data-help-title': 'Before and after', 'data-help': 'Show the picture as it was, to compare. Press again to see the change.', onclick: () => this.toggleBefore() },
@@ -2735,6 +2736,10 @@ export class Editor {
     dlg.hidden = false;
     this.drawGraph();
     requestAnimationFrame(() => dlg.querySelector<HTMLElement>('input, select')?.focus({ preventScroll: true }));
+  }
+  private drawInfo(): void {
+    const s = this.session, el = this.dlgEl.querySelector('[data-testid="adj-info"]');
+    if (s?.def.info && el) el.textContent = s.def.info(s.spec.params ?? {}, s.before);
   }
   private drawGraph(): void {
     const c = this.dlgCanvas, s = this.session, ctx = c?.getContext('2d');
@@ -3339,6 +3344,7 @@ export class Editor {
     try {
       const o = await readImageFile(file, name, { choose: (t, b, ok) => { done(); return this.openOptions(t, b, ok); } });
       if (o.kind === 'none') return;
+      if (!asLayer || !this.doc) void import('./file-more').then((m) => m.rememberRecent(file, name)).catch(() => undefined);
       let bmp: Bitmap;
       if (o.kind === 'doc') {
         if (asLayer && this.doc) bmp = flatten(o.doc);
@@ -3393,7 +3399,8 @@ export class Editor {
   async automate(id: string): Promise<void> {
     try {
       const m = await import('./automate');
-      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; } });
+      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; },
+        lastFilter: () => this.lastFilter, others: () => this.tabs.flatMap((t, i) => (i === this.cur ? [] : [{ name: t.name, doc: t.doc, push: (c: Command) => { t.history.push(c); layerPixelsChanged(); this.renderTabs(); this.saver?.touch(); } }])) });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Brush extras (paintkit.ts), loaded on first use: steady hand, symmetry, seamless tile, pen and speed. */
@@ -3404,6 +3411,10 @@ export class Editor {
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
+  /** Split into colour channel layers (light-more.ts, loaded on first use). */
+  async decompose(): Promise<void> {
+    try { (await import('./light-more')).decompose(this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */
   async openFiles(files: File[], asLayer = false): Promise<void> {

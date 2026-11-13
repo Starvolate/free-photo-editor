@@ -247,10 +247,10 @@ const ringArea = (pts: Point[]): number => {
 };
 /**
  * A path along a selection's edge (where it is at least half selected). A plain box becomes four corners. Each kept
- * point is smooth unless the outline turns there by more than 60 degrees. `tol` is how far, in pixels, the path may
+ * point is smooth unless the outline turns there by more than `smoothTurn` (60 degrees unless told otherwise). `tol` is how far, in pixels, the path may
  * stray from the traced edge (smaller keeps more points). Null when nothing is selected.
  */
-export function selectionToPath(sel: Selection, tol = 2, name = 'Work path'): VectorPath | null {
+export function selectionToPath(sel: Selection, tol = 2, name = 'Work path', smoothTurn = Math.PI / 3): VectorPath | null {
   const { x: ox, y: oy, w, h } = sel, al = sel.alpha;
   if (w <= 0 || h <= 0) return null;
   if (!al) {
@@ -305,7 +305,7 @@ export function selectionToPath(sel: Selection, tol = 2, name = 'Work path'): Ve
         const a1 = Math.atan2(a.y - p.y, a.x - p.x), a2 = Math.atan2(q.y - a.y, q.x - a.x);
         let turn = Math.abs(a2 - a1);
         if (turn > Math.PI) turn = 2 * Math.PI - turn;
-        if (turn < Math.PI / 3) a.smooth = true;
+        if (turn < smoothTurn) a.smooth = true;
       });
       // Handles from the original corner positions, so each smooth point is lined up with its real neighbours.
       const flags = anchors.map((a) => a.smooth);

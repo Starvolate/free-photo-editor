@@ -93,19 +93,25 @@ export function printHtml(src: string, title: string, width: number, height: num
  * start with the layer's place counted from the bottom, so they sort in stack order and never clash.
  */
 export function layerFiles(doc: Doc): { name: string; bmp: Bitmap }[] {
-  const out: { name: string; bmp: Bitmap }[] = [], n = doc.layers.length, pad = String(n).length;
-  doc.layers.forEach((l, i) => {
-    if (!hasPixels(l)) return;
-    const one: Doc = { ...doc, selection: null, paths: [], layers: [{ ...l, visible: true, blendMode: 'normal', clip: false, parentId: undefined }] };
-    out.push({ name: `${String(i + 1).padStart(Math.max(2, pad), '0')} ${baseName(l.name)}.png`, bmp: flatten(one) });
-  });
-  return out;
+  return layerNames(doc).map(({ i, name }) => ({ name, bmp: layerAlone(doc, i) }));
 }
-/** The ZIP of every layer as a PNG (stored, not squeezed again: PNG is already compressed). */
+/** The file name of every layer with pixels, with its place in the stack. */
+export function layerNames(doc: Doc): { i: number; name: string }[] {
+  const pad = Math.max(2, String(doc.layers.length).length);
+  return doc.layers.flatMap((l, i) => (hasPixels(l) ? [{ i, name: `${String(i + 1).padStart(pad, '0')} ${baseName(l.name)}.png` }] : []));
+}
+/** One layer drawn alone on a see-through canvas of the picture's size. */
+function layerAlone(doc: Doc, i: number): Bitmap {
+  const l = doc.layers[i];
+  return flatten({ ...doc, selection: null, paths: [], layers: [{ ...l, visible: true, blendMode: 'normal', clip: false, parentId: undefined }] });
+}
+/**
+ * The ZIP of every layer as a PNG (stored, not squeezed again: PNG is already compressed). Each layer is drawn, encoded
+ * and let go before the next, so a big photo with many layers holds one full-size picture in memory at a time.
+ */
 export function layersZip(doc: Doc): { bytes: Uint8Array; count: number } {
-  const files: Zippable = {};
-  const list = layerFiles(doc);
-  for (const f of list) files[f.name] = [encodePng(f.bmp), { level: 0 }];
+  const files: Zippable = {}, list = layerNames(doc);
+  for (const { i, name } of list) files[name] = [encodePng(layerAlone(doc, i)), { level: 0 }];
   return { bytes: zipSync(files), count: list.length };
 }
 

@@ -606,6 +606,11 @@ export function stem(w: string): string {
 export const words = (s: string): string[] => s.toLowerCase().replace(/[^a-z0-9°%]+/g, ' ').split(' ').filter(Boolean);
 interface Indexed { row: Row; fields: [string[], number][]; all: string; }
 let INDEX: Indexed[] | null = null;
+/** Add rows that live outside the menus (the new Planned functions, loaded by search on first use). */
+export function addRows(rows: Row[]): void {
+  for (const r of rows) { ROWS.push(r); BY_ID.set(r.id, r); }
+  INDEX = null;
+}
 function index(): Indexed[] {
   return (INDEX ??= ROWS.map((r) => ({
     row: r,
@@ -635,36 +640,9 @@ export function search(query: string, limit = 12): Row[] {
   return scored.sort((a, b) => b[0] - a[0]).slice(0, limit).map((s) => s[1]);
 }
 
-// ---------- the function map as Markdown (docs/function-map.md is generated from this) ----------
+// ---------- counts (docs/function-map.md is written by function-map.ts) ----------
 export function counts(): { total: number; ready: number; planned: number; tools: number; panels: number; menus: number } {
   const ready = ROWS.filter((r) => r.status === 'ready').length;
   return { total: ROWS.length, ready, planned: ROWS.length - ready, tools: ROWS.filter((r) => r.kind === 'tool').length,
     panels: PANELS.length, menus: [...MENU_INFO.keys()].filter((k) => !k.startsWith('Tools')).length };
-}
-export function functionMapMarkdown(): string {
-  const c = counts();
-  const esc = (s: string): string => s.replace(/\|/g, '\\|');
-  const out: string[] = [
-    '# Free Photo Editor: function map', '',
-    'Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.test.ts`; do not edit by hand.',
-    'Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,',
-    'one plain line of help, the wish words search understands, where it lives, and whether it works today.', '',
-    `**${c.total} functions: ${c.ready} Ready, ${c.planned} Planned** (${c.tools} tools, ${c.panels} panels, ${c.menus} menus and submenus).`, '',
-    '## Phases', '', '| Phase | What ships |', '|---|---|', ...Object.entries(PHASES).map(([k, v]) => `| ${k} | ${v} |`), '',
-  ];
-  const sections: [string, (r: Row) => boolean][] = [...TOP_MENUS.map((m) => [m, (r: Row) => r.kind !== 'panel' && (r.place === m || r.place.startsWith(m + ' > '))] as [string, (r: Row) => boolean]),
-    ['Panels (Window menu and the dock)', (r: Row) => r.kind === 'panel'], ['Tools', (r: Row) => r.kind === 'tool' || r.place.startsWith('Tools')]];
-  for (const [title, test] of sections) {
-    const rows = ROWS.filter(test);
-    const ready = rows.filter((r) => r.status === 'ready').length;
-    out.push(`## ${title} (${ready} Ready, ${rows.length - ready} Planned)`, '');
-    const subs = [...MENU_INFO.values()].filter((m) => rows.some((r) => r.place === m.path) && m.path.includes(' > '));
-    if (subs.length) out.push('Groups: ' + subs.map((m) => `${m.plain} · ${m.pro}`).join('; ') + '.', '');
-    out.push('| id | Plain name | Pro name | What it does | Wish words | Place | Status | Phase | Keys |', '|---|---|---|---|---|---|---|---|---|');
-    for (const r of rows) {
-      out.push(`| ${r.id} | ${esc(r.plain)} | ${esc(r.pro)} | ${esc(r.help)} | ${esc(r.wish)} | ${placeText(r.place)} | ${r.status === 'ready' ? 'Ready' : 'Planned'} | ${r.phase} | ${esc(r.key)} |`);
-    }
-    out.push('');
-  }
-  return out.join('\n');
 }

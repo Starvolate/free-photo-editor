@@ -124,6 +124,9 @@ function keyOf(e: KeyboardEvent): string {
   parts.push(k);
   return parts.join('+');
 }
+/** The new Planned functions (registry-union.ts) join search the first time someone types; if that load fails (offline before first use), the next keystroke tries again. */
+let moreRows: Promise<void> | null = null, moreLoaded = false;
+const loadMoreRows = (): Promise<void> => (moreRows ??= import('./registry-union').then(() => { moreLoaded = true; }, () => { moreRows = null; }));
 const KEYMAP = new Map<string, string>();
 for (const r of ROWS) if (r.key) KEYMAP.set(r.key, r.id);
 const ALIASES: Record<string, string> = { 'Ctrl+Y': 'edit.redo', Backspace: 'edit.clear', 'Ctrl+Shift+=': 'view.zoom-in' };
@@ -1042,7 +1045,10 @@ export class Editor {
     const id = `fpe-${this.uid}-q`;
     this.searchInput = h('input', { id, type: 'search', placeholder: 'For example: make it brighter', autocomplete: 'off', spellcheck: 'false', 'data-testid': 'search-input', 'data-autofocus': '' });
     this.searchList = h('ul', { class: 'fpe-results', role: 'listbox', 'aria-label': 'Matching commands', 'data-testid': 'search-results' });
-    this.searchInput.addEventListener('input', () => this.renderSearch());
+    this.searchInput.addEventListener('input', () => {
+      this.renderSearch();
+      if (!moreLoaded) void loadMoreRows().then(() => { if (moreLoaded && this.searchInput.value.trim()) this.renderSearch(); });
+    });
     this.searchInput.addEventListener('keydown', (e) => {
       const items = [...this.searchList.querySelectorAll<HTMLElement>('[role="option"]')];
       let i = items.findIndex((x) => x.getAttribute('aria-selected') === 'true');

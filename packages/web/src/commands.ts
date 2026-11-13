@@ -13,7 +13,8 @@ export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' 
   | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'object-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
   | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
   | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove'
-  | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert';
+  | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert'
+  | 'select-ellipse' | 'select-row' | 'select-column' | 'ruler' | 'color-sampler' | 'note';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -247,6 +248,9 @@ export const W3_TOOLS: Record<string, ToolId> = {
   // Wave 4: the pen and its outline tools (pen.ts, inside the tool kit's chunk).
   'tool.pen': 'pen', 'tool.path-select': 'path-select', 'tool.direct-select': 'direct-select', 'tool.anchor-add': 'anchor-add',
   'tool.anchor-delete': 'anchor-delete', 'tool.anchor-convert': 'anchor-convert',
+  // Batch view-tools (viewkit.ts, inside the tool kit's chunk).
+  'tool.select-ellipse': 'select-ellipse', 'tool.select-row': 'select-row', 'tool.select-column': 'select-column', 'tool.ruler': 'ruler',
+  'tool.color-sampler': 'color-sampler', 'tool.note': 'note',
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
@@ -381,6 +385,16 @@ HANDLERS['select.from-path'] = w3('select.from-path', (e) => !!e.doc?.paths?.som
 HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
+// Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
+const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
+const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>
+  H(async (e) => (await e.toolkit()).cmd(id), enabled, (e) => { const f = vf(e); return !!f && on(f); });
+for (const id of ['view.guide-new', 'view.print-size', 'select.focus']) HANDLERS[id] = w3(id);
+HANDLERS['view.guide-clear'] = w3('view.guide-clear', (e) => !!vf(e)?.guides);
+HANDLERS['view.pixel-grid'] = vt('view.pixel-grid', always, (f) => f.pixelGrid);
+HANDLERS['view.guide-lock'] = vt('view.guide-lock', always, (f) => f.lock);
+HANDLERS['view.snap'] = vt('view.snap', always, (f) => f.snap);
+HANDLERS['view.composition-guides'] = vt('view.composition-guides', hasDoc, (f) => f.comp > 0);
 /** W11 on-device AI: ai.ts, loaded on first use. */
 const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);
 // Select the main subject and Remove the background follow model check round 4's rule (u2netp, then MobileSAM).

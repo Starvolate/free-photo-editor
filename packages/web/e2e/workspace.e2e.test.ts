@@ -54,6 +54,8 @@ const PREP: Record<string, string[]> = {
   'path.hatches': ['select.to-path'], 'path.power-stroke': ['select.to-path'], 'path.stroke-style': ['select.to-path'],
   // A guide line first, so removing the guides is a visible change.
   'view.guide-clear': ['view.guide-new'],
+  // A light and colour layer first, so its .cube file can be saved.
+  'image.export-lut': ['layer.adj-invert'],
   // A second layer, so reversing the order is a visible change.
   'layer.reverse': ['layer.new'],
 };

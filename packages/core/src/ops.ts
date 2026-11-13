@@ -6,27 +6,45 @@ import { activeLayer, createLayer, docRect, duplicateLayer, findLayer, indexOfLa
 import { expandRect, intersect, type Rect } from './geometry';
 import type { RGBA } from './color';
 import { cropMask } from './mask';
+import { deleteNode, duplicateNode, pixelLayerCount, siblingBelow } from './tree';
+import { isFolder } from './document';
 import { addLayerCommand, docCommand, pixelCommand, propsCommand, removeLayerCommand, reorderCommand, snapshotDoc,
   type Command, type DocState, type LayerProps } from './history';
 
 export function addLayer(doc: Doc, layer: Layer, index = indexOfLayer(doc, doc.activeId) + 1, label?: string): Command {
   const i = Math.max(0, Math.min(doc.layers.length, index));
+  // A new node joins the folder of the node just below it, so every folder's contents stay together (tree.ts).
+  const below = i > 0 ? doc.layers[i - 1] : undefined;
+  if (below?.parentId) layer.parentId = below.parentId; else delete layer.parentId;
   const cmd = addLayerCommand(layer, i, doc.activeId, label);
   cmd.redo(doc);
   return cmd;
 }
 export const addEmptyLayer = (doc: Doc): Command => addLayer(doc, createLayer(nextLayerName(doc), doc.width, doc.height));
+/** Duplicate the active node; a folder is copied with everything inside it. */
 export function duplicateActive(doc: Doc): Command | null {
   const l = activeLayer(doc);
-  return l ? addLayer(doc, duplicateLayer(l), indexOfLayer(doc, l.id) + 1, 'Duplicate layer') : null;
+  if (!l) return null;
+  if (isFolder(l)) return duplicateNode(doc, l.id);
+  return addLayer(doc, duplicateLayer(l), indexOfLayer(doc, l.id) + 1, 'Duplicate layer');
 }
+/** Delete a node; a folder goes with everything inside it. The last layer with pixels can't be deleted. */
 export function deleteLayer(doc: Doc, id: string): Command | null {
   const i = indexOfLayer(doc, id);
-  if (i < 0 || doc.layers.length <= 1) return null;
+  if (i < 0) return null;
+  if (isFolder(doc.layers[i])) return deleteNode(doc, id);
+  if (pixelLayerCount(doc.layers) <= 1) return null;
   const next = (doc.layers[i + 1] ?? doc.layers[i - 1]).id;
   const cmd = removeLayerCommand(doc.layers[i], i, doc.activeId, doc.activeId === id ? next : doc.activeId);
   cmd.redo(doc);
   return cmd;
+}
+/** Show only inside the layer below · Create clipping mask: toggles `clip`. Null at the bottom of a folder (no base). */
+export function toggleClip(doc: Doc, id: string): Command | null {
+  const l = findLayer(doc, id);
+  if (!l) return null;
+  if (!l.clip && !siblingBelow(doc.layers, id)) return null;
+  return setLayerProps(doc, id, { clip: l.clip ? undefined : true }, l.clip ? 'Show the whole layer' : 'Show only inside the layer below');
 }
 export function moveLayer(doc: Doc, from: number, to: number): Command | null {
   const n = doc.layers.length;
@@ -35,7 +53,7 @@ export function moveLayer(doc: Doc, from: number, to: number): Command | null {
   cmd.redo(doc);
   return cmd;
 }
-const PROP_LABEL: Record<string, string> = { name: 'Rename layer', visible: 'Show or hide layer', opacity: 'Layer opacity', blendMode: 'Blend mode', x: 'Move layer', y: 'Move layer' };
+const PROP_LABEL: Record<string, string> = { name: 'Rename layer', visible: 'Show or hide layer', opacity: 'Layer opacity', blendMode: 'Blend mode', x: 'Move layer', y: 'Move layer', passThrough: 'Folder blend' };
 export function setLayerProps(doc: Doc, id: string, after: LayerProps, label?: string): Command | null {
   const l = findLayer(doc, id);
   if (!l) return null;

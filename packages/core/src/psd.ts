@@ -7,7 +7,8 @@
 import { initializeCanvas, readPsd, writePsd } from 'ag-psd';
 import type { BlendMode } from './blend';
 import { CREDIT } from './credit';
-import { createDocument, flatten, newId, type Doc, type Layer, type LayerMask } from './document';
+import { createDocument, createFolder, flatten, isFolder, newId, type Doc, type Layer, type LayerMask } from './document';
+import { buildTree, repairTree, type TreeNode } from './tree';
 import { buildXmp } from './metadata';
 
 const TO_PSD: Record<BlendMode, string> = {
@@ -28,7 +29,7 @@ interface AgMask {
 }
 interface AgLayer {
   name?: string; hidden?: boolean; opacity?: number; blendMode?: string; left?: number; top?: number;
-  imageData?: AgPixels; children?: AgLayer[]; adjustment?: unknown; text?: unknown; mask?: AgMask; realMask?: AgMask; vectorMask?: unknown;
+  imageData?: AgPixels; children?: AgLayer[]; opened?: boolean; clipping?: boolean; effects?: unknown; adjustment?: unknown; text?: unknown; mask?: AgMask; realMask?: AgMask; vectorMask?: unknown;
 }
 interface AgPsd { width: number; height: number; children?: AgLayer[]; imageData?: AgPixels; imageResources?: { xmpMetadata?: string }; }
 
@@ -87,29 +88,43 @@ export function readPsdDocument(bytes: Uint8Array | ArrayBuffer): PsdImport {
   const psd = readPsd(bytes as never, { useImageData: true, skipThumbnail: true, skipLinkedFilesData: true, throwForMissingFeatures: false, logMissingFeatures: false } as never) as unknown as AgPsd;
   const notes = new Set<string>();
   const layers: Layer[] = [];
-  const walk = (list: AgLayer[], visible: boolean, opacity: number): void => {
+  // ag-psd lists children bottom to top; a folder's entry goes on top of its contents (tree.ts).
+  const walk = (list: AgLayer[], parentId: string | undefined): void => {
     for (const l of list) {
       if (l.children) {
-        notes.add('Layer groups were opened as a plain list of layers.');
-        walk(l.children, visible && !l.hidden, opacity * (l.opacity ?? 1));
+        const f = createFolder(l.name || 'Folder');
+        if (parentId) f.parentId = parentId;
+        f.visible = !l.hidden;
+        f.opacity = Math.max(0, Math.min(1, l.opacity ?? 1));
+        f.passThrough = l.blendMode === 'pass through';
+        f.blendMode = f.passThrough ? 'normal' : FROM_PSD[l.blendMode ?? 'normal'] ?? 'normal';
+        f.open = l.opened !== false;
+        if (l.clipping) f.clip = true;
+        if (l.effects) { f.psdKeep = { effects: l.effects }; notes.add('Effects on folders are kept for Photoshop but not shown here yet.'); }
+        const fm = readMask(l, notes);
+        if (fm) f.mask = fm;
+        walk(l.children, f.id);
+        layers.push(f);
         continue;
       }
       const data = toRgba8(l.imageData);
       if (!data || !l.imageData) { if (l.adjustment) notes.add('Adjustment layers were left out.'); continue; }
       if (l.text) notes.add('Text layers were opened as pixels.');
       const layer: Layer = {
-        id: newId(), name: l.name || 'Layer', visible: visible && !l.hidden, opacity: Math.max(0, Math.min(1, opacity * (l.opacity ?? 1))),
+        id: newId(), name: l.name || 'Layer', visible: !l.hidden, opacity: Math.max(0, Math.min(1, l.opacity ?? 1)),
         blendMode: FROM_PSD[l.blendMode ?? 'normal'] ?? 'normal', x: l.left ?? 0, y: l.top ?? 0,
         width: l.imageData.width, height: l.imageData.height, data,
       };
+      if (parentId) layer.parentId = parentId;
+      if (l.clipping) layer.clip = true;
       const mask = readMask(l, notes);
       if (mask) layer.mask = mask;
       layers.push(layer);
     }
   };
-  walk(psd.children ?? [], true, 1);
+  walk(psd.children ?? [], undefined);
   let doc: Doc;
-  if (layers.length) doc = { width: psd.width, height: psd.height, layers, activeId: layers[layers.length - 1].id, selection: null };
+  if (layers.some((l) => !isFolder(l))) { const list = repairTree(layers); doc = { width: psd.width, height: psd.height, layers: list, activeId: list[list.length - 1].id, selection: null }; }
   else {
     doc = createDocument(psd.width, psd.height, null);
     const comp = toRgba8(psd.imageData);
@@ -119,6 +134,16 @@ export function readPsdDocument(bytes: Uint8Array | ArrayBuffer): PsdImport {
   const m = /CreatorTool="([^"]*)"/.exec(xmp);
   return { doc, notes: [...notes], credit: m ? m[1] : null };
 }
+/** One node as ag-psd writes it: folders with their contents (bottom to top), open or closed, pass through or a blend. */
+function toAg(n: TreeNode<Layer>): Record<string, unknown> {
+  const l = n.layer;
+  const common = { name: l.name, hidden: !l.visible, opacity: l.opacity, ...(l.clip ? { clipping: true } : {}), ...(l.mask ? { mask: writeMask(l.mask) } : {}) };
+  if (isFolder(l)) {
+    return { ...common, ...(l.psdKeep ?? {}), blendMode: l.passThrough ? 'pass through' : TO_PSD[l.blendMode], opened: l.open !== false, children: n.children.map(toAg) };
+  }
+  return { ...common, blendMode: TO_PSD[l.blendMode], left: l.x, top: l.y, right: l.x + l.width, bottom: l.y + l.height,
+    imageData: { width: l.width, height: l.height, data: l.data } };
+}
 /** Write a layered PSD with a flattened preview and the credit in its XMP file info. */
 export function writePsdDocument(doc: Doc, credit: string = CREDIT): Uint8Array {
   init();
@@ -127,12 +152,7 @@ export function writePsdDocument(doc: Doc, credit: string = CREDIT): Uint8Array 
     width: doc.width, height: doc.height,
     imageData: { width: doc.width, height: doc.height, data: flat.data },
     imageResources: { xmpMetadata: buildXmp(credit) },
-    children: doc.layers.map((l) => ({
-      name: l.name, hidden: !l.visible, opacity: l.opacity, blendMode: TO_PSD[l.blendMode],
-      left: l.x, top: l.y, right: l.x + l.width, bottom: l.y + l.height,
-      imageData: { width: l.width, height: l.height, data: l.data },
-      ...(l.mask ? { mask: writeMask(l.mask) } : {}),
-    })),
+    children: buildTree(doc.layers).map(toAg),
   };
   const out = writePsd(psd as never, { generateThumbnail: false, trimImageData: false } as never) as unknown as ArrayBuffer;
   return new Uint8Array(out);

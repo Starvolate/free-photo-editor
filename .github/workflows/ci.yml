@@ -20,6 +20,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+        env:
+          BENCH: '1'
       - name: Size gate (build, then brotli JS + CSS within budget)
         run: npm run size
       - name: Type check the command line and the MCP server

@@ -9,6 +9,7 @@ export * from './blend';
 export * from './composite';
 export * from './mask';
 export * from './document';
+export * from './tree';
 export * from './history';
 export * from './stroke';
 export * from './ops';

@@ -20,7 +20,24 @@ export interface Layer {
   content?: LayerContent;
   /** Hides parts of the layer without deleting pixels (mask.ts). A value object: a change replaces the whole object. */
   mask?: LayerMask;
+  /** What the node is (tree.ts). Absent = 'pixel', so old autosaves, files and tests load unchanged. */
+  kind?: LayerKind;
+  /** The folder it sits in; absent = the top level. A folder's contents are the unbroken run directly below it. */
+  parentId?: string;
+  /** Drawn only inside its base: the nearest node below it, in the same folder, that is not clipped itself. */
+  clip?: boolean;
+  /** Folders: true = the contents mix straight into everything below (the default for new folders). */
+  passThrough?: boolean;
+  /** Folders: shown open in the Layers panel. View state: saved, but never an undo step. */
+  open?: boolean;
+  /** Small PSD fields read but not modelled, written back unchanged. A value object. */
+  psdKeep?: Record<string, unknown>;
 }
+/** Pixel layers paint; folders hold other nodes (adjustment and fill layers come in later slices). */
+export type LayerKind = 'pixel' | 'folder' | 'adjust' | 'fill';
+/** True for nodes with pixels of their own to paint on: plain pixel, text and shape layers. */
+export const hasPixels = (l: { kind?: LayerKind }): boolean => !l.kind || l.kind === 'pixel';
+export const isFolder = (l: { kind?: LayerKind } | undefined): boolean => l?.kind === 'folder';
 /** A layer mask: a grey picture over the document. 255 shows the layer, 0 hides it. */
 export interface LayerMask {
   /** Document position of the painted part (may be 0 × 0). */
@@ -59,6 +76,11 @@ export function createLayer(name: string, width: number, height: number,
   if (!data) { data = new Uint8ClampedArray(w * h * 4); if (init.fill) fillBuffer(data, init.fill); }
   return { id: newId(), name, visible: true, opacity: 1, blendMode: 'normal', x: init.x ?? 0, y: init.y ?? 0, width: w, height: h, data };
 }
+/** A new empty folder: pass through and open, with the 1 × 1 clear placeholder every non-pixel node keeps. */
+export function createFolder(name: string): Layer {
+  return { id: newId(), name, visible: true, opacity: 1, blendMode: 'normal', x: 0, y: 0, width: 1, height: 1,
+    data: new Uint8ClampedArray(4), kind: 'folder', passThrough: true, open: true };
+}
 export function createDocument(width: number, height: number, background: RGBA | null = WHITE): Doc {
   const layer = createLayer(background ? 'Background' : 'Layer 1', width, height, { fill: background });
   return { width: layer.width, height: layer.height, layers: [layer], activeId: layer.id, selection: null };
@@ -77,11 +99,11 @@ export function duplicateLayer(l: Layer, name = l.name + ' copy'): Layer {
   if (l.mask) out.mask = { ...l.mask, data: l.mask.data.slice() };
   return out;
 }
-export function nextLayerName(doc: Doc): string {
+export function nextLayerName(doc: Doc, base = 'Layer'): string {
   const names = new Set(doc.layers.map((l) => l.name));
-  let n = doc.layers.length + 1;
-  while (names.has('Layer ' + n)) n++;
-  return 'Layer ' + n;
+  let n = doc.layers.filter((l) => (base === 'Folder' ? isFolder(l) : !isFolder(l))).length + 1;
+  while (names.has(base + ' ' + n)) n++;
+  return base + ' ' + n;
 }
 /** Copy a rectangle given in layer coordinates (must lie inside the layer). */
 export function readRegion(l: { width: number; data: Uint8ClampedArray }, r: Rect): Uint8ClampedArray {

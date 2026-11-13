@@ -10,6 +10,7 @@ import type { Doc, Layer } from '@free-photoeditor/core';
 
 export interface SavedPicture { key: string; session: string; name: string; order: number; width: number; height: number; layers: number; savedAt: number; }
 /** One open picture as the editor sees it. `tab` only has to stay the same object while the picture is open. */
+import { repairTree } from '@free-photoeditor/core';
 export interface OpenPicture { tab: object; doc: Doc; name: string; state: number; }
 export interface SaverHost { pictures(): OpenPicture[]; busy(): boolean; }
 
@@ -26,6 +27,12 @@ export function plainDoc(d: Doc, withContent = true): Doc {
     if (l.locked) out.locked = true;
     if (withContent && l.content) out.content = l.content;
     if (l.mask) out.mask = { ...l.mask };
+    if (l.kind) out.kind = l.kind;
+    if (l.parentId) out.parentId = l.parentId;
+    if (l.clip) out.clip = true;
+    if (l.passThrough !== undefined) out.passThrough = l.passThrough;
+    if (l.open !== undefined) out.open = l.open;
+    if (l.psdKeep) out.psdKeep = l.psdKeep;
     return out;
   };
   const s = d.selection;
@@ -150,7 +157,7 @@ export class Autosave {
   async load(list: SavedPicture[]): Promise<{ doc: Doc; name: string }[]> {
     const db = await this.open(), store = db.transaction(PIXELS, 'readonly').objectStore(PIXELS);
     const got = await Promise.all(list.map((m) => req(store.get(m.key)) as Promise<{ doc?: Doc } | undefined>));
-    return got.flatMap((g, i) => (g?.doc ? [{ doc: g.doc, name: list[i].name }] : []));
+    return got.flatMap((g, i) => (g?.doc ? [{ doc: { ...g.doc, layers: repairTree(g.doc.layers) }, name: list[i].name }] : []));
   }
   /** Delete copies (Discard, or after they were brought back and saved again under this window). */
   async forget(list: { key: string }[]): Promise<void> {

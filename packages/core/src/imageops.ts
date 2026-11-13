@@ -6,12 +6,13 @@
  */
 import { WHITE, type RGBA } from './color';
 import { compositeRect } from './composite';
-import { activeLayer, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
+import { activeLayer, hasPixels, isFolder, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
   type LayerMask, type Selection } from './document';
 import { plusMask, shiftMask } from './mask';
 import { union, type Rect } from './geometry';
 import { docCommand, geomCommand, snapshotDoc, type Command, type DocState } from './history';
 import { cropDocument } from './ops';
+import { effectiveBox, repairTree, shownInTree, siblingBelow, subtreeOf, subtreeRange } from './tree';
 
 export type Resample = 'smooth' | 'pixel';
 export type Turn = 'cw' | 'ccw' | '180' | 'flip-h' | 'flip-v';
@@ -209,30 +210,77 @@ export function revealAll(doc: Doc): Command | null {
   const layers = doc.layers.map((l) => ({ ...l, x: l.x - r.x, y: l.y - r.y, ...withMask(l, (m) => shiftMask(m, -r.x, -r.y)) }));
   return commit(doc, 'Reveal all', before, { width: r.w, height: r.h, layers, activeId: doc.activeId, selection: null });
 }
-/** Combine the active layer with the one below; the result keeps the lower layer's name, opacity and blend. */
+/** Why merge down can't run on the active node, in plain words; null when it can. */
+export function mergeDownRefusal(doc: Doc): string | null {
+  const a = activeLayer(doc);
+  if (!a) return 'Choose a layer first.';
+  if (isFolder(a)) return null; // merges the folder into one layer
+  if (!hasPixels(a)) return 'This layer has no pixels of its own to merge.';
+  const below = siblingBelow(doc.layers, a.id);
+  if (!below) return 'There is no layer below it in the same folder.';
+  if (isFolder(below)) return 'The layer below is a folder: open it, or merge the folder first.';
+  if (!hasPixels(below)) return 'The layer below has no pixels of its own.';
+  return null;
+}
+/**
+ * Combine the active layer with the one below it in the same folder, baked as it looks (mask and clipping drawn in); the
+ * result keeps the lower layer's name, opacity, blend and place. An active folder is merged into one layer in its place.
+ */
 export function mergeDown(doc: Doc): Command | null {
-  const i = indexOfLayer(doc, doc.activeId);
-  if (i < 1) return null;
-  const top = doc.layers[i], below = doc.layers[i - 1], r = union(layerRect(top), layerRect(below)) as Rect, before = snapshotDoc(doc);
-  const data = compositeRect([{ ...below, visible: true, opacity: 1, blendMode: 'normal' }, top], r, null);
+  const top = activeLayer(doc);
+  if (!top || mergeDownRefusal(doc)) return null;
+  if (isFolder(top)) return mergeFolder(doc, top.id);
+  const below = siblingBelow(doc.layers, top.id) as Layer, i = indexOfLayer(doc, top.id);
+  const r = union(layerRect(top), layerRect(below)) as Rect, before = snapshotDoc(doc);
+  const base: Layer = { ...below, visible: true, opacity: 1, blendMode: 'normal', clip: false };
+  delete base.parentId;
+  const upper: Layer = { ...top };
+  delete upper.parentId;
+  const data = compositeRect([base, upper], r, null);
   const merged: Layer = { ...below, x: r.x, y: r.y, width: r.w, height: r.h, data };
   delete merged.mask; // the masks are drawn into the merged pixels
   const layers = doc.layers.slice();
   layers.splice(i - 1, 2, merged);
   return commit(doc, 'Merge down', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
 }
-/** Combine every shown layer into one, placed where the lowest shown layer was. Hidden layers stay as they are. */
+/** Merge the folder: everything inside drawn into one pixel layer in the folder's place, with its name, opacity and blend. */
+export function mergeFolder(doc: Doc, id: string): Command | null {
+  const sub = subtreeOf(doc.layers, id), f = sub[sub.length - 1];
+  if (!f || !isFolder(f)) return null;
+  const box = effectiveBox(doc.layers, f) ?? { x: 0, y: 0, w: 1, h: 1 };
+  const nodes = sub.map((l) => (l === f ? { ...f, visible: true, opacity: 1, blendMode: 'normal' as const, passThrough: false, clip: false, parentId: undefined } : l));
+  const merged: Layer = { id: f.id, name: f.name, visible: f.visible, opacity: f.opacity, blendMode: f.blendMode, x: box.x, y: box.y, width: box.w, height: box.h,
+    data: compositeRect(nodes, box, null) };
+  if (f.locked) merged.locked = true;
+  if (f.parentId) merged.parentId = f.parentId;
+  if (f.clip) merged.clip = true;
+  const r = subtreeRange(doc.layers, id) as [number, number], before = snapshotDoc(doc);
+  const layers = [...doc.layers.slice(0, r[0]), merged, ...doc.layers.slice(r[1] + 1)];
+  return commit(doc, 'Merge the folder', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
+}
+/** Combine every shown node into one layer, placed where the lowest shown layer was. Hidden layers stay as they are. */
 export function mergeVisible(doc: Doc): Command | null {
-  const vis = doc.layers.filter((l) => l.visible);
-  if (vis.length < 2) return null;
+  const shown = doc.layers.filter((l) => hasPixels(l) && shownInTree(doc.layers, l));
+  if (shown.length < 2) return null;
   let u: Rect | null = null;
-  for (const l of vis) u = union(u, layerRect(l));
-  const r = u as Rect, first = doc.layers.findIndex((l) => l.visible), before = snapshotDoc(doc);
-  const merged: Layer = { ...doc.layers[first], opacity: 1, blendMode: 'normal', locked: false, x: r.x, y: r.y, width: r.w, height: r.h, data: compositeRect(vis, r, null) };
+  for (const l of shown) u = union(u, layerRect(l));
+  const r = u as Rect, first = doc.layers.indexOf(shown[0]), before = snapshotDoc(doc);
+  const merged: Layer = { ...shown[0], opacity: 1, blendMode: 'normal', locked: false, x: r.x, y: r.y, width: r.w, height: r.h, data: compositeRect(doc.layers, r, null) };
   delete merged.mask;
-  const layers = doc.layers.filter((l) => !l.visible);
-  layers.splice(first, 0, merged);
-  return commit(doc, 'Merge visible', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
+  delete merged.parentId;
+  delete merged.clip;
+  // Kept: hidden nodes with what is inside them. A kept node whose folder is merged moves to the nearest kept folder.
+  const keep = doc.layers.filter((l) => !shownInTree(doc.layers, l) || (isFolder(l) && !subtreeOf(doc.layers, l.id).some((c) => shown.includes(c))));
+  const kept = new Set(keep), byId = new Map(doc.layers.map((l) => [l.id, l]));
+  const layers = keep.map((l) => {
+    let p = l.parentId;
+    while (p && !kept.has(byId.get(p) as Layer)) p = byId.get(p)?.parentId;
+    const c = { ...l };
+    if (p) c.parentId = p; else delete c.parentId;
+    return c;
+  });
+  layers.splice(doc.layers.slice(0, first).filter((l) => kept.has(l)).length, 0, merged);
+  return commit(doc, 'Merge visible', before, { width: doc.width, height: doc.height, layers: repairTree(layers), activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
 }
 /** One layer with everything you see, on a solid background (white unless given). Hidden layers are dropped. */
 export function flattenDocument(doc: Doc, background: RGBA | null = WHITE): Command | null {

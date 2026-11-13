@@ -479,6 +479,9 @@ function watermark(host: AutoHost): void {
       h('h3', { class: 'fpe-label' }, 'Or stamp many pictures')]);
 }
 
+/** Lists in sheets: numbered steps, and rows whose words take the room so their buttons sit at the right (not the numbered-badge grid of .fpe-steps). */
+const NUMBERED = 'margin:0;padding-left:22px', ROWS = 'margin:0;padding:0;list-style:none', GROW = 'flex:1;min-width:0;overflow-wrap:anywhere';
+
 // ---- Collage ------------------------------------------------------------------------------------------------------------------
 export type Layout = 'grid' | 'row' | 'column' | 'feature';
 export const LAYOUTS: [Layout, string][] = [['grid', 'Grid (rows and columns)'], ['row', 'One row, side by side'], ['column', 'One column, stacked'], ['feature', 'One big photo, the rest beside it']];
@@ -633,7 +636,7 @@ function copyEdits(host: AutoHost): void {
   const id = 'auto.copy-edits', last = host.lastFilter(), lastName = last ? plainName(last.id) : '';
   const useLast = h('input', { type: 'checkbox', 'data-testid': id + '-last', ...(last ? { checked: '' } : { disabled: '' }) }) as HTMLInputElement;
   const plan = (): { steps: Step[]; skipped: Skipped[] } => editsToSteps(host.doc(), useLast.checked ? last : null);
-  const list = h('ol', { class: 'fpe-steps', 'data-testid': id + '-steps' }), skippedNote = note('', id + '-skipped');
+  const list = h('ol', { style: NUMBERED, 'data-testid': id + '-steps' }), skippedNote = note('', id + '-skipped');
   const show = (): void => {
     const p = plan();
     list.replaceChildren(...p.steps.map((s) => h('li', {}, stepText(s))));
@@ -724,7 +727,7 @@ function actions(host: AutoHost): void {
   if (rec) {
     const r = rec;
     kids.push(note(`Recording "${r.name}": ${plural(r.steps.length, 'step')} so far.`, 'rec-status'),
-      h('ol', { class: 'fpe-steps', 'data-testid': 'rec-steps' }, ...r.steps.map((s) => h('li', {}, stepText(s)))));
+      h('ol', { style: NUMBERED, 'data-testid': 'rec-steps' }, ...r.steps.map((s) => h('li', {}, stepText(s)))));
     if (r.passed.size) kids.push(note(`Not recorded, because they need your hands each time: ${[...r.passed].join(', ')}.`));
     kids.push(h('div', { class: 'fpe-actions' }, btn('Throw away', false, 'rec-cancel', () => { stopRecording(host, false); actions(host); }),
       btn('Stop and save', true, 'rec-stop', () => { stopRecording(host, true); actions(host); })));
@@ -743,7 +746,7 @@ function actions(host: AutoHost): void {
     kids.push(h('h3', { class: 'fpe-label' }, 'Saved sets'), sets.length ? list : note('No saved sets. Record one above.'));
     const cur = sets[chosen];
     if (cur) {
-      kids.push(h('ol', { class: 'fpe-steps', 'data-testid': 'set-steps' }, ...cur.steps.map((s, j) => h('li', { class: 'fpe-row' }, h('span', {}, stepText(s)),
+      kids.push(h('ol', { class: 'fpe-stack', style: ROWS, 'data-testid': 'set-steps' }, ...cur.steps.map((s, j) => h('li', { class: 'fpe-row' }, h('span', { style: GROW }, stepText(s)),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'step-delete-' + j, 'aria-label': `Delete step ${j + 1}: ${stepText(s)}`,
           onclick: () => { cur.steps.splice(j, 1); saveSets(sets); actions(host); } }, 'Delete')))));
       const status = note('', 'play-status');

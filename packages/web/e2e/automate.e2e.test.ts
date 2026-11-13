@@ -323,6 +323,14 @@ suite('Automate and batch (headless Chrome)', () => {
     await reach(p, 'file.recent');
     await p.waitForSelector('[data-testid="recent-item"]');
     expect(await p.textContent('[data-testid="recent-list"]')).toContain('wide.png');
+    // The row reads as one line: name, size and date take the room, and Open sits at the right at its own size.
+    const row = await p.evaluate(() => {
+      const li = document.querySelector('[data-testid="recent-item"]') as HTMLElement, sp = li.querySelector('span') as HTMLElement, b = li.querySelector('button') as HTMLElement;
+      return { li: li.getBoundingClientRect().width, span: sp.getBoundingClientRect().width, spanH: sp.getBoundingClientRect().height, btn: b.getBoundingClientRect().width };
+    });
+    expect(row.btn).toBeLessThan(row.li / 3);
+    expect(row.span).toBeGreaterThan(row.li / 2);
+    expect(row.spanH).toBeLessThan(48);
     await p.screenshot({ path: join(OUT, 'automate-recent-1440.png') });
     await p.click('[data-testid="recent-open"]');
     await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 3);

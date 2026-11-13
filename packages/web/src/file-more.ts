@@ -353,8 +353,8 @@ function recent(host: FileHost): void {
     b.replaceChildren(
       h('p', { class: 'fpe-note' }, `The last ${RECENT_MAX} pictures you opened from this device (up to ${fmtBytes(RECENT_BYTES)} in all), kept only in this browser so they open again with one click. Nothing is uploaded.`),
       list.length
-        ? h('ol', { class: 'fpe-steps', 'data-testid': 'recent-list' }, ...list.map((r) => h('li', { class: 'fpe-row', 'data-testid': 'recent-item' },
-          h('span', {}, h('strong', {}, r.name), ` · ${fmtBytes(r.size)} · ${when(r.at)}`), button('Open', true, 'recent-open', () => void open(r), 'Open ' + r.name))))
+        ? h('ol', { class: 'fpe-stack', style: 'margin:0;padding:0;list-style:none', 'data-testid': 'recent-list' }, ...list.map((r) => h('li', { class: 'fpe-row', 'data-testid': 'recent-item' },
+          h('span', { style: 'flex:1;min-width:0;overflow-wrap:anywhere' }, h('strong', {}, r.name), ` · ${fmtBytes(r.size)} · ${when(r.at)}`), button('Open', true, 'recent-open', () => void open(r), 'Open ' + r.name))))
         : h('p', { class: 'fpe-note', 'data-testid': 'recent-empty' }, blocked
           ? 'This browser is not keeping files for this page (private browsing or blocked storage), so there is no list.'
           : 'No recent pictures yet. Pictures you open from this device show up here.'),

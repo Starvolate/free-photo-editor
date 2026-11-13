@@ -22,6 +22,10 @@ jobs:
         run: npm test
       - name: Size gate (build, then brotli JS + CSS within budget)
         run: npm run size
+      - name: Type check the command line and the MCP server
+        run: npm run typecheck:agents
+      - name: Command line and MCP server as people get them (pack, install into an empty folder, run both)
+        run: npm run smoke:agents
   e2e:
     runs-on: ubuntu-latest
     steps:

@@ -328,8 +328,11 @@ export class Editor {
   private dview = 'layers';
   private dswitch: HTMLElement | null = null;
   private learnEl: HTMLElement | null = null;
-  private toneCanvas: HTMLCanvasElement | null = null;
-  private toneNote: HTMLElement | null = null;
+  /** The Tone graph card's body: the dock cards module draws its graph and its line. */
+  private toneBody: HTMLElement | null = null;
+  /** The dock's picture-only parts (Learn as you go, the Tone graph, a layer's names), loaded with the first picture. */
+  private cards: typeof import('./dockcards') | null = null;
+  private cardsLoad: Promise<void> | null = null;
   private groupActive = new Map<string, string>();
   private dockState: DockState = 'closed';
   private ptabs!: HTMLElement;
@@ -854,12 +857,8 @@ export class Editor {
     this.learnEl = h('p', { class: 'fpe-learn-text', 'data-testid': 'learn-text' });
     col2.append(h('section', { class: 'fpe-learn', 'aria-label': 'Learn as you go', 'data-testid': 'learn-card' },
       h('h3', { class: 'fpe-learn-head' }, icon('idea'), 'Learn as you go'), this.learnEl));
-    // With no picture: one calm card instead of five empty panels.
-    dock.append(this.dswitch, col1, col2, h('div', { class: 'fpe-dock-empty', 'data-testid': 'dock-empty' },
-      h('p', { class: 'fpe-empty-title' }, 'Open a photo to see its layers'),
-      h('p', { class: 'fpe-note' }, 'Its layers, settings and steps show here, one card each.'),
-      this.cmdBtn('file.open', 'open', 'Open a photo', { 'data-testid': 'dock-open' })));
-    dock.setAttribute('data-empty', '');
+    // With no picture the dock is hidden (the root has no data-has-doc) and the start screen takes the full width.
+    dock.append(this.dswitch, col1, col2);
     this.applyDock();
   }
   private panelBody(pid: string): HTMLElement {
@@ -935,9 +934,7 @@ export class Editor {
       });
       b.append(this.navCanvas, this.field(id, 'Zoom', 'Slide to zoom in or out around the middle of the view.', this.navZoom));
     } else if (pid === 'histogram') {
-      this.toneCanvas = h('canvas', { class: 'fpe-tone', width: 512, height: 96, 'data-testid': 'tone-graph', 'aria-label': 'Tone graph: how many pixels are dark, middle and light' });
-      this.toneNote = h('p', { class: 'fpe-note fpe-tone-note', 'data-testid': 'tone-note' });
-      b.append(this.toneCanvas, this.toneNote);
+      this.toneBody = b;
     } else if (pid === 'info') {
       this.infoBody = h('dl', { class: 'fpe-info', 'data-testid': 'info' });
       b.append(this.infoBody);
@@ -1507,7 +1504,7 @@ export class Editor {
       s.color.dataset.k = key;
       s.color.replaceChildren(...(c ? [h('i', { class: 'fpe-stat-sw', style: 'background:' + hex }), `Under the pointer ${hex} · R ${c.r} G ${c.g} B ${c.b}`] : []));
     }
-    const n = ml ? this.layerNames(ml) : null;
+    const n = ml && this.cards ? this.cards.layerNames(ml) : null;
     s.layer.textContent = n ? `${n.plain} · pros call it ${n.pro}` : '';
     s.saved.textContent = d ? (this.saver?.enabled ? 'Saved on this device' : 'Safety copies off') : '';
   }
@@ -1532,39 +1529,21 @@ export class Editor {
     const r = BY_ID.get('panel.' + pid), ok = r?.status === 'ready';
     return { label: (r?.plain ?? pid) + (ok ? '' : ' (planned)'), cmd: 'panel.' + pid, disabled: !ok, run: () => this.showPanelTab(pid) };
   }
-  /** A layer's plain name, the name pros use, and one plain line about it (status bar and Learn as you go), from the map. */
-  private layerNames(l: Layer): { plain: string; pro: string; pros: string; what: string } {
-    const keep = 'Change it again at any time; the pixels under it stay as they were.';
-    if (l.kind === 'adjust') {
-      const r = BY_ID.get(l.adjust?.from ?? ''), pro = r?.pro ?? 'Adjustment';
-      return { plain: (r?.plain ?? 'Light and colour') + ' layer', pro, pros: `${l.clip ? 'a clipped' : /^[AEIOU]/.test(pro) ? 'an' : 'a'} ${pro} layer`,
-        what: (l.clip ? 'is clipped to the layer below, so it changes that layer only. ' : 'changes every layer below it. ') + keep };
-    }
-    if (l.kind === 'fill') return { plain: 'Colour layer', pro: 'Fill layer', pros: 'a Fill layer', what: 'is a flat colour. ' + keep };
-    if (l.kind === 'folder') return { plain: 'Folder', pro: 'Group', pros: 'a Group', what: 'keeps layers together, so you can move, hide or fade them as one.' };
-    return { plain: 'Picture layer', pro: 'Pixel layer', pros: 'a Pixel layer', what: 'is a sheet of pixels: paint, erase or move it without touching the layers below.' };
-  }
   private renderLearn(): void {
-    const el = this.learnEl, d = this.doc, l = d ? activeLayer(d) : undefined;
-    if (!el) return;
-    if (!l) { el.replaceChildren(); return; }
-    const n = this.layerNames(l);
-    el.replaceChildren(h('b', {}, l.name), ` ${n.what} Pros call it ${n.pros}.`);
+    const d = this.doc;
+    if (this.learnEl) this.cards?.renderLearn(this.learnEl, d ? activeLayer(d) : undefined);
   }
-  /** The Tone graph card: dark to light, counted on the navigator's small copy of the picture, and one plain line about it. */
-  private drawTone(hist: Uint32Array | null): void {
-    const c = this.toneCanvas, ctx = c?.getContext('2d'), note = this.toneNote;
-    if (!c || !ctx || !note) return;
-    const W = c.width, H = c.height;
-    ctx.fillStyle = this.rulerInk.bg;
-    ctx.fillRect(0, 0, W, H);
-    let n = 0, sum = 0;
-    for (let t = 0; hist && t < 256; t++) { n += hist[t]; sum += t * hist[t]; }
-    if (!hist || !n) { note.textContent = ''; return; }
-    const max = Math.max(1, ...hist), mean = sum / n, lost = [hist[0] / n > 0.005 ? 'black' : '', hist[255] / n > 0.005 ? 'white' : ''].filter(Boolean);
-    ctx.fillStyle = this.rulerInk.ac;
-    for (let t = 0; t < 256; t++) { const bh = Math.sqrt(hist[t] / max) * (H - 4); ctx.fillRect((t * W) / 256, H - bh, W / 256 + 0.5, bh); }
-    note.textContent = `Mostly ${mean < 85 ? 'dark' : mean > 170 ? 'light' : 'middle'} tones · ${lost.length ? 'some detail lost to pure ' + lost.join(' and ') : 'nothing lost to pure black or white'}`;
+  private drawTone(px: Uint8ClampedArray | null): void {
+    if (this.toneBody) this.cards?.drawTone(this.toneBody, px, this.rulerInk);
+  }
+  /** Loads the dock's picture-only parts with the first picture, then draws them. */
+  private loadCards(): void {
+    this.cardsLoad ??= import('./dockcards').then((m) => {
+      this.cards = m;
+      this.renderLearn();
+      if (this.stat.hint) this.renderStatus();
+      this.queueNav();
+    }, () => { this.cardsLoad = null; });
   }
   private queueNav(): void { clearTimeout(this.navTimer); this.navTimer = window.setTimeout(() => this.drawNav(), 220); }
   private drawNav(): void {
@@ -1592,9 +1571,7 @@ export class Editor {
       img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
     }
     ctx.putImageData(img, ox, oy);
-    const hist = new Uint32Array(256);
-    for (let i = 0; i < img.data.length; i += 4) hist[(img.data[i] * 54 + img.data[i + 1] * 183 + img.data[i + 2] * 19) >> 8]++;
-    this.drawTone(hist);
+    this.drawTone(img.data);
     const v = this.view;
     ctx.strokeStyle = this.rulerInk.ac;
     ctx.lineWidth = 2;
@@ -2123,7 +2100,7 @@ export class Editor {
     this.renderColor();
     this.renderInfo();
     this.renderLearn();
-    this.dock.toggleAttribute('data-empty', !this.doc);
+    if (this.doc) this.loadCards();
     this.queueNav();
     if (this.stat.hint) this.renderStatus();
   }

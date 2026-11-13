@@ -147,7 +147,7 @@
 .fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:6px 8px;overflow-y:auto}
 /* the dock as cards (a-deep, 13 Nov 2026): two columns at 1400 px and wider, one tabbed card below that; phones keep the sheet */
 .fpe-dcol{display:contents}
-.fpe-dswitch,.fpe-learn,.fpe-dock-empty{display:none}
+.fpe-dswitch,.fpe-learn{display:none}
 .fpe:not([data-layout=phone]) .fpe-dock{gap:8px;padding:8px;overflow:hidden;background:var(--bg);border-left:0}
 .fpe:not([data-layout=phone]) .fpe-group{flex:none;min-height:0;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 .fpe:not([data-layout=phone]) .fpe-ghead{align-items:center;gap:2px;min-height:40px;padding:0 4px 0 6px;background:none;border-bottom:1px solid var(--line)}
@@ -170,7 +170,7 @@
 .fpe[data-wide] .fpe-group[data-group=history]{flex:0 1 auto;max-height:178px}
 .fpe[data-wide] .fpe-group[data-group=layers]{flex:1 1 auto;min-height:0}
 .fpe[data-wide] .fpe-group[data-group=nav] .fpe-gbody{max-height:200px}
-.fpe[data-wide][data-hints=on] .fpe-dock:not([data-empty]) .fpe-learn{display:block}
+.fpe[data-wide][data-hints=on][data-has-doc] .fpe-learn{display:block}
 .fpe-learn{flex:none;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 .fpe-learn-head{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:13px;font-weight:600}
 .fpe-learn-head svg{width:16px;height:16px;color:var(--accent)}
@@ -183,10 +183,14 @@
 .fpe[data-layout=tablet] .fpe-dview{padding:0 4px;font-size:12px}
 .fpe:not([data-wide]):not([data-layout=phone]) .fpe-group{flex:1 1 auto}
 .fpe:not([data-wide]):not([data-layout=phone]) .fpe-group[data-single] .fpe-gtabs{visibility:hidden}
-.fpe:not([data-layout=phone]) .fpe-dock[data-empty]>:not(.fpe-dock-empty){display:none}
-.fpe:not([data-layout=phone]) .fpe-dock[data-empty] .fpe-dock-empty{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-.fpe-empty-title{margin:0;font-size:14px;font-weight:600;color:var(--text)}
-.fpe-dock-empty .fpe-note{margin:0}
+/* no picture: no dock, so the start screen takes the full width; the dock comes with the first picture */
+.fpe:not([data-has-doc]):not([data-layout=phone]){--dock-w:0px}
+.fpe:not([data-has-doc]):not([data-layout=phone]) .fpe-dock{display:none}
+/* two columns: a dialog opens over the Layers card, off the picture, with the whole stage free to drag it into */
+.fpe[data-wide]:not([data-layout=phone]) .fpe-dlg{right:8px}
+/* a light and colour layer's Properties: its controls first, the plain note about it under them */
+[data-testid=adjust-props]{display:flex;flex-direction:column}
+[data-testid=adjust-props]>.fpe-note{order:1}
 .fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-top:6px}
 .fpe-props .fpe-row>label{flex-basis:56px}
 /* the rows come first and at least three 46 px rows stay in view */

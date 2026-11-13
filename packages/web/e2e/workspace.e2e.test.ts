@@ -375,13 +375,14 @@ suite('W1 workspace (headless Chrome)', () => {
       els.filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getAttribute('data-group') ?? ''));
     for (const [w, hgt] of [[1440, 900], [1280, 800], [1024, 768], [820, 1180]] as const) {
       const p = await open(w, hgt);
-      // No picture: one calm card, not five empty panels.
-      expect(await p.isVisible('[data-testid="dock-empty"]'), `${w} px: one card with no picture`).toBe(true);
+      // No picture: no dock at all, and the start screen takes the full width; the dock comes with the first picture.
+      expect(await p.isVisible('[data-testid="dock"]'), `${w} px: no dock with no picture`).toBe(false);
       expect(await cards(p), `${w} px: no empty panels`).toEqual([]);
+      expect(await p.$eval('.fpe-center', (e) => e.getBoundingClientRect().right), `${w} px: the start screen reaches the right edge`).toBeGreaterThanOrEqual(w - 2);
       if (w === 1440) await p.screenshot({ path: join(OUT, 'ui-b-1440-empty.png') });
       await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+      await p.waitForSelector('[data-testid="dock"]', { state: 'visible' });
       await p.waitForTimeout(150);
-      expect(await p.isVisible('[data-testid="dock-empty"]')).toBe(false);
       expect(await check(p), `${w} px`).toEqual([]);
       if (w === 1440) {
         // Two columns as in a-deep: Properties, History and the Tone graph card on the left; Layers and Learn as you go on the right.
@@ -392,6 +393,7 @@ suite('W1 workspace (headless Chrome)', () => {
         expect(await p.isVisible('[data-testid="dock-views"]'), 'no tab strip over two columns').toBe(false);
         expect(await p.isVisible('[data-testid="tab-histogram"]') && await p.isVisible('[data-testid="tab-navigator"]'), 'Tone graph and Navigator tabs').toBe(true);
         await p.waitForFunction(() => /^Mostly (dark|middle|light) tones · /.test(document.querySelector('[data-testid="tone-note"]')?.textContent ?? ''));
+        await p.waitForFunction(() => /Pros call it/.test(document.querySelector('[data-testid="learn-text"]')?.textContent ?? ''));
         expect((await p.textContent('[data-testid="learn-text"]'))?.trim()).toMatch(/Pros call it an? [A-Z]/);
         await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-tabs.png') });
         await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-dock.png'), clip: { x: 1440 - 660, y: 200, width: 660, height: 700 } });
@@ -425,8 +427,9 @@ suite('W1 workspace (headless Chrome)', () => {
     const p = await open(1440, 900);
     await p.evaluate(() => (window as unknown as Win).fpe.openSample());
     expect(await run(p, 'layer.adj-curves')).toBe(true);
-    await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] .fpe-row', { state: 'visible' });
+    await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)', { state: 'visible' });
     await p.waitForTimeout(300);
+    // A slider is an .fpe-field (controls.ts), a list an .fpe-row: both are controls.
     // Fully in view: inside the window, not cut by any card or scroll box around it, and no word cut short.
     const fully = (sel: string, k: number): Promise<string[]> => p.evaluate(([s, n]) => {
       const out: string[] = [], els = Array.from(document.querySelectorAll<HTMLElement>(s)).filter((e) => e.getBoundingClientRect().width > 0).slice(0, n);
@@ -445,7 +448,7 @@ suite('W1 workspace (headless Chrome)', () => {
       return out;
     }, [sel, k] as const);
     const acts = ['layer-add', 'layer-mask-add', 'layer-duplicate', 'layer-delete'].map((t) => `[data-testid="${t}"] .fpe-btn-text`).join(', ');
-    const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] .fpe-row';
+    const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)';
     expect(await fully(acts, 4), 'New, Mask, Copy and Delete in full').toEqual([]);
     expect(await fully(props, 4), 'the first four controls in full').toEqual([]);
     expect(await p.locator('[data-testid="dock"] :text-matches("^\\+\\d+$")').count(), 'no "+n" chip on the resting dock').toBe(0);

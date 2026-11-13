@@ -15,6 +15,7 @@ export const FX_KINDS = [
   'clouds', 'diff-clouds', 'fibers', 'high-pass', 'maximum', 'minimum', 'offset', 'custom',
   'spin-blur', 'lens-fix', 'glass', 'ocean-ripple', 'lens-flare', 'lighting', 'color-to-alpha', 'dither', 'replace-color', 'reduce-colors', 'indexed',
   'mesh-warp', 'perspective-warp', 'pin-warp', 'cage-warp',
+  'kaleidoscope', 'alien-map', 'bloom', 'edge-detect', 'deinterlace', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur', 'antialias',
 ] as const;
 export type FxKind = (typeof FX_KINDS)[number];
 

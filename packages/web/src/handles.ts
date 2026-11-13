@@ -17,6 +17,8 @@ export interface HandleSet {
   drag(key: string, x: number, y: number, p: JobParams, b: Rect): void;
   /** A press away from every handle (pins, the cage): add one there and return its key, or null to ignore the press. */
   add?(x: number, y: number, p: JobParams, b: Rect): string | null;
+  /** A press away from every handle, at (x, y): return true when it set something (the develop sheet's grey picker). */
+  press?(x: number, y: number, p: JobParams, b: Rect): boolean;
 }
 
 const val = (p: JobParams, k: string, d: number): number => p[k] ?? d;
@@ -74,5 +76,5 @@ const field: HandleSet = {
     if (key === 'pin1') { p.x1 = across(x, b); p.y1 = down(y, b); } else { p.x2 = across(x, b); p.y2 = down(y, b); }
   },
 };
-/** The camera blurs' sets; warpkit.ts adds the bends' sets (grid, surface, pins, cage) when it loads. */
+/** The camera blurs' sets (and the develop sheet's spot); warpkit.ts adds the bends' sets (grid, surface, pins, cage) when it loads. */
 export const HANDLES: Record<string, HandleSet> = { iris, tilt, field };

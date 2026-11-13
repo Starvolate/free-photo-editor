@@ -19,6 +19,45 @@ import { buildTree, type TreeNode } from './tree';
 import { adjust as adjustBytes, type AdjustKind, type AdjustParams } from './adjustments';
 import { TONE_KINDS, tone, type ToneKind } from './tone';
 import type { JobSpec } from './jobs';
+import { hasLayerFx } from './document';
+
+// ---------- the layer effects hook (design 2.7, 3) ----------
+
+/** One layer's effects over a rectangle, row by row (made by the lazy effects module, `@free-photoeditor/core/layerfx`). */
+export interface FxRows {
+  /** Draws the effects behind the layer (drop shadows, then the outer glow) onto `acc` at `ai`, for row y from x0 to x1. */
+  behind(acc: Float32Array, ai: number, y: number, x0: number, x1: number, opacity: number, mix: Float64Array): void;
+  /** The layer itself with Fill, its inside effects and its outline: straight RGBA from 0 to 1, written to `out` from index 0. */
+  unit(y: number, x0: number, x1: number, out: Float32Array): void;
+}
+export interface LayerFxEngine {
+  rows(l: BlendLayer, r: Rect, live: boolean): FxRows;
+  /** How far past the layer's edge its effects can reach, in pixels. */
+  reach(l: BlendLayer): number;
+}
+let fxEngine: LayerFxEngine | null = null;
+let fxSkip = false;
+let fxLive: BlendLayer | null = null;
+let fxGen = 0;
+/** Called by the effects module when it loads. */
+export function registerLayerFx(e: LayerFxEngine): void { fxEngine = e; }
+export const layerFxReady = (): boolean => !!fxEngine;
+/** The screen may draw a layer without its effects while the module loads; everything else (export, flatten) throws. */
+export function skipMissingLayerFx(skip: boolean): void { fxSkip = skip; }
+/** Pixels or masks changed in place (a finished stroke, undo, redo): cached effect results are made again when next needed. */
+export function layerPixelsChanged(): void { fxGen++; }
+export const layerFxGeneration = (): number => fxGen;
+/** How far the layer's effects reach past its edge (0 without effects or before the module loads). */
+export const layerFxReach = (l: BlendLayer): number => (fxEngine && hasLayerFx(l) ? fxEngine.reach(l) : 0);
+/** Effects for one layer over a rectangle, or null when it has none (or the screen draws it plain while the module loads). */
+function fxFor(l: BlendLayer, r: Rect): FxRows | null {
+  if (!hasLayerFx(l)) return null;
+  if (!fxEngine) {
+    if (fxSkip) return null;
+    throw new Error('This picture has layer effects: load "@free-photoeditor/core/layerfx" (installLayerFx) before drawing it.');
+  }
+  return fxEngine.rows(l, r, l === fxLive);
+}
 
 /** Rows per band when a big redraw is split over frames (design 3.3): about a quarter of a million pixels, so one band stays short. */
 export const SLICE_PX = 1 << 18;
@@ -60,7 +99,7 @@ function rowJob(job: JobSpec): RowJob {
 
 /** True when any node is in a folder, clipped, or is not a plain pixel layer. */
 const isTree = (layers: readonly BlendLayer[]): boolean =>
-  layers.some((l) => l.parentId !== undefined || !!l.clip || (l.kind !== undefined && l.kind !== 'pixel'));
+  layers.some((l) => l.parentId !== undefined || !!l.clip || (l.kind !== undefined && l.kind !== 'pixel') || hasLayerFx(l));
 
 /** Composite layers (index 0 = bottom) for one document rectangle. Returns rect-sized RGBA. */
 export function compositeRect(layers: readonly BlendLayer[], r: Rect, background: RGBA | null = null): Uint8ClampedArray {
@@ -94,7 +133,7 @@ function compositeFlat(layers: readonly BlendLayer[], r: Rect, background: RGBA 
       const plain = mode === 'normal' || mode === 'dissolve';
       const dissolve = mode === 'dissolve';
       const d = L.data;
-      const k255 = L.opacity / 255;
+      const k255 = (L.fillOpacity === undefined ? L.opacity : L.opacity * L.fillOpacity) / 255;
       let si = (ly * L.width + (x0 - L.x)) * 4;
       let ai = (x0 - r.x) * 4;
       if (mk) mk(y, x0, x1, mrow);
@@ -137,6 +176,8 @@ interface Prep {
   buf: Uint8ClampedArray | null;
   /** Adjustment layers: the reused row the compiled adjustment writes into. */
   res: Uint8ClampedArray | null;
+  /** A layer with effects: its rows, and the reused row its unit (own pixels, inside effects, outline) is written into. */
+  fx?: FxRows | null; urow?: Float32Array | null;
 }
 /** A node, or a clip group: a base with the clipped nodes directly above it (`run`, possibly all off this rectangle). */
 interface Item { base: Prep; run: Item[] | null; sheet: Float32Array | null; shape: Float32Array | null; }
@@ -178,6 +219,14 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf, res: l.kind === 'adjust' ? new Uint8ClampedArray(w * 4) : null };
     }
     if (l.kind && l.kind !== 'pixel') return null;
+    const fx = fxFor(l, r);
+    if (fx) {
+      // Effects reach past the layer's edge; the unit row carries the mask, so no mask rows here.
+      const R = (fxEngine as LayerFxEngine).reach(l);
+      const x0 = Math.max(r.x, l.x - R), x1 = Math.min(r.x + w, l.x + l.width + R), y0 = Math.max(r.y, l.y - R), y1 = Math.min(r.y + h, l.y + l.height + R);
+      if (x0 >= x1 || y0 >= y1) return null;
+      return { l, folder: false, x0, x1, y0, y1, mk: null, mrow: null, kids: null, sheet: null, buf: null, res: null, fx, urow: new Float32Array(w * 4) };
+    }
     const x0 = Math.max(r.x, l.x), x1 = Math.min(r.x + w, l.x + l.width), y0 = Math.max(r.y, l.y), y1 = Math.min(r.y + h, l.y + l.height);
     if (x0 >= x1 || y0 >= y1) return null;
     const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
@@ -211,7 +260,7 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
 }
 
 /** Blend n pixels of `src` (bytes with div 255, or a Float32 sheet with div 1) onto `acc`: today's formulas. */
-function blendSpan(acc: Float32Array, ai: number, src: Uint8ClampedArray | Float32Array, si: number, k: number, div: number,
+export function blendSpan(acc: Float32Array, ai: number, src: Uint8ClampedArray | Float32Array, si: number, k: number, div: number,
   n: number, x0: number, y: number, mode: BlendMode, mrow: Float32Array | null, mix: Float64Array): void {
   const sep = SEPARABLE[mode], plain = mode === 'normal' || mode === 'dissolve', dissolve = mode === 'dissolve';
   for (let j = 0; j < n; j++, si += 4, ai += 4) {
@@ -243,6 +292,7 @@ function drawItem(it: Item, acc: Float32Array, y: number, lo: number, hi: number
   const x0 = Math.max(lo, b.x0), x1 = Math.min(hi, b.x1);
   if (x0 >= x1) return;
   if (!it.run) { drawNode(b, acc, y, x0, x1, c); return; }
+  if (b.fx) b.fx.behind(acc, (x0 - c.rx) * 4, y, x0, x1, b.l.opacity, c.mix);
   startClip(it, y, x0, x1, c);
   drawItems(it.run, 0, it.run.length, it.sheet as Float32Array, y, x0, x1, c);
   finishClip(it, acc, y, x0, x1, c);
@@ -251,9 +301,16 @@ function drawNode(p: Prep, acc: Float32Array, y: number, x0: number, x1: number,
   const l = p.l;
   if (!p.folder) {
     if (l.kind === 'adjust') { drawAdjust(p, acc, y, x0, x1, c); return; }
+    if (p.fx) {
+      const ai = (x0 - c.rx) * 4, u = p.urow as Float32Array;
+      p.fx.behind(acc, ai, y, x0, x1, l.opacity, c.mix);
+      p.fx.unit(y, x0, x1, u);
+      blendSpan(acc, ai, u, 0, l.opacity, 1, x1 - x0, x0, y, l.blendMode, null, c.mix);
+      return;
+    }
     if (p.mk) p.mk(y, x0, x1, p.mrow as Float32Array);
     if (l.kind === 'fill') blendSpan(acc, (x0 - c.rx) * 4, p.buf as Uint8ClampedArray, (x0 - c.rx) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
-    else blendSpan(acc, (x0 - c.rx) * 4, l.data, ((y - l.y) * l.width + (x0 - l.x)) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
+    else blendSpan(acc, (x0 - c.rx) * 4, l.data, ((y - l.y) * l.width + (x0 - l.x)) * 4, (l.fillOpacity === undefined ? l.opacity : l.opacity * l.fillOpacity) / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
     return;
   }
   const kids = p.kids as Item[], s = p.sheet as Float32Array;
@@ -326,7 +383,8 @@ function startClip(it: Item, y: number, x0: number, x1: number, c: Ctx): void {
     clearSpan(f, c, x0, x1);
     drawItems(kids, 0, kids.length, f, y, x0, x1, c);
     src = f; si = (x0 - c.rx) * 4; div = 1;
-  } else if (b.l.kind === 'fill') { src = b.buf as Uint8ClampedArray; si = (x0 - c.rx) * 4; div = 255; }
+  } else if (b.fx) { (b.fx).unit(y, x0, x1, b.urow as Float32Array); src = b.urow as Float32Array; si = 0; div = 1; }
+  else if (b.l.kind === 'fill') { src = b.buf as Uint8ClampedArray; si = (x0 - c.rx) * 4; div = 255; }
   else { const l = b.l; src = l.data; si = ((y - l.y) * l.width + (x0 - l.x)) * 4; div = 255; }
   if (b.mk) b.mk(y, x0, x1, mr as Float32Array);
   for (let x = x0, j = 0; x < x1; x++, j++, si += 4) {
@@ -405,9 +463,13 @@ export class StrokeCache {
     return { tiles: kept, depth: this.depth, dead: this.dead };
   }
   constructor(private readonly layers: readonly BlendLayer[], private readonly target: BlendLayer,
-    private readonly background: RGBA | null = null, private readonly T = 128, private readonly cap = 256 * 1024 * 1024) {}
-  /** The picture over `r`, as compositeRect gives it. */
+    private readonly background: RGBA | null = null, private readonly T = 128, private readonly cap = 256 * 1024 * 1024) { fxGen++; }
+  /** The picture over `r`, as compositeRect gives it. The painted layer's effects are made afresh each frame, never cached. */
   composite(r: Rect): Uint8ClampedArray {
+    fxLive = this.target;
+    try { return this.draw(r); } finally { fxLive = null; }
+  }
+  private draw(r: Rect): Uint8ClampedArray {
     const w = Math.max(0, r.w), h = Math.max(0, r.h), T = this.T;
     if (this.dead || !w || !h) return compositeRect(this.layers, r, this.background);
     const out = new Uint8ClampedArray(w * h * 4);
@@ -468,6 +530,7 @@ export class StrokeCache {
     const x0 = Math.max(lo, b.x0), x1 = Math.min(hi, b.x1);
     if (x0 >= x1) return;
     if (next.kind === 'clip') {
+      if (b.fx) b.fx.behind(acc, (x0 - c.rx) * 4, y, x0, x1, b.l.opacity, c.mix);
       const sh = it.shape as Float32Array, keep = tile.shapes[k + 1] as Float32Array, ti = (y - tile.r.y) * tile.r.w + (x0 - tile.r.x);
       if (cap) { startClip(it, y, x0, x1, c); keep.set(sh.subarray(x0 - c.rx, x1 - c.rx), ti); }
       else sh.set(keep.subarray(ti, ti + x1 - x0), x0 - c.rx);

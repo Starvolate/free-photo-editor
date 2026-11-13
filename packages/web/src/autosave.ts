@@ -35,6 +35,8 @@ export function plainDoc(d: Doc, withContent = true): Doc {
     if (l.psdKeep) out.psdKeep = l.psdKeep;
     if (l.adjust) out.adjust = l.adjust;
     if (l.fill) out.fill = l.fill;
+    if (l.fx) out.fx = l.fx;
+    if (l.fillOpacity !== undefined) out.fillOpacity = l.fillOpacity;
     return out;
   };
   const s = d.selection;

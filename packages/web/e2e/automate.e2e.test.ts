@@ -4,7 +4,8 @@
  * Automate and batch in a real headless Chrome, each function reached with real clicks from its ribbon home:
  * Recorded steps (record a flip and a filter by hand, stop, play on the original: the same pixels, as one undo step),
  * Edit many pictures the same way and Resize many pictures (one ZIP, names in the picked order, the right sizes), and
- * the Sheet of small photos (one new picture, a layer per photo).
+ * the Sheet of small photos (one new picture, a layer per photo), Watermark (this picture and many), Collage and the
+ * Passport photo sheet.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts automate
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -212,4 +213,125 @@ suite('Automate and batch (headless Chrome)', () => {
     expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
     expect(errors).toEqual([]);
   }, 60_000);
+
+  it('Watermark: text stamped on this picture as its own layer (one undo step), and on many pictures in one ZIP', async () => {
+    const p = await open();
+    const original = await hash(p), n0 = await steps(p), layers0 = (await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.layers.length ?? 0;
+    await reach(p, 'auto.watermark');
+    await p.waitForSelector('[data-testid="auto.watermark-here"]');
+    await p.fill('[data-testid="auto.watermark-text"]', '© Free Photo Editor');
+    await p.fill('[data-testid="auto.watermark-size"]', '30');
+    await p.fill('[data-testid="auto.watermark-opacity"]', '90');
+    await p.screenshot({ path: join(OUT, 'automate-watermark-sheet-1440.png') });
+    await p.click('[data-testid="auto.watermark-here"]');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0);
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.layers.length).toBe(layers0 + 1);
+    expect(await hash(p)).not.toBe(original);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(original);
+    await reach(p, 'auto.watermark');
+    await pickFiles(p, 'auto.watermark', files);
+    await p.selectOption('[data-testid="auto.watermark-format"]', 'png');
+    const before = await p.evaluate(() => (window as unknown as Win).__n.dl);
+    await p.click('[data-testid="auto.watermark-start"]');
+    const z = await zipOut(p, before);
+    expect(z.name).toBe('Watermarked pictures.zip');
+    expect(Object.keys(z.files)).toEqual(['wide.png', 'tall.png', 'small.png']);
+    const wide = decodePng(z.files['wide.png']);
+    expect([wide.width, wide.height]).toEqual([120, 60]);
+    let marked = 0;
+    for (let i = 0; i < wide.data.length; i += 4) if (wide.data[i] !== 200 || wide.data[i + 1] !== 40 || wide.data[i + 2] !== 40) marked++;
+    expect(marked).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Collage: one new picture, each photo on its own layer in its place', async () => {
+    const p = await open();
+    await reach(p, 'auto.collage');
+    await pickFiles(p, 'auto.collage', files);
+    await p.selectOption('[data-testid="auto.collage-layout"]', 'feature');
+    await p.selectOption('[data-testid="auto.collage-page"]', '2400x1600');
+    await p.click('[data-testid="auto.collage-make"]');
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.layers.length === 4);
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height]).toEqual([2400, 1600]);
+    expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
+    // Let the view finish drawing the new picture (big pictures draw in bands over a few frames) before the shot.
+    await p.waitForTimeout(600);
+    await p.screenshot({ path: join(OUT, 'automate-collage-1440.png') });
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Passport photo sheet: copies at 35 × 45 mm on a 6 × 4 inch page at 300 dpi, with the check-your-rules line', async () => {
+    const p = await open();
+    await reach(p, 'auto.passport');
+    await p.waitForSelector('[data-testid="auto.passport-rule"]');
+    expect(await p.textContent('[data-testid="auto.passport-rule"]')).toContain("Check your own country's rules");
+    await p.selectOption('[data-testid="auto.passport-size"]', '35x45');
+    await p.selectOption('[data-testid="auto.passport-paper"]', '6x4');
+    await p.click('[data-testid="auto.passport-make"]');
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.width === 1800);
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height, info?.layers.length]).toEqual([1800, 1200, 2]);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Copy edits: a light-and-colour layer pasted onto another open picture gives the same pixels there, as one undo step', async () => {
+    const p = await open();
+    const f = (): Promise<void> => p.evaluate(async () => { await (window as unknown as Win).fpe.run('layer.flatten'); });
+    await f();
+    const original = await hash(p), n0 = await steps(p);
+    // A second picture, the same photo, with an Invert light-and-colour layer on top.
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 2);
+    await f();
+    await p.evaluate(async () => { await (window as unknown as Win).fpe.run('layer.adj-invert'); });
+    const target = await hash(p);
+    expect(target).not.toBe(original);
+    await reach(p, 'auto.copy-edits');
+    await p.waitForSelector('[data-testid="auto.copy-edits-tab-0"]');
+    expect((await p.$$('[data-testid="auto.copy-edits-steps"] li')).length).toBe(1);
+    await p.waitForTimeout(3200); // the toasts of the opened photo clear, so the shot shows the whole sheet
+    await p.screenshot({ path: join(OUT, 'automate-copy-edits-1440.png') });
+    await p.click('[data-testid="auto.copy-edits-paste"]');
+    await p.waitForFunction(() => !(window as unknown as Win).fpe.state().modal);
+    await p.locator('[data-testid="doc-tab"] .fpe-tab-name').first().click();
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tab) === 0);
+    expect(await hash(p)).toBe(target);
+    expect(await steps(p)).toBe(n0 + 1);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(original);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Recent pictures: an opened file is kept in this browser, opens again with one click, and Clear list empties it', async () => {
+    const p = await open();
+    await p.setInputFiles('[data-testid="file-input"]', files[0]);
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 2);
+    // Keeping the file is quiet and after the open, so wait until the browser holds it (never creating the store here).
+    await p.waitForFunction(() => new Promise<boolean>((res) => {
+      const r = indexedDB.open('free-photo-editor-recent', 1);
+      r.onupgradeneeded = () => r.transaction?.abort();
+      r.onerror = () => res(false);
+      r.onsuccess = () => {
+        const q = r.result.transaction('files', 'readonly').objectStore('files').count();
+        q.onsuccess = () => { r.result.close(); res(q.result > 0); };
+        q.onerror = () => { r.result.close(); res(false); };
+      };
+    }), undefined, { timeout: 15_000 });
+    await reach(p, 'file.recent');
+    await p.waitForSelector('[data-testid="recent-item"]');
+    expect(await p.textContent('[data-testid="recent-list"]')).toContain('wide.png');
+    await p.screenshot({ path: join(OUT, 'automate-recent-1440.png') });
+    await p.click('[data-testid="recent-open"]');
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 3);
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width).toBe(120);
+    await reach(p, 'file.recent');
+    await p.waitForSelector('[data-testid="recent-item"]');
+    expect((await p.$$('[data-testid="recent-item"]')).length).toBe(1);
+    await p.click('[data-testid="recent-clear"]');
+    await p.waitForSelector('[data-testid="recent-empty"]');
+    expect(errors).toEqual([]);
+  }, 60_000);
 });
+

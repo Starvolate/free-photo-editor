@@ -19,7 +19,7 @@ import {
 import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
-import { PEN_TOOLS, createPenKit } from './pen';
+import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
 import { MORE_TOOLS, createMoreKit } from './toolkit-more';
 import type { PointerInfo, Pt } from './input';
@@ -1248,7 +1248,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     cancel: () => { more.cancel(); pen.cancel(); view.cancel(); cancel(); },
     options: (bar, t) => (MORE_TOOLS.has(t) ? more.options(bar, t) : PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
     overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); more.overlay(ctx); },
-    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
+    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' || PATH_OPS.has(id) ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
     viewFlags: () => view.flags(),
     toClient: (x, y) => more.toClient(x, y),
     fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),

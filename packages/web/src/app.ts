@@ -19,7 +19,8 @@ import {
 } from '@free-photoeditor/core';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
 import { errText, fmtBytes, h, icon, iconButton, type Attrs } from './dom';
-import { UNIT_LABEL, buildDpiPanel, holdsDpi, joinCommands, n2, printCopy, printText, type DpiPanel } from './export-dpi';
+import type { DpiPanel } from './export-dpi';
+import { UNIT_LABEL, holdsDpi, joinCommands, n2, printText } from './print-text';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
 import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData, exportList, fmtInfo, multiKind } from './io';
@@ -235,7 +236,10 @@ export class Editor {
   private qualityRow!: HTMLElement;
   private lossBox!: HTMLElement;
   private exportGo!: HTMLButtonElement;
-  private dpiPanel!: DpiPanel;
+  /** Export's DPI section, loaded when Export first opens (it is not needed on the first screen). */
+  private dpiPanel: DpiPanel | null = null;
+  private dpiHost!: HTMLElement;
+  private dpiMod: Promise<typeof import('./export-dpi')> | null = null;
   private askBody!: HTMLElement;
   private sheets = new Map<string, HTMLElement>();
   private bodies = new Map<string, HTMLElement>();
@@ -2847,12 +2851,12 @@ export class Editor {
     const dl = h('input', { id: id + 'd', type: 'number', min: 20, max: 10000, step: 10, value: 100, inputmode: 'numeric', 'data-testid': 'export-delay' });
     dl.addEventListener('input', () => { const v = Number(dl.value); if (v >= 10) this.exportDelay = Math.min(10000, Math.round(v)); });
     this.delayRow = h('div', { class: 'fpe-row', 'data-help-title': 'Time per frame', 'data-help': 'How long each frame shows, in thousandths of a second: 100 shows ten frames a second.' }, h('label', { for: id + 'd' }, 'Time per frame (ms)'), dl);
-    this.dpiPanel = buildDpiPanel(String(this.uid), () => this.renderExport(), maxPixelsForDevice());
+    this.dpiHost = h('div', { style: 'display:contents' });
     this.exportGo = h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'export-go', onclick: () => void this.doExport() }, 'Export');
     return h('div', { class: 'fpe-stack' },
       h('div', { class: 'fpe-row' }, h('label', { for: id + 'n' }, 'File name'), this.exportName),
       h('div', { class: 'fpe-field-col' }, h('span', { class: 'fpe-label' }, 'File type'), this.exportChips),
-      this.qualityRow, this.multiRow, this.delayRow, this.lossBox, this.dpiPanel.el,
+      this.qualityRow, this.multiRow, this.delayRow, this.lossBox, this.dpiHost,
       h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', onclick: () => this.closeModal() }, 'Cancel'), this.exportGo));
   }
   /** A sheet that asks how to open a file (the PDF page, the RAW develop step). Resolves false when closed. */
@@ -2875,31 +2879,41 @@ export class Editor {
     if (focus && this.modal === 'size') requestAnimationFrame(() => requestAnimationFrame(() => this.sheets.get('size')?.querySelector<HTMLElement>('[data-testid="size-dpi"]')?.focus()));
   }
   /** Export; `focus` opens it at the DPI choice or with Best quality ticked. */
-  openExport(fmt?: string, multi?: boolean, focus?: 'dpi' | 'best'): void {
-    const d = this.doc;
-    if (!d) return this.needDoc();
+  /** Load Export's DPI section once and put it in the sheet. */
+  private loadDpi(): Promise<typeof import('./export-dpi')> {
+    return (this.dpiMod ??= import('./export-dpi').then((m) => {
+      this.dpiPanel ??= m.buildDpiPanel(String(this.uid), () => this.renderExport(), maxPixelsForDevice());
+      if (!this.dpiPanel.el.isConnected) this.dpiHost.replaceChildren(this.dpiPanel.el);
+      return m;
+    }, (e: unknown) => { this.dpiMod = null; throw e; }));
+  }
+  async openExport(fmt?: string, multi?: boolean, focus?: 'dpi' | 'best'): Promise<void> {
+    if (!this.doc) return this.needDoc();
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
+    try { await this.loadDpi(); } catch (e) { this.toast(errText(e, "Export couldn't load. Check the connection and try again.")); return; }
+    const d = this.doc, panel = this.dpiPanel;
+    if (!d || !panel) return;
     if (fmt) this.exportFormat = fmt;
     if (multi !== undefined) this.exportMulti = multi;
     this.exportFacts = docFacts(d);
     this.exportName.value = this.name;
-    this.dpiPanel.reset(d);
-    if (focus === 'best') this.dpiPanel.setBest(true);
+    panel.reset(d);
+    if (focus === 'best') panel.setBest(true);
     this.renderExport();
     this.openModal('export');
-    if (focus) this.dpiPanel.focus(focus);
+    if (focus) panel.focus(focus);
   }
   private renderExport(): void {
-    const f = this.exportFacts;
-    if (!f) return;
+    const f = this.exportFacts, panel = this.dpiPanel;
+    if (!f || !panel) return;
     const fmt = this.exportFormat, info = fmtInfo(fmt), label = info.label, kind = multiKind(fmt), def = formatDef(fmt), d = this.doc;
     const multi = this.exportMulti && !!kind && f.layers > 1;
     this.multiRow.hidden = !kind || f.layers < 2;
     this.multiText.textContent = kind === 'pages' ? 'Each layer as its own page' : 'Make an animation: each layer is one frame';
     this.multiBox.checked = this.exportMulti;
     this.delayRow.hidden = !multi || kind !== 'frames';
-    this.dpiPanel.render(fmt, label, info.lossy, multi);
-    const best = this.dpiPanel.choice().best, q = best ? 1 : this.exportQuality;
+    panel.render(fmt, label, info.lossy, multi);
+    const best = panel.choice().best, q = best ? 1 : this.exportQuality;
     const rep = def || multi ? formatLossReport(def ?? { id: fmt, label, caps: { alpha: 'full', lossy: info.lossy, multi: kind ?? undefined }, keeps: '' }, f, q, multi, d ? Math.max(d.width, d.height) : 0)
       : lossReport(f, fmt as ExportFormat, q);
     for (const b of this.exportChips.querySelectorAll<HTMLElement>('[data-format]')) {
@@ -2919,16 +2933,16 @@ export class Editor {
     this.exportGo.textContent = rep.losses.length ? `Export ${label} anyway` : `Export ${label}`;
   }
   private async doExport(): Promise<void> {
-    const d = this.doc;
-    if (!d) return;
+    const d = this.doc, panel = this.dpiPanel, mod = this.dpiMod;
+    if (!d || !panel || !mod) return;
     const fmt = this.exportFormat, info = fmtInfo(fmt), file = baseName(this.exportName.value || this.name) + '.' + info.ext;
-    const pc = this.dpiPanel.choice(), bad = this.dpiPanel.problem(), multi = this.exportMulti && d.layers.length > 1 && !!multiKind(fmt);
+    const pc = panel.choice(), bad = panel.problem(), multi = this.exportMulti && d.layers.length > 1 && !!multiKind(fmt);
     if (bad) { this.toast(bad); return; }
     const done = this.busyAfter(100);
     this.exportGo.disabled = true;
     try {
       // "Resize to a print size" redraws a copy; the picture itself keeps its pixels.
-      const src = pc.resize ? printCopy(d, pc.resize.width, pc.resize.height, pc.resize.mode) : d;
+      const src = pc.resize ? (await mod).printCopy(d, pc.resize.width, pc.resize.height, pc.resize.mode) : d;
       const { blob, note } = await encodeDocument(src, fmt, pc.best ? 1 : this.exportQuality, { multi, delay: this.exportDelay, dpi: pc.dpi });
       download(blob, file, this.root);
       this.savedId = this.history.stateId();

@@ -9,25 +9,17 @@
  */
 import {
   DPI_PICKS, MAX_DPI, MIN_DPI, PRINT_UNITS, docDpi, fromInches, isDpi, printSize, printTarget, resizeDocument, roundDpi, toInches,
-  type Command, type Doc, type PrintRequest, type PrintUnit, type Resample,
+  type Doc, type PrintRequest, type PrintUnit, type Resample,
 } from '@free-photoeditor/core';
 import { h } from './dom';
+import { HOLDS, UNIT_LABEL, holdsDpi, joinCommands, n2, printText } from './print-text';
 
-/** Types with a place for the DPI in the file. GIF, ICO, TGA, SVG and OpenRaster have none. */
-const HOLDS: ReadonlySet<string> = new Set(['png', 'jpeg', 'webp', 'psd', 'tiff', 'pdf', 'bmp', 'avif', 'jxl']);
+export { UNIT_LABEL, holdsDpi, joinCommands, n2, printText };
+
 /** Types that always keep every pixel, so "Best quality" has nothing to change. */
 const LOSSLESS: ReadonlySet<string> = new Set(['png', 'tiff', 'bmp', 'psd', 'tga', 'ora']);
 /** The most pixels a side may have, as in Picture size. */
 const MAX_SIDE = 16384;
-/** Whether the saved file stores the DPI. Moving (animated) PNG and WebP files keep none yet. */
-export const holdsDpi = (fmt: string, multi = false): boolean => HOLDS.has(fmt) && !(multi && (fmt === 'png' || fmt === 'webp'));
-export const n2 = (x: number): string => String(Math.round(x * 100) / 100);
-export const UNIT_LABEL: Record<PrintUnit, string> = { cm: 'cm', in: 'inches', mm: 'mm' };
-/** "5.08 × 3.39 cm (2 × 1.33 in)": how big these pixels print at this DPI. */
-export function printText(width: number, height: number, dpi: number): string {
-  const p = printSize(width, height, dpi);
-  return `${n2(p.cm[0])} × ${n2(p.cm[1])} cm (${n2(p.in[0])} × ${n2(p.in[1])} in)`;
-}
 /** The plain note for a type that cannot store a DPI, or null when it can. */
 export function dpiNote(fmt: string, label: string, multi = false): string | null {
   if (holdsDpi(fmt, multi)) return null;
@@ -51,11 +43,6 @@ export function printCopy(doc: Doc, width: number, height: number, mode: Resampl
   const copy: Doc = { ...doc, layers: doc.layers.slice(), selection: null };
   resizeDocument(copy, width, height, mode);
   return copy;
-}
-/** Two steps as one undo step (Picture size: new pixels and a new DPI together). */
-export function joinCommands(a: Command | null, b: Command | null): Command | null {
-  if (!a || !b) return a ?? b;
-  return { label: a.label, bytes: a.bytes + b.bytes, undo: (d) => { b.undo(d); a.undo(d); }, redo: (d) => { a.redo(d); b.redo(d); } };
 }
 
 export interface PrintChoice { dpi: number; resize: { width: number; height: number; mode: Resample } | null; best: boolean; }

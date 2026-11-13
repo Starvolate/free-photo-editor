@@ -154,12 +154,15 @@ suite('Bend and push (headless Chrome)', () => {
     const w0 = await p.evaluate(() => (window as unknown as Win).fpe.getInfo()?.width ?? 0);
     await reach(p, 'edit.free-transform');
     await p.waitForFunction(() => !!((window as unknown as Win).fpe.state().w3 as { transform: string | null } | null)?.transform);
-    const hs = (await p.evaluate(() => ((window as unknown as Win).fpe.state().w3 as { handles: { x: number; y: number }[] }).handles));
-    await drag(p, hs[2], -(hs[2].x - hs[0].x) / 4, -(hs[2].y - hs[0].y) / 4);
+    // The handles in state() are canvas positions; the mouse needs page positions, read after the transform refit the view.
+    // The flattened sample layer fills the picture, so its bottom-right handle sits on the picture's bottom-right corner.
+    const [c0, c1] = await p.evaluate(() => { const f = (window as unknown as Win).fpe, i = f.getInfo(); return [f.toClient(0, 0), f.toClient(i?.width ?? 0, i?.height ?? 0)]; });
+    await drag(p, c1!, -(c1!.x - c0!.x) / 4, -(c1!.y - c0!.y) / 4);
     n = await step(p);
     await p.click('[data-testid="xf-apply"]');
     await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) === k + 1, n);
     const box1 = await p.evaluate(() => { const i = (window as unknown as Win).fpe.getInfo(); return i ? i.layers[i.active] : null; });
+    expect(box1?.width ?? w0, 'the corner drag resized the layer').toBeLessThan(w0 * 0.9);
     await reach(p, 'edit.transform-again');
     await p.waitForFunction(() => !!((window as unknown as Win).fpe.state().w3 as { transform: string | null } | null)?.transform);
     n = await step(p);
@@ -168,6 +171,16 @@ suite('Bend and push (headless Chrome)', () => {
     const box2 = await p.evaluate(() => { const i = (window as unknown as Win).fpe.getInfo(); return i ? i.layers[i.active] : null; });
     expect(w0).toBeGreaterThan(0);
     expect(box1 && box2 && box2.width < box1.width * 0.9, `${box1?.width} then ${box2?.width}`).toBe(true);
+
+    // Each picture remembers its own last transform: a second picture in a new tab has nothing to repeat yet, so
+    // Transform again starts a plain free transform there and the layer keeps its size.
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.openSample(); await f.run('layer.flatten'); });
+    const w2 = await p.evaluate(() => { const i = (window as unknown as Win).fpe.getInfo(); return i ? i.layers[i.active].width : 0; });
+    await reach(p, 'edit.transform-again');
+    await p.waitForFunction(() => !!((window as unknown as Win).fpe.state().w3 as { transform: string | null } | null)?.transform);
+    await p.waitForTimeout(250);
+    expect(await p.evaluate(() => { const i = (window as unknown as Win).fpe.getInfo(); return i ? i.layers[i.active].width : 0; }), 'the other picture was not resized').toBe(w2);
+    await p.keyboard.press('Escape');
     expect(errors).toEqual([]);
     await ctx.close();
   }, 120_000);

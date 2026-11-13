@@ -227,8 +227,8 @@ export function createToolKit(host: ToolHost): ToolKit {
     shape: { fill: true, stroke: false, strokeWidth: 4, radius: 24, sides: 5, star: false, arrow: true, lineWidth: 6 },
   };
   let g: Gesture | null = null, poly: { pts: Pt[]; mode: SelMode } | null = null, xf: Xf | null = null, te: TextEdit | null = null;
-  /** The last applied free transform of a layer (its box before and after), for Transform again. */
-  let lastXf: { from: Quad; to: Quad; mode: XfMode } | null = null;
+  /** The last applied free transform of a layer in each picture (its box before and after), for Transform again. */
+  const lastXf = new WeakMap<Doc, { from: Quad; to: Quad; mode: XfMode }>();
   let rm: { mask: Mask; cv: HTMLCanvasElement; busy: boolean } | null = null;
   let qm: { mask: Mask; cv: HTMLCanvasElement } | null = null, src: { pt: Pt; offset: Pt | null } | null = null, pickSource = false;
   let lastClick = { t: 0, x: 0, y: 0 }, fonts: string[] | null = null;
@@ -397,7 +397,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     xf = null;
     if (x.raf) cancelAnimationFrame(x.raf);
     const same = x.q.every((p, i) => Math.abs(p.x - x.base[i].x) < 0.01 && Math.abs(p.y - x.base[i].y) < 0.01);
-    if (apply && !same && x.target === 'layer') lastXf = { from: x.base, to: x.q, mode: x.mode };
+    if (apply && !same && x.target === 'layer') lastXf.set(d, { from: x.base, to: x.q, mode: x.mode });
     if (x.target === 'selection') {
       d.selection = x.sel0;
       if (apply && !same && x.sel0) setSel(transformSelection(x.sel0, x.q, d.width, d.height), 'Transform selection');
@@ -1048,7 +1048,8 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'edit.transform-commit': if (xf) commitXf(); break;
       case 'edit.transform-again': {
         // The same map again, from where the layer is now (twice 50% is 25%; a move of 100 px moves 100 px more), ready to adjust.
-        const last = lastXf;
+        // Each picture keeps its own last transform, so switching tabs never repeats the other picture's.
+        const last = lastXf.get(d);
         startXf('layer', last?.mode ?? 'free');
         const x = xf as Xf | null;
         if (!last) { host.toast('Nothing to repeat yet, so this starts a free transform. Apply one, then this repeats it.'); break; }

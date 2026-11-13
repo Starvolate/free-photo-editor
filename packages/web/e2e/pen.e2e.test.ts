@@ -145,9 +145,13 @@ suite('Pen and paths (headless Chrome)', () => {
     await run(p, 'edit.redo');
     expect((await info(p)).selection).not.toBeNull();
 
-    const tab = p.locator('[data-tab="paths"]').first();
-    if (await tab.isVisible()) await tab.click(); else await run(p, 'panel.paths');
-    await p.waitForSelector('[data-testid="path-row"]', { timeout: 10_000 });
+    // Open Outlines as a person does: its tab in the Layers card, or, when the row is too narrow for it, the card's "+n" button.
+    // (panel.paths is the Window menu's show/hide switch: run while the panel is shown behind Layers, it would hide it.)
+    const tab = p.locator('[data-testid="tab-paths"]');
+    if (await tab.isVisible()) await tab.click();
+    else { await p.click('[data-testid="gmore-layers"]'); await p.click('.fpe-pop button[data-tipcmd="panel.paths"]'); }
+    await p.waitForSelector('[data-testid="tab-paths"][aria-selected="true"]', { timeout: 10_000 });
+    await p.waitForSelector('[data-testid="path-row"]', { state: 'visible', timeout: 10_000 });
     expect(await p.locator('[data-testid="path-row"]').count()).toBe(1);
     await p.locator('[data-testid="path-row"]').first().dblclick();
     await p.fill('[data-testid="path-name-input"]', 'Hill outline');

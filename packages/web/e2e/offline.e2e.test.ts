@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-interface Info { width: number; height: number; }
+interface Info { width: number; height: number; layers: unknown[]; }
 interface Fpe {
   getInfo(): Info | null; state(): Record<string, unknown>; appState(): Record<string, any>; checksum(x: number, y: number, w: number, h: number): number;
   run(id: string): Promise<boolean>; openSample(): void; exportFile(f: string): Promise<Blob>; newDocument(w: number, h: number, bg?: string | null): void;

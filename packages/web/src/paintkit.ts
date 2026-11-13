@@ -5,9 +5,13 @@
  * tile painting, and pen and speed dynamics, all in one "Brush extras" sheet. Turning one on hands the editor a maker
  * of brush strokes (core/paint-more.ts); with all off the editor goes back to its plain stroke, so the brush costs
  * nothing extra. The settings stay while the page is open and work with the brush, the pencil and the eraser.
+ * Part 2 adds brush tips (built in, or made from a selection), patterns (made from a selection, to paint or fill with),
+ * saved tool settings, and a thin guide on the canvas showing the symmetry lines. Tips, patterns and saved tools are
+ * kept in this browser (IndexedDB, its own database), or for this visit only when the browser does not allow it.
  */
-import { RIG_DEFAULTS, RigStroke, rigOn, type RigMirror, type RigSettings, type RigSource } from '@free-photoeditor/core/paint-more';
-import type { BrushOptions, Doc, Layer, Stroke } from '@free-photoeditor/core';
+import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, makePreset, patternAt, patternFromPixels, rigOn, tipFromPixels,
+  type Pattern, type RigMirror, type RigSettings, type RigSource, type Tip, type ToolPreset } from '@free-photoeditor/core/paint-more';
+import { activeLayer, compositeDoc, docRect, intersect, over, paintArea, selectionAlpha, type BrushOptions, type Doc, type Layer, type Stroke } from '@free-photoeditor/core';
 import { h } from './dom';
 import type { ToolHost } from './toolkit';
 
@@ -17,15 +21,19 @@ export interface PaintHost extends ToolHost {
   setRig(f: RigMaker | null): void;
   /** Draws the stroke's last dabs (the steady hand finishes its line when the pointer lets go). */
   flush(): void;
+  /** Draws on the overlay above the picture (the symmetry guide); null while there is nothing to draw. */
+  setGuide(f: ((ctx: CanvasRenderingContext2D) => void) | null): void;
 }
 /** The commands this module runs; commands.ts gives each its handler. */
-export const PAINT_IDS = ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics'];
+export const PAINT_IDS = ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'panel.brushes', 'panel.tool-presets', 'edit.define-brush', 'edit.define-pattern'];
 const SECTION: Record<string, string> = { 'paint.stabilizer': 'steady', 'paint.symmetry': 'mirror', 'paint.wrap-around': 'wrap', 'paint.dynamics': 'dyn' };
 
 /** The settings, kept while the page is open. */
 export const RIG: RigSettings = { ...RIG_DEFAULTS };
 let host: PaintHost | null = null;
-let body: HTMLElement | null = null;
+/** One body per sheet, refilled each time (the editor keeps the first body it is given for a sheet). */
+const bodies: Record<string, HTMLElement> = {};
+const holder = (id: string): HTMLElement => (bodies[id] ??= h('div', { 'data-testid': id, style: 'display:flex;flex-direction:column;gap:8px' }));
 
 const STEADY: [RigSettings['steady'], string][] = [['off', 'Off'], ['lag', 'Smooth'], ['string', 'Pulled string']];
 const MIRROR: [RigMirror, string][] = [['off', 'Off'], ['vertical', 'Left and right'], ['horizontal', 'Top and bottom'], ['both', 'Both'], ['radial', 'Around the centre']];
@@ -46,6 +54,29 @@ function apply(): void {
   const hst = host;
   if (!hst) return;
   hst.setRig(rigOn(RIG) ? (d, l, o) => new RigStroke(d, l, o, RIG, () => hst.flush()) : null);
+  hst.setGuide(RIG.mirror !== 'off' ? guide : null);
+}
+/** The symmetry lines over the picture, 1 px, light under a dashed dark line so they show on any picture. */
+function guide(ctx: CanvasRenderingContext2D): void {
+  const hst = host, d = hst?.doc();
+  if (!hst || !d || RIG.mirror === 'off') return;
+  const v = hst.view(), z = v.zoom, m = RIG.mirror, L = v.panX, T = v.panY, R = L + d.width * z, B = T + d.height * z;
+  const cx = Math.round(L + (d.width / 2) * z) + 0.5, cy = Math.round(T + (d.height / 2) * z) + 0.5;
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (m === 'vertical' || m === 'both') { ctx.moveTo(cx, T); ctx.lineTo(cx, B); }
+  if (m === 'horizontal' || m === 'both') { ctx.moveTo(L, cy); ctx.lineTo(R, cy); }
+  if (m === 'radial') {
+    const n = Math.max(2, Math.min(24, Math.round(RIG.spokes))), r = (Math.min(d.width, d.height) / 2) * z;
+    for (let k = 0; k < n; k++) { const a = -Math.PI / 2 + (2 * Math.PI * k) / n; ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,.8)';
+  ctx.stroke();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = 'rgba(30,80,170,.9)';
+  ctx.stroke();
+  ctx.restore();
 }
 function seg<T extends string>(label: string, help: string, opts: [T, string][], value: T, key: string, set: (v: T) => void): HTMLElement {
   const g = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label });
@@ -61,7 +92,7 @@ function section(id: string, plain: string, pro: string, help: string, kids: (HT
     h('p', { class: 'fpe-note' }, help), ...kids.filter((k): k is HTMLElement => !!k));
 }
 function render(): void {
-  const b = body, hst = host;
+  const b = bodies['paint-extras'], hst = host;
   if (!b || !hst) return;
   const sl = (label: string, help: string, min: number, max: number, key: 'lag' | 'string' | 'spokes' | 'minSize' | 'minStrength' | 'jitter' | 'scatter', unit: string, testid: string): HTMLElement =>
     hst.slider(label, help, min, max, RIG[key], unit, (v) => { RIG[key] = v; apply(); status(); }, testid);
@@ -90,20 +121,226 @@ function render(): void {
         sl('Scatter', 'Each dab lands up to this many brush sizes off the line, at random, for spray and texture.', 0, 200, 'scatter', '%', 'pk-scatter')] : [])]));
 }
 function status(): void {
-  const el = body?.querySelector('[data-testid="pk-status"]');
+  const el = bodies['paint-extras']?.querySelector('[data-testid="pk-status"]');
   const on = rigSummary(RIG);
   if (el) el.textContent = on.length ? 'On now: ' + on.join(', ') + '.' : 'All off: the brush paints as usual.';
 }
 
-/** Open the Brush extras sheet at the command's own section. */
+// ---- Kept in this browser: tips, patterns and saved tools ----
+type Kind = 'tips' | 'patterns' | 'presets';
+const KINDS: Kind[] = ['tips', 'patterns', 'presets'];
+let tips: Tip[] = [], pats: Pattern[] = [], presets: ToolPreset[] = [];
+let dbp: Promise<IDBDatabase | null> | null = null;
+function db(): Promise<IDBDatabase | null> {
+  return (dbp ??= new Promise((res) => {
+    try {
+      const r = indexedDB.open('fpe-paint', 1);
+      r.onupgradeneeded = () => { for (const k of KINDS) if (!r.result.objectStoreNames.contains(k)) r.result.createObjectStore(k, { keyPath: 'name' }); };
+      r.onsuccess = () => res(r.result);
+      r.onerror = r.onblocked = () => res(null);
+    } catch { res(null); }
+  }));
+}
+async function store(k: Kind, write: ((s: IDBObjectStore) => void) | null): Promise<unknown[]> {
+  const d = await db();
+  if (!d) return [];
+  return new Promise((res) => {
+    try {
+      const t = d.transaction(k, write ? 'readwrite' : 'readonly'), s = t.objectStore(k);
+      if (write) { write(s); t.oncomplete = t.onerror = () => res([]); return; }
+      const q = s.getAll();
+      q.onsuccess = () => res(q.result as unknown[]);
+      q.onerror = () => res([]);
+    } catch { res([]); }
+  });
+}
+let loaded: Promise<void> | null = null;
+const loadAll = (): Promise<void> => (loaded ??= Promise.all(KINDS.map((k) => store(k, null))).then(([a, b, c]) => {
+  tips = [...(a as Tip[]), ...tips.filter((t) => !(a as Tip[]).some((x) => x.name === t.name))];
+  pats = [...(b as Pattern[]), ...pats.filter((t) => !(b as Pattern[]).some((x) => x.name === t.name))];
+  presets = [...(c as ToolPreset[]), ...presets.filter((t) => !(c as ToolPreset[]).some((x) => x.name === t.name))];
+}));
+const keep = (k: Kind, v: { name: string }): Promise<unknown> => store(k, (s) => s.put(v));
+const forget = (k: Kind, name: string): Promise<unknown> => store(k, (s) => s.delete(name));
+/** `base 1`, `base 2`, ... the first name not taken. */
+function uniq(base: string, list: { name: string }[]): string {
+  for (let n = list.length + 1; ; n++) if (!list.some((x) => x.name === `${base} ${n}`)) return `${base} ${n}`;
+}
+const paintTool = (t: string): t is 'brush' | 'pencil' | 'eraser' => t === 'brush' || t === 'pencil' || t === 'eraser';
+function brushTool(hst: PaintHost): void { if (!paintTool(hst.tool())) hst.setTool('brush'); }
+/** Open a sheet with its own body, filled now and again once saved items have loaded. */
+function openSheet(id: string, title: string, fill: () => void): void {
+  const hst = host;
+  if (!hst) return;
+  holder(id);
+  fill();
+  hst.sheet(id, title, bodies[id]);
+  void loadAll().then(fill);
+}
+/** The picture inside the selection (all visible layers), with the selection's soft edge. */
+function grab(hst: PaintHost, what: string): { rgba: Uint8ClampedArray; w: number; h: number; a: Uint8Array | null } | null {
+  const d = hst.doc(), s = d?.selection, r = d && s ? intersect(s, docRect(d)) : null;
+  if (!d || !s || !r) { hst.toast(`Select an area of the picture first, then make the ${what} from it.`); return null; }
+  let a: Uint8Array | null = null;
+  if (s.alpha) { a = new Uint8Array(r.w * r.h); for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) a[y * r.w + x] = selectionAlpha(s, r.x + x, r.y + y); }
+  return { rgba: compositeDoc(d, r), w: r.w, h: r.h, a };
+}
+const btn = (text: string, testid: string, onclick: () => void, help = '', extra: Record<string, string> = {}): HTMLElement =>
+  h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': testid, 'data-help-title': text, 'data-help': help || text, onclick, ...extra }, text);
+function canvas(): [HTMLCanvasElement, CanvasRenderingContext2D | null] {
+  const c = h('canvas', { width: '40', height: '40', style: 'width:40px;height:40px;background:#fff;border-radius:6px;border:1px solid rgba(128,128,128,.4)' });
+  return [c, c.getContext('2d')];
+}
+function tipPreview(t: Tip | null): HTMLCanvasElement {
+  const [c, x] = canvas();
+  if (!x) return c;
+  x.fillStyle = '#222';
+  if (!t) { x.beginPath(); x.arc(20, 20, 14, 0, 2 * Math.PI); x.fill(); return c; }
+  const img = new ImageData(t.w, t.h), tmp = h('canvas', { width: String(t.w), height: String(t.h) }), k = 34 / Math.max(t.w, t.h);
+  for (let i = 0; i < t.w * t.h; i++) { img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = 34; img.data[i * 4 + 3] = t.data[i]; }
+  tmp.getContext('2d')?.putImageData(img, 0, 0);
+  x.drawImage(tmp, 20 - (t.w * k) / 2, 20 - (t.h * k) / 2, t.w * k, t.h * k);
+  return c;
+}
+function patPreview(p: Pattern): HTMLCanvasElement {
+  const [c, x] = canvas(), tmp = h('canvas', { width: String(p.w), height: String(p.h) });
+  tmp.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(p.data), p.w, p.h), 0, 0);
+  const f = x?.createPattern(tmp, 'repeat');
+  if (x && f) { x.fillStyle = f; x.fillRect(0, 0, 40, 40); }
+  return c;
+}
+
+// ---- Brush tips (panel.brushes, edit.define-brush) ----
+const BUILT_IN = builtInTips();
+function renderBrushes(): void {
+  const b = bodies['paint-brushes'], hst = host;
+  if (!b || !hst) return;
+  const cur = RIG.tip?.name ?? 'Round';
+  const cell = (t: Tip | null, mine: boolean): HTMLElement => {
+    const name = t?.name ?? 'Round';
+    return h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:4px' },
+      h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(name === cur), 'data-testid': 'pb-tip', 'data-name': name,
+        'data-help-title': 'Brush tip: ' + name, 'data-help': mine ? 'A tip you made from a selection.' : 'A built-in tip.',
+        style: 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;height:auto',
+        onclick: () => { RIG.tip = t; brushTool(hst); apply(); renderBrushes(); } }, tipPreview(t), h('span', { style: 'font-size:12px' }, name)),
+      mine ? btn('Remove', 'pb-remove', () => { if (RIG.tip?.name === name) RIG.tip = null; tips = tips.filter((x) => x.name !== name); void forget('tips', name); apply(); renderBrushes(); }, 'Remove this tip from this browser.') : null);
+  };
+  b.replaceChildren(
+    h('p', { class: 'fpe-note', 'data-testid': 'pb-status', role: 'status' }, `Tip now: ${cur}. Paint with the brush, the pencil or the eraser; the brush size sets the tip's longer side.`),
+    h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px' }, cell(null, false), ...BUILT_IN.map((t) => cell(t, false)), ...tips.map((t) => cell(t, true))),
+    h('p', { class: 'fpe-note' }, 'Make your own: select an area of the picture, then press the button. Dark parts paint, white or see-through parts do not.'),
+    btn('Make a brush from the selection', 'pb-make', () => void defineBrush()),
+    hst.slider('Turn', 'Turns the tip, in degrees.', 0, 359, RIG.angle ?? 0, '°', (v) => { RIG.angle = v; apply(); }, 'pb-angle'),
+    hst.slider('Spacing', 'Distance between dabs in % of the size. 0 keeps the usual 12 %; more leaves gaps, for dotted or stamped lines.', 0, 300, RIG.spacing ?? 0, '%', (v) => { RIG.spacing = v; apply(); }, 'pb-spacing'));
+}
+async function defineBrush(): Promise<void> {
+  const hst = host;
+  if (!hst) return;
+  openSheet('paint-brushes', 'Brush tips · Brushes', renderBrushes);
+  const g = grab(hst, 'brush');
+  if (!g) return;
+  await loadAll();
+  const t = tipFromPixels(uniq('My tip', tips), g.rgba, g.w, g.h, g.a);
+  if (!t) { hst.toast('Nothing dark there to make a tip from: dark parts of the selection become the tip.'); return; }
+  tips.push(t);
+  RIG.tip = t;
+  brushTool(hst);
+  apply();
+  renderBrushes();
+  hst.toast(`Made the brush tip "${t.name}" and chose it. Paint with the brush.`);
+  await keep('tips', t);
+}
+
+// ---- Patterns (edit.define-pattern): paint with one, or fill the selection with it ----
+function renderPatterns(): void {
+  const b = bodies['paint-patterns'], hst = host;
+  if (!b || !hst) return;
+  const cur = RIG.pattern?.name ?? '';
+  b.replaceChildren(
+    h('p', { class: 'fpe-note', 'data-testid': 'pp-status', role: 'status' }, cur ? `Painting with "${cur}": the brush lays the pattern down instead of its colour.`
+      : pats.length ? 'Paint with a pattern, or fill the selection with it.' : 'No patterns yet. Select an area of the picture, then press the button.'),
+    btn('Make a pattern from the selection', 'pp-make', () => void definePattern()),
+    ...(cur ? [btn('Paint with the brush colour again', 'pp-stop', () => { RIG.pattern = null; apply(); renderPatterns(); })] : []),
+    ...pats.map((p) => h('div', { 'data-testid': 'pp-item', style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' },
+      patPreview(p), h('span', { style: 'font-size:12px;min-width:72px' }, p.name),
+      btn('Paint with it', 'pp-paint', () => { RIG.pattern = p; brushTool(hst); apply(); renderPatterns(); }, 'The brush paints this pattern instead of its colour (a pattern stamp).', { 'aria-pressed': String(p.name === cur) }),
+      btn('Fill the selection with it', 'pp-fill', () => fillWith(hst, p), 'Fills the selection, or the whole layer when nothing is selected.'),
+      btn('Remove', 'pp-remove', () => { if (RIG.pattern?.name === p.name) RIG.pattern = null; pats = pats.filter((x) => x !== p); void forget('patterns', p.name); apply(); renderPatterns(); }, 'Remove this pattern from this browser.'))));
+}
+function fillWith(hst: PaintHost, p: Pattern): void {
+  const d = hst.doc(), l = d ? activeLayer(d) : undefined;
+  if (!d || !l || !hst.editable(l)) return;
+  const c = { r: 0, g: 0, b: 0, a: 0 };
+  hst.push(paintArea(d, l, 'Fill with a pattern', null, (x, y, px, i) => over(px, i, patternAt(p, x, y, c), 1)));
+  hst.all();
+  hst.render();
+}
+async function definePattern(): Promise<void> {
+  const hst = host;
+  if (!hst) return;
+  openSheet('paint-patterns', 'Patterns · Define pattern', renderPatterns);
+  const g = grab(hst, 'pattern');
+  if (!g) return;
+  await loadAll();
+  const p = patternFromPixels(uniq('My pattern', pats), g.rgba, g.w, g.h, g.a);
+  if (!p) return;
+  pats.push(p);
+  renderPatterns();
+  hst.toast(`Made the pattern "${p.name}". Paint with it, or fill the selection with it.`);
+  await keep('patterns', p);
+}
+
+// ---- Saved tool settings (panel.tool-presets) ----
+function renderPresets(): void {
+  const b = bodies['paint-presets'], hst = host;
+  if (!b || !hst) return;
+  const t = hst.tool(), ok = paintTool(t);
+  b.replaceChildren(
+    h('p', { class: 'fpe-note', 'data-testid': 'pt-status', role: 'status' }, ok ? `Saves the ${t} with its size, hardness, strength, tip and brush extras, to use again later.`
+      : 'Pick the brush, the pencil or the eraser first: their settings are what this saves.'),
+    h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'pt-save', disabled: !ok, 'data-help-title': 'Save the current tool', 'data-help': 'Keeps the tool and its settings in this browser.', onclick: () => void savePreset() }, 'Save the current tool'),
+    ...(presets.length ? [] : [h('p', { class: 'fpe-note' }, 'Nothing saved yet.')]),
+    ...presets.map((p) => h('div', { 'data-testid': 'pt-item', style: 'display:flex;align-items:center;gap:8px' },
+      h('span', { style: 'font-size:12px;flex:1' }, p.name),
+      btn('Use', 'pt-use', () => usePreset(p), 'Switch to this tool with these settings.'),
+      btn('Remove', 'pt-remove', () => { presets = presets.filter((x) => x !== p); void forget('presets', p.name); renderPresets(); }, 'Remove this saved tool.'))));
+}
+async function savePreset(): Promise<void> {
+  const hst = host, t = hst?.tool();
+  if (!hst || !t || !paintTool(t)) return;
+  await loadAll();
+  const o = hst.paint(t), extras = [...(RIG.tip ? [RIG.tip.name + ' tip'] : []), ...(RIG.pattern ? ['pattern'] : []), ...rigSummary(RIG)];
+  const base = `${t[0].toUpperCase() + t.slice(1)} ${Math.round(o.size)} px${extras.length ? ', ' + extras.join(', ') : ''}`;
+  const p = makePreset(presets.some((x) => x.name === base) ? uniq(base, presets) : base, t, o, RIG);
+  presets.push(p);
+  renderPresets();
+  hst.toast(`Saved "${p.name}".`);
+  await keep('presets', p);
+}
+function usePreset(p: ToolPreset): void {
+  const hst = host;
+  if (!hst) return;
+  hst.setTool(p.tool);
+  applyPreset(p, hst.paint(p.tool), RIG);
+  apply();
+  hst.refreshOptions();
+  renderPresets();
+  hst.toast(`Using "${p.name}".`);
+}
+
+/** Open the sheet for a command: Brush extras at its own section, Brush tips, Patterns or Saved tool settings. */
 export function runPaintKit(id: string, hst: PaintHost): void {
   host = hst;
-  const t = hst.tool();
-  if (t !== 'brush' && t !== 'pencil' && t !== 'eraser') hst.setTool('brush');
-  body ??= h('div', { 'data-testid': 'paint-extras', style: 'display:flex;flex-direction:column;gap:8px' });
-  render();
-  hst.sheet('paint-extras', 'Brush extras · Brush settings', body);
-  const sec = body.querySelector<HTMLElement>('#pk-sec-' + (SECTION[id] ?? 'steady'));
-  sec?.scrollIntoView?.({ block: 'start' });
+  if (id === 'panel.brushes') { brushTool(hst); openSheet('paint-brushes', 'Brush tips · Brushes', renderBrushes); }
+  else if (id === 'edit.define-brush') void defineBrush();
+  else if (id === 'edit.define-pattern') void definePattern();
+  else if (id === 'panel.tool-presets') openSheet('paint-presets', 'Saved tool settings · Tool presets', renderPresets);
+  else {
+    brushTool(hst);
+    const body = holder('paint-extras');
+    render();
+    hst.sheet('paint-extras', 'Brush extras · Brush settings', body);
+    body.querySelector<HTMLElement>('#pk-sec-' + (SECTION[id] ?? 'steady'))?.scrollIntoView?.({ block: 'start' });
+  }
   apply();
 }

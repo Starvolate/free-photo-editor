@@ -3,7 +3,7 @@
 /** The brush power-ups (paint-more.ts), checked on real pixels with hand-worked dab positions. */
 import { describe, expect, it } from 'vitest';
 import { Stroke, createLayer, type BrushOptions, type Doc, type Layer, type StrokePoint } from '../src/index';
-import { RIG_DEFAULTS, RigStroke, mirrorMaps, rigOn, type RigSettings } from '../src/paint-more';
+import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, makePreset, mirrorMaps, patternFromPixels, rigOn, tipFromPixels, type Pattern, type RigSettings, type Tip } from '../src/paint-more';
 
 const RED = { r: 255, g: 0, b: 0, a: 255 };
 function setup(w: number, h: number): { doc: Doc; l: Layer } {
@@ -130,5 +130,65 @@ describe('brush power-ups', () => {
     let off = 0;
     for (let x = 0; x < 100; x++) for (let y = 0; y < 40; y++) if (Math.abs(y - 20) > 5 && alpha(a, x, y) > 0) off++;
     expect(off).toBeGreaterThan(0); // scatter put paint off the line
+  });
+});
+
+describe('brush tips, patterns and saved tools (part 2)', () => {
+  // An L: the left column and the bottom row of a 3 x 3 tip.
+  const L3: Tip = { name: 'L', w: 3, h: 3, data: Uint8Array.from([255, 0, 0, 255, 0, 0, 255, 255, 255]) };
+  const painted = (l: Layer): string[] => {
+    const out: string[] = [];
+    for (let y = 0; y < l.height; y++) for (let x = 0; x < l.width; x++) if (alpha(l, x, y) > 0) out.push(`${x},${y}`);
+    return out;
+  };
+  it('stamps a custom tip at its own size, pixel for pixel, as one undo step', () => {
+    expect(rigOn(rig({ tip: L3 }))).toBe(true);
+    // Size 3 = the tip's own size. Centre 5.5: pixel x sits on tip column x - 4, pixel y on tip row y - 4.
+    const { l, cmd } = paint(12, 12, brush(3), rig({ tip: L3 }), [{ x: 5.5, y: 5.5 }]);
+    expect(painted(l).sort()).toEqual(['4,4', '4,5', '4,6', '5,6', '6,6'].sort());
+    expect(alpha(l, 4, 6)).toBe(255);
+    expect(l.data[(6 * 12 + 6) * 4]).toBe(255); // red, the brush colour
+    expect(cmd).not.toBeNull();
+  });
+  it('turns the tip: 90 degrees puts the foot of the L along the top', () => {
+    // Turned 90: pixel (x, y) reads tip row 6 - x, column y - 4, so the left column stays and the bottom row moves to the top.
+    const { l } = paint(12, 12, brush(3), rig({ tip: L3, angle: 90 }), [{ x: 5.5, y: 5.5 }]);
+    expect(painted(l).sort()).toEqual(['4,4', '4,5', '4,6', '5,4', '6,4'].sort());
+  });
+  it('a one-colour pattern with the round tip paints exactly like the plain brush', () => {
+    const red: Pattern = { name: 'red', w: 1, h: 1, data: Uint8ClampedArray.from([255, 0, 0, 255]) };
+    const pts = [{ x: 12, y: 15 }, { x: 40, y: 22 }, { x: 70, y: 9 }];
+    const a = paint(100, 40, brush(9, { hardness: 0.4 }), null, pts), b = paint(100, 40, brush(9, { hardness: 0.4, color: { r: 0, g: 200, b: 0, a: 255 } }), rig({ pattern: red }), pts);
+    expect(Buffer.from(b.l.data).equals(Buffer.from(a.l.data))).toBe(true);
+  });
+  it('pattern stamp: each pixel takes the pattern colour at that spot, not the brush colour', () => {
+    // A 2 x 1 pattern, red then blue, from the picture's left edge: even columns red, odd columns blue.
+    const rb: Pattern = { name: 'rb', w: 2, h: 1, data: Uint8ClampedArray.from([255, 0, 0, 255, 0, 0, 255, 255]) };
+    const { l } = paint(20, 20, brush(4, { color: { r: 0, g: 200, b: 0, a: 255 } }), rig({ pattern: rb }), [{ x: 10.5, y: 10.5 }]);
+    const px = (x: number, y: number): number[] => Array.from(l.data.subarray((y * 20 + x) * 4, (y * 20 + x) * 4 + 4));
+    expect(px(10, 10)).toEqual([255, 0, 0, 255]); // centre, column 10: red
+    expect(px(11, 10)).toEqual([0, 0, 255, 255]); // 1 px right, column 11: blue
+  });
+  it('makes a tip from pixels: dark paints, white and see-through do not, the soft edge fades it, cropped to what paints', () => {
+    // 2 x 2: black, white / mid grey (128), black but see-through.
+    const px = Uint8ClampedArray.from([0, 0, 0, 255, 255, 255, 255, 255, 128, 128, 128, 255, 0, 0, 0, 0]);
+    expect(tipFromPixels('t', px, 2, 2)).toEqual({ name: 't', w: 1, h: 2, data: Uint8Array.from([255, 127]) });
+    // The selection's edge at half on the grey pixel: 127 x 128 / 255 = 63.75 -> 64.
+    expect(tipFromPixels('t', px, 2, 2, Uint8Array.from([255, 255, 128, 255]))?.data).toEqual(Uint8Array.from([255, 64]));
+    expect(tipFromPixels('t', Uint8ClampedArray.from([255, 255, 255, 255]), 1, 1)).toBeNull();
+    const p = patternFromPixels('p', Uint8ClampedArray.from([10, 20, 30, 200]), 1, 1, Uint8Array.from([128]));
+    expect(Array.from(p?.data ?? [])).toEqual([10, 20, 30, 100]); // 200 x 128 / 255 = 100.4
+  });
+  it('has four built-in tips and keeps the settings of a tool to put back later', () => {
+    const t = builtInTips();
+    expect(t.map((x) => x.name)).toEqual(['Square', 'Flat', 'Chalk', 'Spatter']);
+    expect(t[0].data.every((v) => v === 255)).toBe(true);
+    const live = { size: 24, hardness: 0.5, opacity: 0.8 }, r = rig({ steady: 'lag', lag: 40, tip: t[1] });
+    const p = makePreset('Brush 24 px', 'brush', live, r);
+    Object.assign(live, { size: 3, hardness: 1, opacity: 0.1 });
+    Object.assign(r, { steady: 'off', tip: null, mirror: 'radial' });
+    applyPreset(p, live, r);
+    expect(live).toEqual({ size: 24, hardness: 0.5, opacity: 0.8 });
+    expect([r.steady, r.lag, r.tip?.name, r.mirror]).toEqual(['lag', 40, 'Flat', 'off']);
   });
 });

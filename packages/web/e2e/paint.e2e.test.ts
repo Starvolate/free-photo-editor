@@ -83,7 +83,8 @@ async function painted(p: Page, x: number, y: number): Promise<boolean> {
 /** Open the Brush extras sheet from the command's ribbon home. */
 async function extras(p: Page, id: string): Promise<void> {
   await show(p, id);
-  await p.click(`[data-testid="ri-${id}"]`);
+  // A command can sit both in its group (hidden while the group is folded) and in the More list: click the one shown.
+  await p.locator(`[data-testid="ri-${id}"]:visible`).first().click();
   await p.waitForSelector('[data-testid="sheet-paint-extras"] [data-testid="pk-status"]', { state: 'visible' });
 }
 async function setSlider(p: Page, testid: string, v: number): Promise<void> {

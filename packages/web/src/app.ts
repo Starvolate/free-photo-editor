@@ -298,6 +298,8 @@ export class Editor {
   private stroke: Stroke | null = null;
   /** Brush extras (paintkit.ts): makes each stroke while one is on; null (the plain stroke) while all are off. */
   private rig: import('./paintkit').RigMaker | null = null;
+  /** The symmetry guide over the picture (paintkit.ts); null while symmetry is off, so it costs nothing then. */
+  private rigGuide: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   /** While a pixel stroke runs, the rows below the painted layer per tile, so a frame redraws only what changed (core composite.ts). */
   private strokeCache: StrokeCache | null = null;
   /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
@@ -1461,7 +1463,7 @@ export class Editor {
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
       crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
-      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk || this.rigGuide ? (ctx) => { this.tk?.overlay(ctx); this.rigGuide?.(ctx); } : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -3396,7 +3398,7 @@ export class Editor {
   }
   /** Brush extras (paintkit.ts), loaded on first use: steady hand, symmetry, seamless tile, pen and speed. */
   async paintKit(id: string): Promise<void> {
-    try { (await import('./paintkit')).runPaintKit(id, { ...this.toolHost(), setRig: (f) => { this.rig = f; }, flush: () => this.flushStroke() }); }
+    try { (await import('./paintkit')).runPaintKit(id, { ...this.toolHost(), setRig: (f) => { this.rig = f; }, flush: () => this.flushStroke(), setGuide: (f) => { this.rigGuide = f; this.requestRender(); } }); }
     catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */

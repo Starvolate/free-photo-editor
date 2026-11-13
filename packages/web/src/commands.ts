@@ -452,7 +452,9 @@ for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p s
   HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
 }
 // Batch paint (paintkit.ts, loaded on first use): the Brush extras sheet, opened at each command's own section.
-for (const id of ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics']) HANDLERS[id] = H((e) => e.paintKit(id), always);
+// Part 2: brush tips, patterns made from the selection, saved tool settings (the define commands need a selection).
+for (const id of ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'panel.brushes', 'panel.tool-presets', 'edit.define-brush', 'edit.define-pattern'])
+  HANDLERS[id] = H((e) => e.paintKit(id), id.startsWith('edit.') ? hasSel : always);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

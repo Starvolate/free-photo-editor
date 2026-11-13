@@ -4,3 +4,8 @@ coverage/
 *.log
 .DS_Store
 packages/web/e2e/out/
+packages/cli/LICENSE
+packages/cli/ADDITIONAL-TERMS.md
+packages/mcp/LICENSE
+packages/mcp/ADDITIONAL-TERMS.md
+*.tgz

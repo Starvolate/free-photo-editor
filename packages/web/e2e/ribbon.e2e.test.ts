@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cost, open as openSpot, ways } from './ribbon';
-import { SHEETS, TABS, clicks, firstTab, homeText, homes } from '../src/ribbon-homes';
-import { BY_ID } from '../src/registry';
+import { SHEETS, TABS, clicks, firstTab, homeText, homes, restOf } from '../src/ribbon-homes';
+import { BY_ID, stem, words } from '../src/registry';
 
 interface Fpe { openSample(): void; state(): Record<string, unknown>; }
 type Win = Window & { fpe: Fpe; __n: { dl: number; open: number; pick: number } };
@@ -115,6 +115,12 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     await p.waitForSelector('[data-testid="rhint"]:not([hidden])');
     expect((await p.textContent('[data-testid="rhint"]'))?.startsWith('Try this first: '), 'the one-line hint').toBe(true);
     expect(await p.$eval('[data-testid="rhint"]', (e) => e.getBoundingClientRect().height < 40), 'one line').toBe(true);
+    // It sits in the ribbon's own row, over no ruler and none of the picture area.
+    expect(await p.$eval('[data-testid="rhint"]', (e) => {
+      const a = e.getBoundingClientRect(), r = document.querySelector('[data-testid="ribbon-body"]')?.getBoundingClientRect();
+      const over = Array.from(document.querySelectorAll('.fpe-ruler, .fpe-stage')).some((x) => { const b = x.getBoundingClientRect(); return b.width > 0 && b.left < a.right && b.right > a.left && b.top < a.bottom && b.bottom > a.top; });
+      return !over && !!r && a.top >= r.top - 0.5 && a.bottom <= r.bottom + 0.5;
+    }), 'the tip covers nothing').toBe(true);
     expect(await p.$$eval('[data-testid="ribbon-body"] [data-cmd]', (els) => els.filter((e) => e.getAttribute('data-status') === 'ready').length * 2 >= els.length),
       'at least half the first-run tab is Ready').toBe(true);
     expect(await bodyShown(p)).toBe(true);
@@ -136,7 +142,12 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
       await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
       expect(await selected(p)).toEqual([`rtab-${slug(t.plain)}`]);
       expect(await p.getAttribute('[data-testid="ribbon-body"]', 'data-tab')).toBe(slug(t.plain));
-      for (const g of t.groups) expect(await p.locator(`[data-testid="rgroup-${slug(t.plain)}-${slug(g.plain)}"]`).count(), `${t.plain} › ${g.plain}`).toBe(1);
+      // A group shows when it has a Ready command (a family when one of its "more" commands is Ready, ribbon.ts familiesEl);
+      // a group with nothing Ready stays off the resting ribbon and must be absent, not merely hidden.
+      for (const g of t.groups) {
+        const r = restOf(g), want = (g.show === 'family' ? r.more.length : r.big.length + r.shown.length + r.more.length) ? 1 : 0;
+        expect(await p.locator(`[data-testid="rgroup-${slug(t.plain)}-${slug(g.plain)}"]`).count(), `${t.plain} › ${g.plain}${want ? '' : ' (nothing Ready)'}`).toBe(want);
+      }
       if (t.plain === 'Filters & blur') {
         await p.mouse.move(720, 600);
         await p.waitForTimeout(300);
@@ -166,13 +177,16 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     step = 'planned';
     const p = await open();
     await rest(p);
-    const resting: string[] = [];
+    const resting: string[] = [], soon: string[] = [];
     for (const t of TABS) {
       await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
+      // A group with working commands shows only those; a group with none is off the resting ribbon: never a "Coming soon" tile.
+      if (await p.$$eval('[data-testid="ribbon-body"] .fpe-rsoon', (els) => els.length) || (await p.textContent('[data-testid="ribbon-body"]'))?.includes('Coming soon')) soon.push(t.plain);
       resting.push(...(await p.$$eval('[data-testid="ribbon-body"] [data-status="planned"], [data-testid="ribbon-body"] .fpe-tag',
         (els) => els.map((e) => e.getAttribute('data-testid') ?? e.textContent ?? ''))).map((x) => `${t.plain}: ${x}`));
     }
     expect(resting, 'Planned items in a resting row').toEqual([]);
+    expect(soon, 'a "Coming soon" tile on a resting tab').toEqual([]);
     // A command still Planned whose group has working ones (raw.filmic sat in Develop RAW's row until 13 Nov).
     const id = 'raw.filmic', home = homes().get(id);
     expect(BY_ID.get(id)?.status).not.toBe('ready');
@@ -290,6 +304,27 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     expect([...heights], 'the ribbon keeps one height on every tab').toHaveLength(1);
   }, 120_000);
 
+  it('a sheet opened again under the same name with a new body shows the new body\'s own controls', async () => {
+    step = 'sheet body';
+    const p = await open();
+    const shown = (): Promise<{ title: string; ids: string[] }> => p.evaluate(() => {
+      const s = document.querySelector<HTMLElement>('[data-testid="sheet-probe"]');
+      return { title: s?.querySelector('.fpe-sheet-title')?.textContent ?? '', ids: Array.from(s?.querySelectorAll('[data-testid^="probe-"]') ?? [], (e) => e.getAttribute('data-testid') ?? '') };
+    });
+    type Fpe = { sheet(id: string, title: string, body: HTMLElement): void };
+    const openWith = (title: string, ids: string[]): Promise<void> => p.evaluate(([t, list]) => {
+      const body = document.createElement('div');
+      for (const x of list) { const b = document.createElement('button'); b.dataset.testid = x; b.textContent = x; body.append(b); }
+      (window as unknown as { fpe: Fpe }).fpe.sheet('probe', t, body);
+    }, [title, ids] as const);
+    await openWith('First', ['probe-a', 'probe-b']);
+    expect(await shown()).toEqual({ title: 'First', ids: ['probe-a', 'probe-b'] });
+    await p.keyboard.press('Escape');
+    await openWith('Second', ['probe-c']);
+    expect(await shown(), 'the second body replaces the first').toEqual({ title: 'Second', ids: ['probe-c'] });
+    expect(await p.isVisible('[data-testid="probe-c"]')).toBe(true);
+  }, 60_000);
+
   it('the hover card shows the plain name, the pro name, the help line and the ribbon home', async () => {
     step = 'hover card';
     const p = await open();
@@ -300,12 +335,39 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     const r = BY_ID.get(id)!;
     await p.hover(`[data-testid="ribbon-body"] [data-testid="ri-${id}"]`);
     await p.waitForSelector('[data-testid="tip"]:not([hidden])');
+    // The help lines come in their own chunk after the first screen; the tip fills its line in when they arrive.
+    await p.waitForSelector('[data-testid="tip"]:not([hidden]) .fpe-tip-help');
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-head strong'))?.trim()).toBe(r.plain);
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-head .fpe-pro'))?.trim()).toBe(r.pro);
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-help'))?.trim()).toBe(r.help);
     const home = homes().get(id);
     if (home) expect(await p.textContent('[data-testid="tip"]')).toContain(homeText(home));
     await p.screenshot({ path: join(OUT, 'r2-tip-1440.png') });
+  }, 60_000);
+
+  it('search finds a Ready command by a word only its help line holds, once the help lines arrive', async () => {
+    step = 'help search';
+    // A word no name, pro name, wish word or place of any row starts with, and only one row's help line has.
+    const rows = [...BY_ID.values()];
+    const named = rows.flatMap((r) => words(`${r.plain} ${r.pro} ${r.wish} ${r.place}`).map(stem));
+    const text = rows.map((r) => `${r.plain} ${r.pro} ${r.wish}`.toLowerCase());
+    let pick: [string, string] | null = null;
+    for (const r of rows) {
+      if (r.status !== 'ready' || pick) continue;
+      const w = words(r.help).find((x) => {
+        const t = stem(x);
+        return x.length > 5 && /^[a-z]+$/.test(x) && !named.some((n) => n.startsWith(t)) && !text.some((s) => s.includes(x)) &&
+          rows.filter((o) => words(o.help).map(stem).some((n) => n.startsWith(t))).length === 1;
+      });
+      if (w) pick = [r.id, w];
+    }
+    if (!pick) throw new Error('no word in the map that only one help line holds');
+    const [id, word] = pick;
+    const p = await open();
+    await p.click('[data-testid="btn-search"]');
+    await p.fill('[data-testid="search-input"]', word);
+    await p.waitForSelector(`[data-testid="search-result"][data-id="${id}"]`, { timeout: 15_000 });
+    expect(await p.$$eval('[data-testid="search-result"]', (els) => els.map((e) => e.getAttribute('data-id'))), `"${word}" finds ${id}`).toEqual([id]);
   }, 60_000);
 
   it('reaches every Ready command with real clicks within the count its home promises', async () => {

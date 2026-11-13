@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 import { defineConfig, type Plugin } from 'vite';
+import { HELP_ID, helpSplit } from './scripts/help-split';
 import { pwa } from './scripts/pwa';
 
 /**
@@ -26,7 +27,9 @@ export default defineConfig({
   // The folder the app is served from. './' works in any folder reached with a trailing slash; set FPE_BASE (for example
   // /tools/free-photoeditor/) to build for one fixed folder. The offline worker's scope follows the folder sw.js is in.
   base: process.env.FPE_BASE || './',
-  plugins: [pwa(), engineFromCdn()],
+  // The help lines (help-split) are saved with the app shell at install, so help, search and tooltips work offline from
+  // the first visit. Saving them is not loading them: the first screen still does not wait for them.
+  plugins: [pwa({ shell: ['\0' + HELP_ID] }), engineFromCdn(), helpSplit()],
   build: { target: 'es2022', outDir: 'dist', emptyOutDir: true, sourcemap: false, manifest: true },
   // The AI worker is bundled on its own, with its own plugins.
   worker: { format: 'es', plugins: () => [engineFromCdn()] },

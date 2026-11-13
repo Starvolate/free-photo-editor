@@ -130,8 +130,11 @@ suite('Pen and paths (headless Chrome)', () => {
     await p.waitForTimeout(150);
     const sel = (await info(p)).selection as Sel;
     expect(sel).not.toBeNull();
-    expect(Math.abs(sel.x - 200) + Math.abs(sel.y - 150)).toBeLessThan(6);
-    expect(sel.h).toBeGreaterThan(190);
+    // The first side is a curve: the smooth point's in handle at (340,90) lifts it to y = 150 - 80/3 = 123.3 (path.test.ts),
+    // so the selection's top is 123, not the anchors' 150. The left edge is the first corner; the bottom is the moved corner.
+    expect(Math.abs(sel.x - 200)).toBeLessThanOrEqual(2);
+    expect(Math.abs(sel.y - 123)).toBeLessThanOrEqual(2);
+    expect(Math.abs(sel.y + sel.h - 350)).toBeLessThanOrEqual(2);
 
     await run(p, 'edit.undo');
     expect((await info(p)).selection).toBeNull();

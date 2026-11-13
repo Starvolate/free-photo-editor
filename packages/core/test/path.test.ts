@@ -38,6 +38,17 @@ describe('paths', () => {
     expect(sel && { x: sel.x, y: sel.y, w: sel.w, h: sel.h, alpha: sel.alpha }).toEqual({ x: 10, y: 10, w: 40, h: 40, alpha: null });
   });
 
+  it('fills a curved side to the curve itself: a smooth point bulges its sides past the anchors (the pen e2e outline)', () => {
+    // The browser test's outline: a corner at (200,150), a smooth point at (400,150) whose in handle sits at (340,90), and the
+    // moved corner at (320,350). The first side is y = 150 - 180 t^2 (1 - t), highest at t = 2/3: y = 150 - 80/3 = 123.3.
+    const smooth = { x: 400, y: 150, inX: 340, inY: 90, outX: 460, outY: 210, smooth: true };
+    const p = path({ closed: true, anchors: [anchorAt(200, 150), smooth, anchorAt(320, 350)] });
+    const sel = selectionFromMask(pathMask(p, 640, 480))!;
+    expect(Math.abs(sel.x - 200)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sel.y - 123)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sel.y + sel.h - 350)).toBeLessThanOrEqual(1);
+  });
+
   it('fills every subpath with the even-odd rule, so a ring keeps its hole; an open subpath closes itself', () => {
     const ring = path(square(0, 0, 60), square(20, 20, 20));
     const m = pathMask(ring, 64, 64);

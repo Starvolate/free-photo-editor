@@ -57,7 +57,11 @@ export interface LayerMask {
 }
 /** A selected area. Without `alpha` the whole rectangle is selected; `alpha` (w * h) allows soft or shaped masks. */
 export interface Selection extends Rect { alpha?: Uint8Array | null; }
-export interface Doc { width: number; height: number; layers: Layer[]; activeId: string; selection: Selection | null; }
+export interface Doc {
+  width: number; height: number; layers: Layer[]; activeId: string; selection: Selection | null;
+  /** Print resolution in dots (pixels) per inch; 72 when not set (dpi.ts). It never changes the pixels. */
+  dpi?: number;
+}
 export interface LayerGeom { x: number; y: number; width: number; height: number; data: Uint8ClampedArray; }
 
 let counter = 0;

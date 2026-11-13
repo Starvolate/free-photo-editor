@@ -6,24 +6,24 @@
  * the camera RAW develop step, OpenRaster and PSB with their layers, and the credit in every saved file with room for it.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts formats
  */
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writePsd } from 'ag-psd';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CREDIT, addLayer, createDocument, createLayer, webpInfo, type Bitmap } from '@free-photoeditor/core';
+import { CREDIT, addLayer, createDocument, createLayer, jpegSampling, printSize, printTarget, readDpi, readJpegDpi, readPngDpi, setPngDpi, webpInfo, type Bitmap } from '@free-photoeditor/core';
 import { writePsdDocument } from '@free-photoeditor/core/psd';
 import { decodeGif, encodeGif, isAnimatedWebp, isApng } from '@free-photoeditor/formats/anim';
 import { decodeOra, encodeOra } from '@free-photoeditor/formats/ora';
 import { encodePdf } from '@free-photoeditor/formats/pdf';
-import { decodePng, pngText } from '@free-photoeditor/formats/png';
+import { decodePng, encodePng, pngText } from '@free-photoeditor/formats/png';
 import { tgaSoftware } from '@free-photoeditor/formats/tga';
 import { decodeTiff, encodeTiffPages, readTiff, writeTiff, type TiffEntry } from '@free-photoeditor/formats/tiff';
 
 interface Info { width: number; height: number; layers: { name: string; visible: boolean }[]; }
-interface Fpe { getInfo(): Info | null; state(): Record<string, unknown>; sample(x: number, y: number): number[] | null; }
+interface Fpe { getInfo(): Info | null; state(): Record<string, unknown>; sample(x: number, y: number): number[] | null; run(id: string): Promise<boolean>; }
 type Win = { fpe: Fpe };
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(WEB, 'dist');
@@ -226,5 +226,89 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
   it('opens PSB (large PSD) files with their layers', async () => {
     const i = await waitTabs(page, await open(page, 'big.psb', 'image/vnd.adobe.photoshop', psbFile()));
     expect(i.layers.map((l) => l.name)).toEqual(['Bottom', 'Top']);
+  });
+  it('X1: reads the DPI on open and writes it into PNG, JPEG, TIFF and PDF; records how the best JPEG keeps colour', async () => {
+    const p = page, u8 = (b: Buffer): Uint8Array => new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+    const src = setPngDpi(encodePng(bmpOf(600, 400, (x, y) => [x % 256, y % 256, (x * y) % 256, 255])), 300);
+    await waitTabs(p, await open(p, 'x1-300.png', 'image/png', Buffer.from(src)));
+    const png = await save(p, 'png'), tif = await save(p, 'tiff'), pdf = await save(p, 'pdf');
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-format-jpeg"]');
+    await p.$eval('[data-testid="export-quality"]', (el) => { (el as HTMLInputElement).value = '100'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60_000 }), p.click('[data-testid="export-go"]')]);
+    const jpg = await readFile(await dl.path());
+    const finding = `Chrome canvas JPEG at quality 1.0 (Export at 100%): colour ${jpegSampling(u8(jpg))}`;
+    console.log(finding);
+    await writeFile(join(OUT, 'x1-jpeg-sampling.txt'), finding + '\n');
+    for (const [n, b] of [['x1-300.png', png], ['x1-300.tif', tif], ['x1-300.pdf', pdf], ['x1-300.jpg', jpg]] as const) await writeFile(join(OUT, n), b);
+    expect(jpegSampling(u8(jpg)), finding).toBe('4:4:4');
+    expect([readPngDpi(u8(png)), readDpi(u8(tif)), readJpegDpi(u8(jpg))]).toEqual([300, 300, 300]);
+    expect(latin(pdf)).toContain('/MediaBox [0 0 144 96]');
+  });
+  it('X1 part 2: Export sets 300 and 500 DPI, shows the print size, resizes to a print size, and saves the best JPEG at 4:4:4', async () => {
+    const p = page, u8 = (b: Buffer): Uint8Array => new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+    const dims = (b: Buffer): [number, number] => [b.readUInt32BE(16), b.readUInt32BE(20)];
+    const SIZE = '[data-testid="export-print-size"]';
+    await waitTabs(p, await open(p, 'x1-dpi.png', 'image/png', Buffer.from(encodePng(bmpOf(600, 400, (x, y) => [x % 256, (x + y) % 256, y % 256, 255])))));
+    const go = async (): Promise<Buffer> => {
+      const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60_000 }), p.click('[data-testid="export-go"]')]);
+      return readFile(await dl.path());
+    };
+    const cm = (w: number, h: number, dpi: number): string => { const s = printSize(w, h, dpi); return `${s.cm[0]}x${s.cm[1]}`; };
+    // 300: every pixel kept, only the DPI set; the dialog shows the print size it gives.
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-format-png"]');
+    expect(await p.getAttribute(SIZE, 'data-print-cm'), 'opens at the picture\'s own 72 DPI').toBe(cm(600, 400, 72));
+    await p.click('[data-testid="export-dpi-300"]');
+    expect(await p.getAttribute(SIZE, 'data-print-cm')).toBe(cm(600, 400, 300));
+    expect(await p.textContent(SIZE)).toContain('5.08 × 3.39 cm (2 × 1.33 in)');
+    expect(await p.textContent('[data-testid="export-dpi"]')).toContain('DPI alone never adds detail');
+    await p.locator('[data-testid="export-dpi"]').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: join(OUT, 'x1-export-dpi-1440.png') });
+    const png300 = await go();
+    expect([readPngDpi(u8(png300)), ...dims(png300)]).toEqual([300, 600, 400]);
+    // 500, typed as any number.
+    await p.click('[data-testid="btn-export"]');
+    await p.fill('[data-testid="export-dpi-input"]', '500');
+    expect(await p.getAttribute('[data-testid="export-dpi-500"]', 'aria-checked')).toBe('true');
+    expect(await p.getAttribute(SIZE, 'data-print-cm')).toBe(cm(600, 400, 500));
+    const png500 = await go();
+    expect([readPngDpi(u8(png500)), ...dims(png500)]).toEqual([500, 600, 400]);
+    // Resize to a print size: 10 cm wide at 300 DPI, the shape kept, on a copy.
+    const want = printTarget({ width: 10, unit: 'cm' }, 300, { width: 600, height: 400 });
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-dpi-300"]');
+    await p.check('[data-testid="export-dpi-resize"]');
+    await p.selectOption('[data-testid="export-dpi-unit"]', 'cm');
+    await p.fill('[data-testid="export-dpi-w"]', '10');
+    expect(await p.getAttribute('[data-testid="export-dpi-pixels"]', 'data-px')).toBe(`${want.width}x${want.height}`);
+    expect(await p.getAttribute(SIZE, 'data-print-cm')).toBe(cm(want.width, want.height, 300));
+    const sized = await go();
+    expect([readPngDpi(u8(sized)), ...dims(sized)]).toEqual([300, want.width, want.height]);
+    expect(want).toEqual({ width: 1181, height: 787 });
+    expect((await info(p))?.width, 'the picture itself keeps its pixels').toBe(600);
+    // Best quality: JPEG at its top setting keeps every colour pixel, read from the SOF header.
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-format-jpeg"]');
+    await p.check('[data-testid="export-best"]');
+    expect(await p.isHidden('[data-testid="export-quality"]'), 'Best quality replaces the slider').toBe(true);
+    await p.click('[data-testid="export-dpi-300"]');
+    const best = await go();
+    expect([jpegSampling(u8(best)), readJpegDpi(u8(best))]).toEqual(['4:4:4', 300]);
+    // A type with no place for a DPI says so in plain words.
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-format-gif"]');
+    expect(await p.textContent('[data-testid="export-dpi-note"]')).toContain('no place to store a DPI');
+    await p.click('[data-testid="close-export"]');
+    // Phones: the same section from the function map's "Export for print at a DPI".
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.evaluate(() => (window as unknown as Win).fpe.run('file.export-print'));
+    await p.click('[data-testid="export-format-png"]');
+    await p.check('[data-testid="export-dpi-resize"]');
+    await p.locator('[data-testid="export-dpi-pixels"]').scrollIntoViewIfNeeded();
+    await p.screenshot({ path: join(OUT, 'x1-export-dpi-390.png') });
+    expect(await p.evaluate(() => document.documentElement.scrollWidth), 'no sideways scroll on a phone').toBeLessThanOrEqual(390);
+    await p.keyboard.press('Escape');
+    await p.setViewportSize({ width: 1440, height: 900 });
   });
 });

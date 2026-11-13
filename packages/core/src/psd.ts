@@ -2,12 +2,14 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * PSD open and save through ag-psd (MIT). Kept out of the main entry so apps can load it only when needed.
- * Layers keep name, order, visibility, opacity, blend mode and position. The credit goes into the file's XMP.
+ * Layers keep name, order, visibility, opacity, blend mode and position. The credit goes into the file's XMP. The print
+ * resolution (DPI) is kept both ways in the resolution info, which Photoshop always stores in pixels per inch.
  */
 import { initializeCanvas, readPsd, writePsd } from 'ag-psd';
 import type { BlendMode } from './blend';
 import { CREDIT } from './credit';
 import { createDocument, createFolder, flatten, isFolder, newId, type Doc, type Layer, type LayerMask } from './document';
+import { docDpi, isDpi, roundDpi } from './dpi';
 import { buildTree, repairTree, type TreeNode } from './tree';
 import { buildXmp } from './metadata';
 
@@ -31,7 +33,7 @@ interface AgLayer {
   name?: string; hidden?: boolean; opacity?: number; blendMode?: string; left?: number; top?: number;
   imageData?: AgPixels; children?: AgLayer[]; opened?: boolean; clipping?: boolean; effects?: unknown; adjustment?: unknown; text?: unknown; mask?: AgMask; realMask?: AgMask; vectorMask?: unknown;
 }
-interface AgPsd { width: number; height: number; children?: AgLayer[]; imageData?: AgPixels; imageResources?: { xmpMetadata?: string }; }
+interface AgPsd { width: number; height: number; children?: AgLayer[]; imageData?: AgPixels; imageResources?: { xmpMetadata?: string; resolutionInfo?: { horizontalResolution?: number } }; }
 
 let ready = false;
 function init(): void {
@@ -130,6 +132,8 @@ export function readPsdDocument(bytes: Uint8Array | ArrayBuffer): PsdImport {
     const comp = toRgba8(psd.imageData);
     if (comp) { doc.layers[0].data = comp; doc.layers[0].name = 'Background'; }
   }
+  const res = roundDpi(psd.imageResources?.resolutionInfo?.horizontalResolution ?? 0);
+  if (isDpi(res)) doc.dpi = res;
   const xmp = psd.imageResources?.xmpMetadata ?? '';
   const m = /CreatorTool="([^"]*)"/.exec(xmp);
   return { doc, notes: [...notes], credit: m ? m[1] : null };
@@ -145,13 +149,14 @@ function toAg(n: TreeNode<Layer>): Record<string, unknown> {
     imageData: { width: l.width, height: l.height, data: l.data } };
 }
 /** Write a layered PSD with a flattened preview and the credit in its XMP file info. */
-export function writePsdDocument(doc: Doc, credit: string = CREDIT): Uint8Array {
+export function writePsdDocument(doc: Doc, credit: string = CREDIT, dpi: number = docDpi(doc)): Uint8Array {
   init();
   const flat = flatten(doc);
   const psd = {
     width: doc.width, height: doc.height,
     imageData: { width: doc.width, height: doc.height, data: flat.data },
-    imageResources: { xmpMetadata: buildXmp(credit) },
+    imageResources: { xmpMetadata: buildXmp(credit, dpi), resolutionInfo: { horizontalResolution: dpi, horizontalResolutionUnit: 'PPI', widthUnit: 'Inches',
+      verticalResolution: dpi, verticalResolutionUnit: 'PPI', heightUnit: 'Inches' } },
     children: buildTree(doc.layers).map(toAg),
   };
   const out = writePsd(psd as never, { generateThumbnail: false, trimImageData: false } as never) as unknown as ArrayBuffer;

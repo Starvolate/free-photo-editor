@@ -8,7 +8,7 @@
  * app does. sharp never changes a picture: every edit is the engine's.
  */
 import sharp from 'sharp';
-import { CREDIT, WHITE, documentFromBitmap, flatten, injectMetadata, readJpegSoftware, readPngText, webpInfo, type Bitmap, type Doc,
+import { CREDIT, WHITE, docDpi, documentFromBitmap, flatten, injectMetadata, readDpi, readJpegSoftware, readPngText, webpInfo, type Bitmap, type Doc,
   type ExportFormat } from '@free-photoeditor/core';
 import { readPsdDocument, writePsdDocument } from '@free-photoeditor/core/psd';
 
@@ -153,7 +153,9 @@ export async function decodeImage(bytes: Uint8Array, maxPixels: number): Promise
     } catch (e) { throw plainSharpError(e, maxPixels); }
     bmp = await viaSharp(bytes, maxPixels, density);
   } else bmp = await viaSharp(bytes, maxPixels);
-  return { doc: documentFromBitmap(bmp), format, notes: [], credit: readCredit(bytes, format) };
+  const doc = documentFromBitmap(bmp), dpi = readDpi(bytes);
+  if (dpi) doc.dpi = dpi;
+  return { doc, format, notes: [], credit: readCredit(bytes, format) };
 }
 
 /** The "made with" line stored inside a file, if any. */
@@ -166,16 +168,20 @@ export function readCredit(b: Uint8Array, f: ReadFormat): string | null {
   return null;
 }
 
-/** Encode a document. Every file carries the credit, the same way the web app writes it. Quality runs 0..1. */
+/**
+ * Encode a document. Every file carries the credit and the picture's print resolution (DPI), the same way the web app
+ * writes them. Quality runs 0..1; at 1 a JPEG keeps every colour pixel (no colour subsampling, 4:4:4).
+ */
 export async function encodeImage(doc: Doc, format: WriteFormat, quality = 0.92): Promise<Uint8Array> {
-  if (format === 'psd') return writePsdDocument(doc, CREDIT);
+  const dpi = docDpi(doc);
+  if (format === 'psd') return writePsdDocument(doc, CREDIT, dpi);
   const flat = flatten(doc, format === 'jpeg' ? WHITE : null);
   const img = sharp(flat.data, { raw: { width: flat.width, height: flat.height, channels: 4 } });
   const q = Math.max(1, Math.min(100, Math.round(quality * 100)));
   const out = format === 'png' ? await img.png().toBuffer()
-    : format === 'jpeg' ? await img.removeAlpha().jpeg({ quality: q }).toBuffer()
+    : format === 'jpeg' ? await img.removeAlpha().jpeg({ quality: q, chromaSubsampling: q >= 100 ? '4:4:4' : '4:2:0' }).toBuffer()
       : await img.webp(q >= 100 ? { lossless: true } : { quality: q }).toBuffer();
-  return injectMetadata(new Uint8Array(out.buffer, out.byteOffset, out.length), format, CREDIT);
+  return injectMetadata(new Uint8Array(out.buffer, out.byteOffset, out.length), format, CREDIT, dpi);
 }
 /** A small PNG to show an agent what the picture looks like (no credit: it is never saved as a file). */
 export async function previewPng(bmp: Bitmap): Promise<Uint8Array> {

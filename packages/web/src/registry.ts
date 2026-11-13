@@ -32,6 +32,8 @@ file.revert | Go back to the opened version | Revert | Undo every change since t
 file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | R | 1
 file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | R | 1 | Ctrl+S
 file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | R | W1 | Ctrl+Shift+Alt+S
+file.export-print | Export for print at a DPI | Export at resolution | Pick the DPI (300 for print, 500, 600 or any number), see the print size it gives, then save. | dpi, ppi, 300 dpi, 600 dpi, print quality, high resolution, pixels per inch, for print | R | 7
+file.export-best | Export in best quality | Maximum quality | Save at the top setting: a JPEG keeps every colour pixel (4:4:4); WebP, AVIF and JPEG XL lose nothing. | best quality, highest quality, max quality, 100 percent, no compression, sharpest | R | 7
 @File > Export as = Save a copy as | Export as | Pick the file type for the copy.
 file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | R | 1
 file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | R | 1
@@ -148,6 +150,7 @@ image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch t
 image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | R | W1 | Ctrl+Shift+B
 --
 image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | R | W1 | Ctrl+Alt+I
+image.resolution | Print resolution | Resolution (DPI/PPI) | Set how many pixels print in one inch. With Resample off the pixels stay and only the print size changes. | dpi, ppi, print size, pixels per inch, document size, 300 dpi | R | 7
 image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | P | 11
 @Image > Make it bigger = Make it bigger | Upscale | Twice or four times the size, with AI drawing in sharp detail on this device.
 image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | R | 11
@@ -603,6 +606,11 @@ export function stem(w: string): string {
 export const words = (s: string): string[] => s.toLowerCase().replace(/[^a-z0-9°%]+/g, ' ').split(' ').filter(Boolean);
 interface Indexed { row: Row; fields: [string[], number][]; all: string; }
 let INDEX: Indexed[] | null = null;
+/** Add rows that live outside the menus (the new Planned functions, loaded by search on first use). */
+export function addRows(rows: Row[]): void {
+  for (const r of rows) { ROWS.push(r); BY_ID.set(r.id, r); }
+  INDEX = null;
+}
 function index(): Indexed[] {
   return (INDEX ??= ROWS.map((r) => ({
     row: r,
@@ -632,36 +640,9 @@ export function search(query: string, limit = 12): Row[] {
   return scored.sort((a, b) => b[0] - a[0]).slice(0, limit).map((s) => s[1]);
 }
 
-// ---------- the function map as Markdown (docs/function-map.md is generated from this) ----------
+// ---------- counts (docs/function-map.md is written by function-map.ts) ----------
 export function counts(): { total: number; ready: number; planned: number; tools: number; panels: number; menus: number } {
   const ready = ROWS.filter((r) => r.status === 'ready').length;
   return { total: ROWS.length, ready, planned: ROWS.length - ready, tools: ROWS.filter((r) => r.kind === 'tool').length,
     panels: PANELS.length, menus: [...MENU_INFO.keys()].filter((k) => !k.startsWith('Tools')).length };
-}
-export function functionMapMarkdown(): string {
-  const c = counts();
-  const esc = (s: string): string => s.replace(/\|/g, '\\|');
-  const out: string[] = [
-    '# Free Photo Editor: function map', '',
-    'Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.test.ts`; do not edit by hand.',
-    'Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,',
-    'one plain line of help, the wish words search understands, where it lives, and whether it works today.', '',
-    `**${c.total} functions: ${c.ready} Ready, ${c.planned} Planned** (${c.tools} tools, ${c.panels} panels, ${c.menus} menus and submenus).`, '',
-    '## Phases', '', '| Phase | What ships |', '|---|---|', ...Object.entries(PHASES).map(([k, v]) => `| ${k} | ${v} |`), '',
-  ];
-  const sections: [string, (r: Row) => boolean][] = [...TOP_MENUS.map((m) => [m, (r: Row) => r.kind !== 'panel' && (r.place === m || r.place.startsWith(m + ' > '))] as [string, (r: Row) => boolean]),
-    ['Panels (Window menu and the dock)', (r: Row) => r.kind === 'panel'], ['Tools', (r: Row) => r.kind === 'tool' || r.place.startsWith('Tools')]];
-  for (const [title, test] of sections) {
-    const rows = ROWS.filter(test);
-    const ready = rows.filter((r) => r.status === 'ready').length;
-    out.push(`## ${title} (${ready} Ready, ${rows.length - ready} Planned)`, '');
-    const subs = [...MENU_INFO.values()].filter((m) => rows.some((r) => r.place === m.path) && m.path.includes(' > '));
-    if (subs.length) out.push('Groups: ' + subs.map((m) => `${m.plain} · ${m.pro}`).join('; ') + '.', '');
-    out.push('| id | Plain name | Pro name | What it does | Wish words | Place | Status | Phase | Keys |', '|---|---|---|---|---|---|---|---|---|');
-    for (const r of rows) {
-      out.push(`| ${r.id} | ${esc(r.plain)} | ${esc(r.pro)} | ${esc(r.help)} | ${esc(r.wish)} | ${placeText(r.place)} | ${r.status === 'ready' ? 'Ready' : 'Planned'} | ${r.phase} | ${esc(r.key)} |`);
-    }
-    out.push('');
-  }
-  return out.join('\n');
 }

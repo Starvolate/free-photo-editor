@@ -18,6 +18,8 @@ jobs:
       - run: npm ci
       - name: Type check
         run: npm run typecheck
+      - name: Outside tools that read the DPI back from our files (exiftool, pdfimages)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libimage-exiftool-perl poppler-utils
       - name: Unit tests
         run: npm test
         env:
@@ -52,3 +54,17 @@ jobs:
           name: e2e-out
           path: packages/web/e2e/out
           if-no-files-found: ignore
+      - name: Outside tools read the DPI back from the browser's own exports (exiftool, pdfimages)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libimage-exiftool-perl poppler-utils
+          cd packages/web/e2e/out
+          cat x1-jpeg-sampling.txt
+          exiftool -G1 -s -XResolution -YResolution -ResolutionUnit -PixelsPerUnitX -PixelsPerUnitY -PixelUnits x1-300.png x1-300.jpg x1-300.tif
+          pdfimages -list x1-300.pdf
+          exiftool -s -s -s -PixelsPerUnitX x1-300.png | grep -qx 11811
+          exiftool -s -s -s -JFIF:XResolution x1-300.jpg | grep -qx 300
+          exiftool -s -s -s -IFD0:XResolution x1-300.jpg | grep -qx 300
+          exiftool -s -s -s -IFD0:XResolution x1-300.tif | grep -qx 300
+          pdfimages -list x1-300.pdf | awk '$3 == "image" { print $13, $14 }' | grep -qx '300 300'
+          echo "Outside readback OK: PNG, JPEG, TIFF and PDF from the browser all say 300 DPI"
+

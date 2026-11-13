@@ -3,7 +3,7 @@
 /**
  * The batch filters' dialogs (13 Nov 2026), in plain words: spin blur, lens fix, glass, ocean ripple, lens flare,
  * lighting, colour to see-through, dither, replace a colour, fewer colours and palette colour. commands.ts loads this
- * file the first time one of them runs (BATCH_IDS), so the first screen never downloads it; loading it adds them to ADJ.
+ * file the first time one of them runs (BATCH_IDS, BATCH2_IDS), so the first screen never downloads it; loading it adds them to ADJ.
  */
 import { ADJ, type AdjDef, type Ctl } from './commands';
 
@@ -48,3 +48,36 @@ export const MORE: Record<string, AdjDef> = {
     ['Fitted (256 colours)', 'Web-safe (216 colours)', 'Greys (16)', 'Black and white']), DOTS(1)]),
 };
 Object.assign(ADJ, MORE);
+
+/** The second batch (13 Nov 2026): census filters on the "Filters & blur" tab, same pattern, same lazy file. */
+export const MORE2: Record<string, AdjDef> = {
+  'filter.kaleidoscope': FX('kaleidoscope', [R('repeats', 'Repeats', 'How many times the slice and its mirror image go round the centre.', 1, 12, 3),
+    R('turn', 'Turn', 'Turns the slices round the centre.', 0, 360, 0, '°'), ACROSS(50), DOWN(50)]),
+  'filter.alien-map': FX('alien-map', [R('cycles', 'Wildness', 'How many times each colour swings between dark and bright as the picture gets lighter.', 1, 10, 3),
+    R('red', 'Red start', 'Where the red swing starts; turning it changes which parts go red.', 0, 360, 0, '°'),
+    R('green', 'Green start', 'Where the green swing starts.', 0, 360, 120, '°'), R('blue', 'Blue start', 'Where the blue swing starts.', 0, 360, 240, '°')]),
+  'filter.bloom': FX('bloom', [R('threshold', 'Glow from', 'Only parts brighter than this give off light.', 0, 254, 170),
+    R('size', 'Glow size', 'How far the light spreads.', 1, 200, 12, ' px'), PCT('strength', 'Strength', 'How bright the glow is.', 0, 300, 80)]),
+  'filter.edge-detect': FX('edge-detect', [SEL('method', 'Method', 'Four ways to find lines: smooth, even, thin, or a line on both sides of each edge.',
+    ['Smooth (Sobel)', 'Even (Prewitt)', 'Thin (Roberts)', 'Both sides (Laplace)']), PCT('amount', 'Strength', 'Makes faint lines stronger.', 10, 400, 100),
+    CHK('dark', 'Dark lines on white', 'Show the lines dark on a white page, like a drawing.', 0)]),
+  'filter.deinterlace': FX('deinterlace', [SEL('keep', 'Lines to keep', 'The other lines are rebuilt from the lines above and below them.',
+    ['1st, 3rd, 5th and so on', '2nd, 4th, 6th and so on'])]),
+  'filter.destripe': FX('destripe', [R('width', 'Stripe width', 'The widest stripe it looks for; bigger also evens out broad bands.', 1, 200, 10, ' px'),
+    PCT('strength', 'Strength', 'How much of each stripe is removed.', 0, 100, 100)]),
+  'filter.video-degrade': FX('video-degrade', [SEL('pattern', 'Pattern', 'Colour stripes of an old TV, colour dots, or dark scan lines.', ['Stripes', 'Dots', 'Scan lines']),
+    R('size', 'Size', 'How big each stripe, dot or line is.', 1, 16, 2, ' px'), PCT('strength', 'Strength', 'How strong the pattern is.', 0, 100, 60)]),
+  'filter.lowlight': FX('lowlight', [PCT('dark', 'How dark', 'How far the eye has turned to night vision: colours fade and the scene dims.', 0, 100, 70),
+    PCT('blue', 'Blue tint', 'Night vision sees blue-green best, so a night scene looks cooler.', 0, 100, 50)]),
+  'filter.bump-map': FX('bump-map', [SEL('mode', 'Result', 'Light areas look raised under a light, or a normal map for games (green points up).', ['Raised shading', 'Normal map']),
+    R('depth', 'Depth', 'How tall light areas stand over dark ones.', 1, 100, 20), R('angle', 'Light from', 'Where the light comes from: 0 is the right, 90 the top.', 0, 360, 135, '°')]),
+  'filter.star-burst': FX('star-burst', [PCT('top', 'Brightest part', 'Stars sit on the brightest points, within this share of the light range.', 1, 100, 15),
+    R('count', 'Most stars', 'The largest number of stars.', 1, 50, 12), SEL('rays', 'Rays', 'How many rays each star has.', ['4', '6', '8']),
+    PCT('length', 'Ray length', 'How long the rays are, against the area.', 1, 100, 10), PCT('bright', 'Brightness', 'How bright the stars are.', 10, 300, 100),
+    R('turn', 'Turn', 'Turns the rays.', 0, 180, 0, '°')]),
+  'filter.blur-edge-keep': FX('edge-keep-blur', [R('radius', 'Blur amount', 'How far the smoothing reaches.', 1, 10, 4, ' px'),
+    R('keep', 'Keep edges above', 'Colour differences bigger than this count as edges and stay sharp.', 1, 255, 30)]),
+  'filter.antialias': FX('antialias', [R('edge', 'Edge contrast', 'Only edges with at least this much contrast are smoothed.', 1, 255, 24),
+    PCT('strength', 'Strength', 'How much the steps are smoothed.', 0, 100, 80)]),
+};
+Object.assign(ADJ, MORE2);

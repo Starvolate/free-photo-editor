@@ -17,6 +17,9 @@ import { h } from './dom';
 import type { PointerInfo, Pt } from './input';
 import type { ToolHost } from './toolkit';
 
+/** Shapes & text path operations: the pen kit runs them through pathops.ts, loaded on first use. */
+export const PATH_OPS = new Set<string>(['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star',
+  'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']);
 export const PEN_TOOLS = new Set<ToolId>(['pen', 'path-select', 'direct-select', 'anchor-add', 'anchor-delete', 'anchor-convert']);
 
 type DragKind = 'pen' | 'close' | 'anchor' | 'handle' | 'path' | 'pull';
@@ -358,7 +361,16 @@ export function createPenKit(host: ToolHost, setSel: (s: Selection | null, label
 
   return {
     start, move, end, cancel, options, overlay, key, fillPanel, refresh, state,
-    cmd(id) { if (id === 'select.from-path') fromPath(); else if (id === 'select.to-path') toPath(); return undefined; },
+    cmd(id) {
+      if (PATH_OPS.has(id)) {
+        return import('./pathops').then((m) => m.runPathOp(id, {
+          host, edit, pick: (d, pid) => { picked.set(d, pid); },
+          picked: (d) => active(d) ?? list(d).find((x) => x.work) ?? list(d)[list(d).length - 1] ?? null,
+        }));
+      }
+      if (id === 'select.from-path') fromPath(); else if (id === 'select.to-path') toPath();
+      return undefined;
+    },
     toolChanged(prev, next) { if (prev === 'pen' && next !== 'pen') drawing = null; if (prev !== next) { focus = null; host.render(); } },
   };
 }

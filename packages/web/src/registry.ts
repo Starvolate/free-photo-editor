@@ -19,7 +19,7 @@ file.open-layer | Add a photo as a layer | Place | Put another picture on top of
 file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | R | W1
 file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | R | 7
 file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | R | 8
-file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | P | 8
+file.recent | Recent pictures | Open recent | Open again a picture you opened before. The files are kept only in this browser on this device; nothing is uploaded. | last files, history, open again | R | 8
 --
 file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | R | 8
 file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | R | 8
@@ -55,12 +55,12 @@ file.export-layers | Save each layer as a file | Export layers | Save every laye
 file.print | Print | Print | Print the picture on paper. | printer, paper | R | 8
 file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | P | 7
 @File > Automate = Do many at once | Automate | Repeat a job on many pictures.
-file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | P | 13
-file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | P | 13
+file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | R | 13
+file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | R | 13
 file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | P | 13
-file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | P | 13
+file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | R | 13
 @File
-file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | P | 13
+file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | P | 13
 
 @Edit = Edit | Edit | Undo, copy, paste, fill and turn layers.
 edit.undo | Undo | Undo | Take back the last change. | undo, mistake, go back, oops | R | 1 | Ctrl+Z
@@ -100,8 +100,8 @@ edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve |
 edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | P | 11
 edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | P | 3
 edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | P | 3
-edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. | panorama, align | P | 13
-edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. | focus stack, blend | P | 13
+edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | P | 13
+edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | P | 13
 --
 edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | P | 4
 edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | P | 4
@@ -170,7 +170,7 @@ image.trim | Cut away empty edges | Trim | Remove see-through or same-colour edg
 image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | R | W1
 --
 image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | R | W1
-image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | P | 13
+image.apply | Blend a layer into itself | Apply image | Not built: blending one colour channel into a layer needs separate channels, which the editor does not have yet. | apply image | P | 13
 image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | R | 5
 image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | P | 6
 image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | P | 13
@@ -261,7 +261,7 @@ layer.hide | Hide the layer | Hide layers | Hide the active layer without deleti
 layer.merge-down | Merge into the layer below | Merge down | Combine the active layer with the one under it. | combine layers, merge | R | W1 | Ctrl+E
 layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | R | W1 | Ctrl+Shift+E
 layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | R | W1
-layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | P | 2
+layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | R | 2
 layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | P | 13
 
 @Type = Type | Type | Add and style text.
@@ -286,7 +286,7 @@ select.subject | Select the main subject | Subject | Find the person or thing in
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | R | 11
 --
-select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
+select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection: the edge follows the picture, then smooth, soften or move it. | hair, fur, edge | R | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
 select.border | Edge band | Border | Select a band along the selection edge. | border selection | R | W3
 select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | R | W3
@@ -422,7 +422,7 @@ panel.character | Text style | Character | Font, size and spacing of text. | fon
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
-panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | P | 13
+panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | R | 13
 panel.styles | Saved looks | Styles | Save a layer's effects as a named look and put it on other layers; a few ready-made looks to start. | styles, saved effects | R | 3
 panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6

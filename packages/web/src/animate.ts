@@ -71,14 +71,21 @@ export function neighbours(d: Doc): { prev: Layer | null; next: Layer | null } {
 export interface FramePic { name: string; width: number; height: number; data: Uint8ClampedArray; x?: number; y?: number; }
 /** Picked files in the order a person expects: by name, with numbers counted (walk2 before walk10). */
 export const byName = <T extends { name: string }>(list: T[]): T[] => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-/** Import animation frames: each picture becomes one new frame at the end, centred and hidden until picked, as one undo step. */
+/**
+ * Import animation frames: each picture becomes one new frame at the end, centred and hidden until picked, as one undo step.
+ * The layer that was picked stays picked (adding a layer would pick it), so the timeline and onion skin follow the frame shown.
+ */
 export function addFrames(d: Doc, pics: FramePic[], delay = DEFAULT_DELAY): Command | null {
   if (!pics.length) return null;
-  return combineCommands('Import animation frames', pics.map((p) => {
+  const keep = d.activeId;
+  const adds = pics.map((p) => {
     const l = createLayer(withDelay(p.name, delayOf(p.name, delay)), p.width, p.height, { data: p.data, x: p.x ?? Math.round((d.width - p.width) / 2), y: p.y ?? Math.round((d.height - p.height) / 2) });
     l.visible = false;
     return addLayer(d, l, d.layers.length, 'Import animation frames');
-  }));
+  });
+  const last = d.activeId;
+  d.activeId = keep;
+  return combineCommands('Import animation frames', [...adds, { label: 'Keep the picked frame', bytes: 0, undo: (x) => { x.activeId = last; }, redo: (x) => { x.activeId = keep; } }]);
 }
 /** No picture open: a new one the size of the first frame, every picture one frame, frame 1 showing. */
 export function framesDoc(pics: FramePic[], delay = DEFAULT_DELAY): Doc | null {

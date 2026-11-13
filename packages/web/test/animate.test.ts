@@ -132,10 +132,24 @@ describe('onion skin and import frames', () => {
     expect(d.layers.length).toBe(before);
     expect(addFrames(d, [])).toBeNull();
   });
+  it('keeps the picked layer picked after an import, through undo and redo', () => {
+    const d = createDocument(6, 4, null), picked = d.activeId, n = d.layers.length;
+    const px = new Uint8ClampedArray(2 * 2 * 4).fill(9);
+    const c = addFrames(d, [{ name: 'a', width: 2, height: 2, data: px }, { name: 'b', width: 2, height: 2, data: px }]);
+    // Two frames added at the end, yet the layer picked before stays picked (adding a layer would pick the last, hidden one).
+    expect([d.layers.length, d.activeId]).toEqual([n + 2, picked]);
+    c?.undo(d);
+    expect([d.layers.length, d.activeId]).toEqual([n, picked]);
+    c?.redo(d);
+    expect([d.layers.length, d.activeId, d.layers[n + 1].name]).toEqual([n + 2, picked, 'b (100 ms)']);
+  });
   it('makes a new picture from the first frame when none is open, frame 1 showing', () => {
     const px = new Uint8ClampedArray(2 * 3 * 4).fill(200);
     const d = framesDoc([{ name: 'f1', width: 2, height: 3, data: px }, { name: 'f2', width: 2, height: 3, data: px }]);
     expect([d?.width, d?.height, d?.layers.map((l) => [l.name, l.visible])]).toEqual([2, 3, [['f1 (100 ms)', true], ['f2 (100 ms)', false]]]);
+    // Frame 1 is the one showing, so it is also the picked one, and onion skin's next frame is frame 2.
+    expect(d?.activeId).toBe(d?.layers[0].id);
+    expect(d && neighbours(d).next?.name).toBe('f2 (100 ms)');
     expect(framesDoc([])).toBeNull();
   });
 });

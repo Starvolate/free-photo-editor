@@ -418,7 +418,8 @@ for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShow
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
-for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet']) HANDLERS[id] = H((e) => e.automate(id), always);
+for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport'])
+  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' ? hasDoc : always);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

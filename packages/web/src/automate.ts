@@ -2,13 +2,14 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * Automate and batch, loaded the first time one is used: Recorded steps (record what you do once, play it again on this
- * picture as one undo step), Edit many pictures the same way, Resize many pictures, and a Sheet of small photos.
+ * picture as one undo step), Edit many pictures the same way, Resize many pictures, a Sheet of small photos, Watermark,
+ * Collage and a Passport photo sheet.
  * Steps are recorded from the command bus (a function's id plus its settings), never from mouse positions, and every
  * step is played by one player (`playSteps`) that does exactly what the editor's own dialog does, so a played set gives
  * the same pixels as doing the steps by hand. Many-picture work holds one picture in memory at a time.
  * The pure parts (the player, names, sizes, the sheet's geometry) are exported for the unit tests.
  */
-import { WHITE, activeLayer, addLayer, combineCommands, commitResult, createDocument, documentFromBitmap, editRegion, findLayer, flatten, flattenDocument, hasPixels,
+import { WHITE, activeLayer, addLayer, docRect, intersect, writeRegion, combineCommands, commitResult, createDocument, documentFromBitmap, editRegion, findLayer, flatten, flattenDocument, hasPixels,
   innerOf, jobPadding, mergeVisible, paddedRegion, parseHex, readRegion, resizeBitmap, resizeDocument, runJob, trimDocument, turnDocument, turnLayer,
   createLayer, type Bitmap, type Command, type Doc, type JobParams, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
 import { zipSync, type Zippable } from '@free-photoeditor/formats/zip';
@@ -265,7 +266,8 @@ export async function runBatch(files: readonly File[], work: (doc: Doc) => Promi
 }
 
 /** The sheet shared by Edit many pictures and Resize many pictures: pick, choose, Start, a progress bar, Cancel. */
-function manySheet(host: AutoHost, id: string, title: string, intro: string, extra: HTMLElement[], work: () => ((doc: Doc) => Promise<void>) | string, zipName: string): void {
+function manySheet(host: AutoHost, id: string, title: string, intro: string, extra: HTMLElement[], work: () => ((doc: Doc) => Promise<void>) | string, zipName: string,
+  top: HTMLElement[] = []): void {
   const b = sheetBody(host, id), pick = picker(id), format = choice(id + '-format', FORMATS), ctl: Batch = { stop: false };
   const bar = h('progress', { max: '1', value: '0', hidden: true, 'data-testid': id + '-progress', style: 'width:100%' }) as HTMLProgressElement;
   const status = note('', id + '-status');
@@ -290,7 +292,7 @@ function manySheet(host: AutoHost, id: string, title: string, intro: string, ext
     download(blob, zipName, host.root);
     status.textContent = `Saved ${plural(r.names.length, 'picture')} in ${zipName} (${fmtBytes(blob.size)}).` + tail;
   };
-  b.replaceChildren(note(intro), pick.el, ...extra, field('Save as', format), bar, status, h('div', { class: 'fpe-actions' }, cancel, start));
+  b.replaceChildren(note(intro), ...top, pick.el, ...extra, field('Save as', format), bar, status, h('div', { class: 'fpe-actions' }, cancel, start));
   host.sheet(id, title, b);
 }
 
@@ -394,6 +396,204 @@ function contactSheet(host: AutoHost): void {
   host.sheet(id, 'Sheet of small photos', b);
 }
 
+// ---- Watermark --------------------------------------------------------------------------------------------------------------
+/** The nine places a mark can sit: t and b for top and bottom, l and r for left and right, c for the middle. */
+export type Place = 'tl' | 't' | 'tr' | 'l' | 'c' | 'r' | 'bl' | 'b' | 'br';
+export const PLACES: [Place, string][] = [['br', 'Bottom right'], ['bl', 'Bottom left'], ['tr', 'Top right'], ['tl', 'Top left'], ['c', 'Middle'],
+  ['b', 'Bottom middle'], ['t', 'Top middle'], ['l', 'Left middle'], ['r', 'Right middle']];
+/** Size: % of the picture's width. Margin: % of its shorter side. Opacity: %. */
+export interface MarkOpts { size: number; place: Place; margin: number; opacity: number; }
+/** Where a mark mw × mh goes on a picture w × h: `margin` px from the edges it sits by, kept on the picture; a mark bigger than the picture is centred. */
+export function markPlace(w: number, hgt: number, mw: number, mh: number, place: Place, margin: number): { x: number; y: number } {
+  const m = Math.max(0, Math.round(margin));
+  const along = (size: number, mark: number, at: number): number => {
+    const free = size - mark;
+    if (free <= 0) return Math.floor(free / 2);
+    return Math.max(0, Math.min(free, at < 0 ? m : at > 0 ? free - m : Math.floor(free / 2)));
+  };
+  return { x: along(w, mw, place.endsWith('l') ? -1 : place.endsWith('r') ? 1 : 0), y: along(hgt, mh, place.startsWith('t') ? -1 : place.startsWith('b') ? 1 : 0) };
+}
+/** Put a mark on a picture as its own top layer, "Watermark", sized to the picture's width, at its opacity. Returns the undo step. */
+export function stampMark(doc: Doc, mark: Bitmap, o: MarkOpts): Command {
+  const w = Math.max(1, Math.round(doc.width * o.size / 100)), mh = Math.max(1, Math.round(mark.height * w / mark.width));
+  const at = markPlace(doc.width, doc.height, w, mh, o.place, Math.min(doc.width, doc.height) * o.margin / 100);
+  const l = createLayer('Watermark', w, mh, { data: w === mark.width && mh === mark.height ? mark.data.slice() : resizeBitmap(mark, w, mh), x: at.x, y: at.y });
+  l.opacity = Math.max(0, Math.min(1, o.opacity / 100));
+  return addLayer(doc, l, doc.layers.length, 'Watermark');
+}
+/** Text drawn as a picture, large, so it stays crisp when sized down (only where a browser can draw text). */
+function textMark(text: string, colour: string): Bitmap | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'), x = c.getContext('2d'), font = '600 120px system-ui, sans-serif';
+  if (!x) return null;
+  x.font = font;
+  c.width = Math.max(1, Math.ceil(x.measureText(text).width) + 24); c.height = 168;
+  x.font = font; x.fillStyle = colour; x.textBaseline = 'middle';
+  x.fillText(text, 12, 84);
+  return { width: c.width, height: c.height, data: x.getImageData(0, 0, c.width, c.height).data };
+}
+function watermark(host: AutoHost): void {
+  const id = 'auto.watermark', kind = choice(id + '-kind', [['text', 'Text'], ['logo', 'A picture, such as a logo']]);
+  const text = h('input', { type: 'text', value: '© Your name', maxlength: '80', 'data-testid': id + '-text' }) as HTMLInputElement;
+  const colour = choice(id + '-colour', [['#ffffff', 'White'], ['#000000', 'Black'], ['#808080', 'Grey']]), logo = picker(id + '-logo');
+  const size = num(id + '-size', 25, 1, 100), place = choice(id + '-place', PLACES), margin = num(id + '-margin', 3, 0, 40), opacity = num(id + '-opacity', 60, 1, 100);
+  const words = h('div', { class: 'fpe-stack' }, field('Text', text), field('Colour', colour));
+  const show = (): void => { words.hidden = kind.value !== 'text'; logo.el.hidden = kind.value === 'text'; };
+  kind.addEventListener('change', show);
+  show();
+  const opts = (): MarkOpts | string => {
+    const o: MarkOpts = { size: Number(size.value), place: place.value as Place, margin: Number(margin.value), opacity: Number(opacity.value) };
+    if (!(o.size >= 1 && o.size <= 100 && o.margin >= 0 && o.margin <= 40 && o.opacity >= 1 && o.opacity <= 100)) return 'The size goes from 1 to 100 %, the space from the edge from 0 to 40 % and the opacity from 1 to 100 %.';
+    if (kind.value === 'text' ? !text.value.trim() : !logo.files().length) return kind.value === 'text' ? 'Type the text to stamp first.' : 'Choose the logo picture first.';
+    return o;
+  };
+  let made: { key: File | string; bmp: Promise<Bitmap | null> } | null = null;
+  const mark = (): Promise<Bitmap | null> => {
+    const f = logo.files()[0], key = kind.value === 'text' ? `${text.value}|${colour.value}` : f;
+    if (made?.key !== key) made = { key, bmp: kind.value === 'text' ? Promise.resolve(textMark(text.value.trim(), colour.value)) : openQuietly(f, f.name).then((o) => (o ? flatten(o.doc) : null), () => null) };
+    return made.bmp;
+  };
+  const said = note('', id + '-here-status');
+  const here = btn('Stamp this picture', true, id + '-here', () => void (async () => {
+    const d = host.doc(), o = opts();
+    if (!d) { said.textContent = 'Open or create a picture first, or choose many pictures below.'; return; }
+    if (typeof o === 'string') { said.textContent = o; return; }
+    const m = await mark();
+    if (!m) { said.textContent = 'That logo could not be opened as a picture.'; return; }
+    host.push(stampMark(d, m, o), true);
+    host.closeSheet();
+    host.toast('Stamped as its own layer, "Watermark": move it with the Move tool, or undo it in one step.');
+  })());
+  manySheet(host, id, 'Watermark', 'Stamp your text or logo on this picture as a layer you can still move, or on many pictures at once: one ZIP comes back, and nothing is uploaded.',
+    [], () => {
+      const o = opts();
+      if (typeof o === 'string') return o;
+      return async (doc) => { const m = await mark(); if (!m) throw new Error('No mark'); stampMark(doc, m, o); };
+    }, 'Watermarked pictures.zip',
+    [field('What to stamp', kind), words, logo.el, field('Size (% of the picture width)', size), field('Where', place),
+      field('Space from the edge (% of the shorter side)', margin), field('Opacity (%)', opacity), h('div', { class: 'fpe-actions' }, here), said,
+      h('h3', { class: 'fpe-label' }, 'Or stamp many pictures')]);
+}
+
+// ---- Collage ------------------------------------------------------------------------------------------------------------------
+export type Layout = 'grid' | 'row' | 'column' | 'feature';
+export const LAYOUTS: [Layout, string][] = [['grid', 'Grid (rows and columns)'], ['row', 'One row, side by side'], ['column', 'One column, stacked'], ['feature', 'One big photo, the rest beside it']];
+const PAGES: [string, string][] = [['2000x2000', 'Square, 2000 × 2000 px'], ['1600x2000', 'Upright 4:5, 1600 × 2000 px'], ['2400x1600', 'Wide 3:2, 2400 × 1600 px'], ['2560x1440', 'Screen 16:9, 2560 × 1440 px']];
+/** The cells of a collage on a page W × H, `gap` apart and from the edges. "feature": the first photo takes two thirds, the rest share the last third. */
+export function collageLayout(n: number, layout: Layout, W: number, H: number, gap: number): Rect[] {
+  const g = Math.max(0, Math.round(gap)), cells: Rect[] = [], w = W - 2 * g, hh = H - 2 * g;
+  const grid = (x0: number, y0: number, aw: number, ah: number, cols: number, rows: number, count: number): void => {
+    const cw = Math.max(1, Math.floor((aw - g * (cols - 1)) / cols)), ch = Math.max(1, Math.floor((ah - g * (rows - 1)) / rows));
+    for (let i = 0; i < count; i++) cells.push({ x: x0 + (i % cols) * (cw + g), y: y0 + Math.floor(i / cols) * (ch + g), w: cw, h: ch });
+  };
+  if (n < 1) return cells;
+  if (layout === 'row') grid(g, g, w, hh, n, 1, n);
+  else if (layout === 'column') grid(g, g, w, hh, 1, n, n);
+  else if (layout === 'feature' && n > 1) {
+    const bw = Math.floor((w - g) * 2 / 3);
+    cells.push({ x: g, y: g, w: bw, h: hh });
+    grid(g + bw + g, g, w - bw - g, hh, 1, n - 1, n - 1);
+  } else { const cols = Math.ceil(Math.sqrt(n)); grid(g, g, w, hh, cols, Math.ceil(n / cols), n); }
+  return cells;
+}
+/** Each photo fitted into its cell, keeping its shape (never cropped), as its own layer named after its file. Returns the files that could not be opened. */
+export async function placePhotos(doc: Doc, files: readonly File[], cells: readonly Rect[], progress: (i: number, n: number) => void = () => undefined): Promise<string[]> {
+  const failed: string[] = [];
+  for (let i = 0; i < files.length && i < cells.length; i++) {
+    progress(i, files.length);
+    await new Promise((r) => setTimeout(r, 0));
+    const o = await openQuietly(files[i], files[i].name).catch(() => null);
+    if (!o) { failed.push(files[i].name); continue; }
+    const flat = flatten(o.doc), r = fitIn(flat.width, flat.height, cells[i]);
+    addLayer(doc, createLayer(baseName(files[i].name), r.w, r.h, { data: resizeBitmap(flat, r.w, r.h), x: r.x, y: r.y }), doc.layers.length);
+  }
+  return failed;
+}
+function collage(host: AutoHost): void {
+  const id = 'auto.collage', b = sheetBody(host, id), pick = picker(id);
+  const layout = choice(id + '-layout', LAYOUTS), page = choice(id + '-page', PAGES), gap = num(id + '-gap', 20, 0, 400);
+  const paper = choice(id + '-bg', [['#ffffff', 'White'], ['#000000', 'Black']]), status = note('', id + '-status');
+  const make = btn('Make the collage', true, id + '-make', () => void go());
+  const go = async (): Promise<void> => {
+    const files = pick.files(), g = Math.round(Number(gap.value)), [W, H] = page.value.split('x').map(Number);
+    if (!files.length) { status.textContent = 'Choose the photos first.'; return; }
+    if (!(g >= 0 && g <= 400)) { status.textContent = 'The gap goes from 0 to 400 px.'; return; }
+    const cells = collageLayout(files.length, layout.value as Layout, W, H, g);
+    if (cells.some((c) => c.w < 16 || c.h < 16)) { status.textContent = 'Too many photos for this page and gap. Use fewer photos, a smaller gap or another layout.'; return; }
+    make.disabled = true;
+    const doc = createDocument(W, H, parseHex(paper.value) ?? WHITE), failed = await placePhotos(doc, files, cells, (i, n) => { status.textContent = `Placing ${i + 1} of ${n}…`; });
+    make.disabled = false;
+    host.closeSheet();
+    host.openDoc(doc, 'Collage');
+    host.toast(`Placed ${plural(files.length - failed.length, 'photo')}, each on its own layer and never cropped.${failed.length ? ` Could not open: ${failed.join(', ')}.` : ''}`);
+  };
+  b.replaceChildren(note('Pick the photos and a layout. Each photo is fitted into its place, keeping its whole shape, on its own layer of one new picture, so you can still move or resize any of them.'),
+    pick.el, field('Layout', layout), field('Page', page), field('Gap between photos (px)', gap), field('Background', paper), status,
+    h('div', { class: 'fpe-actions' }, btn('Cancel', false, id + '-cancel', () => host.closeSheet()), make));
+  host.sheet(id, 'Collage', b);
+}
+
+// ---- Passport photo sheet ---------------------------------------------------------------------------------------------------------
+/** Common sizes, width × height in mm. Rules change and differ by country, so the sheet tells the person to check their own. */
+export const PASSPORT_SIZES: [string, string, number, number][] = [
+  ['35x45', '35 × 45 mm (for example the UK and the Schengen area)', 35, 45], ['51x51', '2 × 2 inches, 51 × 51 mm (for example US passports)', 50.8, 50.8],
+  ['50x70', '50 × 70 mm (for example Canadian passports)', 50, 70], ['33x48', '33 × 48 mm (for example Chinese visas)', 33, 48]];
+const PAPERS: [string, string, number, number][] = [['6x4', '6 × 4 inch photo print (152 × 102 mm)', 152.4, 101.6], ['a4', 'A4 page (210 × 297 mm)', 210, 297]];
+export const mmPx = (mm: number, dpi: number): number => Math.round(mm / 25.4 * dpi);
+/** The page and the copies in pixels: as many copies as fit, `gap` mm apart and from the edges, the block centred; the page turned whichever way holds more. */
+export function passportPlan(pw: number, ph: number, sw: number, sh: number, dpi: number, gap: number): { width: number; height: number; photo: { w: number; h: number }; cells: Rect[] } {
+  const a = mmPx(sw, dpi), c = mmPx(sh, dpi), w = mmPx(pw, dpi), hh = mmPx(ph, dpi), g = mmPx(gap, dpi);
+  const fit = (W: number, H: number): [number, number] => [Math.max(0, Math.floor((W - g) / (w + g))), Math.max(0, Math.floor((H - g) / (hh + g)))];
+  let W = Math.max(a, c), H = Math.min(a, c), [cols, rows] = fit(W, H);
+  const [c2, r2] = fit(H, W);
+  if (c2 * r2 > cols * rows) { [W, H, cols, rows] = [H, W, c2, r2]; }
+  const x0 = Math.floor((W - (cols * w + (cols - 1) * g)) / 2), y0 = Math.floor((H - (rows * hh + (rows - 1) * g)) / 2), cells: Rect[] = [];
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) cells.push({ x: x0 + k * (w + g), y: y0 + r * (hh + g), w, h: hh });
+  return { width: W, height: H, photo: { w, h: hh }, cells };
+}
+/** The largest box of this shape (width / height), centred in an area. */
+export function cropToShape(area: Rect, aspect: number): Rect {
+  let w = area.w, hh = Math.round(w / aspect);
+  if (hh > area.h) { hh = area.h; w = Math.round(hh * aspect); }
+  return { x: area.x + Math.floor((area.w - w) / 2), y: area.y + Math.floor((area.h - hh) / 2), w, h: hh };
+}
+/** A thin grey cutting line just outside a copy. */
+function frame(l: { width: number; height: number; data: Uint8ClampedArray }, r: Rect): void {
+  const put = (x: number, y: number): void => { if (x >= 0 && y >= 0 && x < l.width && y < l.height) l.data.set([200, 200, 200, 255], (y * l.width + x) * 4); };
+  for (let x = r.x - 1; x <= r.x + r.w; x++) { put(x, r.y - 1); put(x, r.y + r.h); }
+  for (let y = r.y; y < r.y + r.h; y++) { put(r.x - 1, y); put(r.x + r.w, y); }
+}
+/** A print page of copies of the picture (the selected box if there is one, else the middle) at a passport size, set to print at `dpi`. */
+export function buildPassport(src: Doc, pw: number, ph: number, sw: number, sh: number, dpi: number, gap: number): { doc: Doc; copies: number } {
+  const plan = passportPlan(pw, ph, sw, sh, dpi, gap), flat = flatten(src, WHITE);
+  const r = cropToShape((src.selection && intersect(src.selection, docRect(src))) || docRect(src), pw / ph), crop = { width: r.w, height: r.h, data: readRegion(flat, r) };
+  const px = r.w === plan.photo.w && r.h === plan.photo.h ? crop.data : resizeBitmap(crop, plan.photo.w, plan.photo.h);
+  const doc = createDocument(plan.width, plan.height, WHITE), photos = createLayer('Passport photos', plan.width, plan.height);
+  for (const c of plan.cells) { writeRegion(photos, c, px); frame(doc.layers[0], c); }
+  addLayer(doc, photos, 1);
+  doc.dpi = dpi;
+  return { doc, copies: plan.cells.length };
+}
+function passport(host: AutoHost): void {
+  const id = 'auto.passport', b = sheetBody(host, id), size = choice(id + '-size', PASSPORT_SIZES.map(([k, t]): [string, string] => [k, t]));
+  const paper = choice(id + '-paper', PAPERS.map(([k, t]): [string, string] => [k, t])), gap = num(id + '-gap', 2, 0, 10), status = note('', id + '-status');
+  const make = btn('Make the sheet', true, id + '-make', () => {
+    const d = host.doc(), s = PASSPORT_SIZES.find((x) => x[0] === size.value), pp = PAPERS.find((x) => x[0] === paper.value), g = Number(gap.value);
+    if (!d || !s || !pp) { status.textContent = 'Open the photo first.'; return; }
+    if (!(g >= 0 && g <= 10)) { status.textContent = 'The gap goes from 0 to 10 mm.'; return; }
+    const r = buildPassport(d, s[2], s[3], pp[2], pp[3], 300, g);
+    if (!r.copies) { status.textContent = 'That photo size does not fit on this paper.'; return; }
+    host.closeSheet();
+    host.openDoc(r.doc, 'Passport photos');
+    host.toast(`${plural(r.copies, 'copy').replace('copys', 'copies')} on one page, set to print at 300 dpi. Print at actual size (100 %), not "fit to page".`);
+  });
+  b.replaceChildren(note('Makes a page of copies of this photo at a passport photo size, ready to print and cut along the grey lines. If you selected a box around the head and shoulders, that box is used; otherwise the middle of the photo.'),
+    note("Check your own country's rules before you print. This sets only the size: the head size, background colour, expression and how recent the photo is are not checked.", id + '-rule'),
+    field('Photo size', size), field('Paper', paper), field('Gap between copies (mm)', gap), status,
+    h('div', { class: 'fpe-actions' }, btn('Cancel', false, id + '-cancel', () => host.closeSheet()), make));
+  host.sheet(id, 'Passport photo sheet', b);
+}
+
 // ---- Recorded steps (the Actions sheet) ------------------------------------------------------------------------------------------
 let chosen = 0;
 function stopRecording(host: AutoHost, save: boolean): void {
@@ -481,4 +681,7 @@ export function runAutomate(id: string, host: AutoHost): void {
   else if (id === 'file.batch') batch(host);
   else if (id === 'file.resize-many') resizeMany(host);
   else if (id === 'file.contact-sheet') contactSheet(host);
+  else if (id === 'auto.watermark') watermark(host);
+  else if (id === 'auto.collage') collage(host);
+  else if (id === 'auto.passport') passport(host);
 }

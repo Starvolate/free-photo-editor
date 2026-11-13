@@ -2,11 +2,11 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** Automate and batch: a recorded set plays back to the same pixels as the steps done by hand, names, sizes, the sheet's geometry. */
 import { describe, expect, it } from 'vitest';
-import { WHITE, createDocument, runJob, turnDocument, type Doc } from '@free-photoeditor/core';
+import { WHITE, createDocument, flatten, runJob, turnDocument, type Doc } from '@free-photoeditor/core';
 import { runEffect } from '@free-photoeditor/core/fx';
 import { BY_ID } from '../src/registry';
 import { ADJ } from '../src/commands';
-import { STARTERS, fitIn, freeName, loadSets, localJob, outputNames, playSteps, recordStep, sheetLayout, sizeFor, stepText, type Step } from '../src/automate';
+import { STARTERS, buildPassport, collageLayout, cropToShape, fitIn, markPlace, mmPx, passportPlan, stampMark, freeName, loadSets, localJob, outputNames, playSteps, recordStep, sheetLayout, sizeFor, stepText, type Step } from '../src/automate';
 
 /** A 40 × 30 picture with a colour ramp and a hard edge, so sharpening and grain both change it. */
 function picture(): Doc {
@@ -122,5 +122,62 @@ describe('Many pictures', () => {
     expect(sheetLayout(2, 4, 1000, 10, false).cell).toBe(485);
     expect(fitIn(200, 100, { x: 20, y: 20, w: 306, h: 306 })).toEqual({ x: 20, y: 96, w: 306, h: 153 });
     expect(fitIn(50, 100, { x: 0, y: 0, w: 100, h: 100 })).toEqual({ x: 25, y: 0, w: 50, h: 100 });
+  });
+});
+
+describe('Watermark, collage and passport photo sheet', () => {
+  it('places a mark in the nine places, a margin from the edges, kept on the picture, centred when bigger than it', () => {
+    expect(markPlace(200, 100, 50, 20, 'br', 10)).toEqual({ x: 140, y: 70 });
+    expect(markPlace(200, 100, 50, 20, 'tl', 10)).toEqual({ x: 10, y: 10 });
+    expect(markPlace(200, 100, 50, 20, 'c', 10)).toEqual({ x: 75, y: 40 });
+    expect(markPlace(200, 100, 50, 20, 't', 10)).toEqual({ x: 75, y: 10 });
+    expect(markPlace(200, 100, 50, 20, 'r', 10)).toEqual({ x: 140, y: 40 });
+    expect(markPlace(200, 100, 50, 20, 'bl', 500)).toEqual({ x: 150, y: 0 });
+    expect(markPlace(200, 100, 300, 20, 'br', 10)).toEqual({ x: -50, y: 70 });
+  });
+  it('stamps the mark as its own top layer, sized to the picture width, at its opacity; one undo takes it away', () => {
+    const d = createDocument(200, 100, WHITE), mark = { width: 40, height: 20, data: new Uint8ClampedArray(40 * 20 * 4) };
+    for (let i = 0; i < mark.data.length; i += 4) mark.data.set([255, 0, 0, 255], i);
+    const cmd = stampMark(d, mark, { size: 25, place: 'br', margin: 5, opacity: 50 }), l = d.layers[d.layers.length - 1];
+    // 25 % of 200 = 50 wide, so 25 high; 5 % of the shorter side (100) = 5 px: x = 200 - 50 - 5, y = 100 - 25 - 5.
+    expect([d.layers.length, l.name, l.x, l.y, l.width, l.height, l.opacity]).toEqual([2, 'Watermark', 145, 70, 50, 25, 0.5]);
+    const px = flatten(d).data, at = (x: number, y: number): number[] => Array.from(px.subarray((y * 200 + x) * 4, (y * 200 + x) * 4 + 4));
+    expect(at(10, 10)).toEqual([255, 255, 255, 255]);
+    const m = at(160, 80);
+    expect([m[0], m[2], m[3]]).toEqual([255, m[1], 255]);
+    expect(Math.abs(m[1] - 127.5)).toBeLessThanOrEqual(1);
+    cmd.undo(d);
+    expect(d.layers.length).toBe(1);
+  });
+  it('lays photos out in a grid, a row, a column, or one big beside the rest', () => {
+    expect(collageLayout(5, 'grid', 1000, 800, 20)).toEqual([{ x: 20, y: 20, w: 306, h: 370 }, { x: 346, y: 20, w: 306, h: 370 }, { x: 672, y: 20, w: 306, h: 370 },
+      { x: 20, y: 410, w: 306, h: 370 }, { x: 346, y: 410, w: 306, h: 370 }]);
+    expect(collageLayout(3, 'feature', 1000, 600, 10)).toEqual([{ x: 10, y: 10, w: 646, h: 580 }, { x: 666, y: 10, w: 324, h: 285 }, { x: 666, y: 305, w: 324, h: 285 }]);
+    expect(collageLayout(2, 'row', 500, 300, 10)).toEqual([{ x: 10, y: 10, w: 235, h: 280 }, { x: 255, y: 10, w: 235, h: 280 }]);
+    expect(collageLayout(2, 'column', 300, 500, 0)).toEqual([{ x: 0, y: 0, w: 300, h: 250 }, { x: 0, y: 250, w: 300, h: 250 }]);
+    expect(collageLayout(1, 'feature', 400, 300, 10)).toEqual([{ x: 10, y: 10, w: 380, h: 280 }]);
+  });
+  it('works out a passport page: 35 × 45 mm on a 6 × 4 inch print at 300 dpi holds 8 copies', () => {
+    expect([mmPx(35, 300), mmPx(45, 300), mmPx(2, 300)]).toEqual([413, 531, 24]);
+    const plan = passportPlan(35, 45, 152.4, 101.6, 300, 2);
+    expect([plan.width, plan.height, plan.photo.w, plan.photo.h, plan.cells.length]).toEqual([1800, 1200, 413, 531, 8]);
+    expect(plan.cells.slice(0, 2)).toEqual([{ x: 38, y: 57, w: 413, h: 531 }, { x: 475, y: 57, w: 413, h: 531 }]);
+    expect(plan.cells[4]).toEqual({ x: 38, y: 612, w: 413, h: 531 });
+    expect(passportPlan(50.8, 50.8, 152.4, 101.6, 300, 2).cells.length).toBe(2);
+    expect(cropToShape({ x: 0, y: 0, w: 960, h: 640 }, 35 / 45)).toEqual({ x: 231, y: 0, w: 498, h: 640 });
+  });
+  it('fills the page with copies of the photo (or of the selected box), grey cutting lines around each, set to print at its dpi', () => {
+    // At 50.8 dpi 1 mm is 2 px: a 35 × 45 mm copy is 70 × 90 px, the 6 × 4 inch page 305 × 203 px, the gap 4 px.
+    const src = createDocument(70, 90, WHITE), l = src.layers[0];
+    for (let i = 0; i < 70 * 90; i++) l.data.set((i % 70) < 35 ? [255, 0, 0, 255] : [0, 0, 255, 255], i * 4);
+    const { doc, copies } = buildPassport(src, 35, 45, 152.4, 101.6, 50.8, 2);
+    expect([doc.width, doc.height, doc.layers.length, doc.dpi, copies]).toEqual([305, 203, 2, 50.8, 8]);
+    const px = flatten(doc).data, at = (x: number, y: number): number[] => Array.from(px.subarray((y * 305 + x) * 4, (y * 305 + x) * 4 + 4));
+    // The block of 4 × 2 copies is 292 × 184 px, centred: the first copy starts at (6, 9), the next 74 px to its right.
+    expect([at(16, 19), at(66, 19), at(90, 19), at(140, 19)]).toEqual([[255, 0, 0, 255], [0, 0, 255, 255], [255, 0, 0, 255], [0, 0, 255, 255]]);
+    expect([at(5, 19), at(76, 19), at(77, 19)]).toEqual([[200, 200, 200, 255], [200, 200, 200, 255], [255, 255, 255, 255]]);
+    src.selection = { x: 35, y: 0, w: 35, h: 45 };
+    const sel = flatten(buildPassport(src, 35, 45, 152.4, 101.6, 50.8, 2).doc).data;
+    expect(Array.from(sel.subarray((19 * 305 + 16) * 4, (19 * 305 + 16) * 4 + 4))).toEqual([0, 0, 255, 255]);
   });
 });

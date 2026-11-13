@@ -60,7 +60,7 @@ file.resize-many | Resize many pictures | Image processor | Resize and convert m
 file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | P | 13
 file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | R | 13
 @File
-file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | P | 13
+file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | P | 13
 
 @Edit = Edit | Edit | Undo, copy, paste, fill and turn layers.
 edit.undo | Undo | Undo | Take back the last change. | undo, mistake, go back, oops | R | 1 | Ctrl+Z
@@ -100,8 +100,8 @@ edit.warp | Bend | Warp | Bend the layer with a grid of handles. | bend, curve |
 edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | P | 11
 edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | P | 3
 edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | P | 3
-edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. | panorama, align | P | 13
-edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. | focus stack, blend | P | 13
+edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | P | 13
+edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | P | 13
 --
 edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | P | 4
 edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | P | 4

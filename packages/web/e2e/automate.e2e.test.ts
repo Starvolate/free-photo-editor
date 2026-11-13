@@ -4,7 +4,8 @@
  * Automate and batch in a real headless Chrome, each function reached with real clicks from its ribbon home:
  * Recorded steps (record a flip and a filter by hand, stop, play on the original: the same pixels, as one undo step),
  * Edit many pictures the same way and Resize many pictures (one ZIP, names in the picked order, the right sizes), and
- * the Sheet of small photos (one new picture, a layer per photo).
+ * the Sheet of small photos (one new picture, a layer per photo), Watermark (this picture and many), Collage and the
+ * Passport photo sheet.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts automate
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -210,6 +211,66 @@ suite('Automate and batch (headless Chrome)', () => {
     // Two columns of 190 px cells, 20 px apart: two rows with 28 px caption strips.
     expect([info?.width, info?.height]).toEqual([440, 20 + 2 * (190 + 28 + 20)]);
     expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Watermark: text stamped on this picture as its own layer (one undo step), and on many pictures in one ZIP', async () => {
+    const p = await open();
+    const original = await hash(p), n0 = await steps(p), layers0 = (await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.layers.length ?? 0;
+    await reach(p, 'auto.watermark');
+    await p.waitForSelector('[data-testid="auto.watermark-here"]');
+    await p.fill('[data-testid="auto.watermark-text"]', '© Free Photo Editor');
+    await p.fill('[data-testid="auto.watermark-size"]', '30');
+    await p.fill('[data-testid="auto.watermark-opacity"]', '90');
+    await p.screenshot({ path: join(OUT, 'automate-watermark-sheet-1440.png') });
+    await p.click('[data-testid="auto.watermark-here"]');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0);
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.layers.length).toBe(layers0 + 1);
+    expect(await hash(p)).not.toBe(original);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(original);
+    await reach(p, 'auto.watermark');
+    await pickFiles(p, 'auto.watermark', files);
+    await p.selectOption('[data-testid="auto.watermark-format"]', 'png');
+    const before = await p.evaluate(() => (window as unknown as Win).__n.dl);
+    await p.click('[data-testid="auto.watermark-start"]');
+    const z = await zipOut(p, before);
+    expect(z.name).toBe('Watermarked pictures.zip');
+    expect(Object.keys(z.files)).toEqual(['wide.png', 'tall.png', 'small.png']);
+    const wide = decodePng(z.files['wide.png']);
+    expect([wide.width, wide.height]).toEqual([120, 60]);
+    let marked = 0;
+    for (let i = 0; i < wide.data.length; i += 4) if (wide.data[i] !== 200 || wide.data[i + 1] !== 40 || wide.data[i + 2] !== 40) marked++;
+    expect(marked).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Collage: one new picture, each photo on its own layer in its place', async () => {
+    const p = await open();
+    await reach(p, 'auto.collage');
+    await pickFiles(p, 'auto.collage', files);
+    await p.selectOption('[data-testid="auto.collage-layout"]', 'feature');
+    await p.selectOption('[data-testid="auto.collage-page"]', '2400x1600');
+    await p.click('[data-testid="auto.collage-make"]');
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.layers.length === 4);
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height]).toEqual([2400, 1600]);
+    expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
+    await p.screenshot({ path: join(OUT, 'automate-collage-1440.png') });
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Passport photo sheet: copies at 35 × 45 mm on a 6 × 4 inch page at 300 dpi, with the check-your-rules line', async () => {
+    const p = await open();
+    await reach(p, 'auto.passport');
+    await p.waitForSelector('[data-testid="auto.passport-rule"]');
+    expect(await p.textContent('[data-testid="auto.passport-rule"]')).toContain("Check your own country's rules");
+    await p.selectOption('[data-testid="auto.passport-size"]', '35x45');
+    await p.selectOption('[data-testid="auto.passport-paper"]', '6x4');
+    await p.click('[data-testid="auto.passport-make"]');
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.width === 1800);
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height, info?.layers.length]).toEqual([1800, 1200, 2]);
     expect(errors).toEqual([]);
   }, 60_000);
 });

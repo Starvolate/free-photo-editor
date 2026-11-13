@@ -404,3 +404,20 @@
 /* W3b: a dialog moves by its title bar */
 .fpe-dlg-head{touch-action:none;cursor:move;user-select:none}
 .fpe-dlg-head button{cursor:pointer}
+/* W8: works offline, installs like an app, safety copies */
+.fpe-update{position:absolute;left:50%;bottom:44px;z-index:85;display:flex;align-items:center;gap:8px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:4px 4px 4px 14px;border-radius:10px;background:var(--toast-bg);color:var(--toast-fg);box-shadow:var(--shadow);font-size:14px;line-height:1.3}
+.fpe-update .fpe-icon{flex:none;width:18px;height:18px}
+.fpe-update-dot{opacity:.6}
+.fpe-update-reload{min-height:44px;padding:0 14px;border-radius:8px;background:var(--accent-bg);color:var(--accent-fg);font-weight:600}
+.fpe-update .fpe-update-close{color:inherit}
+.fpe[data-layout=phone] .fpe-update{bottom:calc(76px + env(safe-area-inset-bottom))}
+.fpe-restore{max-width:560px;margin:0 auto 18px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);text-align:left}
+.fpe-restore-title{margin:0 0 6px;font-size:16px}
+.fpe-restore p{margin:0 0 8px;color:var(--muted)}
+.fpe-restore-list{margin:0 0 4px;padding-left:18px}
+.fpe-restore-size{color:var(--muted)}
+.fpe-steps{margin:0;padding:0;list-style:none;display:grid;gap:12px}
+.fpe-steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.fpe-step-icon{width:22px;height:22px;margin-top:1px}
+.fpe-install h3,.fpe-install h4{margin:8px 0 4px}
+.fpe-install details{margin-top:8px}

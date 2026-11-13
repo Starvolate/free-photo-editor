@@ -19,6 +19,9 @@ const ICONS: Record<string, unknown> = {
   square: Square, stamp: Stamp, sun: Sun, swap: ArrowLeftRight, trash: Trash2, type: Type, undo: Undo2, wand: Wand,
   'zoom-in': ZoomIn, 'zoom-out': ZoomOut,
 };
+// W8 (offline and install): the install, reload, Share and Add to Home Screen marks.
+import { MonitorDown, RefreshCw, Share, SquarePlus } from 'lucide';
+Object.assign(ICONS, { install: MonitorDown, refresh: RefreshCw, share: Share, 'add-square': SquarePlus });
 /** Every icon name the sprite holds (tests check that the interface only asks for these). */
 export const ICON_NAMES: readonly string[] = Object.keys(ICONS);
 const SVGNS = 'http://www.w3.org/2000/svg';

@@ -3,3 +3,4 @@
 /** Embed the editor in any page: mount(element, options). */
 export { mount } from './app';
 export type { DocInfo, EditorController, MountOptions } from './app';
+export type { AppOptions } from './offline';

@@ -300,7 +300,7 @@ export const HANDLERS: Record<string, Handler> = {
   'edit.pref-pro-names': H((e) => e.setNames(!e.proNames, true), always, (e) => e.proNames),
   'edit.pref-hints': H((e) => e.setHints(!e.hints, true), always, (e) => e.hints),
   'edit.pref-theme': H((e) => e.toggleTheme(), always, (e) => e.root.dataset.theme === 'light'),
-  'image.size': H((e) => e.openModal('size')),
+  'image.size': H((e) => e.openSize()),
   'image.resolution': H((e) => e.openSize('dpi')),
   'image.canvas-size': H((e) => e.openModal('canvas')),
   'image.rotate-cw': H((e) => e.turnCanvas('cw')),

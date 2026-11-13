@@ -12,15 +12,15 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
-  selectionAlpha, setLayerProps, toHex, PRINT_UNITS, docDpi, dpiForPrint, fromInches, isDpi, printPixels, roundDpi, setDocDpi, type PrintUnit, trimDocument, turnDocument, turnLayer, union, writeRegion,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
+  selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
 } from '@free-photoeditor/core';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
-import { errText, fmtBytes, h, icon, iconButton, type Attrs } from './dom';
+import { errText, fmtBytes, focusInSheet, h, icon, iconButton, type Attrs } from './dom';
 import type { DpiPanel } from './export-dpi';
-import { UNIT_LABEL, holdsDpi, joinCommands, n2, printText } from './print-text';
+import { holdsDpi, n2, printText } from './print-text';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
 import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData, exportList, fmtInfo, multiKind } from './io';
@@ -240,6 +240,8 @@ export class Editor {
   private dpiPanel: DpiPanel | null = null;
   private dpiHost!: HTMLElement;
   private dpiMod: Promise<typeof import('./export-dpi')> | null = null;
+  /** export-dpi.ts once loaded: Picture size's DPI half builds from it. */
+  private dpiLib: typeof import('./export-dpi') | null = null;
   private askBody!: HTMLElement;
   private sheets = new Map<string, HTMLElement>();
   private bodies = new Map<string, HTMLElement>();
@@ -2643,6 +2645,7 @@ export class Editor {
   openModal(id: string): void {
     const s = this.sheets.get(id);
     if (!s) return;
+    if (id === 'size' && !this.dpiLib) { void this.openSize(); return; }
     if (id === 'size' || id === 'canvas' || id === 'rename') { if (!this.doc) return this.needDoc(); this.renderForm(id); }
     if (id === 'menu') this.renderMenuSheet(null);
     this.closePopover();
@@ -2709,93 +2712,16 @@ export class Editor {
       : `Now ${d.width} × ${d.height} px. The picture keeps its size; space is added or cut around it.`),
       h('div', { class: 'fpe-row' }, h('label', { for: fid + 'w' }, 'Width (px)'), w), h('div', { class: 'fpe-row' }, h('label', { for: fid + 'h' }, 'Height (px)'), hh)];
     if (id === 'size') {
-      // Resolution (DPI) and Resample. On: the picture gets new pixels. Off: the pixels stay, and width, height and DPI
-      // change the print size only (dpiForPrint), saved as one undoable step (setDocDpi).
-      const note = rows[0] as HTMLElement;
-      let dpi = docDpi(d), unit: PrintUnit = 'cm';
-      const dec = (k: string, label: string, help: string): HTMLInputElement => h('input', { id: fid + k, type: 'number', min: 0.01, step: 'any', inputmode: 'decimal',
-        'data-testid': `size-${k}`, 'aria-label': label, 'data-help-title': label, 'data-help': help });
-      const res = dec('dpi', 'Resolution in DPI', 'How many pixels go into one printed inch: 300 for print, 72 for screens.');
-      res.value = n2(dpi);
-      const pw = dec('pw', 'Print width', 'How wide the picture prints.'), ph = dec('ph', 'Print height', 'How tall the picture prints.');
-      const unitSel = h('select', { id: fid + 'u', 'aria-label': 'Print unit', 'data-testid': 'size-unit' }, ...PRINT_UNITS.map((u) => h('option', { value: u }, UNIT_LABEL[u])));
-      const resample = h('input', { id: fid + 's', type: 'checkbox', checked: true, 'data-testid': 'size-resample' });
-      const px = (): [number, number] => [Math.max(1, Math.round(Number(w.value))), Math.max(1, Math.round(Number(hh.value)))];
-      const showPrint = (): void => { const [W, H] = px(); pw.value = n2(fromInches(W / dpi, unit)); ph.value = n2(fromInches(H / dpi, unit)); };
-      w.addEventListener('input', showPrint);
-      hh.addEventListener('input', showPrint);
-      res.addEventListener('input', () => {
-        const v = Number(res.value);
-        if (!isDpi(v)) return;
-        dpi = roundDpi(v);
-        // Resample on keeps the print size, so the pixels follow; off keeps the pixels, so the print size follows.
-        if (resample.checked) { w.value = String(printPixels(Number(pw.value), unit, dpi)); hh.value = String(printPixels(Number(ph.value), unit, dpi)); } else showPrint();
-      });
-      const fromPrint = (side: 'w' | 'h'): void => {
-        const v = Number((side === 'w' ? pw : ph).value), [W, H] = px();
-        if (!(v > 0)) return;
-        if (resample.checked) {
-          const a = side === 'w' ? w : hh, b = side === 'w' ? hh : w, na = side === 'w' ? d.width : d.height, nb = side === 'w' ? d.height : d.width;
-          a.value = String(printPixels(v, unit, dpi));
-          if (keep.checked) b.value = String(Math.max(1, Math.round((Number(a.value) * nb) / na)));
-          (side === 'w' ? ph : pw).value = n2(fromInches(Number(b.value) / dpi, unit));
-        } else {
-          const nd = dpiForPrint(side === 'w' ? W : H, v, unit);
-          if (!isDpi(nd)) return;
-          dpi = nd;
-          res.value = n2(dpi);
-          (side === 'w' ? ph : pw).value = n2(fromInches((side === 'w' ? H : W) / dpi, unit));
-        }
-      };
-      pw.addEventListener('input', () => fromPrint('w'));
-      ph.addEventListener('input', () => fromPrint('h'));
-      unitSel.addEventListener('change', () => { unit = unitSel.value as PrintUnit; showPrint(); });
-      const mode = h('select', { id: fid + 'm', 'data-testid': 'size-mode' }, h('option', { value: 'smooth' }, 'Smooth (photos)'), h('option', { value: 'pixel' }, 'Hard pixels (pixel art)'));
-      const modeRow = h('div', { class: 'fpe-row', 'data-help-title': 'Quality', 'data-help': 'Smooth suits photos. Hard pixels keeps pixel art crisp.' }, h('label', { for: fid + 'm' }, 'Quality'), mode);
-      const presets = h('div', { class: 'fpe-chips' }, ...([['Half', 0.5], ['1080 wide', 1080 / d.width], ['1920 wide', 1920 / d.width], ['Double', 2]] as const).map(([label, k]) =>
-        h('button', { type: 'button', class: 'fpe-chip', onclick: () => { w.value = String(Math.max(1, Math.round(d.width * k))); hh.value = String(Math.max(1, Math.round(d.height * k))); showPrint(); } }, label)));
-      const apply = (): void => {
-        const nd = Number(res.value);
-        if (!isDpi(nd)) { this.toast('The DPI must be a number from 1 to 10000, for example 300.'); return; }
-        if (!resample.checked) {
-          this.closeModal();
-          this.pushCmd(setDocDpi(d, nd));
-          const k = docDpi(d);
-          this.toast(`The pixels stay ${d.width} × ${d.height}. At ${n2(k)} DPI the picture prints ${printText(d.width, d.height, k)}.`);
-          return;
-        }
-        const W = Math.round(Number(w.value)), H = Math.round(Number(hh.value));
-        if (!(W >= 1 && H >= 1 && W <= 16384 && H <= 16384)) { this.toast('Width and height must be between 1 and 16384 pixels.'); return; }
-        if (W * H > maxPixelsForDevice()) { this.toast('That size is too large for this device.'); return; }
-        this.closeModal();
-        this.cancelSession();
-        this.hole = null;
-        const before = docDpi(d);
-        this.pushCmd(joinCommands(resizeDocument(d, W, H, mode.value as Resample), setDocDpi(d, nd)), true);
-        this.updateAnts();
-        this.fit();
-        const k = docDpi(d);
-        this.toast(`Picture is now ${d.width} × ${d.height} px.${k !== before ? ` At ${n2(k)} DPI it prints ${printText(d.width, d.height, k)}.` : ''}`);
-      };
-      const act = actions('Resize', apply), goBtn = act.lastElementChild as HTMLElement;
-      resample.addEventListener('change', () => {
-        const on = resample.checked;
-        if (!on) { w.value = String(d.width); hh.value = String(d.height); keep.checked = true; showPrint(); }
-        w.disabled = hh.disabled = keep.disabled = !on;
-        for (const b of presets.querySelectorAll<HTMLButtonElement>('button')) b.disabled = !on;
-        modeRow.hidden = !on;
-        goBtn.textContent = on ? 'Resize' : 'Set the DPI';
-        note.textContent = on ? `Now ${d.width} × ${d.height} px. The picture is redrawn to the new size.`
-          : `Now ${d.width} × ${d.height} px. The pixels stay as they are: only the DPI and the print size change. DPI alone never adds detail.`;
-      });
-      showPrint();
-      rows.unshift(presets);
-      rows.push(h('div', { class: 'fpe-check' }, keep, h('label', { for: fid + 'k' }, 'Keep the shape (width and height change together)')),
-        h('div', { class: 'fpe-row' }, h('label', { for: fid + 'dpi' }, 'Resolution (DPI)'), res),
-        h('div', { class: 'fpe-row fpe-size-print' }, h('label', { for: fid + 'pw' }, 'Print size'), pw, h('span', { class: 'fpe-out', 'aria-hidden': 'true' }, '×'), ph, unitSel),
-        h('div', { class: 'fpe-check', 'data-help-title': 'Resample', 'data-help': 'On: the picture gets more or fewer pixels. Off: the pixels stay; width, height and DPI change the print size only.' },
-          resample, h('label', { for: fid + 's' }, 'Resample: change the number of pixels')),
-        modeRow, act);
+      // Resolution (DPI), print size and Resample live in export-dpi.ts, loaded before the sheet opens (openSize).
+      const lib = this.dpiLib;
+      if (!lib) return;
+      const out = lib.sizeRows(d, { fid, w, hh, keep, note: rows[0] as HTMLElement, actions }, {
+        toast: (m) => this.toast(m),
+        setDpi: (make) => { this.closeModal(); this.pushCmd(make()); },
+        resize: (make) => { this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit(); },
+      }, maxPixelsForDevice());
+      rows.unshift(out.presets);
+      rows.push(...out.rows);
     } else {
       let ax = 0.5, ay = 0.5;
       const grid = h('div', { class: 'fpe-anchor', role: 'group', 'aria-label': 'Which side stays put' });
@@ -2879,7 +2805,7 @@ export class Editor {
       const list = exportList(), n = list.length, i = list.indexOf(this.exportFormat);
       this.exportFormat = list[(i + (fwd ? 1 : n - 1)) % n];
       this.renderExport();
-      this.exportChips.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+      focusInSheet(this.exportChips.querySelector<HTMLElement>('[aria-checked="true"]'));
     });
     const q = h('input', { id: id + 'q', type: 'range', min: 10, max: 100, step: 1, value: 92, 'data-testid': 'export-quality' });
     const qOut = h('output', { class: 'fpe-out', for: id + 'q' }, '92%');
@@ -2917,15 +2843,24 @@ export class Editor {
       this.openModal('open-options');
     });
   }
-  /** Picture size, with the cursor in Resolution (DPI) when asked. */
-  openSize(focus?: 'dpi'): void {
+  /**
+   * Picture size, with the cursor in Resolution (DPI) when asked. "Print resolution" opens it with Resample off, so a
+   * beginner who types 300 keeps every pixel and only the print size changes; ticking Resample is the pro path.
+   */
+  async openSize(focus?: 'dpi'): Promise<void> {
+    if (!this.doc) return this.needDoc();
+    try { await this.loadDpi(); } catch (e) { this.toast(errText(e, "Picture size couldn't load. Check the connection and try again.")); return; }
     this.openModal('size');
-    if (focus && this.modal === 'size') requestAnimationFrame(() => requestAnimationFrame(() => this.sheets.get('size')?.querySelector<HTMLElement>('[data-testid="size-dpi"]')?.focus()));
+    if (!focus || this.modal !== 'size') return;
+    const s = this.sheets.get('size'), re = s?.querySelector<HTMLInputElement>('[data-testid="size-resample"]');
+    if (re?.checked) { re.checked = false; re.dispatchEvent(new Event('change')); }
+    requestAnimationFrame(() => requestAnimationFrame(() => focusInSheet(s?.querySelector<HTMLElement>('[data-testid="size-dpi"]'))));
   }
   /** Export; `focus` opens it at the DPI choice or with Best quality ticked. */
   /** Load Export's DPI section once and put it in the sheet. */
   private loadDpi(): Promise<typeof import('./export-dpi')> {
     return (this.dpiMod ??= import('./export-dpi').then((m) => {
+      this.dpiLib = m;
       this.dpiPanel ??= m.buildDpiPanel(String(this.uid), () => this.renderExport(), maxPixelsForDevice());
       if (!this.dpiPanel.el.isConnected) this.dpiHost.replaceChildren(this.dpiPanel.el);
       return m;

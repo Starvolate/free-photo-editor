@@ -224,6 +224,7 @@
 .fpe-chip{height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);cursor:pointer;white-space:nowrap}
 .fpe-chip:hover{background:var(--hover)}
 .fpe-chip[aria-checked=true]{border-color:transparent;background:var(--accent-bg);color:var(--accent-fg)}
+.fpe-sheet :is(input,select,.fpe-chip):disabled{opacity:.45;cursor:not-allowed}
 .fpe-anchor{display:grid;grid-template-columns:repeat(3,28px);gap:4px}
 .fpe-anchor button{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:4px;background:var(--panel-2);cursor:pointer}
 .fpe-anchor button[aria-pressed=true]{border-color:transparent;background:var(--accent-bg)}

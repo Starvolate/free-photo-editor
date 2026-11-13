@@ -472,14 +472,28 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     await folderDoc(q, false);
     await q.tap('[data-testid="btn-layers"]');
     await q.waitForSelector('[data-testid="dock"][data-state="half"]');
-    const name = await q.locator('[data-testid="layer-row"][data-depth="1"] [data-testid="layer-select"]').boundingBox();
+    // Press only once the row has stopped moving (the same box at two looks 120 ms apart), a thumb at its centre lands on it,
+    // the thumbnails are drawn and the tap that opened the sheet is well over (the S1 phone test pressed only after a shot).
+    const inner = '[data-testid="layer-row"][data-depth="1"] [data-testid="layer-select"]';
+    await q.waitForFunction((s) => {
+      const el = document.querySelector(s), w = window as unknown as { lastBox?: string };
+      if (!el) return false;
+      const r = el.getBoundingClientRect(), k = `${r.x},${r.y},${r.width},${r.height}`, still = w.lastBox === k;
+      w.lastBox = k;
+      return still && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('[data-testid="layer-select"]') === el;
+    }, inner, { polling: 120, timeout: 10_000 });
+    await thumbs(q);
+    await q.waitForTimeout(400);
+    const name = await q.locator(inner).boundingBox();
     if (!name) throw new Error('no row inside the folder');
     const x = name.x + name.width / 2, y = name.y + name.height / 2;
     const cdp = await q.context().newCDPSession(q);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await q.waitForTimeout(700);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]');
+    // If the sheet does not open, keep a picture of the screen for the next look.
+    await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]', { timeout: 8_000 })
+      .catch(async (e: unknown) => { await q.screenshot({ path: join(OUT, 'w6-s2-phone-390-no-sheet.png') }); throw e; });
     const out = q.locator('[data-testid="layer-action-ungroup"]');
     expect(await out.getAttribute('aria-disabled')).toBeNull();
     expect(await q.locator('[data-testid="layer-action-group"]').getAttribute('aria-disabled')).toBeNull();

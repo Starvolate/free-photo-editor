@@ -38,3 +38,18 @@ export function fmtBytes(n: number): string {
 }
 export const errText = (e: unknown, fallback = 'Something went wrong.'): string =>
   e instanceof Error && e.message ? e.message : typeof e === 'string' && e ? e : fallback;
+/**
+ * Focus a control inside a sheet and scroll only that sheet's body to show it. A plain focus() or scrollIntoView()
+ * also scrolls the editor behind it: on a phone the sheet is still sliding up when the cursor lands, and the whole
+ * editor once moved up about 180 px, cutting off the sheet's title.
+ */
+export function focusInSheet(el: HTMLElement | null | undefined): void {
+  if (!el) return;
+  const body = el.closest<HTMLElement>('.fpe-sheet-body');
+  if (body) {
+    const b = body.getBoundingClientRect(), r = el.getBoundingClientRect(), pad = 8;
+    if (r.top < b.top + pad) body.scrollTop -= b.top + pad - r.top;
+    else if (r.bottom > b.bottom - pad) body.scrollTop += Math.min(r.bottom - b.bottom + pad, r.top - b.top - pad);
+  }
+  el.focus({ preventScroll: true });
+}

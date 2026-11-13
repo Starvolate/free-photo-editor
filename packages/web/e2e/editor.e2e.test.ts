@@ -148,6 +148,8 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
   let server: Server | undefined;
   let page: Page;
   const errors: string[] = [];
+  /** Every script the page asked for, and every one the offline worker saved for later, from the very first load. */
+  const pageJs: string[] = [], swJs: string[] = [];
 
   beforeAll(async () => {
     if (!CHROME) throw new Error('Set CHROME_PATH to a Chrome or Chromium binary to run the browser test (it runs headless).');
@@ -157,6 +159,7 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     server = s.server;
     browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, reducedMotion: 'reduce', deviceScaleFactor: 1 });
+    ctx.on('request', (r) => { if (/\.m?js(\?|$)/.test(r.url())) (r.serviceWorker() ? swJs : pageJs).push(r.url()); });
     page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push('page error: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error') errors.push('console error: ' + m.text()); });
@@ -175,6 +178,13 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     expect(i.layers.length).toBe(1);
     await expect.poll(() => page.isVisible('[data-testid="start"]')).toBe(false);
     expect(await sample(page, 10, 10)).toEqual([20, 30, 128, 255]);
+    // The filter families (fx-*.js) load only when an effect first runs: with a photo open and nothing run, the page has
+    // not asked for them, so the size gate counts them as an add-on. What the offline worker saves in the background
+    // is listed for the record, not counted as the first screen.
+    await page.waitForTimeout(1000);
+    expect(pageJs.length).toBeGreaterThan(0);
+    expect(pageJs.filter((u) => /\/fx-[\w-]+\.js/.test(u))).toEqual([]);
+    console.log(`First load: ${pageJs.length} scripts asked for by the page; fx-*.js saved by the offline worker: ${swJs.filter((u) => /\/fx-[\w-]+\.js/.test(u)).length}`);
   });
 
   it('paints a brush stroke with the mouse', async () => {

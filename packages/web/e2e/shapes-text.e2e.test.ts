@@ -102,7 +102,7 @@ function typing(p: Page): { at: (i: number) => Promise<L>; last: () => Promise<L
     await p.evaluate(async () => { const f = (window as unknown as Win).fpe; await f.run('tool.move'); await f.run('tool.type'); });
     const c = await p.evaluate(([a, b]) => (window as unknown as Win).fpe.toClient(a, b), [x, y] as const);
     await p.mouse.click(c!.x, c!.y);
-    await p.waitForSelector('[data-testid="text-edit"]');
+    await p.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'text-edit');
     await p.keyboard.type(words);
     await p.click('[data-testid="text-done"]');
     await p.waitForTimeout(150);
@@ -301,6 +301,8 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     const mid = await p.evaluate(([a, b]) => (window as unknown as Win).fpe.toClient(a, b), [arc2.x + arc2.width / 2, arc2.y + arc2.height / 2] as const);
     await p.mouse.click(mid!.x, mid!.y);
     await p.waitForSelector('[data-testid="text-bent-note"]', { state: 'visible' });
+    // The box takes focus on the next frame; keys sent before that land on the picture as tool keys.
+    await p.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'text-edit');
     await p.keyboard.press('Control+End');
     await p.keyboard.type(' now');
     await wait((l) => l.height > flat.height + 20 && l.width !== arc2.width, 'typing keeps the bend');
@@ -422,11 +424,13 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await p.click('[data-testid="typewarp-done"]');
     // Add up-down text with no words picked waits for the next click; Add text after it gives straight words again.
     await p.evaluate(() => (window as unknown as Win).fpe.run('layer.new'));
+    // Real waits, as a person would: the up-down hint shows, then Add text is clicked on the ribbon.
     await go(p, 'type.add-vertical');
-    await p.evaluate(() => (window as unknown as Win).fpe.run('type.add'));
+    await p.waitForFunction(() => (document.querySelector('[data-testid="toast"]')?.textContent ?? '').includes('letters run top to bottom'));
+    await go(p, 'type.add');
     const c = await p.evaluate(([x, y]) => (window as unknown as Win).fpe.toClient(x, y), [900, 200] as const);
     await p.mouse.click(c!.x, c!.y);
-    await p.waitForSelector('[data-testid="text-edit"]');
+    await p.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'text-edit');
     await p.keyboard.type('flat words');
     await wait((l) => l.width > l.height * 2, 'Add text after Add up-down text is straight');
     await p.keyboard.press('Control+Enter');

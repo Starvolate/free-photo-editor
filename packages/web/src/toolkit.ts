@@ -1138,6 +1138,12 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'type.add': S.vertical = false; host.setTool('type'); break;
       case 'type.warp': case 'type.path': case 'type.find': case 'type.smooth': case 'type.add-vertical': case 'type.to-shape':
       case 'type.styles': case 'type.opentype': case 'type.in-shape':
+        // Up-down text with no words picked is set here, at once: a late typekit load must never undo a later Add text.
+        if (id === 'type.add-vertical' && !textLayer()) {
+          S.vertical = true; host.setTool('type');
+          host.toast('Click the picture and type: the letters run top to bottom, and each new line starts a column to the left.');
+          break;
+        }
         return import('./typekit').then((m) => m.runType(id, {
           render: renderText, change: contentStep, restyle, style: styleNow, addPath: (p, label) => pen.addPath(p, label),
           vertical: () => { S.vertical = true; host.setTool('type'); }, commit: () => { if (te) commitText(); },

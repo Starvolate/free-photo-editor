@@ -402,7 +402,7 @@ for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 
 for (const id of ['shape.spiral-star', 'shape.qr']) HANDLERS[id] = w3(id);
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 // Add text clears a pending "Add up-down text" in the tool kit, so the next words are straight again.
-HANDLERS['type.add'] = H((e) => { if (e.tk) e.tk.cmd('type.add'); else e.setTool('type'); });
+HANDLERS['type.add'] = w3('type.add'); // through the same toolkit load as Add up-down text, so the two run in click order
 // Shapes & text, type: bent text and text along a line (typekit.ts, loaded by the tool kit on first use).
 for (const id of ['type.warp', 'type.path', 'type.find', 'type.smooth', 'type.add-vertical', 'type.to-shape', 'type.styles', 'type.opentype', 'type.in-shape']) HANDLERS[id] = w3(id);
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).

@@ -103,8 +103,8 @@ edit.perspective-warp | Re-angle a building | Perspective warp | Change the angl
 edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | P | 13
 edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | P | 13
 --
-edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | P | 4
-edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | P | 4
+edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | R | 4
+edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern to paint or fill with. | custom pattern, texture | R | 4
 @Edit > Settings = Settings | Preferences | Change how the editor looks and talks to you.
 edit.pref-pro-names | Show pro names first | Pro names first | Put the usual professional names before the plain names. | expert names, professional names | R | W1
 edit.pref-hints | Show help lines | Tooltips | Show one plain line of help when you point at, focus or hold a control. | tips, hints, help text | R | W1
@@ -420,11 +420,11 @@ panel.channels | Colour channels | Channels | See the red, green, blue and see-t
 panel.paths | Outlines | Paths | Outlines you drew with the pen: pick, rename, delete, or turn one into a selection. | paths, outlines, saved path, work path | R | 6
 panel.character | Text style | Character | Font, size and spacing of text. | font size | R | W3
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
-panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
+panel.brushes | Brush tips | Brushes | Choose, turn and space brush tips. | brush shapes | R | 4
 panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
 panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | R | 13
 panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | P | 3
-panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
+panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | R | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6
 panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | P | 13
 panel.timeline | Animation timeline | Timeline | Frames of an animation in order. | animation | P | 13

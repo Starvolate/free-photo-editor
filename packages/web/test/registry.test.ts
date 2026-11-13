@@ -170,6 +170,8 @@ describe('the Task ribbon', () => {
       // Batch crop-warp (warpkit.ts, app.ts, toolkit.ts).
       'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin',
       'retouch.frequency-separation', 'retouch.deblur',
+      // Batch paint (paintkit.ts): the Brush extras sheet.
+      'paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'paint.enclose-fill', 'paint.colorize-mask',
       // Batch shapes-text (pathops).
       'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
       // Automate and batch (automate.ts).

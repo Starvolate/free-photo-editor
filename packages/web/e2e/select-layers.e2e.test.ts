@@ -3,7 +3,8 @@
 /**
  * The select-and-layers batch in a real headless Chrome, each reached with real clicks from its ribbon home: Select by
  * brightness on the sample photo (the 1440 shot), Round the corners of a selection, Lift the selection into a new layer,
- * Reverse the layer order and Crop a layer to its content. Each change is one undo step.
+ * Reverse the layer order and Crop a layer to its content; part 2: Refine edge with its live preview (the 1440 shot), paint
+ * the selection as a grey picture, colour-label a layer and find it. Each change is one undo step.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts select-layers
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -108,13 +109,17 @@ suite('Select and layers batch (headless Chrome)', () => {
 
   it('lifts the selection into its own layer, reverses the order, and crops a layer to its content', async () => {
     const p = await open();
-    await select(p, 850, 100, 100, 100);
+    // The sample opens with more than one layer: lift a 40 x 40 box from the middle of the active one.
+    const first = await info(p), src = first.layers[first.active];
+    const cx = Math.round(src.x + src.width / 2) - 20, cy = Math.round(src.y + src.height / 2) - 20;
+    await select(p, cx, cy, 40, 40);
     await clickHome(p, 'select.float');
-    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.layers.length === 2);
+    await p.waitForFunction((k) => (window as unknown as Win).fpe.getInfo()?.layers.length === k, first.layers.length + 1);
     let d = await info(p);
-    expect(d.layers[1]).toMatchObject({ name: 'Lifted pixels', x: 850, y: 100, width: 100, height: 100 });
+    expect(d.layers[d.active]).toMatchObject({ name: 'Lifted pixels', x: cx, y: cy, width: 40, height: 40 });
+    const upside = JSON.stringify(d.layers.map((l) => l.name).reverse());
     await clickHome(p, 'layer.reverse');
-    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.layers[0].name === 'Lifted pixels');
+    await p.waitForFunction((k) => JSON.stringify((window as unknown as Win).fpe.getInfo()?.layers.map((l) => l.name)) === k, upside);
     // A new layer with a 30 x 20 patch painted on it shrinks to that patch.
     await p.evaluate(async () => {
       const f = (window as unknown as Win).fpe;
@@ -128,5 +133,55 @@ suite('Select and layers batch (headless Chrome)', () => {
     await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().steps as number) === k, n + 1);
     d = await info(p);
     expect(d.layers[d.active]).toMatchObject({ x: 10, y: 10, width: 30, height: 20 });
+  }, 60_000);
+
+  it('refines the edge of a selection with a live preview over the picture (the 1440 shot), in one undo step', async () => {
+    const p = await open();
+    await select(p, 300, 120, 360, 300);
+    const n = await steps(p);
+    await clickHome(p, 'select.refine');
+    const cv = p.locator('[data-testid="sm-refine"] [data-testid="sm-refine-preview"]');
+    await cv.waitFor({ state: 'visible' });
+    // The preview is drawn: the picture inside the box is brighter than the dimmed rest.
+    const lit = await cv.evaluate((c: HTMLCanvasElement) => {
+      const x = c.getContext('2d')!, w = c.width, hh = c.height, mean = (a: Uint8ClampedArray) => { let t = 0; for (let i = 0; i < a.length; i += 4) t += a[i] + a[i + 1] + a[i + 2]; return t / (a.length / 4); };
+      return [mean(x.getImageData(Math.round(w * 0.45), Math.round(hh * 0.45), 4, 4).data), mean(x.getImageData(2, 2, 4, 4).data)];
+    });
+    expect(lit[0]).toBeGreaterThan(lit[1]);
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'refine-edge-1440.png') });
+    await apply(p, 'refine');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().steps as number) === k, n + 1);
+    expect((await info(p)).selection).not.toBeNull();
+  }, 60_000);
+
+  it('paints the selection as a grey picture and turns it back into a selection', async () => {
+    const p = await open();
+    await select(p, 100, 100, 200, 150);
+    const n = await steps(p);
+    await clickHome(p, 'select.editor');
+    const cv = p.locator('[data-testid="sm-editor"] [data-testid="sm-editor-canvas"]');
+    await cv.waitFor({ state: 'visible' });
+    const b = (await cv.boundingBox())!;
+    await p.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.7);
+    await p.mouse.down();
+    await p.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.7, { steps: 8 });
+    await p.mouse.up();
+    await apply(p, 'editor');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().steps as number) === k, n + 1);
+    const s = (await info(p)).selection!;
+    expect(s.x + s.w).toBeGreaterThan(400);
+  }, 60_000);
+
+  it('tags a layer green and finds it by its label', async () => {
+    const p = await open();
+    const n = await steps(p);
+    await clickHome(p, 'layer.colour-label');
+    await p.locator('[data-testid="sm-label"] [data-testid="sm-label-green"]').click();
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().steps as number) === k, n + 1);
+    await p.locator('[data-testid="sm-label"] [data-testid="sm-done"]').click();
+    await clickHome(p, 'layer.filter');
+    await p.locator('[data-testid="sm-find"] [data-testid="sm-find-label"]').selectOption('green');
+    await expect.poll(() => p.locator('[data-testid="sm-find"] [data-testid="sm-find-item"]').count()).toBe(1);
   }, 60_000);
 });

@@ -6,8 +6,8 @@ import { History } from '../src/history';
 import { emptyMask, type Mask } from '../src/selection';
 import { checkTree } from '../src/tree';
 import {
-  alphaMask, channelMask, contentBox, cropToContent, floatSelection, invertAlpha, luminanceMask, removeAlpha, removeHoles, reversedOrder,
-  roughenMask, roundCorners, splitByColour,
+  alphaMask, channelMask, cleanEdgeColours, contentBox, cropToContent, dabMask, edgeByColour, findLayers, floatSelection, invertAlpha, layerKindOf,
+  luminanceMask, refineEdge, removeAlpha, removeHoles, reversedOrder, roughenMask, roundCorners, splitByColour,
 } from '../src/selection-more';
 
 /** A 1-row picture from grey levels (or [r, g, b, a] pixels). */
@@ -133,5 +133,72 @@ describe('layer pixels', () => {
     expect(checkTree(top)).toBeNull();
     expect(reversedOrder(layers, b.id)!.map((l) => l.name)).toEqual(['a', 'c', 'b', 'F', 'd']);
     expect(reversedOrder([a], a.id)).toBeNull();
+  });
+});
+
+describe('select and layers, part 2', () => {
+  it('reads a layer mask into Select the solid parts when it is on, eased by its density', () => {
+    const l = createLayer('A', 2, 1, { data: new Uint8ClampedArray([9, 9, 9, 255, 9, 9, 9, 200]) });
+    l.mask = { x: 0, y: 0, width: 1, height: 1, data: new Uint8Array([0]), outside: 255, enabled: true, linked: true, density: 1, feather: 0 };
+    expect([...alphaMask(l, 2, 1).data]).toEqual([0, 200]);
+    l.mask = { ...l.mask, density: 0.5 };
+    expect([...alphaMask(l, 2, 1).data]).toEqual([128, 200]); // 255 * (255 - 0.5 * 255) / 255 = 127.5
+    l.mask = { ...l.mask, enabled: false };
+    expect([...alphaMask(l, 2, 1).data]).toEqual([255, 200]);
+  });
+  it('refine edge: near the edge the selection follows the colours, so a grey pixel between white and black is half selected', () => {
+    // 8 x 3: white at x 0..3, grey 128 at x 4, black at x 5..7. The selection covers x 0..4, one pixel too far.
+    const px = [0, 1, 2].flatMap(() => [255, 255, 255, 255, 128, 0, 0, 0].map((v) => [v, v, v, 255]));
+    const src = { width: 8, height: 3, data: new Uint8ClampedArray(px.flat()) };
+    const m = box(8, 3, 0, 0, 5, 3);
+    const out = refineEdge(src, m, { radius: 1, smooth: 0, feather: 0, shift: 0 });
+    expect(Math.abs(at(out, 4, 1) - 128)).toBeLessThanOrEqual(1); // (128 - 0) / (255 - 0) = 0.502
+    expect([at(out, 0, 1), at(out, 3, 1), at(out, 5, 1), at(out, 7, 1)]).toEqual([255, 255, 0, 0]);
+    // One flat grey picture: inside and outside look the same, so the edge stays as it was.
+    const flat = { width: 8, height: 3, data: new Uint8ClampedArray(24 * 4).fill(128) };
+    expect([...edgeByColour(flat, m, 1).data]).toEqual([...m.data]);
+  });
+  it('refine edge: shift grows the box by one pixel, and feather softens it', () => {
+    const m = box(10, 10, 3, 3, 4, 4);
+    const grown = refineEdge({ width: 10, height: 10, data: new Uint8ClampedArray(400) }, m, { radius: 0, smooth: 0, feather: 0, shift: 1 });
+    expect([at(grown, 2, 4), at(grown, 1, 4), at(grown, 4, 4)]).toEqual([255, 0, 255]);
+    const soft = refineEdge({ width: 10, height: 10, data: new Uint8ClampedArray(400) }, m, { radius: 0, smooth: 0, feather: 2, shift: 0 });
+    expect(at(soft, 2, 4)).toBeGreaterThan(0);
+    expect(at(soft, 2, 4)).toBeLessThan(255);
+  });
+  it('cleans edge colours: a half see-through white fringe on a red block turns red, alpha stays', () => {
+    const red = [255, 0, 0, 255];
+    const data = new Uint8ClampedArray([...red, ...red, ...red, 255, 255, 255, 128, 0, 0, 0, 0]);
+    const out = cleanEdgeColours(data, 5, 1, (i) => data[i * 4 + 3], 1)!;
+    expect([...out.subarray(12, 16)]).toEqual([255, 0, 0, 128]);
+    expect([...out.subarray(16, 20)]).toEqual([0, 0, 0, 0]);
+    const half = cleanEdgeColours(data, 5, 1, (i) => data[i * 4 + 3], 1, 0.5)!;
+    expect([...half.subarray(12, 16)]).toEqual([255, 128, 128, 128]); // 255 + (0 - 255) * 0.5 = 127.5
+    const solid = new Uint8ClampedArray([...red, ...red]);
+    expect(cleanEdgeColours(solid, 2, 1, (i) => solid[i * 4 + 3], 1)).toBeNull();
+  });
+  it('paints a dab into the selection mask and takes it away again', () => {
+    const m = emptyMask(5, 5);
+    expect(dabMask(m, 2.5, 2.5, 1, true)).toEqual({ x: 0, y: 0, w: 5, h: 5 });
+    expect([at(m, 2, 2), at(m, 1, 2), at(m, 0, 0)]).toEqual([255, 128, 0]); // distance 0, 1 and 2.83; rim 1 + 0.5 - d
+    dabMask(m, 2.5, 2.5, 0.5, false);
+    expect([at(m, 2, 2), at(m, 1, 2)]).toEqual([0, 128]);
+  });
+  it('finds layers by state, kind, label and the words in their notes and tags', () => {
+    const sky = createLayer('Sky', 1, 1), title = createLayer('Title', 1, 1), group = createFolder('Group');
+    sky.label = 'blue';
+    title.content = { kind: 'text' } as never;
+    title.visible = false;
+    title.locked = true;
+    group.meta = { notes: 'Client asked for this', tags: ['final'] };
+    const all = [sky, title, group], names = (q: Parameters<typeof findLayers>[1]) => findLayers(all, q).map((l) => l.name);
+    expect(names({ state: 'hidden' })).toEqual(['Title']);
+    expect(names({ state: 'unlocked' })).toEqual(['Sky', 'Group']);
+    expect(names({ label: 'blue' })).toEqual(['Sky']);
+    expect(names({ label: 'none' })).toEqual(['Title', 'Group']);
+    expect(names({ kind: 'text' })).toEqual(['Title']);
+    expect(names({ text: 'FINAL' })).toEqual(['Group']);
+    expect(names({ text: 'client' })).toEqual(['Group']);
+    expect([layerKindOf(sky), layerKindOf(title), layerKindOf(group)]).toEqual(['pixel', 'text', 'folder']);
   });
 });

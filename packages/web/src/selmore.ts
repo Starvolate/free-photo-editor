@@ -4,26 +4,68 @@
  * More Select & cut out and Arrange layers commands, loaded the first time one is used (the select-and-layers batch,
  * 13 Nov 2026): select by brightness, by a colour channel or by a layer's solid parts; fill holes, round the corners or
  * roughen the edge of a selection; lift the selected pixels into a new layer; crop a layer to its content, fill or swap
- * its see-through parts, split it by colour, and reverse the layer order. Each change is one undo step. The maths lives
- * in core (selection-more.ts) with its unit tests; this file only asks and applies.
+ * its see-through parts, split it by colour, and reverse the layer order. Part 2: refine a selection's edge with a live
+ * preview, clean edge colours, see and paint the selection as a grey picture, colour-label a layer, write notes and tags
+ * on it, and find layers. Each change is one undo step. The maths lives in core (selection-more.ts) with its unit tests;
+ * this file only asks and applies.
  */
 import {
-  combineMasks, commitShape, compositeDoc, countSelected, createLayer, docCommand, docRect, hasPixels, maskFromSelection, parseHex,
-  selectionFromMask, snapshotDoc, type Command, type Doc, type Layer, type Mask, type Selection, type SelMode,
+  applyProps, combineMasks, commitShape, compositeDoc, countSelected, createLayer, docCommand, docRect, emptyMask, featherMask, hasPixels,
+  maskFromSelection, parseHex, propsCommand, selectionFromMask, snapshotDoc, type Command, type Doc, type Layer, type LayerLabel, type LayerProps,
+  type Mask, type Pixels, type Selection, type SelMode,
 } from '@free-photoeditor/core';
 import {
-  alphaMask, channelMask, cropToContent, floatSelection, geomOf, invertAlpha, layerDataCommand, luminanceMask, removeAlpha, removeHoles,
-  reversedOrder, roughenMask, roundCorners, splitByColour,
+  alphaMask, channelMask, cleanEdgeColours, cropToContent, dabMask, findLayers, floatSelection, geomOf, invertAlpha, layerDataCommand, layerKindOf,
+  luminanceMask, refineEdge, removeAlpha, removeHoles, reversedOrder, roughenMask, roundCorners, splitByColour, type LayerFind,
 } from '@free-photoeditor/core/selection-more';
 import { h } from './dom';
 import type { ToolHost } from './toolkit';
 
 /** The commands this module runs; commands.ts gives each its handler. */
 export const SELMORE_IDS = ['select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners',
-  'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse'];
+  'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
+  'select.refine', 'layer.defringe', 'select.editor', 'layer.colour-label', 'layer.metadata', 'layer.filter', 'layer.select-by-state'];
 
 const bodies = new Map<string, HTMLElement>();
 const hex = (c: { r: number; g: number; b: number }): string => '#' + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, '0')).join('');
+/** The last settings of Refine edge, Defringe and the selection editor's brush, kept while the page is open. */
+const RF = { radius: 4, smooth: 0, feather: 1, shift: 0, clean: 0, view: 'dim' as 'dim' | 'white' | 'black' };
+const DF = { width: 2 };
+const ED = { size: 0 };
+/** About this many pixels in the Refine edge preview, so it follows the sliders at once; Apply works at full size. */
+const PREVIEW_PX = 160_000;
+const LABELS: [LayerLabel | 'none', string, string][] = [['none', 'None', ''], ['red', 'Red', '#e5484d'], ['orange', 'Orange', '#f76b15'],
+  ['yellow', 'Yellow', '#f5d90a'], ['green', 'Green', '#30a46c'], ['blue', 'Blue', '#0090ff'], ['violet', 'Violet', '#8e4ec6'], ['grey', 'Grey', '#8b8d98']];
+const KIND_WORD: Record<string, string> = { pixel: 'picture', text: 'text', shape: 'shape', folder: 'folder', adjust: 'light and colour', fill: 'colour fill' };
+const dot = (c: string): HTMLElement => h('span', { 'aria-hidden': 'true',
+  style: `display:inline-block;flex:none;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;${c ? 'background:' + c : 'border:1px solid currentColor;opacity:.5'}` });
+/** A smaller copy of a picture (nearest pixel), `s` times the size. */
+function shrinkPx(p: Pixels, s: number): Pixels {
+  const w = Math.max(1, Math.round(p.width * s)), hh = Math.max(1, Math.round(p.height * s)), out = new Uint8ClampedArray(w * hh * 4);
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    const i = (Math.min(p.height - 1, Math.floor(y / s)) * p.width + Math.min(p.width - 1, Math.floor(x / s))) * 4;
+    out.set(p.data.subarray(i, i + 4), (y * w + x) * 4);
+  }
+  return { width: w, height: hh, data: out };
+}
+function shrinkMask(m: Mask, w: number, hh: number): Mask {
+  const out = emptyMask(w, hh);
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++)
+    out.data[y * w + x] = m.data[Math.min(m.height - 1, Math.floor((y * m.height) / hh)) * m.width + Math.min(m.width - 1, Math.floor((x * m.width) / w))];
+  return out;
+}
+/** The picture with the selection shown: the rest dimmed, or the selected part laid on white or black. */
+function paintPreview(cv: HTMLCanvasElement, px: Pixels, m: Mask, view: string): void {
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const img = ctx.createImageData(px.width, px.height), o = img.data, bg = view === 'white' ? 255 : 0;
+  for (let i = 0; i < m.data.length; i++) {
+    const a = m.data[i] / 255;
+    for (let c = 0; c < 3; c++) { const v = px.data[i * 4 + c]; o[i * 4 + c] = view === 'dim' ? v * (0.25 + 0.75 * a) : v * a + bg * (1 - a); }
+    o[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
 function selCommand(label: string, before: Selection | null, after: Selection | null): Command {
   return { label, bytes: (before?.alpha?.length ?? 0) + (after?.alpha?.length ?? 0), undo(d) { d.selection = before; }, redo(d) { d.selection = after; } };
 }
@@ -67,14 +109,34 @@ export function runSelMore(id: string, host: ToolHost): void {
     if (!d.selection) { host.toast('Select an area first.'); return null; }
     return current(d);
   }
-  function dialog(key: string, title: string, fields: HTMLElement[], apply: () => void): void {
+  /** A sheet with Cancel and Apply, or with Done alone when its changes happen as you click (`apply` null). */
+  function dialog(key: string, title: string, fields: HTMLElement[], apply: (() => void) | null): void {
     let body = bodies.get(key);
     if (!body) { body = h('div', { class: 'fpe-stack', 'data-testid': 'sm-' + key }); bodies.set(key, body); }
-    body.replaceChildren(...fields, h('div', { class: 'fpe-actions' },
+    body.replaceChildren(...fields, h('div', { class: 'fpe-actions' }, ...(apply ? [
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'sm-cancel', onclick: () => host.closeSheet() }, 'Cancel'),
-      h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'sm-apply', onclick: () => { host.closeSheet(); apply(); } }, 'Apply')));
+      h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'sm-apply', onclick: () => { host.closeSheet(); apply(); } }, 'Apply')]
+      : [h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'sm-done', onclick: () => host.closeSheet() }, 'Done')])));
     host.sheet('sm-' + key, title, body);
   }
+  /** Set properties of the active layer as one undo step; false when nothing changes. */
+  function setProps(p: LayerProps, label: string): boolean {
+    const dd = doc(), l = dd ? active(dd) : undefined;
+    if (!dd || !l) return false;
+    const before: Record<string, unknown> = {}, after = p as Record<string, unknown>;
+    for (const k of Object.keys(p)) before[k] = (l as unknown as Record<string, unknown>)[k];
+    if (Object.keys(p).every((k) => JSON.stringify(after[k]) === JSON.stringify(before[k]))) return false;
+    applyProps(l, p);
+    host.push(propsCommand(l.id, before as LayerProps, p, label));
+    host.panels();
+    return true;
+  }
+  const field = (label: string, help: string, ...kids: HTMLElement[]): HTMLElement =>
+    h('label', { class: 'fpe-field', 'data-help-title': label, 'data-help': help }, h('span', {}, label), ...kids);
+  const later = (draw: () => void): (() => void) => {
+    let queued = false;
+    return () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; draw(); }); } };
+  };
   function seg<T extends string>(label: string, help: string, opts: [T, string][], value: T, pick: (v: T) => void, testid: string): HTMLElement {
     const g = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label });
     const paint = (): void => { for (const b of g.querySelectorAll<HTMLButtonElement>('button')) b.setAttribute('aria-pressed', String(b.dataset.v === value)); };
@@ -202,6 +264,201 @@ export function runSelMore(id: string, host: ToolHost): void {
       const order = reversedOrder(d.layers, d.activeId);
       if (!order) { host.toast('There is only one layer here, so there is nothing to reverse.'); return; }
       host.push(commitShape(d, 'Reverse the layer order', order, new Map()), true);
+      return;
+    }
+    case 'select.refine': {
+      const m0 = needSel();
+      if (!m0) return;
+      const s = Math.min(1, Math.sqrt(PREVIEW_PX / (d.width * d.height))), small = shrinkPx(picture(d), s), sm = shrinkMask(m0, small.width, small.height);
+      const cv = h('canvas', { width: small.width, height: small.height, 'data-testid': 'sm-refine-preview', role: 'img', 'aria-label': 'Preview of the refined selection over the picture',
+        style: 'width:100%;height:auto;display:block;border-radius:6px' }) as HTMLCanvasElement;
+      const draw = (): void => paintPreview(cv, small, refineEdge(small, sm, { radius: RF.radius * s, smooth: RF.smooth * s, feather: RF.feather * s, shift: RF.shift * s }), RF.view);
+      const redo = later(draw);
+      const set = (k: 'radius' | 'smooth' | 'feather' | 'shift' | 'clean') => (v: number): void => { RF[k] = v; redo(); };
+      dialog('refine', 'Smooth the selection edge · Refine edge', [
+        h('p', { class: 'fpe-note' }, s < 1 ? 'The preview uses a smaller copy of the picture to stay quick; Apply works on every pixel.' : 'The preview follows the sliders; Apply makes it the selection.'),
+        cv,
+        seg('Show', 'How the preview shows what is selected: the rest dimmed, or the selected part on white or on black.', [['dim', 'Dim the rest'], ['white', 'On white'], ['black', 'On black']],
+          RF.view, (v) => { RF.view = v; redo(); }, 'sm-rf-view'),
+        host.slider('Edge width · Radius', 'Within this many pixels of the edge the selection follows the picture: pixels that look like the inside join it, pixels that look like the outside leave it. Good for hair and fur.',
+          0, 64, RF.radius, ' px', set('radius'), 'sm-rf-radius'),
+        host.slider('Smooth', 'Rounds off a jagged edge and drops tiny specks.', 0, 50, RF.smooth, ' px', set('smooth'), 'sm-rf-smooth'),
+        host.slider('Soft edge · Feather', 'How many pixels the edge fades over.', 0, 100, RF.feather, ' px', set('feather'), 'sm-rf-feather'),
+        host.slider('Move the edge · Shift edge', 'Grows the selection outward (above 0) or pulls it inward (below 0), in pixels.', -50, 50, RF.shift, ' px', set('shift'), 'sm-rf-shift'),
+        host.slider('Clean edge colours · Decontaminate', 'Above 0, Apply also puts the cut-out on a new layer and gives its edge pixels the colour of the solid part next to them, so none of the old background shows. The original layer is hidden, not deleted.',
+          0, 100, RF.clean, '%', set('clean'), 'sm-rf-clean'),
+      ], () => {
+        const dd = doc(), cur = dd ? current(dd) : null;
+        if (!dd || !cur) return;
+        const out = refineEdge(picture(dd), cur, RF);
+        if (!countSelected(out)) { host.toast('Nothing would stay selected. Move the edge in less far.'); return; }
+        const sel = selectionFromMask(out);
+        if (RF.clean <= 0) { setSel(sel, 'Refine edge'); return; }
+        const l = pixelLayer();
+        if (!l) return;
+        const W = dd.width, H = dd.height, data = l.data.slice();
+        for (let i = 0; i < l.width * l.height; i++) {
+          const x = l.x + (i % l.width), y = l.y + ((i / l.width) | 0);
+          data[i * 4 + 3] = Math.round((l.data[i * 4 + 3] * (x < 0 || y < 0 || x >= W || y >= H ? 0 : out.data[y * W + x])) / 255);
+        }
+        const clean = cleanEdgeColours(data, l.width, l.height, (i) => data[i * 4 + 3], Math.max(2, Math.ceil(RF.radius + RF.feather)), RF.clean / 100) ?? data;
+        const before = snapshotDoc(dd), nl = createLayer(l.name + ' cut-out', l.width, l.height, { x: l.x, y: l.y, data: clean });
+        if (l.parentId) nl.parentId = l.parentId;
+        host.rememberSel(dd.selection);
+        host.forgetHole();
+        dd.selection = sel;
+        l.visible = false;
+        dd.layers.splice(dd.layers.indexOf(l) + 1, 0, nl);
+        dd.activeId = nl.id;
+        host.push(docCommand('Refine edge', before, snapshotDoc(dd)), true);
+        host.selectionChanged();
+        host.toast('The cut-out is on a new layer with clean edge colours. The original layer is hidden, not deleted.');
+      });
+      draw();
+      return;
+    }
+    case 'layer.defringe': {
+      if (!pixelLayer()) return;
+      dialog('defringe', 'Clean up edge colour · Defringe', [
+        h('p', { class: 'fpe-note' }, 'Pixels at the edge of a cut-out take the colour of the solid part next to them, so a halo of the old background goes. How see-through they are does not change.'),
+        host.slider('Width', 'How many pixels in from the edge get the new colour.', 1, 20, DF.width, ' px', (v) => { DF.width = v; }, 'sm-df-width'),
+      ], () => {
+        const dd = doc(), l = pixelLayer();
+        if (!dd || !l) return;
+        const data = cleanEdgeColours(l.data, l.width, l.height, (i) => l.data[i * 4 + 3], DF.width);
+        if (!data) { host.toast('This layer has no see-through edge, so there is no halo to clean. Cut something out first.'); return; }
+        const cmd = layerDataCommand('Clean up edge colour', l.id, geomOf(l), { ...geomOf(l), data });
+        cmd.redo(dd);
+        host.push(cmd, true);
+      });
+      return;
+    }
+    case 'select.editor': {
+      const W = d.width, H = d.height, s = Math.min(1, 480 / W, 360 / H), dw = Math.max(1, Math.round(W * s)), dh = Math.max(1, Math.round(H * s));
+      const start = (): Mask => { const dd = doc(), m = dd ? current(dd) : null; return m ? { ...m, data: m.data.slice() } : emptyMask(W, H); };
+      let work = start(), add = true, size = ED.size || Math.max(8, Math.round(Math.min(W, H) / 16)), blur = 4, last: { x: number; y: number } | null = null;
+      const cv = h('canvas', { width: dw, height: dh, 'data-testid': 'sm-editor-canvas', role: 'img', 'aria-label': 'The selection as a grey picture: white is selected, black is not. Paint on it.',
+        style: 'width:100%;height:auto;display:block;border-radius:6px;touch-action:none;cursor:crosshair' }) as HTMLCanvasElement;
+      const draw = (): void => {
+        const ctx = cv.getContext('2d');
+        if (!ctx) return;
+        const img = ctx.createImageData(dw, dh);
+        for (let y = 0; y < dh; y++) for (let x = 0; x < dw; x++) {
+          const v = work.data[Math.min(H - 1, Math.floor(y / s)) * W + Math.min(W - 1, Math.floor(x / s))], i = (y * dw + x) * 4;
+          img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+          img.data[i + 3] = 255;
+        }
+        ctx.putImageData(img, 0, 0);
+      };
+      const redo = later(draw);
+      const pt = (e: PointerEvent): { x: number; y: number } => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }; };
+      const stroke = (p: { x: number; y: number }): void => {
+        const r = size / 2, from = last ?? p, n = Math.max(1, Math.ceil(Math.hypot(p.x - from.x, p.y - from.y) / Math.max(1, r / 2)));
+        for (let k = 1; k <= n; k++) dabMask(work, from.x + ((p.x - from.x) * k) / n, from.y + ((p.y - from.y) * k) / n, r, add);
+        last = p;
+        redo();
+      };
+      cv.addEventListener('pointerdown', (e) => { try { cv.setPointerCapture(e.pointerId); } catch { /* not captured: painting still works inside the box */ } last = null; stroke(pt(e)); });
+      cv.addEventListener('pointermove', (e) => { if (last) stroke(pt(e)); });
+      for (const ev of ['pointerup', 'pointercancel'] as const) cv.addEventListener(ev, () => { last = null; });
+      const btn = (text: string, testid: string, help: string, run: () => void): HTMLElement =>
+        h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': testid, 'data-help-title': text, 'data-help': help, onclick: () => { run(); redo(); } }, text);
+      dialog('editor', 'See and paint the selection · Selection editor', [
+        h('p', { class: 'fpe-note' }, 'White is selected, black is not, grey is partly selected. Paint on the picture below, then Apply to turn it back into a selection.'),
+        cv,
+        seg('Paint', 'White adds to the selection; black takes away from it.', [['add', 'White: add'], ['sub', 'Black: take away']], 'add', (v) => { add = v === 'add'; }, 'sm-ed-paint'),
+        host.slider('Brush size', 'How wide the brush is, in picture pixels.', 1, 400, size, ' px', (v) => { size = v; ED.size = v; }, 'sm-ed-size'),
+        host.slider('Blur amount', 'How far, in pixels, Blur softens the grey picture.', 1, 50, blur, ' px', (v) => { blur = v; }, 'sm-ed-blur-amount'),
+        h('div', { class: 'fpe-actions' },
+          btn('Blur', 'sm-ed-blur', 'Soften every edge of the grey picture by the blur amount.', () => { work = featherMask(work, blur); }),
+          btn('Invert', 'sm-ed-invert', 'White becomes black and black becomes white.', () => { for (let i = 0; i < work.data.length; i++) work.data[i] = 255 - work.data[i]; }),
+          btn('Start over', 'sm-ed-reset', 'Go back to the selection as it was when this opened.', () => { work = start(); })),
+      ], () => {
+        if (countSelected(work)) { setSel(selectionFromMask(work), 'Edit the selection as a picture'); return; }
+        if (doc()?.selection) setSel(null, 'Edit the selection as a picture');
+        else host.toast('Nothing is white, so there is nothing to select. Paint with white first.');
+      });
+      draw();
+      return;
+    }
+    case 'layer.colour-label': {
+      const l = active(d);
+      if (!l) { host.toast('Pick a layer first.'); return; }
+      const g = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': 'Colour label', style: 'flex-wrap:wrap' });
+      const paint = (): void => { const cur = (doc() && active(doc() as Doc)?.label) || 'none'; for (const b of g.querySelectorAll<HTMLButtonElement>('button')) b.setAttribute('aria-pressed', String(b.dataset.v === cur)); };
+      for (const [v, text, c] of LABELS) g.append(h('button', { type: 'button', 'data-v': v, 'data-testid': 'sm-label-' + v, onclick: () => { setProps({ label: v === 'none' ? undefined : v }, 'Colour label'); paint(); } }, dot(c), text));
+      dialog('label', 'Colour label · Layer colour label', [
+        h('p', { class: 'fpe-note' }, `For the layer "${l.name}". It does not change the picture; Find layers lists the layers with each colour.`),
+        field('Colour', 'A colour tag to find this layer again.', g),
+      ], null);
+      paint();
+      return;
+    }
+    case 'layer.metadata': {
+      const l = active(d);
+      if (!l) { host.toast('Pick a layer first.'); return; }
+      const notes = h('textarea', { rows: 4, 'data-testid': 'sm-meta-notes', style: 'width:100%;min-height:72px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--input);color:var(--text);font:inherit;resize:vertical' }) as HTMLTextAreaElement;
+      const tags = h('input', { type: 'text', 'data-testid': 'sm-meta-tags', placeholder: 'sky, final, client' }) as HTMLInputElement;
+      notes.value = l.meta?.notes ?? '';
+      tags.value = l.meta?.tags.join(', ') ?? '';
+      dialog('meta', 'Notes and tags · Layer metadata', [
+        h('p', { class: 'fpe-note' }, `For the layer "${l.name}". They stay with the layer while you work and in this browser's autosave, and Find layers searches them. Saved files do not carry them yet.`),
+        field('Notes', 'Anything worth remembering about this layer.', notes),
+        field('Tags', 'Words to find this layer by, separated by commas.', tags),
+      ], () => {
+        const meta = { notes: notes.value.trim(), tags: tags.value.split(',').map((t) => t.trim()).filter(Boolean) };
+        if (setProps({ meta: meta.notes || meta.tags.length ? meta : undefined }, 'Layer notes and tags')) host.toast('Saved with the layer.');
+        else host.toast('Nothing changed.');
+      });
+      return;
+    }
+    case 'layer.filter': case 'layer.select-by-state': {
+      const q: LayerFind = id === 'layer.select-by-state' ? { state: 'hidden' } : {};
+      const count = h('p', { class: 'fpe-note', role: 'status', 'data-testid': 'sm-find-count' });
+      const list = h('div', { class: 'fpe-sheet-list', role: 'list', 'data-testid': 'sm-find-list' });
+      const found = (): Layer[] => findLayers(doc()?.layers ?? [], q).reverse();
+      const refresh = (): void => {
+        const f = found(), on = doc()?.activeId;
+        count.textContent = f.length ? `${f.length} ${f.length === 1 ? 'layer matches' : 'layers match'}. Click one to work on it.` : 'No layer matches. Try fewer conditions.';
+        list.replaceChildren(...f.map((l) => h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-sheet-item', role: 'listitem', 'aria-current': String(l.id === on), 'data-testid': 'sm-find-item',
+          onclick: () => { const x = doc(); if (!x || !x.layers.includes(l)) return; x.activeId = l.id; host.panels(); host.refreshOptions(); refresh(); } },
+          dot(LABELS.find(([v]) => v === l.label)?.[2] ?? ''), `${l.name} · ${KIND_WORD[layerKindOf(l)]}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}`)));
+      };
+      const pick = (label: string, help: string, testid: string, opts: [string, string][], value: string, set: (v: string) => void): HTMLElement => {
+        const sel = h('select', { 'data-testid': testid }) as HTMLSelectElement;
+        for (const [v, t] of opts) sel.append(h('option', { value: v }, t));
+        sel.value = value;
+        sel.addEventListener('change', () => { set(sel.value); refresh(); });
+        return field(label, help, sel);
+      };
+      const text = h('input', { type: 'search', 'data-testid': 'sm-find-text', placeholder: 'Name, note or tag' }) as HTMLInputElement;
+      text.addEventListener('input', () => { q.text = text.value; refresh(); });
+      const bulk = (label: string, pickOne: (l: Layer) => boolean, change: (l: Layer) => void, none: string, said: string): void => {
+        const dd = doc(), f = found().filter(pickOne);
+        if (!dd || !f.length) { host.toast(none); return; }
+        const before = snapshotDoc(dd);
+        for (const l of f) change(l);
+        host.push(docCommand(label, before, snapshotDoc(dd)), true);
+        host.panels();
+        refresh();
+        host.toast(`${f.length} ${said}`);
+      };
+      const any = (v: string): string | undefined => (v === 'any' ? undefined : v);
+      dialog('find', 'Find layers · Layers filter', [
+        field('Words', 'Finds layers whose name, notes or tags hold these words.', text),
+        pick('Kind', 'Only layers of this kind.', 'sm-find-kind', [['any', 'Any kind'], ['pixel', 'Picture'], ['text', 'Text'], ['shape', 'Shape'], ['folder', 'Folder'],
+          ['adjust', 'Light and colour'], ['fill', 'Colour fill']], q.kind ?? 'any', (v) => { q.kind = any(v) as LayerFind['kind']; }),
+        pick('Colour label', 'Only layers with this colour label.', 'sm-find-label', [['any', 'Any label'], ...LABELS.map(([v, t]): [string, string] => [v, v === 'none' ? 'No label' : t])],
+          q.label ?? 'any', (v) => { q.label = any(v) as LayerFind['label']; }),
+        pick('State', 'Only hidden, shown, locked or unlocked layers.', 'sm-find-state', [['any', 'Any state'], ['hidden', 'Hidden'], ['visible', 'Shown'], ['locked', 'Locked'], ['unlocked', 'Unlocked']],
+          q.state ?? 'any', (v) => { q.state = any(v) as LayerFind['state']; }),
+        pick('Effects', 'Only layers with layer effects switched on.', 'sm-find-fx', [['any', 'With or without'], ['on', 'With effects']], 'any', (v) => { q.fx = v === 'on' || undefined; }),
+        count, list,
+        h('div', { class: 'fpe-actions' },
+          h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'sm-find-show', onclick: () => bulk('Show the found layers', (l) => !l.visible, (l) => { l.visible = true; }, 'Every layer found is already shown.', 'hidden layers are shown now.') }, 'Show them all'),
+          h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'sm-find-unlock', onclick: () => bulk('Unlock the found layers', (l) => !!l.locked, (l) => { delete l.locked; }, 'No layer found is locked.', 'layers are unlocked now.') }, 'Unlock them all')),
+      ], null);
+      refresh();
       return;
     }
   }

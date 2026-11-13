@@ -6,10 +6,10 @@
  * this file on first use, never on the first screen. Masks are picture-sized, 0 (not selected) to 255 (selected).
  */
 import type { RGBA } from './color';
-import { createLayer, type Doc, type Layer, type LayerGeom } from './document';
+import { createLayer, type Doc, type Layer, type LayerGeom, type LayerKind, type LayerLabel, type LayerMask } from './document';
 import type { Rect } from './geometry';
 import { docCommand, snapshotDoc, type Command } from './history';
-import { contractMask, emptyMask, expandMask, maskBounds, type Mask, type Pixels } from './selection';
+import { blurPlane, contractMask, distanceSquared, emptyMask, expandMask, featherMask, maskBounds, smoothMask, type Mask, type Pixels } from './selection';
 import { siblingIndexes, subtreeRange } from './tree';
 
 /** Brightness 0..255 of one pixel (Rec. 709 weights, the ones a screen uses). */
@@ -35,11 +35,23 @@ export function channelMask(src: Pixels, ch: 0 | 1 | 2): Mask {
   for (let i = 0; i < m.data.length; i++) m.data[i] = Math.round((d[i * 4 + ch] * d[i * 4 + 3]) / 255);
   return m;
 }
-/** A layer's solid parts as a selection on a picture `w` x `h`: as selected as the layer is opaque. */
-export function alphaMask(l: Pick<Layer, 'x' | 'y' | 'width' | 'height' | 'data'>, w: number, h: number): Mask {
-  const m = emptyMask(w, h);
+/** How much a layer mask lets through at picture pixel (x, y), 0..255: its grey value (`outside` beyond its box), eased by its density. */
+export function maskValueAt(mk: LayerMask, x: number, y: number): number {
+  const inBox = x >= mk.x && y >= mk.y && x < mk.x + mk.width && y < mk.y + mk.height;
+  const v = inBox ? mk.data[(y - mk.y) * mk.width + (x - mk.x)] : mk.outside;
+  return 255 - mk.density * (255 - v);
+}
+/**
+ * A layer's solid parts as a selection on a picture `w` x `h`: as selected as the layer is opaque, and, when its layer mask
+ * is switched on, as much as the mask shows it (the mask's soft edge setting is not added).
+ */
+export function alphaMask(l: Pick<Layer, 'x' | 'y' | 'width' | 'height' | 'data' | 'mask'>, w: number, h: number): Mask {
+  const m = emptyMask(w, h), mk = l.mask?.enabled ? l.mask : undefined;
   const x0 = Math.max(0, l.x), y0 = Math.max(0, l.y), x1 = Math.min(w, l.x + l.width), y1 = Math.min(h, l.y + l.height);
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) m.data[y * w + x] = l.data[((y - l.y) * l.width + (x - l.x)) * 4 + 3];
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const a = l.data[((y - l.y) * l.width + (x - l.x)) * 4 + 3];
+    m.data[y * w + x] = mk ? Math.round((a * maskValueAt(mk, x, y)) / 255) : a;
+  }
   return m;
 }
 /**
@@ -204,4 +216,128 @@ export function reversedOrder(layers: readonly Layer[], id: string): Layer[] | n
   const blocks = sibs.map((i) => subtreeRange(layers, layers[i].id) as [number, number]);
   const lo = blocks[0][0], hi = blocks[blocks.length - 1][1];
   return [...layers.slice(0, lo), ...blocks.reverse().flatMap(([a, b]) => layers.slice(a, b + 1)), ...layers.slice(hi + 1)];
+}
+
+// ---- Refine edge, clean edge colours, the selection editor ------------------------------------------------------------
+export interface RefineOpts { radius: number; smooth: number; feather: number; shift: number; }
+/**
+ * Refine edge: first, within `radius` pixels of the edge, the selection follows the picture (edgeByColour); then it is
+ * smoothed, its edge moved out (shift > 0) or in (shift < 0), and feathered, in that order. Each step is skipped at 0.
+ */
+export function refineEdge(src: Pixels, m: Mask, o: RefineOpts): Mask {
+  let out = o.radius > 0 ? edgeByColour(src, m, o.radius) : m;
+  if (o.smooth > 0) out = smoothMask(out, o.smooth);
+  if (o.shift > 0) out = expandMask(out, o.shift);
+  else if (o.shift < 0) out = contractMask(out, -o.shift);
+  if (o.feather > 0) out = featherMask(out, o.feather);
+  return out;
+}
+/**
+ * The colour-aware edge. Pixels further than `r` from the edge are sure: inside or outside. Each pixel nearer the edge
+ * is compared with the average colour of the sure inside around it (F) and of the sure outside around it (B), weighted
+ * by distance, and is selected as far as its colour lies from B towards F (0 at B, 255 at F). Where F and B are less than
+ * 20 levels apart, or one side has no sure pixels nearby, the edge stays as it was.
+ */
+export function edgeByColour(src: Pixels, m: Mask, r: number): Mask {
+  const { width: w, height: h } = m, n = w * h, d = src.data, r2 = r * r, sure = new Int8Array(n);
+  let dist = distanceSquared(w, h, (i) => m.data[i] < 128);
+  for (let i = 0; i < n; i++) if (m.data[i] >= 128 && dist[i] > r2) sure[i] = 1;
+  dist = distanceSquared(w, h, (i) => m.data[i] >= 128);
+  for (let i = 0; i < n; i++) if (m.data[i] < 128 && dist[i] > r2) sure[i] = -1;
+  const band: number[] = [];
+  for (let i = 0; i < n; i++) if (!sure[i]) band.push(i);
+  if (!band.length) return m;
+  const vals = new Float32Array(band.length * 8), plane = new Float32Array(n), sigma = r + 1;
+  for (let c = 0; c < 8; c++) {
+    const side = c < 4 ? 1 : -1, ch = (c % 4) - 1;
+    for (let i = 0; i < n; i++) plane[i] = sure[i] === side ? (ch < 0 ? 1 : d[i * 4 + ch]) : 0;
+    blurPlane(plane, w, h, sigma);
+    for (let k = 0; k < band.length; k++) vals[k * 8 + c] = plane[band[k]];
+  }
+  const out: Mask = { width: w, height: h, data: m.data.slice() };
+  for (let k = 0; k < band.length; k++) {
+    const v = vals.subarray(k * 8, k * 8 + 8);
+    if (v[0] < 1e-4 || v[4] < 1e-4) continue;
+    const br = v[5] / v[4], bg = v[6] / v[4], bb = v[7] / v[4], dr = v[1] / v[0] - br, dg = v[2] / v[0] - bg, db = v[3] / v[0] - bb;
+    const den = dr * dr + dg * dg + db * db, p = band[k] * 4;
+    if (den < 400) continue;
+    const t = ((d[p] - br) * dr + (d[p + 1] - bg) * dg + (d[p + 2] - bb) * db) / den;
+    out.data[band[k]] = Math.round(Math.min(1, Math.max(0, t)) * 255);
+  }
+  return out;
+}
+/**
+ * Clean edge colours (Defringe; Decontaminate colours in Refine edge). `solid(i)` says how solid pixel i is (0..255).
+ * Pixels that are fully solid and further than `width` pixels from anything less solid keep their colour; every other
+ * pixel with some solidity takes the colour of the solid part next to it, spread outward ring by ring (the average of
+ * its already-clean neighbours). `amount` 0..1 blends from the old colour to that. Alpha never changes. Null when no
+ * pixel changes.
+ */
+export function cleanEdgeColours(data: Uint8ClampedArray, w: number, h: number, solid: (i: number) => number, width: number, amount = 1): Uint8ClampedArray | null {
+  const n = w * h, thin = distanceSquared(w, h, (i) => solid(i) < 255), w2 = width * width;
+  const state = new Uint8Array(n), col = new Float32Array(n * 3);
+  let front: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const s = solid(i);
+    if (s === 255 && thin[i] > w2) { state[i] = 1; col[i * 3] = data[i * 4]; col[i * 3 + 1] = data[i * 4 + 1]; col[i * 3 + 2] = data[i * 4 + 2]; }
+    else if (s > 0) state[i] = 2;
+  }
+  const near = (p: number, f: (q: number) => void): void => {
+    const x = p % w, y = (p - x) / w;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if ((dx || dy) && xx >= 0 && yy >= 0 && xx < w && yy < h) f(yy * w + xx);
+    }
+  };
+  for (let i = 0; i < n; i++) if (state[i] === 2) { let k = false; near(i, (q) => { if (state[q] === 1) k = true; }); if (k) { state[i] = 3; front.push(i); } }
+  const done: number[] = [];
+  while (front.length) {
+    const got = front.map((p) => {
+      let r = 0, g = 0, b = 0, c = 0;
+      near(p, (q) => { if (state[q] === 1) { r += col[q * 3]; g += col[q * 3 + 1]; b += col[q * 3 + 2]; c++; } });
+      return [r / c, g / c, b / c];
+    });
+    front.forEach((p, k) => { state[p] = 1; col.set(got[k], p * 3); done.push(p); });
+    const next: number[] = [];
+    for (const p of front) near(p, (q) => { if (state[q] === 2) { state[q] = 3; next.push(q); } });
+    front = next;
+  }
+  const out = data.slice();
+  let changed = false;
+  for (const p of done) for (let c = 0; c < 3; c++) {
+    const v = Math.round(data[p * 4 + c] + (col[p * 3 + c] - data[p * 4 + c]) * amount);
+    if (v !== out[p * 4 + c]) { out[p * 4 + c] = v; changed = true; }
+  }
+  return changed ? out : null;
+}
+/**
+ * One round dab of radius `r` (picture pixels) at (cx, cy), painted into the mask in place, with a one-pixel soft rim:
+ * `add` raises pixels towards 255 (selected), otherwise lowers them towards 0. Gives the box it touched, or null.
+ */
+export function dabMask(m: Mask, cx: number, cy: number, r: number, add: boolean): Rect | null {
+  const x0 = Math.max(0, Math.floor(cx - r - 1)), y0 = Math.max(0, Math.floor(cy - r - 1));
+  const x1 = Math.min(m.width, Math.ceil(cx + r + 1)), y1 = Math.min(m.height, Math.ceil(cy + r + 1));
+  if (x1 <= x0 || y1 <= y0) return null;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const cov = Math.min(1, Math.max(0, r + 0.5 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy)));
+    if (!cov) continue;
+    const p = y * m.width + x, v = Math.round(cov * 255);
+    m.data[p] = add ? Math.max(m.data[p], v) : Math.min(m.data[p], 255 - v);
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// ---- Find layers ------------------------------------------------------------------------------------------------------
+export type LayerFindKind = Exclude<LayerKind, 'pixel'> | 'pixel' | 'text' | 'shape';
+/** What a person would call the layer: picture, text, shape, folder, light and colour, or colour fill. */
+export const layerKindOf = (l: Pick<Layer, 'kind' | 'content'>): LayerFindKind => (l.kind && l.kind !== 'pixel' ? l.kind : l.content?.kind ?? 'pixel');
+/** Find layers: each condition left out matches everything. `text` looks in the name, the notes and the tags. */
+export interface LayerFind { text?: string; kind?: LayerFindKind; label?: LayerLabel | 'none'; state?: 'hidden' | 'visible' | 'locked' | 'unlocked'; fx?: boolean; }
+export function findLayers(layers: readonly Layer[], q: LayerFind): Layer[] {
+  const t = q.text?.trim().toLowerCase();
+  return layers.filter((l) => (!t || l.name.toLowerCase().includes(t) || !!l.meta?.notes.toLowerCase().includes(t) || !!l.meta?.tags.some((g) => g.toLowerCase().includes(t)))
+    && (!q.kind || layerKindOf(l) === q.kind)
+    && (!q.label || (l.label ?? 'none') === q.label)
+    && (!q.state || (q.state === 'hidden' ? !l.visible : q.state === 'visible' ? l.visible : q.state === 'locked' ? !!l.locked : !l.locked))
+    && (!q.fx || !!l.fx?.on));
 }

@@ -418,11 +418,16 @@ for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShow
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 // Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
-// round or roughen the selection; lift it into a layer; crop, fill, swap or split a layer; reverse the layer order.
+// round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
+// edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.
 const pxl = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a); };
-for (const [id, en] of [['select.luminance', hasDoc], ['select.from-channel', hasDoc], ['select.from-alpha', pxl], ['select.remove-holes', hasSel],
-  ['select.round-corners', hasSel], ['select.distort', hasSel], ['select.float', hasSel], ['layer.crop-to-content', pxl], ['layer.remove-alpha', pxl],
-  ['layer.invert-alpha', pxl], ['layer.split-by-colour', pxl], ['layer.reverse', hasDoc]] as const) HANDLERS[id] = H((e) => e.selMore(id), en);
+const SM: Record<string, Handler['enabled']> = { d: hasDoc, p: pxl, s: hasSel };
+for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p select.remove-holes:s select.round-corners:s select.distort:s select.float:s '
+  + 'layer.crop-to-content:p layer.remove-alpha:p layer.invert-alpha:p layer.split-by-colour:p layer.reverse:d select.refine:s layer.defringe:p select.editor:d '
+  + 'layer.colour-label:d layer.metadata:d layer.filter:d layer.select-by-state:d').split(' ')) {
+  const [id, k] = w.split(':');
+  HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
+}
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

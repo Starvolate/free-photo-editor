@@ -157,7 +157,8 @@ describe('the Task ribbon', () => {
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
     const BUILT = new Set(['select.from-path', 'select.to-path', 'view.composition-guides',
       // Batch select-and-layers (selmore.ts).
-      'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse']);
+      'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
+      'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

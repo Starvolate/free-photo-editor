@@ -4,7 +4,7 @@
  * Free transform and friends: a layer (or the selection) is redrawn so its four corners land anywhere. Scale, turn, slant,
  * pull corners and perspective are all the same map (a 3 × 3 projective matrix). Also lining layers up and spacing them out.
  */
-import { docRect, findLayer, geomOf, hasPixels, isFolder, layerRect, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
+import { SMART, docRect, findLayer, geomOf, hasPixels, isFolder, layerRect, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
 import { placeLayer, plusMask } from './mask';
 import { intersect, union, type Point, type Rect } from './geometry';
 import { geomCommand, propsCommand, type Command } from './history';
@@ -108,6 +108,7 @@ export function warpMask(m: LayerMask, l: { x: number; y: number; width: number;
 }
 /** Free transform of a layer: its corners go to `to`. Works far past the canvas but not without limit. A linked mask follows. */
 export function transformLayer(doc: Doc, l: Layer, to: Quad, label = 'Free transform', smooth = true): Command | null {
+  if (l.kind === 'smart' && SMART.transform) return SMART.transform(doc, l, to, label);
   const before = geomOf(l), pad = Math.max(doc.width, doc.height), limit = { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad };
   const g = warpBitmap({ width: l.width, height: l.height, data: l.data }, to, smooth, limit);
   if (!g) return null;

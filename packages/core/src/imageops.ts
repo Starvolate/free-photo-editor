@@ -6,7 +6,7 @@
  */
 import { WHITE, type RGBA } from './color';
 import { compositeRect } from './composite';
-import { activeLayer, hasPixels, isFolder, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
+import { SMART, activeLayer, hasPixels, isFolder, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
   type LayerMask, type Selection } from './document';
 import { plusMask, shiftMask } from './mask';
 import { union, type Rect } from './geometry';
@@ -117,6 +117,8 @@ export function resizeDocument(doc: Doc, width: number, height: number, mode: Re
   if (w === doc.width && h === doc.height) return null;
   const sx = w / doc.width, sy = h / doc.height, before = snapshotDoc(doc);
   const layers = doc.layers.map((l) => {
+    const sm = l.kind === 'smart' && SMART.resize ? SMART.resize(l, sx, sy) : null;
+    if (sm) return { ...l, ...sm, ...withMask(l, (m) => resizeMask(m, sx, sy, mode)) };
     const nw = Math.max(1, Math.round(l.width * sx)), nh = Math.max(1, Math.round(l.height * sy));
     return { ...l, x: Math.round(l.x * sx), y: Math.round(l.y * sy), width: nw, height: nh, data: resizeBitmap(l, nw, nh, mode), ...withMask(l, (m) => resizeMask(m, sx, sy, mode)) };
   });

@@ -272,6 +272,8 @@ export class Editor {
   private name = 'image';
   private savedId = 0;
   private tabs: Tab[] = [];
+  /** Smart layers (smart.ts), loaded on first use or when a picture with a smart layer is shown. */
+  private smartLib: typeof import('./smart') | null = null;
   private cur = -1;
   private view: View = { zoom: 1, panX: 0, panY: 0 };
   private fitted = true;
@@ -1683,6 +1685,10 @@ export class Editor {
       this.toast(`${l.name} is ${l.kind === 'adjust' ? 'an editable light and colour layer' : 'a colour layer'} with no pixels of its own: change it in Properties, or pick a picture layer.`);
       return false;
     }
+    if (l.kind === 'smart' && pixels && !(this.maskTarget && l.mask)) {
+      this.toast(`"${l.name}" is a smart layer: it keeps its original pixels. To paint on it, choose Turn back into pixels (Effects & masks, Live effects).`);
+      return false;
+    }
     const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
     const mask = this.maskTarget && !!l.mask;
     if (pixels && mask && !onMask && !locked) {
@@ -2127,6 +2133,7 @@ export class Editor {
   private renderLayers(): void {
     const d = this.doc, list = this.layerList;
     if (!list) return;
+    if (!this.smartLib && d?.layers.some((l) => l.kind === 'smart')) void this.smart('');
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.testid;
     list.replaceChildren();
     this.layerProps.replaceChildren();
@@ -2223,7 +2230,7 @@ export class Editor {
       : l.kind === 'fill' ? swatch()
       : h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
     const m = l.mask;
-    if (!m) return [pic];
+    if (!m) return l.kind === 'smart' ? [pic, h('span', { class: 'fpe-layer-tag', 'data-testid': 'smart-tag', title: 'Smart layer: keeps its original pixels' }, 'Smart')] : [pic];
     const maskOn = on && this.maskTarget;
     return [
       h('button', { type: 'button', class: 'fpe-btn fpe-thumb-btn' + (on && !maskOn ? ' fpe-target' : ''), 'aria-pressed': String(on && !maskOn), 'data-testid': 'layer-pixels',
@@ -3385,6 +3392,14 @@ export class Editor {
     }
   }
   /** The File extras (file-more.ts), loaded on first use: open from a web link, take a photo, print, save each layer. */
+  /** Smart layers (smart.ts): Make a smart layer, Turn back into pixels. An empty id only loads it, so resizing reaches them. */
+  async smart(id: string): Promise<void> {
+    try {
+      const m = this.smartLib ?? (this.smartLib = await import('./smart'));
+      m.ensureSmartHooks();
+      if (id) m.runSmart(id, this.toolHost());
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   async fileMore(id: string): Promise<void> {
     try {
       const m = await import('./file-more');

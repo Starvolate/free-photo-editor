@@ -105,7 +105,7 @@ export interface BlendLayer {
   x: number; y: number; width: number; height: number; data: Uint8ClampedArray;
   mask?: LayerMask;
   /** The tree fields (document.ts): plain objects without them are plain pixel layers at the top level. */
-  id?: string; kind?: 'pixel' | 'folder' | 'adjust' | 'fill'; parentId?: string; clip?: boolean; passThrough?: boolean;
+  id?: string; kind?: 'pixel' | 'folder' | 'adjust' | 'fill' | 'smart'; parentId?: string; clip?: boolean; passThrough?: boolean;
   adjust?: AdjustLayer; fill?: FillLayer;
   /** Layer effects and Fill (design 2.7): drawn by the lazy effects module (layerfx). */
   fx?: LayerEffects; fillOpacity?: number;

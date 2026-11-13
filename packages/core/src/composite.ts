@@ -99,7 +99,7 @@ function rowJob(job: JobSpec): RowJob {
 
 /** True when any node is in a folder, clipped, or is not a plain pixel layer. */
 const isTree = (layers: readonly BlendLayer[]): boolean =>
-  layers.some((l) => l.parentId !== undefined || !!l.clip || (l.kind !== undefined && l.kind !== 'pixel') || hasLayerFx(l));
+  layers.some((l) => l.parentId !== undefined || !!l.clip || (l.kind !== undefined && l.kind !== 'pixel' && l.kind !== 'smart') || hasLayerFx(l));
 
 /** Composite layers (index 0 = bottom) for one document rectangle. Returns rect-sized RGBA. */
 export function compositeRect(layers: readonly BlendLayer[], r: Rect, background: RGBA | null = null): Uint8ClampedArray {
@@ -218,7 +218,7 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       if (l.kind === 'fill' && l.fill) { const f = l.fill.color; for (let i = 0; i < buf.length; i += 4) { buf[i] = f.r; buf[i + 1] = f.g; buf[i + 2] = f.b; buf[i + 3] = f.a; } }
       return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf, res: l.kind === 'adjust' ? new Uint8ClampedArray(w * 4) : null };
     }
-    if (l.kind && l.kind !== 'pixel') return null;
+    if (l.kind && l.kind !== 'pixel' && l.kind !== 'smart') return null;
     const fx = fxFor(l, r);
     if (fx) {
       // Effects reach past the layer's edge; the unit row carries the mask, so no mask rows here.

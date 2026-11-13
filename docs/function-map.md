@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 425 Ready, 250 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 427 Ready, 248 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 178 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 221 | 429 | 0 |
-| Ready today | 425 | 25 | 185 | 215 | 0 |
+| All functions | 675 | 25 | 222 | 428 | 0 |
+| Ready today | 427 | 25 | 186 | 216 | 0 |
 
 ## The Task ribbon
 
@@ -27,7 +27,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
-| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
+| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 14 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
@@ -62,7 +62,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | Text · Type | tool.type | type.opentype, type.styles, type.scripts, type.warp, type.path, type.to-shape, type.match-font |
 | Mask · Layer mask | a mask being edited | layer.mask-edge, select.refine, select.color-range, select.luminance, layer.live-masks, layer.mask-toggle, layer.mask-link, layer.mask-apply |
 | Adjustment layer · Adjustment or fill layer | an adjustment or fill layer | layer.adj-presets |
-| Smart layer · Smart object | a smart layer | layer.smart-filters, layer.smart-edit, layer.smart-replace |
+| Smart layer · Keep-original layer | a smart layer | layer.smart-filters, layer.smart-edit, layer.smart-replace |
 
 ## Phases
 
@@ -253,9 +253,9 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (60 Ready, 12 Planned)
+## Layer (62 Ready, 10 Planned)
 
-Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
+Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Keep-original layer; Order · Arrange; Line up · Align.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -307,10 +307,10 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |
 | layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | Layer › Mask | Effects & masks › Hide parts · More list | Planned | 6 |  |
 | layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text, clipping mask | Layer › Mask | Effects & masks › New · More list | Ready | 2 | Ctrl+Alt+G |
-| layer.smart-convert | Make a smart layer | Convert to smart object | Keep the layer's original pixels safe from resizing. | smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
-| layer.smart-edit | Edit the contents | Edit contents | Open the original pixels to change them. | edit smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
-| layer.smart-replace | Replace the contents | Replace contents | Swap the contents for another picture. | mockup | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
-| layer.smart-rasterize | Turn back into pixels | Rasterize smart object | Make the smart layer an ordinary layer. | rasterize | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
+| layer.smart-convert | Make a smart layer | Keep-original layer | Keep the layer's original pixels safe: resize or turn it as often as you like and get them back exactly. PSD files keep it as plain pixels. | smart object, convert to smart object, protect pixels, resize without losing quality | Layer › Smart layer | Effects & masks › Live effects · big button | Ready | 3 |  |
+| layer.smart-edit | Edit the contents | Open the original | Open the original pixels to change them. | edit smart object, edit contents | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
+| layer.smart-replace | Replace the contents | Swap the original | Swap the contents for another picture. | mockup, replace contents | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
+| layer.smart-rasterize | Turn back into pixels | Flatten to pixels | Make the smart layer an ordinary layer you can paint on; its kept original goes. | rasterize, rasterize smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Ready | 3 |  |
 | layer.rasterize | Turn into plain pixels | Rasterize layer | Make text, shapes or effects into ordinary pixels. | flatten text | Layer | Arrange layers › This layer · More list | Ready | W3 |  |
 | layer.front | Bring to the very top | Bring to front | Move the active layer above all others. | top layer | Layer › Arrange | Arrange layers › Order · small button | Ready | W1 | Ctrl+Shift+] |
 | layer.forward | Bring up one | Bring forward | Move the active layer up one place. | move layer up | Layer › Arrange | Arrange layers › Order · small button | Ready | 1 | Ctrl+] |
@@ -600,12 +600,12 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| layer.smart-filters | U001 | Effects you can reopen and edit | Smart filters (live filters) | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, editable filter, non-destructive filter, reopen effect, change filter later | Effects & masks › Live effects · More list | Planned | B1 |
+| layer.smart-filters | U001 | Effects you can reopen and edit | Live filters | Put any effect on a layer so it stays editable, can be masked and switched off, and never changes the pixels. | live filter, smart filters, editable filter, non-destructive filter, reopen effect, change filter later | Effects & masks › Live effects · More list | Planned | B1 |
 | layer.transform-mask | U006 | Move or turn a layer without touching pixels | Transform Mask | A mask that moves, rotates, scales or skews a layer non-destructively and can be keyframed. | transform mask, move layer without changing pixels, keyframe move | Effects & masks › Hide parts · More list | Planned | B9 |
 | layer.live-masks | U007 | Mask that is itself a live effect | Live layer masks / compound layer masks | Masks built from several parts or from a live filter, kept editable. | live mask, compound mask, combine masks, mask from filter | Effects & masks › Hide parts · More list | Planned | B9 |
 | layer.mask-edge | U008 | Mask edge and density | Mask refinement (feather, density) | Blur, feather, guided-filter and contrast the mask edge. | mask edge, feather mask, soften mask, mask density | Effects & masks › Hide parts · More list | Planned | B9 |
-| layer.smart-linked | U009 | Keep an image linked to a file on disk | Linked Smart Object | A layer that points to an external file and updates when it changes. | linked file, link image, place linked, update from file | Effects & masks › Live effects · More list | Planned | B1 |
-| layer.clone | U010 | Linked copy of a layer | Clone Layer | A layer that always mirrors another and updates when it changes. | clone layer, mirror layer, linked copy, instance | Effects & masks › Live effects · More list | Planned | B1 |
+| layer.smart-linked | U009 | Keep an image linked to a file on disk | Linked file layer | A layer that points to an external file and updates when it changes. | linked file, link image, place linked, update from file, linked smart object | Effects & masks › Live effects · More list | Planned | B1 |
+| layer.clone | U010 | Linked copy of a layer | Linked copy | A layer that always mirrors another and updates when it changes. | clone layer, mirror layer, linked copy, instance | Effects & masks › Live effects · More list | Planned | B1 |
 | layer.blend-if | U011 | Show by brightness | Blend If (blend ranges) | Let a layer show only where it, or the layer below, is light or dark (or a chosen colour); a blend-mode list with live preview. | blend if, blend ranges, show only in shadows, show only in highlights | Effects & masks › Blending · More list | Planned | B9 |
 | layer.fill-opacity | U012 | Opacity for fill and effects separately | Fill opacity vs layer opacity | Fade a layer's pixels but keep its effects. | fill opacity, fade pixels keep effects, inner opacity | Effects & masks › Blending · More list | Planned | B9 |
 | layer.adj-presets | U013 | Save adjustment looks as layer presets | Adjustment presets | One-click saved settings for Curves, Levels and others. | adjustment preset, save look, reuse adjustment, preset | Effects & masks › Shadows and glows · More list | Planned | B1 |

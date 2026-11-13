@@ -169,7 +169,7 @@ export const CONTEXTUAL: Contextual[] = [
   { plain: 'Text', pro: 'Type', when: 'tool.type', ids: words('type.opentype type.styles type.scripts type.warp type.path type.to-shape type.match-font') },
   { plain: 'Mask', pro: 'Layer mask', when: 'a mask being edited', ids: words('layer.mask-edge select.refine select.color-range select.luminance layer.live-masks layer.mask-toggle layer.mask-link layer.mask-apply') },
   { plain: 'Adjustment layer', pro: 'Adjustment or fill layer', when: 'an adjustment or fill layer', ids: words('layer.adj-presets') },
-  { plain: 'Smart layer', pro: 'Smart object', when: 'a smart layer', ids: words('layer.smart-filters layer.smart-edit layer.smart-replace') },
+  { plain: 'Smart layer', pro: 'Keep-original layer', when: 'a smart layer', ids: words('layer.smart-filters layer.smart-edit layer.smart-replace') },
 ];
 
 const UNION = new Map(NEW_ROWS.map((r) => [r.id, r]));

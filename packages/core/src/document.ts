@@ -5,7 +5,8 @@ import type { VectorPath } from './path';
 import type { BlendMode } from './blend';
 import { compositeRect } from './composite';
 import { WHITE, type RGBA } from './color';
-import { contains, intersect, union, type Rect } from './geometry';
+import { contains, intersect, union, type Point, type Rect } from './geometry';
+import type { Command } from './history';
 import type { LayerContent } from './vector';
 import type { JobSpec } from './jobs';
 
@@ -45,6 +46,8 @@ export interface Layer {
   label?: LayerLabel;
   /** Notes and tags written on the layer (Find layers searches them). A value object. */
   meta?: LayerMeta;
+  /** Smart layers (kind 'smart', smart.ts): the kept original, where its corners land, and live filters. A value object. */
+  smart?: SmartLayer;
 }
 /** The colour tags a layer can carry. */
 export type LayerLabel = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'violet' | 'grey';
@@ -85,7 +88,26 @@ export interface AdjustLayer { from: string; job: JobSpec | null; psd?: unknown;
 /** A colour layer (design 2.6). Solid now; the colour fade and the pattern join it in the next part. */
 export type FillLayer = { type: 'solid'; color: RGBA };
 /** Pixel layers paint; folders hold other nodes (adjustment and fill layers come in later slices). */
-export type LayerKind = 'pixel' | 'folder' | 'adjust' | 'fill';
+export type LayerKind = 'pixel' | 'folder' | 'adjust' | 'fill' | 'smart';
+/**
+ * A smart layer (smart-layers-design.md): the original picture, never changed by resizing or filters (read-only, shared),
+ * where its four corners land relative to the layer's x and y, and its live filters. The layer's own pixels are the
+ * finished picture, rebuilt from these by smart.ts. A value object: a change replaces the whole object.
+ */
+export interface SmartLayer {
+  source: Bitmap;
+  quad: [Point, Point, Point, Point];
+  filters: LiveFilter[];
+  /** False = every live filter switched off at once. Absent = on. */
+  filtersOn?: boolean;
+}
+/** One live filter: the command it came from, its numbers-only settings, and whether it is switched on. */
+export interface LiveFilter { id: string; cmd: string; spec: JobSpec; on: boolean; }
+/** Filled in by smart.ts when it loads, so Free transform and Picture size redraw smart layers from their original. */
+export const SMART: {
+  transform?: (doc: Doc, l: Layer, to: Point[], label: string) => Command | null;
+  resize?: (l: Layer, sx: number, sy: number) => Partial<Layer> | null;
+} = {};
 /** True for nodes with pixels of their own to paint on: plain pixel, text and shape layers. */
 export const hasPixels = (l: { kind?: LayerKind }): boolean => !l.kind || l.kind === 'pixel';
 export const isFolder = (l: { kind?: LayerKind } | undefined): boolean => l?.kind === 'folder';

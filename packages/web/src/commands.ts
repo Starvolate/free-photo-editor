@@ -449,6 +449,9 @@ export const RAW_IDS = ('raw.white-balance raw.highlights raw.black-white-points
   + 'raw.contrast-levels raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping '
   + 'raw.scopes raw.snapshots raw.presets raw.negative').split(' ');
 for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-more'); return e.openAdjust(id); });
+// Smart layers (smart.ts, loaded on first use): make one from a picture layer, and turn it back into pixels.
+HANDLERS['layer.smart-convert'] = H((e) => e.smart('layer.smart-convert'), (e) => { const a = e.active(); return !!a && (!a.kind || a.kind === 'pixel'); });
+HANDLERS['layer.smart-rasterize'] = H((e) => e.smart('layer.smart-rasterize'), (e) => e.active()?.kind === 'smart');
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers', 'file.recent']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' || id === 'file.recent' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.

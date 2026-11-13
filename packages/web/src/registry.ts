@@ -189,16 +189,16 @@ layer.delete | Delete layer | Delete layer | Remove the active layer. | remove l
 layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | R | W1
 --
 @Layer > Layer effects = Shadows, glows and outlines | Layer style | Effects that stay editable.
-layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | P | 3
-layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | P | 3
-layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | P | 3
-layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | P | 3
+layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | R | 3
+layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | R | 3
+layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | R | 3
+layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | R | 3
 layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | P | 3
 layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | P | 3
-layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | P | 3
-layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | P | 3
+layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | R | 3
+layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | R | 3
 layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | P | 3
-layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | P | 3
+layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | R | 3
 @Layer > Fill layer = Colour layer | Fill layer | A layer filled with a colour, fade or pattern you can change later.
 layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | R | 3
 layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | P | 3

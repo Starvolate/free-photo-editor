@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 301 Ready, 374 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 308 Ready, 367 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 301 | 25 | 130 | 146 | 0 |
+| Ready today | 308 | 25 | 134 | 149 | 0 |
 
 ## The Task ribbon
 
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · small button | Planned | 13 |  |
 
-## Layer (52 Ready, 20 Planned)
+## Layer (59 Ready, 13 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -268,16 +268,16 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.duplicate | Duplicate layer | Duplicate layer | Make an exact copy of the active layer. | copy layer, clone layer | Layer | Effects & masks › New · More list | Ready | 1 |  |
 | layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | Layer | Arrange layers › This layer · More list | Ready | 1 |  |
 | layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | Layer | Arrange layers › This layer · small button | Ready | W1 |  |
-| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
-| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
-| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
+| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
 | layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
-| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Planned | 3 |  |
+| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
 | layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
 | layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
 | layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |

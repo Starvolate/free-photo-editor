@@ -620,4 +620,45 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await hash(q)).toBe(changed);
     expect(errors).toEqual([]);
   });
+
+  it('layer effects (W6 S4): a drop shadow darkens outside the layer; its distance changes in Properties; undo, redo, hide the effect, and Restore after a reload', async () => {
+    const q = await open(1440, 900);
+    await q.evaluate(() => (window as unknown as Win).fpe.newDocument(200, 140, '#ffffff'));
+    await select(q, 60, 40, 60, 40);
+    expect(await run(q, 'layer.new-copy')).toBe(true);
+    const plain = await hash(q);
+    expect((await px(q, 130, 100))[0]).toBe(255);
+    expect(await run(q, 'layer.fx-shadow')).toBe(true);
+    const ctl = '[data-testid="fx-props"] [data-testid="fx-dropShadow-0"] [data-testid="ctl-distance"]';
+    await q.waitForSelector(ctl);
+    const first = await hash(q);
+    expect(first).not.toBe(plain);
+    expect((await px(q, 124, 84))[0]).toBeLessThan(255); // outside the layer, where the shadow falls
+    expect((await px(q, 130, 100))[0]).toBe(255);
+    await q.$eval(ctl, (el) => { const i = el as HTMLInputElement; i.value = '30'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+    const moved = await hash(q);
+    expect(moved).not.toBe(first);
+    expect((await px(q, 130, 100))[0]).toBeLessThan(255);
+    await q.waitForSelector(ctl);
+    await q.screenshot({ path: join(OUT, 'w6-s4-effects-1440.png') });
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(await hash(q)).toBe(first);
+    expect(await run(q, 'edit.redo')).toBe(true);
+    expect(await hash(q)).toBe(moved);
+    const on = '[data-testid="fx-props"] [data-testid="fx-dropShadow-0"] [data-testid="fx-on"]';
+    await q.waitForSelector(on);
+    await q.click(on);
+    expect(await hash(q)).toBe(plain);
+    await q.waitForSelector(on);
+    await q.click(on);
+    expect(await hash(q)).toBe(moved);
+    await q.evaluate(() => (window as unknown as Win).fpe.saveNow());
+    await q.reload();
+    await q.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await q.waitForSelector('[data-testid="restore"]:not([hidden])', { timeout: 15_000 });
+    await q.click('[data-testid="restore-yes"]');
+    await q.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Brought back'), null, { timeout: 15_000 });
+    expect(await hash(q)).toBe(moved);
+    expect(errors).toEqual([]);
+  });
 });

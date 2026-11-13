@@ -392,6 +392,10 @@ for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));
 HANDLERS['layer.fill-color'] = H((e) => e.addFillLayer());
+// W6 S4: layer effects stay live settings of the layer (the engine, core/layerfx, loads on first use).
+const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a) && !a.locked; };
+for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
+  ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */

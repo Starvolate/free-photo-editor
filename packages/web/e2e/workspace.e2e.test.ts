@@ -58,6 +58,10 @@ const PREP: Record<string, string[]> = {
   'image.export-lut': ['layer.adj-invert'],
   // A second layer, so reversing the order is a visible change.
   'layer.reverse': ['layer.new'],
+  // The sun merged in, a copy of the photo, and the copy moved 100 px down (its top to the box's): Line up puts it back.
+  'edit.auto-align': ['layer.merge-down', 'layer.duplicate', 'layer.align-top'],
+  // The same copy 100 px down: Blend photos gives it a seam mask, so the lower part of the overlap shows the copy.
+  'edit.auto-blend': ['layer.merge-down', 'layer.duplicate', 'layer.align-top'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

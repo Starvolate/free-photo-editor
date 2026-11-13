@@ -14,6 +14,7 @@ export const FX_KINDS = [
   'mosaic', 'crystallize', 'pointillize', 'halftone', 'mezzotint', 'facet', 'fragment',
   'clouds', 'diff-clouds', 'fibers', 'high-pass', 'maximum', 'minimum', 'offset', 'custom',
   'spin-blur', 'lens-fix', 'glass', 'ocean-ripple', 'lens-flare', 'lighting', 'color-to-alpha', 'dither', 'replace-color', 'reduce-colors', 'indexed',
+  'mesh-warp', 'perspective-warp', 'pin-warp', 'cage-warp', 'seam-scale', 'deblur',
   'kaleidoscope', 'alien-map', 'bloom', 'edge-detect', 'deinterlace', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur', 'antialias',
   'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning',
 ] as const;
@@ -39,6 +40,7 @@ const REACH: Partial<Record<FxKind, (p: P) => number>> = {
   wind: (p) => n(p, 'length', 30), diffuse: (p) => n(p, 'radius', 4), 'trace-contour': () => 1,
   'glowing-edges': (p) => n(p, 'width', 2) + gauss(n(p, 'smooth', 5) * 0.3) + 1,
   facet: (p) => n(p, 'radius', 3), fragment: (p) => n(p, 'distance', 4),
+  deblur: (p) => 3 * n(p, 'size', 1.5) * Math.min(n(p, 'rounds', 8), 6) + 2,
   'high-pass': (p) => gauss(n(p, 'radius', 4)), maximum: (p) => n(p, 'radius', 2), minimum: (p) => n(p, 'radius', 2), custom: () => 2,
 };
 /**

@@ -43,9 +43,13 @@ const CASES: Record<FxKind, P> = {
   'spin-blur': { angle: 90, size: 100 }, 'lens-fix': { distort: 40, vignette: 40 }, glass: { distort: 10, smooth: 1 }, 'ocean-ripple': { size: 2, amount: 14 },
   'lens-flare': { bright: 150 }, lighting: { bumps: 50 }, 'color-to-alpha': { which: 0 }, dither: { tones: 2 }, 'replace-color': { fuzz: 120, hue: 120, light: 30 },
   'reduce-colors': { count: 4 }, indexed: { palette: 3 },
+  'mesh-warp': { g5x: 45, g5y: 40, g6x: 60, g6y: 25 }, 'perspective-warp': { b0x: 10, b0y: 10, b2x: 85, b2y: 90 },
+  'pin-warp': { n: 2, p0x: 20, p0y: 50, p1x: 80, p1y: 50, q1x: 70, q1y: 30 },
+  'cage-warp': { n: 4, o0x: 20, o0y: 20, o1x: 80, o1y: 20, o2x: 80, o2y: 80, o3x: 20, o3y: 80, c0x: 30, c0y: 10 },
   kaleidoscope: { repeats: 3 }, 'alien-map': { cycles: 3 }, bloom: { threshold: 60, size: 6, strength: 120 }, 'edge-detect': { method: 0 }, deinterlace: { keep: 0 },
   destripe: { width: 4 }, 'video-degrade': { pattern: 0, size: 1, strength: 80 }, lowlight: { dark: 80 }, 'bump-map': { depth: 40 }, 'star-burst': { length: 30 },
   'edge-keep-blur': { radius: 2, keep: 60 }, antialias: { edge: 10 },
+  'seam-scale': { tw: 10, th: 8 }, deblur: { size: 1, rounds: 4 },
   'hue-chroma': { hue: 40, chroma: 30 }, 'rotate-colours': { from: 0, to: 5, width: 180, soft: 20 }, 'text-contrast': { text: 2, level: 0 },
   'local-threshold': { radius: 6, offset: 0 }, retinex: { radius: 8, amount: 100 }, 'tone-map': { squeeze: 80, radius: 6 }, harmonize: { scheme: 0, amount: 100 },
   'palette-edit': { h1: 90, h2: 90, h3: 90, h4: 90 }, 'gamut-warning': { margin: -50 },
@@ -54,7 +58,7 @@ const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dus
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
   'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed',
   'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur',
-  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning']);
+  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning', 'deblur']);
 const FILLS = new Set<FxKind>(['clouds', 'fibers']);
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude');
 
@@ -77,7 +81,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(83);
+    expect(FX_KINDS.length).toBe(89);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

@@ -28,11 +28,12 @@
 .fpe-rgroup+.fpe-rgroup::before{content:"";position:absolute;left:0;top:6px;bottom:20px;width:1px;background:var(--line)}
 .fpe-ritems{display:flex;align-items:flex-start;gap:4px;flex:1}
 .fpe-rcap{height:22px;line-height:20px;font-size:12px;color:var(--dim);text-align:center;white-space:nowrap}
-/* Labels wrap (two lines as a rule) and are never cut short; buttons take the width their words need, within limits. */
-.fpe-rbig,.fpe-rtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;max-width:116px;padding:4px 2px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:12px;line-height:14px;text-align:center;overflow-wrap:break-word;cursor:pointer;flex:none}
+/* Labels wrap at spaces, never inside a word and never cut short. A button takes the width its words need; when a label
+   would stick out of its button or push the group caption below the ribbon, ribbon.ts fit() widens that button. */
+.fpe-rbig,.fpe-rtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;max-width:116px;padding:4px 2px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:12px;line-height:14px;text-align:center;overflow-wrap:normal;cursor:pointer;flex:none}
 .fpe-rtile{min-width:68px;max-width:88px;gap:4px}
 .fpe-rbig .fpe-names{flex-direction:column;align-items:center;row-gap:0;max-width:100%}
-.fpe-rbig .fpe-pro{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fpe-rbig .fpe-pro{max-width:100%;white-space:normal}
 .fpe-rgroupbtn .fpe-plain{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 .fpe-rgroupbtn .fpe-plain .fpe-icon{width:12px;height:12px;color:var(--muted)}
 .fpe-rico{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--hover);flex:none}
@@ -55,7 +56,8 @@
 .fpe .fpe-rmore{font-size:12px}
 /* When a tab does not fit its width or its height (ribbon.ts fit()), each step keeps the one before it: 1 tightens spacing;
    2 narrows buttons, shortens tile previews and leaves the pro name to the hover card; 3 packs small buttons and gaps;
-   4 lets a long small-button label take two lines. Nothing is cut off, and the ribbon keeps one height on every tab. */
+   4 lets a long small-button label take two lines. At every step a big button or tile whose label would stick out or
+   push its caption down is widened (fit() in ribbon.ts). Nothing is cut off, and the ribbon keeps one height on every tab. */
 .fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rgroup{padding:0 5px}
 .fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rmore{width:26px}
 .fpe-rbody[data-fit="1"] .fpe-rbig{max-width:104px}
@@ -84,7 +86,6 @@
 .fpe-rsmall .fpe-tag{height:16px;padding:0 5px}
 .fpe-rmore{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:32px;height:78px;border:1px solid var(--line);border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;flex:none}
 .fpe-rmore .fpe-icon{width:14px;height:14px}
-.fpe-rgroupbtn .fpe-rlabel{white-space:nowrap}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rrow):not([aria-disabled=true]):hover,.fpe-rmore[aria-expanded=true],.fpe-rgroupbtn[aria-expanded=true]{background:var(--hover)}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true]{cursor:default;color:var(--dim)}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true] :is(.fpe-rico,.fpe-icon){opacity:.5}

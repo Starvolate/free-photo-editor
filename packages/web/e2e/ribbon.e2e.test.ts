@@ -198,16 +198,21 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
       const m = await p.evaluate(() => {
         // The visible box of the ribbon body: its top plus its client height, so a horizontal scroll bar does not count as room.
         const b = document.querySelector<HTMLElement>('[data-testid="ribbon-body"]')!, rb = b.getBoundingClientRect(), floor = rb.top + b.clientTop + b.clientHeight;
+        // A word cut, by the same test fit() uses to widen a button (notWhole in ribbon.ts): a label, plain or pro name wider or
+        // taller than its own box, or one sticking out of its big button or tile (a word longer than the button is wide).
+        const clipped = [...b.querySelectorAll<HTMLElement>('.fpe-rlabel, .fpe-plain, .fpe-pro')].filter((e) => {
+          const r = e.getBoundingClientRect(), br = e.closest<HTMLElement>('.fpe-rbig, .fpe-rtile')?.getBoundingClientRect();
+          return !!r.width && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1 || (!!br && (r.left < br.left - 0.5 || r.right > br.right + 0.5)));
+        }).map((e) => 'word cut: ' + e.textContent);
         return { over: b.scrollWidth - b.clientWidth, fit: b.dataset.fit ?? '', height: Math.round(document.querySelector<HTMLElement>('.fpe-ribbon')!.getBoundingClientRect().height),
-          cut: [...b.querySelectorAll<HTMLElement>('.fpe-rcap')].filter((c) => c.getBoundingClientRect().bottom > floor + 0.5).map((c) => 'caption below the ribbon: ' + c.textContent),
-          clipped: [...b.querySelectorAll<HTMLElement>('.fpe-rlabel, .fpe-plain')].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1).map((e) => 'word cut: ' + e.textContent) };
+          cut: [...b.querySelectorAll<HTMLElement>('.fpe-rcap')].filter((c) => c.getBoundingClientRect().bottom > floor + 0.5).map((c) => 'caption below the ribbon: ' + c.textContent), clipped };
       });
       heights.add(m.height);
-      log.push(`${t.plain}: fit ${m.fit}, ribbon ${m.height} px tall, ${m.over > 1 ? m.over + ' px too wide' : 'fits'}${m.cut.length + m.clipped.length ? ', ' + [...m.cut, ...m.clipped].join('; ') : ''}`);
-      // Every group caption is inside the ribbon on every tab. Filters & blur and the first-run tab must also fit their width
-      // with no word cut; the other tabs' width is logged for R3.
-      bad.push(...m.cut.map((x) => `${t.plain}: ${x}`));
-      if (t.plain === 'Filters & blur' || 'rtab-' + slug(t.plain) === FIRST) bad.push(...[...(m.over > 1 ? [`${m.over} px too wide`] : []), ...m.clipped].map((x) => `${t.plain}: ${x}`));
+      log.push(`${t.plain}: fit ${m.fit}, ribbon ${m.height} px tall, ${m.over > 1 ? m.over + ' px too wide' : `fits, ${-m.over} px to spare`}${m.cut.length + m.clipped.length ? ', ' + [...m.cut, ...m.clipped].join('; ') : ''}`);
+      // Every group caption is inside the ribbon and no word is cut on every tab. Filters & blur and the first-run tab must
+      // also fit their width; the other tabs' width is logged.
+      bad.push(...[...m.cut, ...m.clipped].map((x) => `${t.plain}: ${x}`));
+      if ((t.plain === 'Filters & blur' || 'rtab-' + slug(t.plain) === FIRST) && m.over > 1) bad.push(`${t.plain}: ${m.over} px too wide`);
       if (t.plain === 'Effects & masks') await p.screenshot({ path: join(OUT, 'r2-effects-1440.png') });
       for (const more of await p.$$eval('[data-testid="ribbon-body"] [data-testid^="rmore-"]', (els) => els.map((e) => e.getAttribute('data-testid') ?? ''))) {
         await p.click(`[data-testid="${more}"]`);
@@ -269,9 +274,20 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
       if (!got) { missed.push(id); continue; }
       const want = promise.get(id) ?? 0;
       if (got.n > want) late.push(`${id}: promised ${want}, took ${got.n} (${ways(id).map((s) => `${s.place} ${cost(s)}`).join(', ')})`);
-      const el = p.locator(got.sel).first();
+      const sel = got.sel, el = p.locator(sel).first();
       if ((await el.getAttribute('aria-disabled')) === 'true') off++;
-      else await el.click({ timeout: 5000 }).catch((e: Error) => missed.push(`${id}: ${e.message.split('\n')[0]}`));
+      else await el.click({ timeout: 5000 }).catch(async (e: Error) => {
+        // Say why: the spot tried, the end of Playwright's own log (not stable, not enabled, or what intercepts the click),
+        // and what sits at the command's centre with the ribbon's fit level and scroll.
+        const at = await p.evaluate((sel) => {
+          const c = document.querySelector<HTMLElement>(sel), b = document.querySelector<HTMLElement>('[data-testid="ribbon-body"]');
+          if (!c) return 'gone';
+          const r = c.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          const name = (x: Element | null): string => !x ? 'nothing' : x.getAttribute('data-testid') ?? `${x.tagName.toLowerCase()}.${[...x.classList].join('.')}`;
+          return `box ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}, aria-disabled ${c.getAttribute('aria-disabled')}, centre hits ${hit && (hit === c || c.contains(hit)) ? 'itself' : name(hit)}, fit ${b?.dataset.fit}, scroll ${b?.scrollLeft},${b?.scrollTop}, body hidden ${b?.hidden}`;
+        }, sel.replace(/:visible$/, '')).catch((x: Error) => 'probe failed: ' + x.message.split('\n')[0]);
+        missed.push(`${id} at ${sel}: ${e.message.split('\n').map((x) => x.trim()).filter(Boolean).slice(-4).join(' / ')} | ${at}`);
+      });
       await p.waitForTimeout(30);
     }
     console.log(`R2 sweep at 1440 x 900: ${ids.length} Ready commands; ${ids.length - late.length - missed.length} within their promise; ${off} reached but disabled on the resting screen; late ${JSON.stringify(late)}; missed ${JSON.stringify(missed)}`);

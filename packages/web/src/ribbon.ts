@@ -66,6 +66,22 @@ if (NEW_ROWS.some((r) => !BY_ID.has(r.id))) addRows(NEW_ROWS.filter((r) => !BY_I
 const plainOf = (id: string): string => BY_ID.get(id)?.plain ?? (id.split('.').pop() ?? id).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
 /** What the effect families (Filters & blur) are called as one group. */
 const FAMILIES = 'Every effect, by kind';
+/** The ribbon buttons that widen when their words would not show whole (fit() in mountRibbon). */
+const WIDE = '.fpe-rbig, .fpe-rtile';
+/**
+ * True when a button's words do not show whole: a label, plain or pro name wider or taller than its own box, one sticking
+ * out of the button at either side (a word longer than the button is wide), or the button's bottom below `room`.
+ */
+function notWhole(b: HTMLElement, room: number): boolean {
+  const br = b.getBoundingClientRect();
+  if (br.bottom > room + 0.5) return true;
+  for (const e of b.querySelectorAll<HTMLElement>('.fpe-rlabel, .fpe-plain, .fpe-pro')) {
+    const r = e.getBoundingClientRect();
+    if (!r.width) continue;
+    if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1 || r.left < br.left - 0.5 || r.right > br.right + 0.5) return true;
+  }
+  return false;
+}
 const readTab = (): string | null => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const writeTab = (t: string): void => { try { localStorage.setItem(KEY, t); } catch { /* private window: the tab is simply not remembered */ } };
 
@@ -192,14 +208,34 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   };
   /**
    * Tightens the ribbon a step at a time (ribbon.css: spacing, narrower buttons, packed small buttons, two-line small
-   * labels) until the open tab fits its width without scrolling and its height with every group caption showing. The
-   * ribbon's height never changes between tabs; only what is inside it tightens.
+   * labels) until the open tab fits its width without scrolling and its height with every group caption showing. At each
+   * step a big button or tile whose words would not show whole is widened first (`widen`). The ribbon's height never
+   * changes between tabs; only what is inside it tightens.
    */
   const fit = (): void => {
-    body.dataset.fit = '0';
-    for (const lvl of ['1', '2', '3', '4']) {
-      if (!body.clientWidth || (body.scrollWidth <= body.clientWidth + 1 && body.scrollHeight <= body.clientHeight + 1)) return;
+    for (const lvl of ['0', '1', '2', '3', '4']) {
       body.dataset.fit = lvl;
+      for (const b of body.querySelectorAll<HTMLElement>(WIDE)) b.style.width = b.style.minWidth = b.style.maxWidth = '';
+      if (!body.clientWidth) return;
+      widen();
+      if (body.scrollWidth <= body.clientWidth + 1 && body.scrollHeight <= body.clientHeight + 1) return;
+    }
+  };
+  /**
+   * Labels wrap at spaces and are never cut short. A big button or tile grows 8 px at a time (up to 240 px) while its words
+   * do not show whole: a label or name wider or taller than its own box, a word sticking out of the button, or a button so
+   * tall that its group caption would drop below the ribbon. The e2e test (ribbon.e2e.test.ts) checks the same things.
+   */
+  const widen = (): void => {
+    body.scrollTop = 0;
+    const floor = body.getBoundingClientRect().top + body.clientTop + body.clientHeight;
+    for (const b of body.querySelectorAll<HTMLElement>(WIDE)) {
+      const cap = b.closest('.fpe-rgroup')?.querySelector<HTMLElement>(':scope > .fpe-rcap');
+      const room = floor - (cap?.offsetHeight ?? 0);
+      for (let w = b.offsetWidth; w < 240 && notWhole(b, room);) {
+        w += 8;
+        b.style.width = b.style.minWidth = b.style.maxWidth = w + 'px';
+      }
     }
   };
   new ResizeObserver(() => { if (!body.hidden) fit(); }).observe(ribbon);

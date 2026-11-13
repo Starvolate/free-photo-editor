@@ -8,6 +8,7 @@ import { HANDLES } from '../src/handles';
 import { BY_ID, ROWS } from '../src/registry';
 // The batch filters' dialogs load on first use; loading them here adds them to ADJ, so every effect kind has its dialog.
 import '../src/adj-more';
+import '../src/light-more';
 
 const CARD = [
   'blur-box', 'blur-motion', 'blur-radial', 'blur-surface', 'blur-smart', 'blur-average', 'blur-lens', 'blur-field', 'blur-iris', 'blur-tilt',

@@ -71,6 +71,25 @@ describe('what the offline worker saves, and when', () => {
   it('leaves every add-on (filters, formats and their WebAssembly) to be saved on first use', () => {
     expect(addons).toEqual(['assets/avif-FFFFFFFF.wasm', 'assets/blur-GGGGGGGG.js', 'assets/fx-EEEEEEEE.js']);
   });
+  // The help lines load on idle on a first visit, often while the worker is still installing; a file that arrives after it
+  // takes charge is missed (CI 43467099052: "not saved: …/assets/_virtual_fpe-help-….js"). So they are saved at install.
+  const help = '\0virtual:fpe-help';
+  const withHelp: BundleFile[] = [
+    { fileName: 'assets/index-AAAAAAAA.js', type: 'chunk', isEntry: true, module: '/src/main.ts', code: 'const HELP_CHUNK = () => import("./_virtual_fpe-help-HHHHHHHH.js");' },
+    { fileName: 'assets/_virtual_fpe-help-HHHHHHHH.js', type: 'chunk', module: help, code: 'export default {"file.new":"Start a new picture."};' },
+    { fileName: 'assets/fx-EEEEEEEE.js', type: 'chunk', module: '/src/fx.ts', code: '' },
+  ];
+  it('saves the help lines at install when asked, and leaves them an add-on when not', () => {
+    const asked = splitFiles(withHelp, ['index.html'], [help]);
+    expect(asked.shell).toEqual(['assets/_virtual_fpe-help-HHHHHHHH.js', 'assets/index-AAAAAAAA.js', 'index.html']);
+    expect(asked.addons).toEqual(['assets/fx-EEEEEEEE.js']);
+    const not = splitFiles(withHelp, ['index.html']);
+    expect(not.shell).toEqual(['assets/index-AAAAAAAA.js', 'index.html']);
+    expect(not.addons).toEqual(['assets/_virtual_fpe-help-HHHHHHHH.js', 'assets/fx-EEEEEEEE.js']);
+  });
+  it('stops the build when the help chunk is missing, so a rename cannot quietly make it an add-on again', () => {
+    expect(() => splitFiles(withHelp.filter((f) => f.module !== help), ['index.html'], [help])).toThrow(/virtual:fpe-help/);
+  });
 });
 
 describe('install steps and safety copies', () => {

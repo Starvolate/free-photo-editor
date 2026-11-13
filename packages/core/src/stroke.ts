@@ -16,23 +16,26 @@ export interface BrushOptions {
   color: RGBA; erase: boolean;
   /** Distance between dabs as a fraction of the diameter. */ spacing?: number;
 }
-/** A point of the stroke. `size` and `flow` let pen pressure and tilt change each dab. */
-export interface StrokePoint { x: number; y: number; size?: number; flow?: number; }
+/**
+ * A point of the stroke. `size` and `flow` let pen pressure and tilt change each dab. `pressure` (0..1) and `tilt` (0..1)
+ * are the pen's own readings, for the brush dynamics (paint-more.ts); the plain brush ignores them.
+ */
+export interface StrokePoint { x: number; y: number; size?: number; flow?: number; pressure?: number; tilt?: number; }
 const T = 64;
-interface Tile { r: Rect; orig: Uint8ClampedArray; mask: Uint8Array; }
+export interface Tile { r: Rect; orig: Uint8ClampedArray; mask: Uint8Array; }
 
 export class Stroke {
   readonly layer: Layer;
-  private readonly o: BrushOptions;
-  private readonly clip: Rect | null;
-  private readonly sel: Selection | null;
-  private readonly tiles = new Map<number, Tile>();
+  protected readonly o: BrushOptions;
+  protected readonly clip: Rect | null;
+  protected readonly sel: Selection | null;
+  protected readonly tiles = new Map<number, Tile>();
   private readonly grownFrom: LayerGeom | null;
-  private readonly cols: number;
+  protected readonly cols: number;
   private last: { x: number; y: number; size: number; flow: number } | null = null;
   private carry = 0;
-  private dirty: Rect | null = null;
-  private all: Rect | null = null;
+  protected dirty: Rect | null = null;
+  protected all: Rect | null = null;
 
   constructor(doc: Doc, layer: Layer, options: BrushOptions, selection: Selection | null = doc.selection) {
     this.layer = layer;
@@ -76,7 +79,7 @@ export class Stroke {
     this.tiles.clear();
     return this.all;
   }
-  private tile(tx: number, ty: number, key: number): Tile {
+  protected tile(tx: number, ty: number, key: number): Tile {
     const L = this.layer;
     const r = { x: tx * T, y: ty * T, w: Math.min(T, L.width - tx * T), h: Math.min(T, L.height - ty * T) };
     const orig = new Uint8ClampedArray(r.w * r.h * 4);
@@ -85,7 +88,8 @@ export class Stroke {
     this.tiles.set(key, t);
     return t;
   }
-  private dab(cx: number, cy: number, diameter: number, flow: number): void {
+  /** Paint one round dab (the brush power-ups in paint-more.ts copy, mirror and wrap it). */
+  protected dab(cx: number, cy: number, diameter: number, flow: number): void {
     const c = this.clip;
     if (!c) return;
     const r = Math.max(0.5, diameter / 2);

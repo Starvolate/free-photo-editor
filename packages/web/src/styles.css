@@ -143,10 +143,10 @@
 .fpe-group[data-folded] .fpe-gfold .fpe-icon{transform:rotate(-90deg)}
 .fpe-gbody{min-height:0;max-height:220px;overflow-y:auto}
 .fpe-group[data-folded] .fpe-gbody{display:none}
-.fpe-group[data-group=layers] .fpe-gbody{display:flex;flex-direction:column;flex:1 1 auto;max-height:none;overflow:hidden}
+.fpe-group[data-group=layers] .fpe-gbody{display:flex;flex-direction:column;flex:0 1 auto;max-height:none;overflow:hidden}
 .fpe-pbody{display:none;padding:8px 10px}
 .fpe-pbody[data-active]{display:block}
-.fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:6px 8px;overflow-y:auto}
+.fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;padding:6px 8px;overflow-y:auto}
 /* the dock as cards (a-deep, 13 Nov 2026): two columns at 1400 px and wider, one tabbed card below that; phones keep the sheet */
 .fpe-dcol{display:contents}
 .fpe-dswitch,.fpe-learn{display:none}
@@ -170,7 +170,7 @@
 .fpe[data-wide]:not([data-layout=phone]) .fpe-dcol+.fpe-dcol{flex-grow:1.1}
 .fpe[data-wide] .fpe-group[data-group=props]{flex:1 1 0;min-height:280px}
 .fpe[data-wide] .fpe-group[data-group=history]{flex:0 1 auto;max-height:178px}
-.fpe[data-wide] .fpe-group[data-group=layers]{flex:1 1 auto;min-height:0}
+.fpe[data-wide] .fpe-group[data-group=layers]{flex:0 1 auto;min-height:0}
 .fpe[data-wide] .fpe-group[data-group=nav] .fpe-gbody{max-height:200px}
 .fpe[data-wide][data-hints=on][data-has-doc] .fpe-learn{display:block}
 .fpe-learn{flex:none;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
@@ -183,8 +183,10 @@
 .fpe-dview:hover{background:var(--hover);color:var(--text)}
 .fpe-dview[aria-selected=true]{background:var(--sel);color:var(--text);font-weight:600}
 .fpe[data-layout=tablet] .fpe-dview{padding:0 4px;font-size:12px}
-.fpe:not([data-wide]):not([data-layout=phone]) .fpe-group{flex:1 1 auto}
+.fpe:not([data-wide]):not([data-layout=phone]) .fpe-group{flex:0 1 auto}
 .fpe:not([data-wide]):not([data-layout=phone]) .fpe-group[data-single] .fpe-gtabs{visibility:hidden}
+/* One tabbed card with one tab: its "..." sits in the switch row (app.ts applyDock), so no empty header strip. */
+.fpe:not([data-wide]):not([data-layout=phone]) .fpe-group[data-single]:not([data-group=history]) .fpe-ghead{display:none}
 /* no picture: no dock, so the start screen takes the full width; the dock comes with the first picture */
 .fpe:not([data-has-doc]):not([data-layout=phone]){--dock-w:0px}
 .fpe:not([data-has-doc]):not([data-layout=phone]) .fpe-dock{display:none}
@@ -199,8 +201,13 @@
 .fpe-dock .fpe-field>input[type=range]{margin-left:0;margin-right:0}
 .fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-top:6px}
 .fpe-props .fpe-row>label{flex-basis:56px}
+.fpe-props:empty{display:none}
+.fpe-layer-rename{flex:1 1 auto;min-width:0;height:30px;padding:0 6px;font:inherit;font-size:13px;color:var(--text);background:var(--panel-2);border:1px solid var(--accent);border-radius:6px}
+.fpe [data-fade=bottom]{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
+.fpe [data-fade=top]{-webkit-mask-image:linear-gradient(transparent,#000 28px);mask-image:linear-gradient(transparent,#000 28px)}
+.fpe [data-fade='top bottom']{-webkit-mask-image:linear-gradient(transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(transparent,#000 28px,#000 calc(100% - 28px),transparent)}
 /* the rows come first and at least three 46 px rows stay in view */
-.fpe-layer-list{flex:1 1 auto;min-height:143px;margin:0;padding:0;overflow-y:auto;list-style:none;border:1px solid var(--line);border-radius:6px}
+.fpe-layer-list{flex:0 1 auto;min-height:47px;margin:0;padding:0;overflow-y:auto;list-style:none;border:1px solid var(--line);border-radius:6px}
 .fpe-layer{display:flex;align-items:center;gap:4px;min-height:46px;padding:2px 6px 2px 2px;border-bottom:1px solid var(--line)}
 .fpe-layer:last-child{border-bottom:0}
 .fpe-indent{flex:none;width:calc(var(--depth,0) * var(--step,16px))}
@@ -226,6 +233,7 @@
 .fpe-layer-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;flex:none;margin-bottom:6px}
 .fpe-layer-top .fpe-row{flex:1 1 120px;min-width:0}
 .fpe-layer-top .fpe-row>label{flex-basis:auto}
+.fpe-layer-top .fpe-row:first-child{flex-basis:100%}
 /* Blend and Opacity on two rows in the dock: side by side, Blend's list cut "Pass through" ("select{min-width}" lost to ".fpe select{min-width:0}") */
 .fpe:not([data-layout=phone]) .fpe-layer-top .fpe-row{flex-basis:100%}
 .fpe:not([data-layout=phone]) .fpe-layer-top .fpe-row>label{flex-basis:56px}

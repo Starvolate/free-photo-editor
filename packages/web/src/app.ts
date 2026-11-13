@@ -29,7 +29,7 @@ import { JobRunner, JobStopped } from './jobs';
 import { NOTICES } from './notices';
 import { AppShell, type AppOptions } from './offline';
 import { Autosave, namesText, type OpenPicture, type SavedPicture } from './autosave';
-import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
+import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, helpReady, loadHelp, onHelp, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
@@ -91,6 +91,8 @@ export interface EditorController {
   appState(): Record<string, unknown>;
   /** Write the safety copies now. */
   saveNow(): Promise<void>;
+  /** Plug-ins, automation and tests: show your own controls in a sheet; a later call with the same id and a new body shows that body. */
+  sheet(id: string, title: string, body: HTMLElement): void;
 }
 
 interface Session {
@@ -296,6 +298,10 @@ export class Editor {
   private sampleAll = true;
   private ratio = 0;
   private stroke: Stroke | null = null;
+  /** Brush extras (paintkit.ts): makes each stroke while one is on; null (the plain stroke) while all are off. */
+  private rig: import('./paintkit').RigMaker | null = null;
+  /** The symmetry guide over the picture (paintkit.ts); null while symmetry is off, so it costs nothing then. */
+  private rigGuide: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   /** While a pixel stroke runs, the rows below the painted layer per tile, so a frame redraws only what changed (core composite.ts). */
   private strokeCache: StrokeCache | null = null;
   /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
@@ -338,6 +344,9 @@ export class Editor {
   private toneBody: HTMLElement | null = null;
   /** The dock's picture-only parts (Learn as you go, the Tone graph, a layer's names), loaded with the first picture. */
   private cards: typeof import('./dockcards') | null = null;
+  private gmores = new Map<string, HTMLElement>();
+  private dmore: HTMLElement | null = null;
+  private fadeRO: ResizeObserver | null = null;
   private cardsLoad: Promise<void> | null = null;
   private groupActive = new Map<string, string>();
   private dockState: DockState = 'closed';
@@ -829,14 +838,15 @@ export class Editor {
     const col1 = h('div', { class: 'fpe-dcol', 'data-testid': 'dock-col-1' }), col2 = h('div', { class: 'fpe-dcol', 'data-testid': 'dock-col-2' });
     const others = h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-gmore', 'aria-haspopup': 'menu', 'aria-label': 'More panels', 'data-testid': 'dview-more',
       'data-help-title': 'More panels', 'data-help': 'The tone graph, navigator, colours and the other panels. Pick one to show it here.' }, icon('more'));
-    others.addEventListener('click', () => this.showPopover(GROUPS.flatMap((g) => g.panels).filter((p) => p !== 'layers' && p !== 'properties' && p !== 'history' && BY_ID.has('panel.' + p))
-      .map((p) => this.panelItem(p)), others));
+    others.addEventListener('click', () => this.showPopover(this.otherPanels([]), others));
+    this.dmore = others;
     this.dswitch = h('div', { class: 'fpe-dswitch', role: 'tablist', 'aria-label': 'Panels', 'data-testid': 'dock-views' }, ...VIEWS.map(([id, label]) =>
       h('button', { type: 'button', class: 'fpe-dview', role: 'tab', 'aria-selected': 'false', 'data-view': id, 'data-testid': 'dview-' + id,
         onclick: () => { this.dview = id; this.applyDock(); this.renderPanels(); } }, label)), others);
     for (const g of GROUPS) {
       const tabs = h('div', { class: 'fpe-gtabs', role: 'tablist' });
       const body = h('div', { class: 'fpe-gbody' });
+      this.watchFade(body);
       for (const pid of g.panels) {
         const r = BY_ID.get('panel.' + pid);
         if (!r) continue;
@@ -851,8 +861,10 @@ export class Editor {
       const names = g.panels.map((p) => BY_ID.get('panel.' + p)?.plain).filter(Boolean).join(', ');
       const more = h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-gmore', 'aria-haspopup': 'menu', 'aria-label': 'More in this card: ' + names, 'data-testid': 'gmore-' + g.id,
         'data-help-title': 'More in this card', 'data-help': names + '. Pick one to show it here.' }, icon('more'));
+      // Over one tabbed card (below 1400 px) this button sits in the switch row and lists the other panels instead of folding.
       more.addEventListener('click', () => this.showPopover([...g.panels.filter((p) => BY_ID.has('panel.' + p)).map((p) => this.panelItem(p)),
-        { label: this.folded.has(g.id) ? 'Unfold this card' : 'Fold this card', run: () => this.toggleGroup(g.id) }], more));
+        ...(more.parentElement === this.dswitch ? this.otherPanels(g.panels) : [{ label: this.folded.has(g.id) ? 'Unfold this card' : 'Fold this card', run: () => this.toggleGroup(g.id) }])], more));
+      this.gmores.set(g.id, more);
       const steps = g.id === 'history' ? [this.histCount = h('span', { class: 'fpe-hist-count', 'data-testid': 'history-count' }),
         this.cmdBtn('edit.history-back', 'undo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-back' }),
         this.cmdBtn('edit.history-forward', 'redo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-forward' })] : [];
@@ -871,9 +883,10 @@ export class Editor {
     const b = h('div', { class: 'fpe-pbody', 'data-panel': pid, 'data-testid': 'panel-' + pid });
     if (pid === 'layers') {
       this.layerList = h('ul', { class: 'fpe-layer-list', 'aria-label': 'Layers, top first', 'data-testid': 'layer-list' });
+      this.watchFade(this.layerList);
       this.layerProps = h('div', { class: 'fpe-props' });
       // As in the approved layout: Blend and Opacity on top, then the rows, then New, Mask, Copy and Delete with words and
-      // More for the rest, then the name. The count sits beside the panel's title.
+      // More for the rest. A double-click on a row's name (or More › Rename) renames it in place. The count sits beside the title.
       this.layerTop = h('div', { class: 'fpe-layer-top', 'data-testid': 'layer-top' });
       const act = (cmd: string, ic: string, text: string, testid: string): HTMLButtonElement => {
         const btn = this.cmdBtn(cmd, ic, text, { 'data-testid': testid });
@@ -949,8 +962,20 @@ export class Editor {
       b.append(h('p', { class: 'fpe-note' }, pid === 'paths' ? 'Getting the outlines ready…' : 'Getting the text settings ready…'));
       void this.toolkit().then((tk) => tk.fillPanel(pid, b));
     }
+    this.fadeRO?.observe(b);
     this.bodies.set(pid, b);
     return b;
+  }
+  /** A card that scrolls shows a calm fade on each edge where more is hidden (data-fade: top, bottom or both); nothing is simply cut. */
+  private fade(el: HTMLElement): void {
+    const max = el.scrollHeight - el.clientHeight, sc = max > 1 && /auto|scroll/.test(getComputedStyle(el).overflowY);
+    const v = sc ? [el.scrollTop > 1 ? 'top' : '', el.scrollTop < max - 1 ? 'bottom' : ''].filter(Boolean).join(' ') : '';
+    if (v) el.dataset.fade = v; else delete el.dataset.fade;
+  }
+  private watchFade(el: HTMLElement): void {
+    this.fadeRO ??= new ResizeObserver((es) => { for (const e of es) { const s = (e.target as HTMLElement).closest<HTMLElement>('.fpe-gbody, .fpe-layer-list'); if (s) this.fade(s); } });
+    this.fadeRO.observe(el);
+    el.addEventListener('scroll', () => this.fade(el), { passive: true });
   }
   private activateTab(group: string, pid: string): void {
     this.groupActive.set(group, pid);
@@ -987,6 +1012,13 @@ export class Editor {
       sec.toggleAttribute('data-single', n < 2);
       for (const p of g.panels) this.bodies.get(p)?.toggleAttribute('data-active', p === act);
     }
+    // Below 1400 px the shown card's "..." joins the switch row, so a card with one tab needs no header strip of its own.
+    const lone = narrow && this.dswitch ? this.gmores.get(this.dview) : undefined;
+    for (const [gid, m] of this.gmores) {
+      const home = m === lone ? this.dswitch : this.groupEls.get(gid)?.querySelector('.fpe-ghead');
+      if (home && m.parentElement !== home) home.append(m);
+    }
+    if (this.dmore) this.dmore.style.display = lone ? 'none' : '';
     for (const b of this.dswitch?.querySelectorAll<HTMLElement>('[data-view]') ?? []) b.setAttribute('aria-selected', String(b.dataset.view === this.dview));
     this.fitTabs();
   }
@@ -1138,6 +1170,7 @@ export class Editor {
     this.searchList = h('ul', { class: 'fpe-results', role: 'listbox', 'aria-label': 'Matching commands', 'data-testid': 'search-results' });
     this.searchInput.addEventListener('input', () => {
       this.renderSearch();
+      void loadHelp();
       if (!moreLoaded) void loadMoreRows().then(() => { if (moreLoaded && this.searchInput.value.trim()) this.renderSearch(); });
     });
     this.searchInput.addEventListener('keydown', (e) => {
@@ -1160,7 +1193,7 @@ export class Editor {
       const ok = r.status === 'ready';
       const li = h('li', { role: 'option', class: 'fpe-result', 'aria-selected': String(k === firstReady), 'aria-disabled': ok ? null : 'true', 'data-tipcmd': r.id, 'data-id': r.id, 'data-testid': 'search-result' },
         h('span', { class: 'fpe-result-top' }, this.names(r.plain, r.pro), ok ? null : this.tag(), r.key ? h('kbd', {}, keyText(r.key)) : null),
-        h('span', { class: 'fpe-result-help' }, `${r.help} · ${r.kind === 'tool' ? 'Tool column' : r.kind === 'panel' ? 'Panel' : placeText(r.place)}`));
+        h('span', { class: 'fpe-result-help' }, `${r.help ? r.help + ' · ' : ''}${r.kind === 'tool' ? 'Tool column' : r.kind === 'panel' ? 'Panel' : placeText(r.place)}`));
       li.addEventListener('click', () => { if (!ok) return; this.closeModal(false); void this.run(r.id).then((done) => { if (done) this.highlight(r.id); }); });
       return li;
     }));
@@ -1173,18 +1206,24 @@ export class Editor {
   private installTips(): void {
     const root = this.root;
     let timer = 0, press = 0, pressed = false, sx = 0, sy = 0, target: HTMLElement | null = null;
+    // The help lines come in their own chunk after the first screen: on idle, on the first search keystroke, or from a tip.
+    onHelp(() => { this.renderStatus(); this.renderOptions(); this.renderProps(); this.renderSearch(); });
+    const idle = (window as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (idle) idle(() => void loadHelp(), { timeout: 1500 }); else window.setTimeout(() => void loadHelp(), 1500);
     const find = (el: EventTarget | null): HTMLElement | null => (el instanceof Element ? el.closest<HTMLElement>('[data-cmd],[data-help],[data-tipcmd]') : null);
     const show = (el: HTMLElement): void => {
       if (!this.hints || !el.isConnected || el.closest('.fpe-fly')) return;
       const id = el.dataset.cmd ?? el.dataset.tipcmd, r = id ? BY_ID.get(id) : undefined;
-      const help = r?.help ?? el.dataset.help ?? '';
-      if (!help) return;
+      // Until the help lines arrive, a command's tip shows its plain and pro names, and fills in its help when they come.
+      const help = r?.help || el.dataset.help || '', waiting = !!r && !r.help && !helpReady();
+      if (!help && !waiting) return;
+      if (waiting) void loadHelp().then(() => { if (target === el && !this.tipEl.hidden && r?.help) show(el); });
       const title = r?.plain ?? el.dataset.helpTitle ?? el.getAttribute('aria-label') ?? '';
       this.tipEl.replaceChildren(...[h('span', { class: 'fpe-tip-head' }, h('strong', {}, title), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, r.pro) : null,
-        r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), h('span', { class: 'fpe-tip-help' }, help),
+        r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), help ? h('span', { class: 'fpe-tip-help' }, help) : null,
         // Where to find it again: every command, and a tool too when it is hovered on the ribbon (its home is a ribbon group).
         r && (r.kind === 'command' || el.closest('.fpe-ribbon, .fpe-rlist')) ? h('span', { class: 'fpe-tip-place' }, 'In ' + this.placeOf(r)) : null,
-        el.getAttribute('aria-disabled') === 'true' && r?.status === 'ready' ? h('span', { class: 'fpe-tip-place' }, this.doc ? 'Not available right now.' : 'Open or create a picture first.') : null].filter((x): x is HTMLElement => !!x));
+        el.getAttribute('aria-disabled') === 'true' && r?.status === 'ready' ? h('span', { class: 'fpe-tip-place' }, el.dataset.why ?? (this.doc ? 'Not available right now.' : 'Open or create a picture first.')) : null].filter((x): x is HTMLElement => !!x));
       this.tipEl.hidden = false;
       const rr = root.getBoundingClientRect(), er = el.getBoundingClientRect(), tw = this.tipEl.offsetWidth, th = this.tipEl.offsetHeight;
       let y = er.bottom - rr.top + 6;
@@ -1459,7 +1498,7 @@ export class Editor {
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
       crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
-      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk || this.rigGuide ? (ctx) => { this.tk?.overlay(ctx); this.rigGuide?.(ctx); } : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -1510,7 +1549,7 @@ export class Editor {
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
     const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
-    const tip = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '', ml = d ? activeLayer(d) : undefined;
+    const tip = act ? `${act.plain}: ${act.help}` : r ? (r.help ? `${r.plain}: ${r.help}` : r.pro !== r.plain ? `${r.plain} · ${r.pro}` : r.plain) : '', ml = d ? activeLayer(d) : undefined;
     // While the mask is the target the status line says so first, in plain words (design 6), then the tool's own line.
     s.hint.textContent = ml && this.onMask(ml) ? `Editing the mask of ${ml.name}: black hides, white shows, grey half shows. ${tip}` : tip;
     s.space.textContent = d ? 'sRGB · 8 bits a channel' : '';
@@ -1520,8 +1559,16 @@ export class Editor {
       s.color.replaceChildren(...(c ? [h('i', { class: 'fpe-stat-sw', style: 'background:' + hex }), `Under the pointer ${hex} · R ${c.r} G ${c.g} B ${c.b}`] : []));
     }
     const n = ml && this.cards ? this.cards.layerNames(ml) : null;
-    s.layer.textContent = n ? `${n.plain} · pros call it ${n.pro}` : '';
-    s.saved.textContent = d ? (this.saver?.enabled ? 'Saved on this device' : 'Safety copies off') : '';
+    s.layer.textContent = n ? (n.pro !== n.plain ? `${n.plain} · pros call it ${n.pro}` : n.plain) : '';
+  }
+  /**
+   * True for each picture: "Saved on this device" only after this picture's own safety copy is written. Runs when the saver
+   * reports (each change and each write) and when a tab opens, closes or switches, never on a pointer move or a stroke frame.
+   */
+  private renderSaved(): void {
+    const sv = this.saver, tab = this.tabs[this.cur], el = this.stat.saved;
+    if (!el) return;
+    el.textContent = !this.doc ? '' : !sv?.enabled ? 'Safety copies off' : sv.lastError ? 'Not saved: browser storage refused' : { saved: 'Saved on this device', saving: 'Saving…', none: '' }[tab ? sv.stateOf(tab) : 'none'];
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -1539,6 +1586,10 @@ export class Editor {
     if (b.dataset.text === text) return;
     b.dataset.text = text;
     b.replaceChildren(...rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
+  }
+  /** The panels outside Layers, Properties and History (and outside `skip`), for a "..." menu. */
+  private otherPanels(skip: string[]): PopItem[] {
+    return GROUPS.flatMap((g) => g.panels).filter((p) => p !== 'layers' && p !== 'properties' && p !== 'history' && !skip.includes(p) && BY_ID.has('panel.' + p)).map((p) => this.panelItem(p));
   }
   private panelItem(pid: string): PopItem {
     const r = BY_ID.get('panel.' + pid), ok = r?.status === 'ready';
@@ -1620,10 +1671,12 @@ export class Editor {
       ai: () => this.ai(),
     };
   }
+  /** Open a sheet with this title and body. A sheet is built once per id; a later caller's own body replaces the one shown before. */
   private toolSheet(id: string, title: string, body: HTMLElement): void {
     if (!this.sheets.has(id)) { this.makeSheet(id, title, body); this.root.insertBefore(this.sheets.get(id) as HTMLElement, this.scrim); }
-    const t = this.sheets.get(id)?.querySelector('.fpe-sheet-title');
+    const sheet = this.sheets.get(id) as HTMLElement, t = sheet.querySelector('.fpe-sheet-title'), box = sheet.querySelector(':scope > .fpe-sheet-body');
     if (t) t.textContent = title;
+    if (box && (box.childElementCount !== 1 || box.firstElementChild !== body)) box.replaceChildren(body);
     this.openModal(id);
   }
   private showPanelTab(pid: string): void {
@@ -1669,7 +1722,7 @@ export class Editor {
   private strokePoint(p: Pt, i: PointerInfo): StrokePoint {
     if (i.type !== 'pen') return { x: p.x, y: p.y };
     const o = this.paintOpts(), pr = clamp(i.pressure, 0.05, 1), tilt = Math.min(1, Math.hypot(i.tiltX, i.tiltY) / 60);
-    return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt) };
+    return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt), pressure: pr, tilt };
   }
   /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
   private editable(l: Layer, pixels = true, onMask = false): boolean {
@@ -1719,8 +1772,8 @@ export class Editor {
       if (!l || !this.editable(l, true, true)) return;
       if (!l.visible) { this.toast('This layer is hidden. Show it to paint on it.'); return; }
       const o = this.paintOpts(), opts = { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' };
-      if (this.onMask(l)) { this.maskSurf = openMaskSurface(d, l); this.stroke = new Stroke(this.maskSurf.doc, this.maskSurf.layer, opts); }
-      else { this.stroke = new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
+      if (this.onMask(l)) { const m = this.maskSurf = openMaskSurface(d, l); this.stroke = this.rig?.(m.doc, m.layer, opts) ?? new Stroke(m.doc, m.layer, opts); }
+      else { this.stroke = this.rig?.(d, l, opts) ?? new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       return;
@@ -1752,9 +1805,13 @@ export class Editor {
     if (!g) return false;
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
-    this.hdrag = best;
+    // A press away from every handle: the develop sheet's grey picker sets something there (true); pins and the cage add a
+    // handle there (its key), ready to drag.
     const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
-    if (!best && s && set?.press && b && set.press(p.x, p.y, (s.spec.params ??= {}), b)) { this.syncControls(); this.preview(); this.requestRender(); return true; }
+    const r = !best && s && b && set?.press?.(p.x, p.y, (s.spec.params ??= {}), b);
+    if (typeof r === 'string') best = r;
+    this.hdrag = best;
+    if (r) { this.syncControls(); this.preview(); this.requestRender(); return true; }
     return !!best;
   }
   private handleMove(p: Pt): void {
@@ -2150,7 +2207,7 @@ export class Editor {
       const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name' + (sub ? ' fpe-layer-two' : ''),
         'aria-label': `${folder ? 'Folder' : 'Layer'} ${l.name}${folder ? `, ${open ? 'open' : 'closed'}, ${nl(n)} inside` : ''}${l.clip ? ', clipped to the layer below' : ''}${clipped ? `, ${nl(clipped)} clipped to it` : ''}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
         'data-help-title': folder ? 'Choose this folder' : 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
-        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') },
+        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.renameInPlace(l.id) },
         h('span', {}, l.name), sub ? h('small', { class: 'fpe-layer-sub' }, sub) : null);
       this.longPress(nameBtn, () => this.layerActions(l.id));
       list.append(h('li', { class: 'fpe-layer' + (l.clip ? ' fpe-clipped' : ''), style: `--depth:${up.length}`, 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id,
@@ -2171,8 +2228,6 @@ export class Editor {
     const a = activeLayer(d);
     if (a) {
       const id = `fpe-${this.uid}-l`;
-      const name = h('input', { id: id + 'n', type: 'text', value: a.name, maxlength: 100, autocomplete: 'off', spellcheck: 'false', 'data-testid': 'layer-name' });
-      name.addEventListener('change', () => { const v = name.value.trim(); if (v && v !== a.name) this.pushCmd(setLayerProps(d, a.id, { name: v })); else name.value = a.name; });
       const op = h('input', { id: id + 'o', type: 'range', min: 0, max: 100, step: 1, value: Math.round(a.opacity * 100), 'data-testid': 'layer-opacity' });
       const opOut = h('output', { class: 'fpe-out', for: id + 'o' }, Math.round(a.opacity * 100) + '%');
       op.addEventListener('input', () => {
@@ -2201,20 +2256,39 @@ export class Editor {
           h('label', { for: id + 'b' }, 'Blend'), blend),
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
           h('label', { for: id + 'o' }, 'Opacity'), op, opOut), ...(hasPixels(a) ? [this.fillRow(a, id)] : []));
-      this.layerProps.append(h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
     }
     if (focused) (this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`) ?? this.layerTop.querySelector<HTMLElement>(`[data-testid="${focused}"]`))?.focus({ preventScroll: true });
+    this.fade(list);
     this.queueThumbs();
   }
   /** The Layers card's More list: every layer action that is not one of the four with words. */
   private layerMore(at: HTMLElement): void {
-    const items: [string, string][] = [['file.open-layer', 'Add a picture as a layer'], ['layer.forward', 'Move up'], ['layer.backward', 'Move down'],
+    const items: [string, string][] = [['layer.rename', 'Rename'], ['file.open-layer', 'Add a picture as a layer'], ['layer.forward', 'Move up'], ['layer.backward', 'Move down'],
       ['layer.merge-down', 'Merge down'], ['layer.lock', 'Lock or unlock'], ['layer.group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'],
       ['layer.new-group', 'New empty folder'], ['layer.clip', 'Clip to the layer below'],
       ['layer.fx-shadow', 'Add a drop shadow'], ['layer.fx-outer-glow', 'Add an outer glow'], ['layer.fx-stroke', 'Add an outline'], ['layer.fx-color', 'Add a colour overlay'],
       ['layer.fx-gradient', 'Add a gradient overlay'], ['layer.fx-inner-shadow', 'Add an inner shadow'], ['layer.fx-inner-glow', 'Add an inner glow']];
     this.showPopover(items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => ({ label, cmd,
-      disabled: BY_ID.get(cmd)?.status !== 'ready' || !this.isEnabled(cmd), run: () => void this.run(cmd) })), at);
+      disabled: BY_ID.get(cmd)?.status !== 'ready' || !this.isEnabled(cmd),
+      run: () => { const lid = this.doc?.activeId; if (cmd === 'layer.rename' && lid) setTimeout(() => this.renameInPlace(lid)); else void this.run(cmd); } })), at);
+  }
+  /** Renames a layer in its own row: Enter or leaving the box keeps the name, Esc keeps the old one. One undo step. */
+  renameInPlace(id: string): void {
+    const d = this.doc, l = d?.layers.find((x) => x.id === id), btn = this.layerList?.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"] [data-testid="layer-select"]`);
+    if (!d || !l || !btn) return;
+    const inp = h('input', { type: 'text', class: 'fpe-layer-rename', value: l.name, maxlength: 100, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Layer name', 'data-testid': 'layer-name' });
+    let done = false;
+    const end = (keep: boolean): void => {
+      if (done) return;
+      done = true;
+      const v = inp.value.trim();
+      if (keep && v && v !== l.name) this.pushCmd(setLayerProps(d, l.id, { name: v })); else this.renderLayers();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(e.key === 'Enter'); } });
+    inp.addEventListener('blur', () => end(true));
+    btn.replaceWith(inp);
+    inp.focus();
+    inp.select();
   }
   /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
   private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
@@ -2609,6 +2683,12 @@ export class Editor {
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
   }
+  /** Every crop-and-warp command (warpkit.ts runWarp: the bends, Liquify and the other sheets, Fit canvas), loaded on first use. */
+  async warpMore(id: string): Promise<void> {
+    try {
+      await (await import('./warpkit')).runWarp(id, { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), ed: this });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   revealAllAction(): void {
     const d = this.doc;
     if (!d) return;
@@ -2709,7 +2789,7 @@ export class Editor {
     const kids: Node[] = [this.dragHead(h('div', { class: 'fpe-dlg-head', 'data-testid': 'dialog-head', 'data-help-title': 'Move this box',
       'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
-      h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
+      h('p', { class: 'fpe-note' }, `${r.help ? r.help + ' ' : ''}It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     if (s.def.info) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-info', 'aria-live': 'polite' }, s.def.info(params, s.before)));
     this.dlgCanvas = null;
     if (s.scale < 1) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-small' }, 'This picture is big, so the preview uses a smaller copy to stay quick. Apply then works on every pixel at full size, with a progress bar.'));
@@ -3298,6 +3378,7 @@ export class Editor {
     this.updateAnts();
     this.renderOptions();
     this.afterEdit();
+    this.renderSaved();
   }
   private addTab(doc: Doc, name: string): void {
     this.stash();
@@ -3406,6 +3487,11 @@ export class Editor {
     try { const m = await import('./animate'); (this.anim ??= m.animKit({ ...this.toolHost(), exportAnim: () => void this.openExport('gif', true) })).run(id); }
     catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
+  /** Brush extras (paintkit.ts), loaded on first use: steady hand, symmetry, seamless tile, pen and speed. */
+  async paintKit(id: string): Promise<void> {
+    try { (await import('./paintkit')).runPaintKit(id, { ...this.toolHost(), setRig: (f) => { this.rig = f; }, flush: () => this.flushStroke(), setGuide: (f) => { this.rigGuide = f; this.requestRender(); } }); }
+    catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
@@ -3424,7 +3510,7 @@ export class Editor {
     this.appShell = new AppShell({ root: this.root, openFiles: (f) => this.openFiles(f), toast: (m, ms) => this.toast(m, ms),
       openModal: (id) => this.openModal(id), beforeReload: () => this.saver.flush() }, opts.app);
     this.installBody.replaceChildren(this.appShell.installSheet());
-    this.saver = new Autosave({ pictures: () => this.pictures(), busy: () => !!(this.stroke || this.drag || this.session) });
+    this.saver = new Autosave({ pictures: () => this.pictures(), busy: () => !!(this.stroke || this.drag || this.session), saved: () => this.renderSaved() });
     let on = true;
     try { on = localStorage.getItem('fpe-autosave') !== 'off'; } catch { /* storage may be blocked */ }
     this.saver.enabled = opts.autosave !== false && on && typeof indexedDB !== 'undefined';
@@ -3496,6 +3582,7 @@ export class Editor {
     try { localStorage.setItem('fpe-autosave', on ? 'on' : 'off'); } catch { /* storage may be blocked */ }
     if (on) { this.saver.start(); this.saver.enable(); this.toast('Safety copies are on: open pictures are kept in this browser, never sent anywhere.'); }
     else { void this.saver.disable(); this.toast('Safety copies are off. Open pictures are no longer kept in this browser.'); }
+    this.renderSaved();
   }
   canInstall(): boolean { return !!this.appShell?.enabled && !this.appShell.installed(); }
   installApp(): void { this.appShell.install(); }
@@ -3590,8 +3677,9 @@ export class Editor {
   }
 
   /**
-   * One rule for every toast: inside the picture area, never over the zoom buttons, an open dialog, a panel sheet or any bar.
-   * Tried at the top of the picture area, then at its bottom, across its width or beside an open dialog.
+   * One rule for every toast: inside the picture area, never over the zoom buttons, the rulers, an open dialog, a panel sheet or
+   * any bar. Tried at the bottom centre just above the zoom buttons, then at the very bottom, then at the top; across the
+   * picture area's width or beside an open dialog.
    */
   private placeToast(): void {
     const t = this.toastEl, host = (t.offsetParent as HTMLElement | null) ?? this.root, hr = host.getBoundingClientRect(), st = this.stage.getBoundingClientRect();
@@ -3601,8 +3689,9 @@ export class Editor {
       return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
     };
     const dlg = box(this.dlgEl);
-    const avoid = [this.stage.querySelector('.fpe-zoom'), this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl,
-      ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
+    const zoomEl = this.stage.querySelector('.fpe-zoom'), zoom = box(zoomEl);
+    const avoid = [zoomEl, this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl, this.rulerH, this.rulerV,
+      this.root.querySelector('.fpe-rcoach'), ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
     const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
     if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);
     spans.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
@@ -3613,7 +3702,7 @@ export class Editor {
       if (w < 140) continue;
       t.style.maxWidth = Math.min(560, w) + 'px';
       const tw = t.offsetWidth, th = t.offsetHeight, x = L + (w - tw) / 2;
-      for (const y of [st.top + pad, st.bottom - pad - th]) {
+      for (const y of [...(zoom ? [zoom.top - pad - th] : []), st.bottom - pad - th, st.top + pad]) {
         if (y < st.top || y + th > st.bottom) continue;
         if (avoid.some((a) => a.left < x + tw && a.right > x && a.top < y + th && a.bottom > y)) continue;
         put(x, y);
@@ -3712,6 +3801,7 @@ export class Editor {
       setZoom: (z) => this.zoomTo(z),
       appState: () => ({ ...this.appShell.info(), autosave: { enabled: this.saver.enabled, writes: this.saver.writes, error: this.saver.lastError }, left: this.left.map((m) => m.name) }),
       saveNow: () => this.saver.flush(),
+      sheet: (id, title, body) => this.toolSheet(id, title, body),
       flatHash: async () => {
         const d = this.doc;
         if (!d) return '';

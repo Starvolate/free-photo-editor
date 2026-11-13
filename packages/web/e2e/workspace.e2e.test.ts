@@ -49,6 +49,8 @@ const PREP: Record<string, string[]> = {
   // Shapes & text: an outline round the box over the sun; combining adds a second from everything else (a frame with a hole).
   'path.boolean': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.combine': ['select.to-path', 'select.inverse', 'select.to-path'],
   'path.offset': ['select.to-path'], 'path.mirror': ['select.to-path'], 'path.rotate-copies': ['select.to-path'], 'path.roughen': ['select.to-path'],
+  // A guide line first, so removing the guides is a visible change.
+  'view.guide-clear': ['view.guide-new'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 323 Ready, 352 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 344 Ready, 331 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+251 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 194 | 456 | 0 |
-| Ready today | 323 | 25 | 148 | 150 | 0 |
+| All functions | 675 | 25 | 200 | 450 | 0 |
+| Ready today | 344 | 25 | 163 | 156 | 0 |
 
 ## The Task ribbon
 
@@ -28,12 +28,12 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
-| Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 13 |
+| Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
-| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
+| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 13 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
@@ -347,7 +347,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Planned | 6 |  |
 
-## Select (17 Ready, 2 Planned)
+## Select (18 Ready, 1 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -359,7 +359,7 @@ Groups: Change the selection · Modify.
 | select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | Select | Select & cut out › Change it · More list | Ready | W1 | Ctrl+Shift+I |
 | select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | Select | Select & cut out › Select with AI · big button | Ready | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
-| select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · More list | Planned | 11 |  |
+| select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Select & cut out › Perfect and keep · More list | Planned | 2 |  |
 | select.border | Edge band | Border | Select a band along the selection edge. | border selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
@@ -449,7 +449,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 | filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 
-## View (11 Ready, 7 Planned)
+## View (17 Ready, 1 Planned)
 
 Groups: Screen mode · Screen mode.
 
@@ -460,18 +460,18 @@ Groups: Screen mode · Screen mode.
 | view.fit | Fit on screen | Fit on screen | Show the whole picture as large as fits. | whole picture, fit | View | View sheet | Ready | 1 | Ctrl+0 |
 | view.actual | Actual pixels | 100% | One picture pixel per screen pixel. | real size, 100 | View | View sheet | Ready | 1 | Ctrl+1 |
 | view.zoom-200 | Double size | 200% | Two screen pixels per picture pixel. | 200 | View | View sheet | Ready | W1 |  |
-| view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | View | View sheet | Planned | 8 |  |
+| view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | View | View sheet | Ready | 8 |  |
 | view.screen-standard | Normal workspace | Standard screen mode | Show the menus, tools and panels. | normal view | View › Screen mode | View sheet | Ready | W1 |  |
 | view.screen-focus | Picture only | Full screen mode | Hide the tools and panels to see just the picture. Press F or Esc to come back. | full screen, distraction free | View › Screen mode | View sheet | Ready | W1 |  |
 | view.screen-cycle | Switch screen mode | Cycle screen mode | Switch between the normal workspace and picture only. | toggle full screen | View › Screen mode | View sheet | Ready | W1 | F |
 | view.rulers | Rulers | Rulers | Show measuring rulers along the edges of the picture. | measure, ruler | View | View sheet | Ready | W1 | Ctrl+R |
 | view.grid | Grid | Grid | Show a grid over the picture to line things up. | grid, align, straight lines | View | View sheet | Ready | W1 | Ctrl+' |
 | view.extras | Selection outline | Extras | Show or hide the moving dashes around a selection. | marching ants | View | View sheet | Ready | W1 | Ctrl+H |
-| view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed far in. | pixel grid | View | View sheet | Planned | W2 |  |
-| view.guide-new | Add a guide line | New guide | Add a straight line to line things up against. | guide | View | View sheet | Planned | 13 |  |
-| view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | View | View sheet | Planned | 13 |  |
-| view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | View | View sheet | Planned | 13 |  |
-| view.snap | Snap to guides | Snap | Make moved things jump to guides and edges. | snap | View | View sheet | Planned | 13 |  |
+| view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed in to 800% or more. | pixel grid | View | View sheet | Ready | W2 |  |
+| view.guide-new | Add a guide line | New guide | Add a straight line to line things up against: down the middle first, then across. Drag it with Move, or off the picture to remove it. | guide | View | View sheet | Ready | 13 |  |
+| view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | View | View sheet | Ready | 13 |  |
+| view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | View | View sheet | Ready | 13 |  |
+| view.snap | Snap to guides | Snap | Make guides, oval selections, measures, shapes and colour fades jump to guide lines and the picture's edges and middle. | snap | View | View sheet | Ready | 13 |  |
 | view.slices-clear | Remove slices | Clear slices | Remove the web slices. | slices | View | View sheet | Planned | 13 |  |
 
 ## Window (2 Ready, 0 Planned)
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · More list | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (46 Ready, 19 Planned)
+## Tools (52 Ready, 13 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -529,9 +529,9 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.move | Move | Move tool | Drag to move the active layer. Arrow keys nudge it by one pixel. | move, drag, position | Tools › Move | Crop & resize › Move and reshape a layer · big button | Ready | 1 | V |
 | tool.artboard | Artboards | Artboard tool | Design several canvases side by side. | artboard | Tools › Move | Crop & resize › Size · More list | Planned | 13 |  |
 | tool.select-rect | Select a box | Rectangular marquee | Drag to select a rectangle; hold Shift for a square. | select area, rectangle, box | Tools › Select box | Select & cut out › Draw or paint · big button | Ready | 1 | M |
-| tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval or a circle. | circle selection | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
-| tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
-| tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
+| tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval; hold Shift while dragging for a circle. | circle selection | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
+| tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
+| tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
 | tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | Tools › Lasso | Select & cut out › Draw or paint · small button | Ready | W3 | L |
 | tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Ready | W3 |  |
 | tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Planned | 2 |  |
@@ -542,9 +542,9 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | Tools › Crop | Crop & resize › Crop · More list | Planned | 3 |  |
 | tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | Tools › Crop | Automate & batch › Sheets and layouts · More list | Planned | 13 |  |
 | tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | Tools › Measure | Paint & draw › Colour · small button | Ready | 1 | I |
-| tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | Tools › Measure | Paint & draw › Colour · More list | Planned | 13 |  |
-| tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | Tools › Measure | View sheet | Planned | 13 |  |
-| tool.note | Sticky note | Note | Pin a written note on the picture. | comment | Tools › Measure | View sheet | Planned | 13 |  |
+| tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | Tools › Measure | Paint & draw › Colour · More list | Ready | 13 |  |
+| tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | Tools › Measure | View sheet | Ready | 13 |  |
+| tool.note | Sticky note | Note | Pin a written note on the picture. Notes stay while the picture is open; they are not saved into exported files. | comment | Tools › Measure | View sheet | Ready | 13 |  |
 | tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 | J |
 | tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | Tools › Retouch | Retouch & remove › Remove · big button | Ready | 11 |  |
 | tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (259 Planned, 2 Ready), by home
+## New functions from the feature census (251 Planned, 10 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -747,15 +747,15 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 |---|---|---|---|---|---|---|---|---|
 | shape.live | U068 | Live editable shapes | Live Shapes (corner radius sliders) | Rectangles and polygons whose corners stay editable. | live shape, editable shape, corner radius, rounded corners | Shapes & text › Shapes · More list | Planned | B15 |
 | shape.vector-layer | U069 | Vector layer | Vector Layer | A layer holding editable shapes and text that stay sharp. | vector layer, sharp shapes, scalable drawing | Shapes & text › Shapes · More list | Planned | B15 |
-| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Builds one shape from several by adding, subtracting or keeping overlaps. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · More list | Planned | B4 |
-| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins shapes into one path or separates them. | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · More list | Planned | B4 |
+| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Merges the picked outline with the one above it in Outlines, cuts it out of that one, or keeps only the overlap or only what does not overlap. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · small button | Ready | B4 |
+| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins the picked outline and the one above it into one outline, or splits an outline into its separate pieces (a hole stays with its shape). | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · small button | Ready | B4 |
 | path.stroke-style | U072 | Arrowheads and dash styles | Arrowheads, Dot/dash line styles | Line ends and patterns. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · More list | Planned | B15 |
 | path.effects | U073 | Non-destructive path effects, stackable | Live Path Effects | Adds editable effects to a path that update when the path changes; effects can be stacked. | path effects, live path effect, non-destructive path | Shapes & text › Live shape effects · More list | Planned | B15 |
 | type.opentype | U074 | Variable fonts and OpenType features | Variable fonts, ligatures, stylistic sets | Weight and width sliders and type features for fonts. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Planned | B15 |
 | type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Planned | B15 |
 | type.scripts | U076 | Text in every script | Complex scripts (Arabic, Hebrew, Indic) | Correct shaping and right-to-left layout for Arabic, Hebrew, Hindi and other Indic scripts. | hindi text, arabic text, hebrew, right to left, indic script, complex script | Shapes & text › Text style · More list | Planned | B15 |
 | path.tweak | U142 | Reshape a path by brushing it | Tweak Tool (push, shrink, roughen, jitter colours) | Pushes, thins or roughens path parts like clay. | tweak path, push path, roughen path, brush a shape | Shapes & text › Draw outlines · More list | Planned | T3 |
-| shape.spiral-star | U143 | Shape tools: spirals, stars, 3D boxes | Spiral, Star/Polygon, 3D Box tools | Draws parametric shapes you can edit by numbers. | spiral, star, 3d box, polygon star | Shapes & text › Shapes · More list | Planned | T3 |
+| shape.spiral-star | U143 | Star and spiral outlines | Star and spiral tools | Draws a star (number of points, inner size) or a spiral (turns) as an outline you can reshape and fill. | spiral, star, polygon star, star shape, swirl | Shapes & text › Shapes · More list | Ready | T3 |
 | shape.qr | U144 | Draw QR codes | QR code shape | Generates an editable QR code. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.generate | U145 | Generate shapes (barcodes, grids, gears) | Render extensions | Creates new objects from numbers. | barcode, grid, gear, generate shapes | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draw and edit comic panel frames. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Planned | T3 |
@@ -764,14 +764,14 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | path.hatches | U149 | Hatches | LPE Hatches | Fills a shape with adjustable hatch lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.interpolate | U150 | Blend between parts of a path | LPE Interpolate Sub-Paths | Creates in-between steps between two parts of one path. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.knot | U151 | Over-and-under crossings | LPE Knot | Makes gaps where a path crosses itself, like a knot. | knot, over and under, weave lines | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.mirror | U152 | Draw one half, mirror the other | LPE Mirror Symmetry | Mirrors a drawing across an axis live. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Four corner handles tilt a flat object in 3D space. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.stitch | U154 | Stitch lines between two paths | LPE Stitch Sub-Paths | Adds cross lines between two paths. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.pattern-along | U155 | Repeat a shape along a line | LPE Pattern Along Path | Repeats and bends a shape to follow a path. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.offset | U156 | Grow or shrink a shape by a distance | LPE Offset | Thickens or thins a whole outline by exact amount. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.power-stroke | U157 | Strokes with changing thickness | LPE Power Stroke | Handles set stroke width at points along a path. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.rotate-copies | U158 | Copies around a circle | LPE Rotate Copies | Spins copies of a shape around a centre for mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.roughen | U159 | Hand-drawn wobble | LPE Roughen | Adds organic imperfections to outlines. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.rotate-copies | U158 | Copies around a circle | Rotate copies | Spins copies of an outline round its own centre or the picture's centre and joins them, for flowers and mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.roughen | U159 | Hand-drawn wobble | Roughen | Gives an outline a hand-drawn wobble: pick how far points move, how fine the wobble is, and another random pattern. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.sketch | U160 | Sketch look from a path | LPE Sketch | Turns a path into several pencil-like lines. | sketch path, sketchy lines, pencil look from path | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.tiling | U161 | Tile many copies in a grid | LPE Tiling | Makes rows and columns of copies with gaps and offsets. | tile copies, grid of copies, repeat in grid | Shapes & text › Live shape effects · More list | Planned | T3 |
 | type.match-font | U162 | Change a font to match a picture | Match Font | Find a similar font from a photo of text. | match font, what font is this, identify font, font finder | Shapes & text › Text · More list | Planned | T3 |
@@ -929,5 +929,5 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | view.task-sets | U257 | Reusable task layouts | Task Sets | Saved sets of tools for a job. | task layout, workspace layout, saved workspace | View sheet | Planned | T3 |
 | view.slideshow | U258 | Slideshow | Slideshow view | Play a collection full-screen. | slideshow, full screen photos, present photos | View sheet | Planned | T3 |
 | view.focus-peaking | U259 | Show where focus is sharp | Focus peaking | Highlight the sharpest edges. | focus peaking, what is sharp, in focus check | View sheet | Planned | T3 |
-| view.composition-guides | U260 | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | View sheet | Planned | T3 |
+| view.composition-guides | U260 | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | View sheet | Ready | T3 |
 | view.colour-check | U261 | Colour-check the screen | Colour assessment | Switch to a neutral surround to judge colours fairly. | colour check, screen calibration, colour assessment, grey surround | View sheet | Planned | T3 |

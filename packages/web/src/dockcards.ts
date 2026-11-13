@@ -19,6 +19,8 @@ export function layerNames(l: Layer): { plain: string; pro: string; pros: string
   }
   if (l.kind === 'fill') return { plain: 'Colour layer', pro: 'Fill layer', pros: 'a Fill layer', what: 'is a flat colour. ' + keep };
   if (l.kind === 'folder') return { plain: 'Folder', pro: 'Group', pros: 'a Group', what: 'keeps layers together, so you can move, hide or fade them as one.' };
+  if (l.content?.kind === 'text') return { plain: 'Text layer', pro: 'Type layer', pros: 'a Type layer', what: 'holds words that stay editable: click them with the Text tool to change the words or their style.' };
+  if (l.content?.kind === 'shape') return { plain: 'Shape layer', pro: 'Shape layer', pros: 'a Shape layer', what: 'holds a shape you drew with a shape tool: move or restyle it without touching the layers below.' };
   return { plain: 'Picture layer', pro: 'Pixel layer', pros: 'a Pixel layer', what: 'is a sheet of pixels: paint, erase or move it without touching the layers below.' };
 }
 /** Learn as you go: the active layer in plain words, then what pros call it. */

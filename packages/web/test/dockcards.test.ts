@@ -34,4 +34,13 @@ describe('dock rows (UI-D)', () => {
       'Smooth blur, kept editable', 'Brush', 'Eraser', 'Crop', 'Move layer', 'Layer opacity', 'Make a smart layer', 'Something new'].map(histIconName))
       .toEqual(['image', 'sparkles', 'sparkles', 'scan', 'clip', 'sliders', 'type', 'droplet', 'brush', 'eraser', 'crop', 'move', 'layers', 'layers', 'history']);
   });
+  it('names text and shape layers for Learn as you go and the status bar, never as a sheet of pixels', () => {
+    const t = layerNames(L({ content: TEXT }));
+    expect([t.plain, t.pro, t.pros]).toEqual(['Text layer', 'Type layer', 'a Type layer']);
+    expect(t.what).not.toContain('pixels');
+    const s = layerNames(L({ content: SHAPE }));
+    expect([s.plain, s.pros]).toEqual(['Shape layer', 'a Shape layer']);
+    expect(s.what).not.toContain('sheet of pixels');
+    expect(layerNames(L({})).pro).toBe('Pixel layer');
+  });
 });

@@ -1282,7 +1282,10 @@ export class Editor {
     if (!hd.enabled(this)) { this.toast(this.doc ? `${r.plain} is not available right now.` : 'Open or create a picture first.'); return false; }
     this.closeMenus();
     this.closePopover();
+    // Picking the tool that is already picked still opens its options on the ribbon (the text Done button hid this way).
+    const again = r.kind === 'tool' && TOOLS[id] === this.tool;
     await hd.run(this);
+    if (again) this.ribbon?.toolChanged();
     this.onStep?.(id);
     this.syncChrome();
     return true;

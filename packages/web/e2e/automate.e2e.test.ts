@@ -256,8 +256,9 @@ suite('Automate and batch (headless Chrome)', () => {
     const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
     expect([info?.width, info?.height]).toEqual([2400, 1600]);
     expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
-    // Let the view finish drawing the new picture (big pictures draw in bands over a few frames) before the shot.
-    await p.waitForTimeout(600);
+    // Every layer row shows its thumbnail (they draw on a short timer), then the view has a moment to finish the big picture.
+    await p.waitForFunction(() => { const c = [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-thumb]')]; return c.length > 0 && c.every((x) => x.dataset.drawn === '1'); });
+    await p.waitForTimeout(300);
     await p.screenshot({ path: join(OUT, 'automate-collage-1440.png') });
     expect(errors).toEqual([]);
   }, 60_000);

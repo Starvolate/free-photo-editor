@@ -235,11 +235,13 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
   const resetTurn = (): void => { setTurn(0); host.refreshOptions(); };
 
   // Crop and straighten: the quad lives with the open picture until applied or the tool changes.
-  let quad: Quad | null = null, quadDoc: Doc | null = null, grab: { k: 'corner'; i: number } | { k: 'box'; a: Pt } | null = null;
+  let quad: Quad | null = null, quadDoc: Doc | null = null, quadSizeAt = '', grab: { k: 'corner'; i: number } | { k: 'box'; a: Pt } | null = null;
   const ensureQuad = (): Quad | null => {
     const d = doc();
     if (!d) return null;
-    if (!quad || quadDoc !== d) { quad = startQuad(d.width, d.height); quadDoc = d; }
+    // A new picture, or the same one at another size (an undo of the crop), starts the corners again.
+    const at = `${d.width}x${d.height}`;
+    if (!quad || quadDoc !== d || quadSizeAt !== at) { quad = startQuad(d.width, d.height); quadDoc = d; quadSizeAt = at; }
     return quad;
   };
   const applyQuad = (): void => {

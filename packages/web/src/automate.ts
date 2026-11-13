@@ -3,7 +3,8 @@
 /**
  * Automate and batch, loaded the first time one is used: Recorded steps (record what you do once, play it again on this
  * picture as one undo step), Edit many pictures the same way, Resize many pictures, a Sheet of small photos, Watermark,
- * Collage and a Passport photo sheet.
+ * Collage, a Passport photo sheet, Line up layers automatically, Stitch a panorama and Blend photos automatically (the
+ * matching, the stitch and the seam masks live in core/align.ts).
  * Steps are recorded from the command bus (a function's id plus its settings), never from mouse positions, and every
  * step is played by one player (`playSteps`) that does exactly what the editor's own dialog does, so a played set gives
  * the same pixels as doing the steps by hand. Many-picture work holds one picture in memory at a time.
@@ -11,7 +12,8 @@
  */
 import { WHITE, activeLayer, addLayer, docRect, intersect, writeRegion, combineCommands, commitResult, createDocument, documentFromBitmap, editRegion, findLayer, flatten, flattenDocument, hasPixels,
   innerOf, jobPadding, mergeVisible, paddedRegion, parseHex, readRegion, resizeBitmap, resizeDocument, runJob, trimDocument, turnDocument, turnLayer,
-  createLayer, type Bitmap, type Command, type Doc, type JobParams, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
+  createLayer, type Bitmap, type Command, type Doc, type JobParams, type Layer, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
+import { autoAlign, blendSeams, stitch } from '@free-photoeditor/core/align';
 import { zipSync, type Zippable } from '@free-photoeditor/formats/zip';
 import { ADJ, BATCH_IDS } from './commands';
 import { BY_ID } from './registry';
@@ -479,6 +481,9 @@ function watermark(host: AutoHost): void {
       h('h3', { class: 'fpe-label' }, 'Or stamp many pictures')]);
 }
 
+/** Lists in sheets: numbered steps, and rows whose words take the room so their buttons sit at the right (not the numbered-badge grid of .fpe-steps). */
+const NUMBERED = 'margin:0;padding-left:22px', ROWS = 'margin:0;padding:0;list-style:none', GROW = 'flex:1;min-width:0;overflow-wrap:anywhere';
+
 // ---- Collage ------------------------------------------------------------------------------------------------------------------
 export type Layout = 'grid' | 'row' | 'column' | 'feature';
 export const LAYOUTS: [Layout, string][] = [['grid', 'Grid (rows and columns)'], ['row', 'One row, side by side'], ['column', 'One column, stacked'], ['feature', 'One big photo, the rest beside it']];
@@ -633,7 +638,7 @@ function copyEdits(host: AutoHost): void {
   const id = 'auto.copy-edits', last = host.lastFilter(), lastName = last ? plainName(last.id) : '';
   const useLast = h('input', { type: 'checkbox', 'data-testid': id + '-last', ...(last ? { checked: '' } : { disabled: '' }) }) as HTMLInputElement;
   const plan = (): { steps: Step[]; skipped: Skipped[] } => editsToSteps(host.doc(), useLast.checked ? last : null);
-  const list = h('ol', { class: 'fpe-steps', 'data-testid': id + '-steps' }), skippedNote = note('', id + '-skipped');
+  const list = h('ol', { style: NUMBERED, 'data-testid': id + '-steps' }), skippedNote = note('', id + '-skipped');
   const show = (): void => {
     const p = plan();
     list.replaceChildren(...p.steps.map((s) => h('li', {}, stepText(s))));
@@ -672,7 +677,7 @@ function copyEdits(host: AutoHost): void {
   const open = tabs.length
     ? h('div', { class: 'fpe-stack' }, ...tabs.map((t, i) => h('label', { class: 'fpe-check' }, ticks[i], h('span', {}, t.name))))
     : note('No other pictures are open. Open them first, or paste onto picture files below.');
-  manySheet(host, id, 'Copy edits to other photos',
+  manySheet(host, id, 'Copy edits to many photos',
     "Copies this picture's light-and-colour layers and, if you like, your last filter, with their settings. Pasting changes the active layer of each picture; picture files are flattened first.",
     [], () => {
       const p = plan();
@@ -724,7 +729,7 @@ function actions(host: AutoHost): void {
   if (rec) {
     const r = rec;
     kids.push(note(`Recording "${r.name}": ${plural(r.steps.length, 'step')} so far.`, 'rec-status'),
-      h('ol', { class: 'fpe-steps', 'data-testid': 'rec-steps' }, ...r.steps.map((s) => h('li', {}, stepText(s)))));
+      h('ol', { style: NUMBERED, 'data-testid': 'rec-steps' }, ...r.steps.map((s) => h('li', {}, stepText(s)))));
     if (r.passed.size) kids.push(note(`Not recorded, because they need your hands each time: ${[...r.passed].join(', ')}.`));
     kids.push(h('div', { class: 'fpe-actions' }, btn('Throw away', false, 'rec-cancel', () => { stopRecording(host, false); actions(host); }),
       btn('Stop and save', true, 'rec-stop', () => { stopRecording(host, true); actions(host); })));
@@ -743,7 +748,7 @@ function actions(host: AutoHost): void {
     kids.push(h('h3', { class: 'fpe-label' }, 'Saved sets'), sets.length ? list : note('No saved sets. Record one above.'));
     const cur = sets[chosen];
     if (cur) {
-      kids.push(h('ol', { class: 'fpe-steps', 'data-testid': 'set-steps' }, ...cur.steps.map((s, j) => h('li', { class: 'fpe-row' }, h('span', {}, stepText(s)),
+      kids.push(h('ol', { class: 'fpe-stack', style: ROWS, 'data-testid': 'set-steps' }, ...cur.steps.map((s, j) => h('li', { class: 'fpe-row' }, h('span', { style: GROW }, stepText(s)),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'step-delete-' + j, 'aria-label': `Delete step ${j + 1}: ${stepText(s)}`,
           onclick: () => { cur.steps.splice(j, 1); saveSets(sets); actions(host); } }, 'Delete')))));
       const status = note('', 'play-status');
@@ -767,9 +772,73 @@ function actions(host: AutoHost): void {
   draw();
 }
 
+// ---- Line up layers automatically ---------------------------------------------------------------------------------------------
+const names = (l: string[]): string => l.map((n) => `"${n}"`).join(', ');
+/** Every other shown picture layer is matched to the bottom one and moved or turned onto it, as one undo step. */
+function lineUp(host: AutoHost): void {
+  const d = host.doc();
+  if (!d) return;
+  const r = autoAlign(d);
+  if (!r) { host.toast('Line up needs two or more shown picture layers of the same scene. Add the other photo with File > Add a photo as a layer.'); return; }
+  if (r.cmd) host.push(r.cmd, true);
+  host.toast((r.moved.length ? `Lined up ${names(r.moved)} with "${r.ref}", as one step you can undo.` : 'Nothing was moved.') +
+    (r.same.length ? ` Already in line: ${names(r.same)}.` : '') +
+    (r.missed.length ? ` No matching points found in ${names(r.missed)}: they show another scene, or too little detail, so they stay where they are.` : '') +
+    (r.locked.length ? ` Locked, so left alone: ${names(r.locked)}.` : ''));
+}
+
+/** Each upper shown picture layer gets a seam mask that fades it into the ones below, as one undo step. */
+function blend(host: AutoHost): void {
+  const d = host.doc();
+  if (!d) return;
+  const r = blendSeams(d);
+  if (!r) { host.toast('Blend photos needs two or more shown picture layers that overlap. Line them up first with Line up layers automatically.'); return; }
+  if (r.cmd) host.push(r.cmd, true);
+  host.toast((r.blended.length ? `Blended ${names(r.blended)} into the photos below with a soft mask along the middle of each overlap, as one step you can undo.` : 'Nothing was blended.') +
+    (r.none.length ? ` No seam for ${names(r.none)}: it does not overlap the photos below, or it covers them or sits inside them.` : ''));
+}
+
+// ---- Stitch a panorama ------------------------------------------------------------------------------------------------------
+/** Two or three photos, each opened as a layer of one new picture, then stitched as one undo step (undo shows them unstitched). */
+function panorama(host: AutoHost): void {
+  const id = 'auto.panorama', b = sheetBody(host, id), pick = picker(id), status = note('', id + '-status');
+  const make = btn('Stitch the photos', true, id + '-make', () => void go());
+  const go = async (): Promise<void> => {
+    const files = pick.files();
+    if (files.length < 2 || files.length > 3) { status.textContent = 'Choose two or three photos that overlap.'; return; }
+    make.disabled = true;
+    status.textContent = 'Opening the photos…';
+    const ls: Layer[] = [], failed: string[] = [];
+    for (const f of files) {
+      const o = await openQuietly(f, f.name).catch(() => null);
+      if (!o) { failed.push(f.name); continue; }
+      const flat = flatten(o.doc);
+      ls.push(createLayer(baseName(f.name), flat.width, flat.height, { data: flat.data }));
+    }
+    status.textContent = 'Finding the same points in the photos…';
+    await new Promise((r) => setTimeout(r, 30));
+    const doc: Doc | null = ls.length > 1 ? { width: Math.max(...ls.map((l) => l.width)), height: Math.max(...ls.map((l) => l.height)), layers: ls, activeId: ls[ls.length - 1].id, selection: null } : null;
+    const r = doc ? stitch(doc) : null;
+    make.disabled = false;
+    const cant = failed.length ? ` Could not open: ${failed.join(', ')}.` : '';
+    if (!doc || !r?.cmd) { status.textContent = 'No matching points were found, so nothing was stitched. The photos must show one scene and overlap by about a third.' + cant; return; }
+    host.closeSheet();
+    host.openDoc(doc, 'Panorama');
+    host.push(r.cmd, true);
+    host.toast(`Stitched ${plural(r.placed.length, 'photo')} onto "${r.ref}", each on its own layer with a soft mask along the seams. Undo shows them unstitched.` +
+      (r.missed.length ? ` Left out, no matching points: ${names(r.missed)}.` : '') + cant);
+  };
+  b.replaceChildren(note('Pick two or three photos of one scene, taken left to right or top to bottom, each overlapping the next by about a third. They are lined up on the photo most of them match, the picture grows to hold them, and each seam fades over 40 px on a mask you can still paint. Corners no photo covers stay see-through: crop them after.'),
+    pick.el, status, h('div', { class: 'fpe-actions' }, btn('Cancel', false, id + '-cancel', () => host.closeSheet()), make));
+  host.sheet(id, 'Stitch a panorama', b);
+}
+
 /** Run one of the automate functions. */
 export function runAutomate(id: string, host: AutoHost): void {
-  if (id === 'panel.actions') actions(host);
+  if (id === 'edit.auto-align') lineUp(host);
+  else if (id === 'edit.auto-blend') blend(host);
+  else if (id === 'auto.panorama') panorama(host);
+  else if (id === 'panel.actions') actions(host);
   else if (id === 'file.batch') batch(host);
   else if (id === 'file.resize-many') resizeMany(host);
   else if (id === 'file.contact-sheet') contactSheet(host);

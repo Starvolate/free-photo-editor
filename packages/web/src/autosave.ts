@@ -12,7 +12,8 @@ export interface SavedPicture { key: string; session: string; name: string; orde
 /** One open picture as the editor sees it. `tab` only has to stay the same object while the picture is open. */
 import { repairTree } from '@free-photoeditor/core';
 export interface OpenPicture { tab: object; doc: Doc; name: string; state: number; }
-export interface SaverHost { pictures(): OpenPicture[]; busy(): boolean; }
+/** `saved` is called after each save pass and on each change, so the status bar can say "Saving…" or "Saved on this device" truthfully. */
+export interface SaverHost { pictures(): OpenPicture[]; busy(): boolean; saved?(): void; }
 
 const DB = 'free-photo-editor', META = 'meta', PIXELS = 'pixels', LOCK = 'fpe-autosave:';
 const req = <T>(r: IDBRequest<T>): Promise<T> => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -60,6 +61,8 @@ export class Autosave {
   /** Copies written and copies waiting, for About and tests. */
   writes = 0;
   lastError: string | null = null;
+  /** A change waits to be written, or is being written. */
+  private due = false;
   private db: Promise<IDBDatabase> | null = null;
   private keys = new WeakMap<object, string>();
   private ids = new WeakMap<Doc, number>();
@@ -96,7 +99,9 @@ export class Autosave {
   touch(): void {
     if (!this.enabled) return;
     clearTimeout(this.timer);
+    this.due = true;
     this.timer = window.setTimeout(() => void this.flush(), 1200);
+    this.host.saved?.();
   }
   /** Save now (also used before a reload and when the page is hidden). */
   flush(): Promise<void> {
@@ -107,9 +112,23 @@ export class Autosave {
       this.lastError = e instanceof Error ? e.message : String(e);
     }).finally(() => {
       this.running = null;
-      if (this.again) { this.again = false; this.touch(); }
+      if (this.again) { this.again = false; this.touch(); } else this.due = false;
+      this.host.saved?.();
     });
     return this.running;
+  }
+  // Closing a folder is no undo step, so the closed folders join the signature: a reload brings them back closed.
+  private sigOf(p: OpenPicture, i: number): string {
+    return `${p.state}|${p.name}|${i}|${this.idOf(p.doc)}|${p.doc.layers.length}|${p.doc.layers.filter((l) => l.open === false).map((l) => l.id).join(',')}`;
+  }
+  /**
+   * "saved" only once this picture's current state is written to this device; "saving" while a write waits or runs; "none"
+   * for a picture just opened and not changed, which has no copy yet (its own file still holds it).
+   */
+  stateOf(tab: object): 'saved' | 'saving' | 'none' {
+    const pics = this.host.pictures(), i = pics.findIndex((p) => p.tab === tab), key = this.keys.get(tab);
+    if (i >= 0 && key !== undefined && this.saved.get(key) === this.sigOf(pics[i], i)) return 'saved';
+    return this.due || this.running || key !== undefined ? 'saving' : 'none';
   }
   private idOf(d: Doc): number {
     let id = this.ids.get(d);
@@ -124,8 +143,7 @@ export class Autosave {
       let key = this.keys.get(p.tab);
       if (!key) { key = `${this.session}:${++this.n}`; this.keys.set(p.tab, key); }
       live.add(key);
-      // Closing a folder is no undo step, so the closed folders join the signature: a reload brings them back closed.
-      const sig = `${p.state}|${p.name}|${i}|${this.idOf(p.doc)}|${p.doc.layers.length}|${p.doc.layers.filter((l) => l.open === false).map((l) => l.id).join(',')}`;
+      const sig = this.sigOf(p, i);
       sigs.set(key, sig);
       if (this.saved.get(key) !== sig) {
         writes.push([{ key, session: this.session, name: p.name, order: i, width: p.doc.width, height: p.doc.height, layers: p.doc.layers.length, savedAt: Date.now() }, p.doc]);

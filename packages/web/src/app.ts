@@ -1374,6 +1374,7 @@ export class Editor {
       slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
       forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
+      fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
     };
   }
   private toolSheet(id: string, title: string, body: HTMLElement): void {
@@ -2844,7 +2845,7 @@ export class Editor {
           hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
           adjust: this.session?.id ?? null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
-          w3: this.tk?.state() ?? null, autoPick: this.autoPick,
+          w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
         };
       },
       openSample: () => this.openSample(),

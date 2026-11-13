@@ -329,8 +329,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Ready | W2 |  |
 | filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Planned | W2 |  |
 | filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Planned | W2 |  |
-| filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper in one step. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Ready | W1 |  |
-| filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper in one step. | sharper | Filter › Sharpen | Ready | W1 |  |
+| filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Ready | W1 |  |
+| filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | Filter › Sharpen | Ready | W1 |  |
 | filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | Filter › Sharpen | Ready | 1 |  |
 | filter.sharpen-edges | Sharpen only the edges | Sharpen edges | Sharpen edges and leave smooth areas alone. | edges | Filter › Sharpen | Ready | W2 |  |
 | filter.smart-sharpen | Smart sharpen | Smart sharpen | Sharpen with less halo and noise. | smart sharpen | Filter › Sharpen | Ready | W2 |  |

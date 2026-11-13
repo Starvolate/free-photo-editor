@@ -335,8 +335,8 @@ filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | R | W2
 filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | P | W2
 filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | P | W2
 @Filter > Sharpen = Sharpen | Sharpen | Make edges crisper.
-filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper in one step. | crisp, sharp, blurry photo, focus | R | W1
-filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper in one step. | sharper | R | W1
+filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | R | W1
+filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | R | W1
 filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | R | 1
 filter.sharpen-edges | Sharpen only the edges | Sharpen edges | Sharpen edges and leave smooth areas alone. | edges | R | W2
 filter.smart-sharpen | Smart sharpen | Smart sharpen | Sharpen with less halo and noise. | smart sharpen | R | W2

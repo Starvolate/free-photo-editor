@@ -37,7 +37,7 @@ const PREP: Record<string, string[]> = {
   'file.revert': ['layer.new'], 'edit.undo': ['layer.new'], 'edit.history-back': ['layer.new'],
   'edit.redo': ['layer.new', 'edit.undo'], 'edit.history-forward': ['layer.new', 'edit.undo'],
   'edit.paste': ['edit.copy-merged'], 'edit.paste-in-place': ['edit.copy-merged'], 'select.reselect': ['select.none'],
-  'filter.last': ['filter.sharpen'], 'layer.front': ['layer.backward'], 'layer.forward': ['layer.backward'], 'view.fit': ['view.zoom-in'],
+  'filter.last': ['filter.sharpen', 'apply'], 'layer.front': ['layer.backward'], 'layer.forward': ['layer.backward'], 'view.fit': ['view.zoom-in'],
   'view.screen-standard': ['view.screen-focus'], 'window.reset': ['panel.info'], 'tool.brush': ['tool.move'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
@@ -104,7 +104,12 @@ async function prepared(p: Page, id: string): Promise<void> {
       const f = (window as unknown as Win).fpe;
       f.openSample();
       f.select(s[0], s[1], s[2], s[3]);
-      for (const x of pre) await f.run(x);
+      for (const x of pre) {
+        if (x !== 'apply') { await f.run(x); continue; }
+        for (let i = 0; i < 100 && !document.querySelector('[data-testid="adj-apply"]'); i++) await new Promise((r) => setTimeout(r, 50));
+        (document.querySelector('[data-testid="adj-apply"]') as HTMLElement | null)?.click();
+        for (let i = 0; i < 100 && !f.state().lastFilter; i++) await new Promise((r) => setTimeout(r, 50));
+      }
     }, [PREP[id] ?? [], SEL] as const);
   }
   await p.evaluate(() => { const t = document.querySelector('[data-testid="toast"]'); if (t) t.textContent = ''; });

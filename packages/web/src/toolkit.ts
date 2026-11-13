@@ -52,6 +52,9 @@ export interface ToolHost {
   paint(t: 'brush' | 'pencil' | 'eraser'): { size: number; hardness: number; opacity: number };
   /** Zoom out or pan so a picture rectangle, plus a margin of screen pixels, sits in the picture area. */
   fitBox(r: { x: number; y: number; w: number; h: number }, margin: number): void;
+  /** Whether the view is fitted to the window; putting a saved view back (after a transform moved it). */
+  fitted(): boolean;
+  restoreView(v: View, fitted: boolean): void;
 }
 export interface ToolKit {
   claims(t: ToolId): boolean;
@@ -294,6 +297,8 @@ export function createToolKit(host: ToolHost): ToolKit {
   }
 
   // ---------- free transform ----------
+  /** The view before a transform moved it to show its handles, and the zoom right after: put back when the transform ends unless the zoom changed. */
+  let xfBack: { v: View; fitted: boolean; zoom: number } | null = null;
   function startXf(target: 'layer' | 'selection', mode: XfMode): void {
     const d = doc();
     if (!d) return;
@@ -308,8 +313,9 @@ export function createToolKit(host: ToolHost): ToolKit {
       if (l.locked) return;
       xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
     }
-    const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys);
+    const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys), v0 = { ...host.view() }, f0 = host.fitted();
     host.fitBox({ x: bx, y: by, w: Math.max(...xs) - bx, h: Math.max(...ys) - by }, host.layout() === 'phone' ? 44 : 36);
+    xfBack = { v: v0, fitted: f0, zoom: host.view().zoom };
     host.toast('Drag the handles to resize, outside the box to turn. Enter applies, Esc cancels.');
     host.refreshOptions();
     host.render();
@@ -352,6 +358,9 @@ export function createToolKit(host: ToolHost): ToolKit {
         } else host.all();
       }
     }
+    const back = xfBack;
+    xfBack = null;
+    if (back && Math.abs(host.view().zoom - back.zoom) < 1e-9) host.restoreView(back.v, back.fitted);
     host.refreshOptions();
     host.render();
   }
@@ -502,8 +511,11 @@ export function createToolKit(host: ToolHost): ToolKit {
       i.addEventListener('change', () => { const n = Number(i.value); if (Number.isFinite(n)) set(clamp(n, min, max)); });
       return i;
     };
-    const toggle = (testid: string, label: string, on: boolean, help: string, set: () => void): HTMLElement =>
-      h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(on), 'data-testid': testid, 'data-help-title': label, 'data-help': help, onclick: set }, label);
+    const toggle = (testid: string, label: string, on: boolean, help: string, set: () => void, now: () => boolean): HTMLElement => {
+      const b: HTMLElement = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(on), 'data-testid': testid, 'data-help-title': label, 'data-help': help,
+        onclick: () => { set(); b.setAttribute('aria-pressed', String(now())); } }, label);
+      return b;
+    };
     if (which !== 'para') {
       const sel = h('select', { 'data-testid': 'text-font', 'aria-label': 'Font' }, ...availableFonts().map((f) => h('option', { value: f }, f)));
       sel.value = st.font;
@@ -513,14 +525,17 @@ export function createToolKit(host: ToolHost): ToolKit {
       out.push(field('Font', 'The typeface. Fonts on this device are listed.', sel),
         field('Size', 'How tall the letters are, in pixels.', num('text-size', st.size, 4, 1000, 1, (n) => restyle({ size: n }))),
         field('Colour', 'The colour of the words.', col),
-        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold })),
-        toggle('text-italic', 'Italic', st.italic, 'Slanted letters.', () => restyle({ italic: !styleNow().italic })),
+        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold }), () => styleNow().bold),
+        toggle('text-italic', 'Italic', st.italic, 'Slanted letters.', () => restyle({ italic: !styleNow().italic }), () => styleNow().italic),
         field('Letter gap', 'Extra space between letters, in pixels (tracking).', num('text-tracking', st.letterSpacing, -50, 200, 1, (n) => restyle({ letterSpacing: n }))));
     }
     if (which !== 'char') {
       const seg = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': 'Line up' });
       for (const [a, label] of [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] as const) {
-        seg.append(h('button', { type: 'button', 'aria-pressed': String(st.align === a), 'data-testid': 'text-align-' + a, onclick: () => restyle({ align: a }) }, label));
+        seg.append(h('button', { type: 'button', 'aria-pressed': String(st.align === a), 'data-testid': 'text-align-' + a, onclick: () => {
+          restyle({ align: a });
+          for (const b of seg.querySelectorAll<HTMLElement>('button')) b.setAttribute('aria-pressed', String(b.dataset.testid === 'text-align-' + styleNow().align));
+        } }, label));
       }
       out.push(seg, field('Line gap', 'Distance between lines, as a multiple of the size (leading).', num('text-leading', st.lineHeight, 0.5, 4, 0.05, (n) => restyle({ lineHeight: n }))));
     }

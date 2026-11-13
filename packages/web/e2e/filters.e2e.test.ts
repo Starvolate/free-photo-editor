@@ -32,7 +32,7 @@ const TYPES: Record<string, string> = {
 /** Over the sun's edge, the hills and the sky of the sample photo (after flattening its two layers). */
 const BOX: [number, number, number, number] = [600, 170, 320, 260];
 /** One-click filters with no dialog (the workspace test covers them). */
-const INSTANT = new Set(['filter.last', 'filter.sharpen', 'filter.sharpen-more']);
+const INSTANT = new Set(['filter.last']);
 
 function serve(): Promise<{ server: Server; url: string }> {
   const server = createServer((req, res) => {
@@ -112,7 +112,7 @@ suite('W2 filters (headless Chrome)', () => {
     const original = await sum(p), bad: string[] = [];
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
       .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id)).map((c) => c.id);
-    expect(ids.length).toBe(53);
+    expect(ids.length).toBe(55);
     for (const id of ids) {
       const n = await step(p);
       await dialog(p, id);

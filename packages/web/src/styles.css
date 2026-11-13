@@ -6,7 +6,9 @@
 .fpe[data-theme=light]{--bg:#e9ebef;--panel:#f7f8fa;--panel-2:#eef0f3;--stage:#d3d6dc;--line:#cfd3da;--hover:#e3e6eb;--sel:#d8e4f7;--text:#17181c;--muted:#525866;--dim:#676c78;--accent:#1f5fc4;--accent-bg:#1f5fc4;--accent-fg:#fff;--input:#fff;--check-a:#fff;--check-b:#e4e6ea;--edge:rgba(0,0,0,.25);--tip-bg:#fff;--tip-fg:#17181c;--toast-bg:#24262c;--toast-fg:#f2f3f5;--warn-bg:rgba(243,167,18,.16);--drop-bg:rgba(31,95,196,.1);--shadow:0 12px 32px rgba(20,24,32,.18);color-scheme:light}
 .fpe *,.fpe *::before,.fpe *::after{box-sizing:border-box}
 .fpe [hidden]{display:none!important}
-.fpe button{font:inherit;color:inherit}
+.fpe button{font:inherit}
+/* zero specificity, so every button class keeps its own text colour */
+:where(.fpe button){color:inherit}
 .fpe :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .fpe h2,.fpe h3{margin:0}
 .fpe-icon{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}

@@ -155,7 +155,7 @@ describe('the Task ribbon', () => {
     const h = homes();
     expect(NEW_ROWS.length).toBe(261);
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
-    const BUILT = new Set(['select.from-path', 'select.to-path']);
+    const BUILT = new Set(['select.from-path', 'select.to-path', 'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect', 'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

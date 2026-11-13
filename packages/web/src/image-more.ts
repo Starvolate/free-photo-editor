@@ -117,7 +117,7 @@ function fade(host: ImageHost, d: Doc): void {
   const redo = later(() => show(amount));
   dialog(host, 'fade', `Soften ${c.label} · Fade`, [
     h('p', { class: 'fpe-note' }, `The picture shows the change at the strength you pick. Apply keeps it as its own step, so Undo removes the softening first, then ${c.label}.`),
-    host.slider('How much of the change stays · Opacity', '100% keeps the full change; 0% puts the picture back as it was.', 0, 100, amount, '%', (v) => { amount = v; redo(); }, 'im-fade'),
+    host.slider('How much of the change stays · Opacity', '100% keeps the full change; 0% puts the picture back as it was.', 0, 100, amount, '%', (v) => { amount = v; redo(); }, 'im-fade-amount'),
   ], () => {
     show(amount);
     if (amount < 100) host.push(pixelCommand(`Soften ${c.label}`, l.id, c.r, after), true);

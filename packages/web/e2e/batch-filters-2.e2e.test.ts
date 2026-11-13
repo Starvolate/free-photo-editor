@@ -127,7 +127,7 @@ suite('Filters batch 2 (headless Chrome)', () => {
     let before = await sum(p);
     n = await step(p);
     await reach(p, 'edit.fade');
-    await p.waitForSelector('[data-testid="im-fade"]', { state: 'visible' });
+    await p.waitForSelector('[data-testid="im-fade-amount"]', { state: 'visible' });
     await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, before] as const, { timeout: 20_000 });
     await p.click('[data-testid="im-apply"]');
     await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);

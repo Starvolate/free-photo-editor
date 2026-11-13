@@ -116,7 +116,7 @@ suite('W2 filters (headless Chrome)', () => {
     // Liquify has a sheet with its own preview rather than this dialog; crop-warp.e2e drives it by its ribbon home.
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
       .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id) && c.id !== 'filter.liquify').map((c) => c.id);
-    expect(ids.length).toBe(75);
+    expect(ids.length).toBe(92);
     for (const id of ids) {
       const n = await step(p);
       await dialog(p, id);

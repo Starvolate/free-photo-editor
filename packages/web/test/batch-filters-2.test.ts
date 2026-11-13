@@ -26,9 +26,9 @@ const reds = (d: ArrayLike<number>): number[] => Array.from({ length: d.length /
 describe('filters batch 2', () => {
   it('makes the batch Ready, with handlers, and leaves the rows it did not build Planned', () => {
     expect(NEW_ROWS.length).toBeGreaterThan(200);
-    expect(BATCH2_IDS.length).toBe(12);
+    expect(BATCH2_IDS.length).toBe(29);
     for (const id of BATCH2_IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow', 'filter.page-curl', 'filter.gallery', 'image.mode-gray', 'image.rotate-any', 'edit.fade']) {
+    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
       expect(HANDLERS[id], id).toBeUndefined();
     }
@@ -139,5 +139,251 @@ describe('filters batch 2', () => {
         expect(px(out, 12, x, y), `${id} ${x},${y}`).toEqual(px(src.data, 12, x, y));
       }
     }
+  });
+});
+
+describe('filters batch 2, part 2: every look each row names', () => {
+  const step = (lo: number, hi: number): Bmp => bmp(8, 1, (x) => grey(x < 4 ? lo : hi));
+  const at = (d: ArrayLike<number>, w: number, x: number, y = 0): number => d[(y * w + x) * 4];
+  const BW = { fg: 0x000000, bg: 0xffffff };
+
+  it('traced outline and relief', () => {
+    // Outline: at x = 3 and 4 the slope is 4 x (200 - 100) / 4 = 100, ink 100 / 128 = 0.78125, so 100 x 0.21875 = 21.9 and 200 x 0.21875 = 43.75.
+    const o = run('outline', step(100, 200));
+    expect([0, 3, 4, 7].map((x) => at(o, 8, x))).toEqual([100, 22, 44, 200]);
+    // Relief, light from the right, height 1: x = 3 gains 200 - 100 = 100; x = 4 gains 100 too and clips at 255; flat parts keep their colour.
+    const r = run('outline', step(100, 200), { look: 1, angle: 0, height: 1 });
+    expect([0, 3, 4, 7].map((x) => at(r, 8, x))).toEqual([100, 200, 255, 200]);
+  });
+  it('ink drawing and pencil drawing', () => {
+    // Ink, colour 50%: 100 pales to 255 - 155 x 0.5 = 177.5 and 200 to 227.5; next to the step the ink 0.78125 leaves 21.875% of that.
+    const ink = run('sketch', step(100, 200));
+    expect([0, 3, 4, 7].map((x) => at(ink, 8, x))).toEqual([178, 39, 50, 228]);
+    // Pencil, softness 1: at x = 3 the blurred negative is (205 + 205 + 55) / 3 = 155, so 50 x 255 / 100 = 127.5; at x = 4 it is 105, so
+    // 200 x 255 / 150 = 340, clipped to white; a flat area divides by itself and turns white paper.
+    const pen = run('sketch', step(50, 200), { look: 1, size: 1 });
+    expect([0, 3, 4, 7].map((x) => at(pen, 8, x))).toEqual([255, 128, 255, 255]);
+  });
+  it('halftone dots and engraved lines', () => {
+    // Flat 128: darkness 127 / 255; dot radius 10 x 0.7072 x sqrt(0.498) = 4.991. Pixel (4, 4) sits 0.71 from the dot centre (5, 5): ink.
+    // (0, 0) is 6.36 away: paper. (0, 3) is 4.743 away: covered 4.991 - 4.743 + 0.5 = 0.747, so 255 x 0.253 = 64.
+    const g = bmp(10, 10, () => grey(128)), dots = run('newsprint', g, { size: 10, angle: 0 });
+    expect([px(dots, 10, 4, 4)[0], px(dots, 10, 0, 0)[0], px(dots, 10, 0, 3)[0]]).toEqual([0, 255, 64]);
+    expect(Array.from(new Set(reds(run('newsprint', bmp(10, 10, () => grey(255)), { size: 10 }))))).toEqual([255]);
+    expect(Array.from(new Set(reds(run('newsprint', bmp(10, 10, () => grey(0)), { size: 10 }))))).toEqual([0]);
+    // Lines 10 apart: each band's ink is 10 x 127 / 255 = 4.98 thick round its middle (5). Row 4 (centre 4.5) is ink, row 0 paper, and
+    // row 2 (centre 2.5) is covered 2.49 - 2.5 + 0.5 = 0.49, so 255 x 0.51 = 130.
+    const lines = run('newsprint', g, { look: 1, size: 10, angle: 0 });
+    expect([4, 0, 2].map((y) => px(lines, 10, 3, y)[0])).toEqual([0, 255, 130]);
+  });
+  it('dents and mirror tiles', () => {
+    const src = bmp(8, 8, (x, y) => [x * 10 + y, 0, 0, 255]);
+    // Tiles of 4 mirrored both ways round their centres (1.5, 1.5) and (5.5, 5.5): (0, 0) shows (3, 3) and (5, 6) shows (6, 5).
+    const both = run('dents', src, { look: 1, size: 4 });
+    expect([px(both, 8, 0, 0)[0], px(both, 8, 5, 6)[0]]).toEqual([33, 65]);
+    expect(px(run('dents', src, { look: 1, size: 4, flip: 1 }), 8, 0, 0)[0]).toBe(30);
+    // Dents push each pixel at most 2 px, so on a 20-per-pixel ramp no pixel moves more than 40 (plus rounding); flat stays flat.
+    const ramp = bmp(8, 8, (x) => grey(x * 20)), d = run('dents', ramp, { size: 4, amount: 2 });
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) expect(Math.abs(px(d, 8, x, y)[0] - x * 20)).toBeLessThanOrEqual(41);
+    expect(Array.from(d)).not.toEqual(Array.from(ramp.data));
+    expect(Array.from(run('dents', bmp(6, 6, () => grey(90)), { amount: 20 }))).toEqual(Array.from(bmp(6, 6, () => grey(90)).data));
+  });
+  it('cartoon, photocopy, cubist squares and glass blocks', () => {
+    // Reach 1: x = 3 (50) is darker than 90% of its neighbours' mean (50 + 50 + 200) / 3 = 100, so it is a black line. Elsewhere the colour
+    // steps in fours (0, 85, 170, 255): 50 becomes 85 and 200 becomes 170. Photocopy prints only the line.
+    const c = run('cartoon', step(50, 200), { size: 1 });
+    expect([0, 2, 3, 4, 7].map((x) => at(c, 8, x))).toEqual([85, 85, 0, 170, 170]);
+    const pc = run('cartoon', step(50, 200), { look: 1, size: 1 });
+    expect([0, 3, 4, 7].map((x) => at(pc, 8, x))).toEqual([255, 0, 255, 255]);
+    // Squares: on a red left half and a green right half, every pixel is red, green or the blue second colour, and all three show.
+    const two = bmp(32, 32, (x) => (x < 16 ? [200, 0, 0, 255] : [0, 200, 0, 255])), cub = run('cartoon', two, { look: 2, tile: 8, bg: 0x0000ff });
+    const seen = new Set<string>();
+    for (let i = 0; i < 32 * 32; i++) seen.add(px(cub, 32, i % 32, Math.floor(i / 32)).join());
+    expect([...seen].sort()).toEqual(['0,0,255,255', '0,200,0,255', '200,0,0,255']);
+    // Glass blocks of 4 at full bend: (1, 1) looks at (0.5, 0.5), half way between 0 and 10 = 5; (2, 1) looks at (2.5, 0.5): 25 and 5.
+    const ramp = bmp(8, 8, (x, y) => [x * 10, y * 10, 0, 255]), gl = run('cartoon', ramp, { look: 3, tile: 4, amount: 100 });
+    expect([px(gl, 8, 1, 1), px(gl, 8, 2, 1)]).toEqual([[5, 5, 0, 255], [25, 5, 0, 255]]);
+  });
+  it('lino print and leaded glass', () => {
+    // Flat 50 under the 128 level prints black; carved lines every 6 rows open where row % 6 < 3 x 50 / 128 = 1.17, so rows 0, 1, 6, 7.
+    const lino = run('linocut', bmp(4, 12, () => grey(50)), { smooth: 0 });
+    expect(Array.from({ length: 12 }, (_, y) => px(lino, 4, 1, y)[0])).toEqual([255, 255, 0, 0, 0, 0, 255, 255, 0, 0, 0, 0]);
+    expect(Array.from(new Set(reds(run('linocut', bmp(4, 12, () => grey(50)), { smooth: 0, gouges: 0 }))))).toEqual([0]);
+    expect(Array.from(new Set(reds(run('linocut', bmp(4, 12, () => grey(200))))))).toEqual([255]);
+    // Leaded glass on a flat colour: each piece keeps that colour and the lead between pieces is black, and both show.
+    const glass = run('linocut', bmp(40, 40, () => [30, 60, 90, 255]), { look: 1, cell: 12, lead: 2 }), kinds = new Set<string>();
+    for (let i = 0; i < 1600; i++) kinds.add(px(glass, 40, i % 40, Math.floor(i / 40)).join());
+    expect([...kinds].sort()).toEqual(['0,0,0,255', '30,60,90,255']);
+  });
+  it('patterns: grid, checkerboard, maze, spiral, sine waves and jigsaw, in the main colour over the second', () => {
+    const blank = (w: number, h: number): Bmp => bmp(w, h, () => [0, 0, 0, 0]);
+    // Grid every 10 px, lines 2 px: x or y within 2 of a multiple of 10 is a line (main colour, black here); the rest is white. Opaque.
+    const grid = run('patterns', blank(20, 20), { ...BW, size: 10, width: 2 });
+    expect([px(grid, 20, 0, 5), px(grid, 20, 5, 5), px(grid, 20, 5, 1), px(grid, 20, 11, 5)]).toEqual([[0, 0, 0, 255], [255, 255, 255, 255], [0, 0, 0, 255], [0, 0, 0, 255]]);
+    const chk = run('patterns', blank(20, 20), { ...BW, look: 1, size: 10 });
+    expect([px(chk, 20, 0, 0)[0], px(chk, 20, 10, 0)[0], px(chk, 20, 10, 10)[0]]).toEqual([255, 0, 255]);
+    // Maze: 6 px cells with 2 px walls in 50 x 38 make 8 x 6 = 48 cells. A maze with one path between any two cells has exactly 47
+    // openings; count them by looking at the middle of each cell's west and north wall.
+    const mz = run('patterns', blank(50, 38), { ...BW, look: 2, size: 6, width: 2 });
+    let openings = 0;
+    for (let j = 0; j < 6; j++) for (let i = 0; i < 8; i++) {
+      if (i > 0 && px(mz, 50, i * 6, j * 6 + 3)[0] === 255) openings++;
+      if (j > 0 && px(mz, 50, i * 6 + 3, j * 6)[0] === 255) openings++;
+    }
+    expect(openings).toBe(47);
+    expect([px(mz, 50, 0, 0)[0], px(mz, 50, 3, 3)[0], px(mz, 50, 49, 20)[0]]).toEqual([0, 255, 0]);
+    // Spiral 8 px a turn round (8, 8): 2 px to the right is a quarter turn in (main colour), 6 px is three quarters (second colour).
+    const sp = run('patterns', blank(17, 17), { ...BW, look: 3, size: 8 });
+    expect([px(sp, 17, 10, 8)[0], px(sp, 17, 14, 8)[0]]).toEqual([0, 255]);
+    // Sine waves 8 px long: 0.5 + 0.25 (sin x + sin y) of the way to black: 127.5 at (0, 0), 63.75 at (2, 0), 191.25 at (6, 0).
+    const sn = run('patterns', blank(8, 8), { ...BW, look: 4, size: 8 });
+    expect([0, 2, 6].map((x) => px(sn, 8, x, 0)[0])).toEqual([128, 64, 191]);
+    // Jigsaw pieces of 20: the cut between the first two pieces is a line at (19, 2), but at (19, 10) a round tab joins the two sides.
+    const jg = run('patterns', blank(40, 40), { ...BW, look: 5, size: 20, width: 1 });
+    expect([px(jg, 40, 19, 2)[0], px(jg, 40, 5, 5)[0], px(jg, 40, 19, 10)[0]]).toEqual([0, 255, 255]);
+  });
+  it('stroke blur and wrap-around blur', () => {
+    // Level strokes 5 long: an upright 1 px line is 1 of 5 samples, so the middle value is 0 and it goes; a level line stays.
+    const upright = run('stroke-blur', bmp(9, 5, (x) => grey(x === 4 ? 255 : 0)), { angle: 0, jitter: 0, length: 2 });
+    expect([px(upright, 9, 4, 2)[0], px(upright, 9, 3, 2)[0]]).toEqual([0, 0]);
+    expect(px(run('stroke-blur', bmp(9, 5, (_, y) => grey(y === 2 ? 255 : 0)), { angle: 0, jitter: 0, length: 2 }), 9, 4, 2)[0]).toBe(255);
+    // Wrap-around, radius 1: the 240 at the right end also reaches x = 0, so (240 + 0 + 0) / 3 = 80 there; x = 1 stays 0.
+    const w = run('wrap-blur', bmp(6, 1, (x) => grey(x === 5 ? 240 : 0)), { radius: 1, edges: 0 });
+    expect([0, 1, 4, 5].map((x) => at(w, 6, x))).toEqual([80, 0, 80, 80]);
+    // Edges only, 2 px: on a 5 x 5 with 150 in the last column, (0, 2) blurs fully to 50, (3, 2) is 1 px in, so half: 25.
+    const e = run('wrap-blur', bmp(5, 5, (x) => grey(x === 4 ? 150 : 0)), { radius: 1, edges: 2 });
+    expect([0, 2, 3, 4].map((x) => at(e, 5, x, 2))).toEqual([50, 0, 25, 50]);
+  });
+});
+
+describe('filters batch 2, part 3: every look each row names', () => {
+  const at = (d: ArrayLike<number>, w: number, x: number, y = 0): number => d[(y * w + x) * 4];
+  const row = (vals: number[]): Bmp => bmp(vals.length, 1, (x) => grey(vals[x]));
+  const BW = { fg: 0x000000, bg: 0xffffff };
+  const blank = (w: number, h: number): Bmp => bmp(w, h, () => [0, 0, 0, 0]);
+
+  it('seamless, repeated, mirrored and scattered paper tiles', () => {
+    // Seamless on 0, 40, 80, 120 (one row): the middle weight is 1 - |2x / 3 - 1| (0, 2/3, 2/3, 0) and the copy shifted by half is
+    // 80, 120, 0, 40, so 80, 40 x 2/3 + 120 / 3 = 66.7, 80 x 2/3 + 0 = 53.3, 40: the right end (40) now runs on into the left one (80).
+    const r4 = row([0, 40, 80, 120]);
+    expect(reds(run('tiling', r4))).toEqual([80, 67, 53, 40]);
+    // Two copies across: x = 0 reads 0.25 x 4 - 0.5 = 0.5 (half way from 0 to 40: 20), x = 1 reads 2.5 (100), then again; mirrored flips the second copy.
+    expect(reds(run('tiling', r4, { look: 1, count: 2 }))).toEqual([20, 100, 20, 100]);
+    expect(reds(run('tiling', r4, { look: 2, count: 2 }))).toEqual([20, 100, 100, 20]);
+    // Paper tiles with no scatter stay in place. At 60% each 12 px tile slides up to 3 px (0.6 x 12 / 2), so on a ramp (red = 5 x column)
+    // every pixel is the blue second colour in a gap, or the ramp read at most 3 columns away.
+    const ramp = bmp(40, 40, (x) => [x * 5, 0, 0, 255]);
+    expect(Array.from(run('tiling', ramp, { look: 3, size: 12, scatter: 0 }))).toEqual(Array.from(ramp.data));
+    const pt = run('tiling', ramp, { look: 3, size: 12, scatter: 60, bg: 0x0000ff });
+    let gaps = 0, moved = 0;
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
+      const v = px(pt, 40, x, y);
+      if (v[2] === 255) { gaps++; expect(v).toEqual([0, 0, 255, 255]); continue; }
+      expect(Math.abs(v[0] / 5 - x)).toBeLessThanOrEqual(3);
+      if (v[0] / 5 !== x) moved++;
+    }
+    expect(gaps).toBeGreaterThan(0);
+    expect(moved).toBeGreaterThan(0);
+  });
+  it('peeled corner and curve bend', () => {
+    // 6 x 6, peel 33% of 6 = 2 diagonal steps from the bottom-right corner: (5, 5) and (4, 5) are under the peel and clear; (3, 5) and
+    // (4, 4) are on the crease (255 - 64 = 191); (3, 4) is one step past it and its mirror (4, 5) is inside: 255 - 32 = 223; (2, 5)
+    // mirrors to (3, 6), off the area, so it keeps its colour.
+    const src = bmp(6, 6, () => [10, 20, 30, 255]), pc = run('page-curl', src, { size: 33 });
+    expect([[5, 5], [4, 5], [3, 5], [4, 4], [3, 4], [2, 5]].map(([x, y]) => px(pc, 6, x, y)))
+      .toEqual([[0, 0, 0, 0], [0, 0, 0, 0], [191, 191, 191, 255], [191, 191, 191, 255], [223, 223, 223, 255], [10, 20, 30, 255]]);
+    const tl = run('page-curl', src, { size: 33, corner: 3 });
+    expect([px(tl, 6, 0, 0), px(tl, 6, 5, 5)]).toEqual([[0, 0, 0, 0], [10, 20, 30, 255]]);
+    // Curve bend of 2 px on 5 x 5 (red = 40 x row + column): the middle column moves down 2 (rows 0 and 1 clear, row 2 shows row 0,
+    // row 4 shows row 2: 82); column 1 moves 2 x (1 - 0.5 x 0.5) = 1.5, so row 2 reads row 0.5: (1 + 41) / 2 = 21; the edge columns stay.
+    const g5 = bmp(5, 5, (x, y) => [40 * y + x, 0, 0, 255]), cb = run('page-curl', g5, { look: 1, bend: 2 });
+    expect([px(cb, 5, 2, 0)[3], px(cb, 5, 2, 1)[3], at(cb, 5, 2, 2), at(cb, 5, 2, 4), at(cb, 5, 1, 2), at(cb, 5, 0, 3)]).toEqual([0, 0, 2, 82, 21, 120]);
+  });
+  it('rotated copies and nested copies (Droste)', () => {
+    // Four copies of 3 x 3 with one 200 in the top-left corner: each corner turned a quarter round the centre lands on the next corner,
+    // so every corner averages one 200 and three 0s: 50; the middle of an edge only meets other edges: 0.
+    const hot = bmp(3, 3, (x, y) => grey(x === 0 && y === 0 ? 200 : 0)), rc = run('illusion', hot, { copies: 4 });
+    expect([at(rc, 3, 0, 0), at(rc, 3, 2, 0), at(rc, 3, 2, 2), at(rc, 3, 1, 0)]).toEqual([50, 50, 50, 0]);
+    // Nested at half size on 8 x 8 (red = 20 x column + 4 x row), centre (3.5, 3.5), inner frame 2 each way: (2, 2) zooms out once to
+    // (0.5, 0.5): (0 + 20 + 4 + 24) / 4 = 12; (3, 3) twice to (1.5, 1.5): 36; (4, 4) to (5.5, 5.5): 132; (0, 0) is outside and stays 0.
+    const s8 = bmp(8, 8, (x, y) => [20 * x + 4 * y, 0, 0, 255]), dr = run('illusion', s8, { look: 1, scale: 50 });
+    expect([at(dr, 8, 2, 2), at(dr, 8, 3, 3), at(dr, 8, 4, 4), at(dr, 8, 0, 0)]).toEqual([12, 36, 132, 0]);
+  });
+  it('crumpled paper, fractal remap and value spread', () => {
+    // Crumple on flat 100 at 50%: each pixel is shaded by at most half (50 to 150), some lighter and some darker; 0% leaves it.
+    const flat = bmp(40, 40, () => grey(100)), cr = reds(run('fractal', flat, { amount: 50, size: 12 }));
+    expect(Math.min(...cr)).toBeGreaterThanOrEqual(50);
+    expect(Math.max(...cr)).toBeLessThanOrEqual(150);
+    expect(cr.some((v) => v > 100) && cr.some((v) => v < 100)).toBe(true);
+    expect(Array.from(run('fractal', flat, { amount: 0 }))).toEqual(Array.from(flat.data));
+    // Remap, one step on 6 x 6 (red = 10 x column + 40 x row): (4, 3) is the point 0.25 + 0.25i; squared and added back it is
+    // 0.25 + 0.375i, which lands on column 4, row 3.25: 40 + 130 = 170.
+    const s6 = bmp(6, 6, (x, y) => [10 * x + 40 * y, 0, 0, 255]);
+    expect(at(run('fractal', s6, { look: 1, depth: 1 }), 6, 4, 3)).toBe(170);
+    // Spread on 0, 0, 200, 0, 0: one step grows the light pixel one each way, two cover the row; dark spread grows the 0s over it.
+    const sp = row([0, 0, 200, 0, 0]);
+    expect(reds(run('fractal', sp, { look: 2, steps: 1 }))).toEqual([0, 200, 200, 200, 0]);
+    expect(reds(run('fractal', sp, { look: 2, steps: 2 }))).toEqual([200, 200, 200, 200, 200]);
+    expect(reds(run('fractal', sp, { look: 2, steps: 1, spread: 1 }))).toEqual([0, 0, 0, 0, 0]);
+  });
+  it('colour clusters (SLIC) and flooded cells (watershed)', () => {
+    // Clusters of 4 on 8 x 4 (red 0, 10, 20, 30 then 200, 210, 220, 230 in every row), kept square: the left half takes its mean 15,
+    // the right half 215.
+    const two = bmp(8, 4, (x) => [x < 4 ? x * 10 : 200 + (x - 4) * 10, 0, 0, 255]);
+    expect(reds(run('superpixels', two, { size: 4, compact: 100 })).slice(0, 8)).toEqual([15, 15, 15, 15, 215, 215, 215, 215]);
+    // Outlined in the main colour where a patch meets the next: column 3 (its right neighbour is the other patch) turns red.
+    const ol = run('superpixels', two, { size: 4, compact: 100, lines: 1, fg: 0xff0000 });
+    expect([px(ol, 8, 3, 0), px(ol, 8, 4, 0)]).toEqual([[255, 0, 0, 255], [215, 0, 0, 255]]);
+    // Flooded cells follow the edge, not the grid: 40, 50, 60, then 200. The calmest pixels (slope 10 and 0) seed the two cells and the
+    // step (slopes 150 and 140) is reached last, so the first cell is the three dark pixels (mean 50) and the second the rest (200).
+    const edge = bmp(8, 4, (x) => grey([40, 50, 60][x] ?? 200));
+    expect(reds(run('superpixels', edge, { look: 1, size: 4 })).slice(0, 8)).toEqual([50, 50, 50, 200, 200, 200, 200, 200]);
+  });
+  it('cell, Perlin, simplex, cloud and plasma noise', () => {
+    // Cells of 10 with no randomness put the points in the cell middles. (5, 5) is on one: the second colour (white); (0, 0) is
+    // 0.707 cells from it: 255 x (1 - 0.707) = 75; (10, 5) is half a cell from two points: 127.5, rounded to 128.
+    const cell = run('noise-pattern', blank(20, 20), { ...BW, size: 10, jitter: 0 });
+    expect([at(cell, 20, 5, 5), at(cell, 20, 0, 0), at(cell, 20, 10, 5)]).toEqual([255, 75, 128]);
+    // Perlin is 0 on every grid point (every 10 px), so those pixels sit half way: 128. Cloud adds up the noise's size, 0 there: white.
+    const per = run('noise-pattern', blank(21, 21), { ...BW, look: 1, size: 10 }), cl = run('noise-pattern', blank(21, 21), { ...BW, look: 3, size: 10 });
+    expect([at(per, 21, 0, 0), at(per, 21, 10, 0), at(per, 21, 10, 20), at(cl, 21, 0, 0), at(cl, 21, 20, 10)]).toEqual([128, 128, 128, 255, 255]);
+    // Simplex is 0 at the grid's origin: 128. Each look fills the area opaque and varies between the grid points.
+    const sx = run('noise-pattern', blank(21, 21), { ...BW, look: 2, size: 10 });
+    expect(at(sx, 21, 0, 0)).toBe(128);
+    for (const o of [cell, per, sx, cl]) { expect(new Set(reds(o)).size).toBeGreaterThan(5); for (let i = 3; i < o.length; i += 4) expect(o[i]).toBe(255); }
+    // Plasma with no roughness on 5 x 5: in each colour the middle is the mean of the four corners, and the top middle the mean of the
+    // two top corners and the middle (each to within 1, as every stored value is rounded).
+    const pl = run('noise-pattern', blank(5, 5), { look: 4, rough: 0 });
+    for (let c = 0; c < 3; c++) {
+      const v = (x: number, y: number): number => pl[(y * 5 + x) * 4 + c];
+      expect(Math.abs(v(2, 2) - (v(0, 0) + v(4, 0) + v(0, 4) + v(4, 4)) / 4)).toBeLessThanOrEqual(1);
+      expect(Math.abs(v(2, 0) - (v(0, 0) + v(4, 0) + v(2, 2)) / 3)).toBeLessThanOrEqual(1);
+    }
+  });
+  it('sharpen, deblur, soften and bloom by spreading detail', () => {
+    // One pass at full strength on 0, 0, 100, 0, 0 (one row, so the Laplacian is left + right - 2 x middle): soften adds a quarter of it
+    // (25, 50, 25), sharpen takes it away (150; the -25 beside it clips to 0), bloom keeps only the brightening part.
+    const one = { amount: 100, steps: 1 }, spike = row([0, 0, 100, 0, 0]);
+    expect(reds(run('detail-diffuse', spike, { ...one, look: 2 }))).toEqual([0, 25, 50, 25, 0]);
+    expect(reds(run('detail-diffuse', spike, one))).toEqual([0, 0, 150, 0, 0]);
+    expect(reds(run('detail-diffuse', spike, { ...one, look: 3 }))).toEqual([0, 25, 100, 25, 0]);
+    // Deblur, radius 1: each pass adds back what a 3-wide blur takes away: 100 + (100 - 100 / 3) = 166.7; beside it 0 - 33.3 clips to 0.
+    expect(reds(run('detail-diffuse', spike, { ...one, look: 1, radius: 1 }))).toEqual([0, 0, 167, 0, 0]);
+  });
+  it('artistic looks: each of the eight looks is its own effect byte for byte, and Strength mixes it over the picture', () => {
+    // The sheet's order: ink and pencil drawing, cartoon, photocopy, lino print, halftone dots, brush strokes, crumpled paper.
+    const looks: [string, number][] = [['sketch', 0], ['sketch', 1], ['cartoon', 0], ['cartoon', 1], ['linocut', 0], ['newsprint', 0], ['stroke-blur', 0], ['fractal', 0]];
+    const src = bmp(24, 16, (x, y) => [(x * 11 + y * 5) % 256, (x * 3 + y * 13) % 256, (x * y * 7) % 256, 255]);
+    looks.forEach(([kind, look], style) => {
+      const out = run('gallery', src, { style });
+      expect(Array.from(out), kind + ' ' + look).toEqual(Array.from(run(kind, src, { look })));
+      expect(Array.from(out), kind + ' ' + look).not.toEqual(Array.from(src.data));
+    });
+    // Pencil drawing on flat grey 100: the soft inverse is 155, so 100 x 255 / (255 - 155) = 255, white paper. At 40% strength:
+    // 100 + 0.4 x (255 - 100) = 162; at 0% the picture stays as it was.
+    const flat = bmp(6, 6, () => grey(100));
+    expect(px(run('gallery', flat, { style: 1 }), 6, 3, 3)).toEqual(grey(255));
+    expect(px(run('gallery', flat, { style: 1, mix: 40 }), 6, 3, 3)).toEqual(grey(162));
+    expect(Array.from(run('gallery', flat, { style: 1, mix: 0 }))).toEqual(Array.from(flat.data));
   });
 });

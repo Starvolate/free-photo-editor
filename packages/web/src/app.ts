@@ -20,6 +20,7 @@ import {
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
 import { errText, fmtBytes, focusInSheet, h, icon, iconButton, type Attrs } from './dom';
 import type { DpiPanel } from './export-dpi';
+import type { LastChange } from './image-more';
 import { holdsDpi, n2, printText } from './print-text';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
@@ -328,6 +329,8 @@ export class Editor {
   lastSel: Selection | null = null;
   private hole: Rect | null = null;
   lastFilter: { id: string; params: JobParams } | null = null;
+  /** The last filter or colour fix applied, for Soften the last change (image-more.ts). */
+  lastChange: LastChange | null = null;
   /** Recorded steps (automate.ts): while recording, each command that ran, with a dialog's settings once applied. */
   onStep: ((id: string, p?: JobParams) => void) | null = null;
   proNames = false;
@@ -1656,7 +1659,7 @@ export class Editor {
   }
   // ---------- W11 on-device AI (ai.ts and packages/ai, loaded on first use) ----------
   ai(): Promise<AiKit> { return (this.aiLoad ??= import('./ai').then((m) => m.createAiKit(this.toolHost()))); }
-  private toolHost(): ToolHost {
+  toolHost(): ToolHost {
     return {
       root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
       fg: () => this.brush.color, bg: () => this.bgColor, push: (c, all) => this.pushCmd(c, all), dirty: (r) => { this.markDirty(r); this.requestRender(); },
@@ -2879,6 +2882,7 @@ export class Editor {
     this.renderDialog();
     if (s.ran) {
       this.history.push(pixelCommand(s.label, s.layerId, s.r, s.before));
+      this.lastChange = { layerId: s.layerId, r: s.r, before: s.before, step: this.history.stateId(), label: s.label };
       if (s.id.startsWith('filter.')) this.lastFilter = { id: s.id, params: { ...s.spec.params } };
       this.onStep?.(s.id, { ...s.spec.params });
       this.afterEdit();
@@ -2971,7 +2975,7 @@ export class Editor {
     const b = this.dlgEl.querySelector('[data-testid="adj-before"]');
     if (b) { b.setAttribute('aria-pressed', String(s.showBefore)); b.textContent = s.showBefore ? 'Showing before' : 'Show before'; }
   }
-  private cancelSession(): void {
+  cancelSession(): void {
     this.tk?.abort();
     const s = this.session;
     if (!s) return;

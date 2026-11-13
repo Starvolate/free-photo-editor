@@ -14,6 +14,8 @@ import { LOOKS } from './looks';
 import { MORE } from './more';
 import { WARPS } from '../warp';
 import { MORE2 } from './more2';
+import { MORE3 } from './more3';
+import { MORE4 } from './more4';
 import { RAW } from './raw';
 import type { FxKind } from './meta';
 
@@ -21,7 +23,7 @@ export { FX_KINDS, fxReach, type FxKind } from './meta';
 export { contrastRatio, HUES, LEVELS, pressChroma, textColour, toLab, wcagLum } from './light';
 export type { Box } from './lib';
 
-const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE, ...MORE2, ...LIGHT,
+const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE, ...MORE2, ...MORE3, ...MORE4, ...LIGHT,
   ...WARPS };
 
 /** Runs one effect on a bitmap and returns new pixels of the same size. Pixels outside the edited box are kept. */

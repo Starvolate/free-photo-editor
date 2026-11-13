@@ -4,7 +4,7 @@
 import { adjust, type AdjustKind, type AdjustParams } from './adjustments';
 import type { Bitmap } from './document';
 import { gaussianBlur, sharpen } from './filters';
-import { BANDED, fxReach } from './fx/meta';
+import { BANDED, fxReach } from './fx/reach';
 import { TONE_KINDS, tone, type ToneKind } from './tone';
 
 /** 'fx' is every filter family; it runs through runEffect in '@free-photoeditor/core/fx', loaded on first use. */

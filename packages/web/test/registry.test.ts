@@ -155,18 +155,22 @@ describe('the Task ribbon', () => {
     const h = homes();
     expect(NEW_ROWS.length).toBe(261);
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
-    const BUILT = new Set(['auto.panorama', 'select.from-path', 'select.to-path', 'view.composition-guides', 'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
-      'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
+    const BUILT = new Set(['auto.panorama', 'select.from-path', 'select.to-path', 'view.composition-guides',
+      // Batch select-and-layers (selmore.ts).
+      'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
+      'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
       // The Develop RAW sheet (raw-more.ts), 13 Nov 2026.
       ...('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading raw.contrast-levels '
         + 'raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping raw.scopes raw.snapshots '
         + 'raw.presets raw.negative').split(' '),
+      // Filters batch 2 (core fx/more2.ts and more3.ts).
+      'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
+      'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
+      'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch', 'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable',
+      'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen',
       // Batch light-and-colour (light-more.ts).
       'image.hue-chroma', 'image.rotate-colours', 'image.colour-contrast', 'image.local-threshold', 'image.retinex', 'image.tone-mapping',
       'image.harmonize', 'image.palette-edit', 'image.export-lut', 'image.gamut-warning', 'image.decompose',
-      // Batch select-and-layers (selmore.ts).
-      'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
-      'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
       // Batch crop-warp (warpkit.ts, app.ts, toolkit.ts).
       'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin',
       'retouch.frequency-separation', 'retouch.deblur',

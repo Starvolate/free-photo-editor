@@ -131,7 +131,7 @@ export const TABS: Tab[] = [
     g('Blocks and dots', 'Pixelate', 'family', '', '', 'filter.halftone filter.crystallize filter.facet filter.fragment filter.mezzotint filter.mosaic filter.pointillize filter.newsprint filter.video-degrade filter.superpixels'),
     g('Patterns and light', 'Render', 'family', '', '', 'filter.clouds filter.difference-clouds filter.fibers filter.lens-flare filter.lighting filter.star-burst filter.bump-map filter.noise-patterns filter.fractals filter.patterns'),
     g('Graphic looks', 'Stylize', 'family', '', '', 'filter.diffuse filter.emboss filter.extrude filter.find-edges filter.oil-paint filter.solarize filter.tiles filter.trace-contour filter.wind filter.glowing-edges filter.bloom filter.long-shadow filter.tile-seamless filter.edge-detect filter.outline-relief filter.alien-map filter.lowlight'),
-    g('Artistic', 'Artistic and filter gallery', 'family', '', '', 'filter.gallery filter.cartoon filter.ink-sketch filter.linocut filter.frames-overlays'),
+    g('Artistic', 'Artistic looks', 'family', '', '', 'filter.gallery filter.cartoon filter.ink-sketch filter.linocut filter.frames-overlays'),
     g('More effects', 'Other', 'family', '', '', 'filter.high-pass filter.maximum filter.minimum filter.offset filter.custom filter.color-to-alpha filter.dither filter.antialias'),
   ] },
 ];

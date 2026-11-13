@@ -68,7 +68,7 @@ edit.redo | Redo | Redo | Bring back a change you undid. | redo, again | R | 1 |
 edit.history-back | Step back | Step backward | Go one step back in the History list. | previous step | R | W1
 edit.history-forward | Step forward | Step forward | Go one step forward in the History list. | next step | R | W1
 edit.history-brush-step | Paint back from this step | History brush source | Make the step you are at the one the history brush paints back; History marks it with a brush, and the brush beside any step picks that one. | paint back from step, history brush source, paint from here | R | W5
-edit.fade | Soften the last change | Fade | Make the last filter or paint change weaker. | weaker, fade, reduce effect | P | 13
+edit.fade | Soften the last change | Fade | Make the last filter or colour fix weaker. | weaker, fade, reduce effect | R | 13
 --
 edit.cut | Cut | Cut | Move the selected part of this layer to the clipboard. | cut out | R | W1 | Ctrl+X
 edit.copy | Copy | Copy | Copy the selected part of this layer. | copy | R | W1 | Ctrl+C
@@ -114,7 +114,7 @@ edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphic
 
 @Image = Image | Image | Size, turning and colour of the whole picture.
 @Image > Mode = Colour type | Mode | How the colours are stored.
-image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | P | 13
+image.mode-gray | Shades of grey only | Grayscale | Turn every picture layer to shades of grey. | grey mode | R | 13
 image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | R | 13
 image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | P | 13
 image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | P | 13
@@ -161,7 +161,7 @@ image.canvas-size | Canvas size | Canvas size | Add or remove space around the p
 image.rotate-cw | Turn right 90° | Rotate 90° clockwise | Turn the whole picture a quarter turn to the right. | rotate, sideways photo, portrait | R | W1
 image.rotate-ccw | Turn left 90° | Rotate 90° counter-clockwise | Turn the whole picture a quarter turn to the left. | rotate left | R | W1
 image.rotate-180 | Turn half way round | Rotate 180° | Turn the whole picture upside down. | upside down | R | W1
-image.rotate-any | Turn by any angle | Arbitrary rotation | Straighten a tilted horizon by any angle. | straighten, horizon, tilted | P | 3
+image.rotate-any | Turn by any angle | Arbitrary rotation | Straighten a tilted horizon by any angle. | straighten, horizon, tilted | R | 3
 image.flip-h | Mirror the picture | Flip canvas horizontal | Mirror the whole picture left to right. | mirror, selfie flip | R | W1
 image.flip-v | Flip the picture upside down | Flip canvas vertical | Mirror the whole picture top to bottom. | reflection | R | W1
 @Image
@@ -305,7 +305,7 @@ select.load | Load a saved selection | Load selection | Bring back a saved selec
 @Filter = Filter | Filter | Effects such as blur, sharpen, noise and distortions.
 filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | R | W1 | Ctrl+Alt+F
 --
-filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
+filter.gallery | Artistic effects | Painterly looks with previews | Pick a drawn or painted look from small previews. | painting effect, sketch, filter gallery | R | W2
 filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
 filter.liquify | Push pixels like liquid | Liquify | Push, grow, shrink or twirl parts of a layer with a brush on a preview, then Apply. | reshape, slim, liquify | R | 5

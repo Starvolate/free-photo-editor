@@ -75,6 +75,6 @@ describe('W2 filter dialogs', () => {
   });
   it('counts the Filter menu', () => {
     const rows = ROWS.filter((r) => r.id.startsWith('filter.'));
-    expect(rows.filter((r) => r.status === 'ready').length).toBe(65);
+    expect(rows.filter((r) => r.status === 'ready').length).toBe(66);
   });
 });

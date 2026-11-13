@@ -427,7 +427,9 @@ export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocea
 for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // The second filters batch (13 Nov 2026): census rows whose dialogs also live in adj-more.ts, loaded on first use.
 export const BATCH2_IDS = ('filter.kaleidoscope filter.alien-map filter.bloom filter.edge-detect filter.deinterlace filter.destripe filter.video-degrade '
-  + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias').split(' ');
+  + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias filter.outline-relief filter.newsprint filter.dents filter.cartoon '
+  + 'filter.ink-sketch filter.linocut filter.patterns filter.blur-sketch filter.blur-tileable filter.tile-seamless filter.page-curl filter.illusion '
+  + 'filter.fractal-trace filter.superpixels filter.noise-patterns filter.diffuse-sharpen filter.gallery').split(' ');
 for (const id of BATCH2_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // The light and colour batch (13 Nov 2026): dialogs in light-more.ts, loaded on first use; the .cube file needs a light and colour layer.
 export const LIGHT_IDS = ('image.hue-chroma image.rotate-colours image.colour-contrast image.local-threshold image.retinex image.tone-mapping '
@@ -477,6 +479,9 @@ for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p s
 // Part 2: brush tips, patterns made from the selection, saved tool settings (the define commands need a selection).
 for (const id of ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'panel.brushes', 'panel.tool-presets', 'edit.define-brush', 'edit.define-pattern', 'paint.enclose-fill', 'paint.colorize-mask'])
   HANDLERS[id] = H((e) => e.paintKit(id), id.startsWith('edit.') ? hasSel : always);
+
+// Fade, grey mode and turn by any angle (image-more.ts), reached through adj-more.ts so the first screen adds no import of its own.
+for (const id of ['edit.fade', 'image.mode-gray', 'image.rotate-any']) HANDLERS[id] = H(async (e) => (await import('./adj-more')).imageMore(id, e), id === 'edit.fade' ? (e) => !!e.doc && !!e.lastChange : hasDoc);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

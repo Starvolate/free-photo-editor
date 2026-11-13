@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cost, open as openSpot, ways } from './ribbon';
-import { SHEETS, TABS, clicks, firstTab, homeText, homes } from '../src/ribbon-homes';
+import { SHEETS, TABS, clicks, firstTab, homeText, homes, restOf } from '../src/ribbon-homes';
 import { BY_ID } from '../src/registry';
 
 interface Fpe { openSample(): void; state(): Record<string, unknown>; }
@@ -142,7 +142,13 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
       await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
       expect(await selected(p)).toEqual([`rtab-${slug(t.plain)}`]);
       expect(await p.getAttribute('[data-testid="ribbon-body"]', 'data-tab')).toBe(slug(t.plain));
-      for (const g of t.groups) expect(await p.locator(`[data-testid="rgroup-${slug(t.plain)}-${slug(g.plain)}"]`).count(), `${t.plain} › ${g.plain}`).toBe(1);
+      // A group shows when it has a Ready command (a family when one of its "more" commands is Ready, ribbon.ts familiesEl);
+      // a group with nothing Ready stays off the resting ribbon and must be absent, not merely hidden.
+      for (const g of t.groups) {
+        const r = restOf(g), want = (g.show === 'family' ? r.more.length : r.big.length + r.shown.length + r.more.length) ? 1 : 0;
+        expect(await p.locator(`[data-testid="rgroup-${slug(t.plain)}-${slug(g.plain)}"]`).count(), `${t.plain} › ${g.plain}${want ? '' : ' (nothing Ready)'}`).toBe(want);
+      }
+      expect(await p.locator('[data-testid="ribbon-body"] [role="group"]').count(), `${t.plain} shows at least one group`).toBeGreaterThan(0);
       if (t.plain === 'Filters & blur') {
         await p.mouse.move(720, 600);
         await p.waitForTimeout(300);
@@ -298,6 +304,27 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     expect(bad).toEqual([]);
     expect([...heights], 'the ribbon keeps one height on every tab').toHaveLength(1);
   }, 120_000);
+
+  it('a sheet opened again under the same name with a new body shows the new body\'s own controls', async () => {
+    step = 'sheet body';
+    const p = await open();
+    const shown = (): Promise<{ title: string; ids: string[] }> => p.evaluate(() => {
+      const s = document.querySelector<HTMLElement>('[data-testid="sheet-probe"]');
+      return { title: s?.querySelector('.fpe-sheet-title')?.textContent ?? '', ids: Array.from(s?.querySelectorAll('[data-testid^="probe-"]') ?? [], (e) => e.getAttribute('data-testid') ?? '') };
+    });
+    type Fpe = { sheet(id: string, title: string, body: HTMLElement): void };
+    const openWith = (title: string, ids: string[]): Promise<void> => p.evaluate(([t, list]) => {
+      const body = document.createElement('div');
+      for (const x of list) { const b = document.createElement('button'); b.dataset.testid = x; b.textContent = x; body.append(b); }
+      (window as unknown as { fpe: Fpe }).fpe.sheet('probe', t, body);
+    }, [title, ids] as const);
+    await openWith('First', ['probe-a', 'probe-b']);
+    expect(await shown()).toEqual({ title: 'First', ids: ['probe-a', 'probe-b'] });
+    await p.keyboard.press('Escape');
+    await openWith('Second', ['probe-c']);
+    expect(await shown(), 'the second body replaces the first').toEqual({ title: 'Second', ids: ['probe-c'] });
+    expect(await p.isVisible('[data-testid="probe-c"]')).toBe(true);
+  }, 60_000);
 
   it('the hover card shows the plain name, the pro name, the help line and the ribbon home', async () => {
     step = 'hover card';

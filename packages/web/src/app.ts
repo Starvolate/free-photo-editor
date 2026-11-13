@@ -91,6 +91,8 @@ export interface EditorController {
   appState(): Record<string, unknown>;
   /** Write the safety copies now. */
   saveNow(): Promise<void>;
+  /** Plug-ins and automation: show your own controls in a sheet. A later call with the same id and a new body shows that body. */
+  sheet(id: string, title: string, body: HTMLElement): void;
 }
 
 interface Session {
@@ -1653,10 +1655,12 @@ export class Editor {
       ai: () => this.ai(),
     };
   }
+  /** Open a sheet with this title and body. A sheet is built once per id; a later caller's own body replaces the one shown before. */
   private toolSheet(id: string, title: string, body: HTMLElement): void {
     if (!this.sheets.has(id)) { this.makeSheet(id, title, body); this.root.insertBefore(this.sheets.get(id) as HTMLElement, this.scrim); }
-    const t = this.sheets.get(id)?.querySelector('.fpe-sheet-title');
+    const sheet = this.sheets.get(id) as HTMLElement, t = sheet.querySelector('.fpe-sheet-title'), box = sheet.querySelector(':scope > .fpe-sheet-body');
     if (t) t.textContent = title;
+    if (box && (box.childElementCount !== 1 || box.firstElementChild !== body)) box.replaceChildren(body);
     this.openModal(id);
   }
   private showPanelTab(pid: string): void {
@@ -3723,6 +3727,7 @@ export class Editor {
       setZoom: (z) => this.zoomTo(z),
       appState: () => ({ ...this.appShell.info(), autosave: { enabled: this.saver.enabled, writes: this.saver.writes, error: this.saver.lastError }, left: this.left.map((m) => m.name) }),
       saveNow: () => this.saver.flush(),
+      sheet: (id, title, body) => this.toolSheet(id, title, body),
       flatHash: async () => {
         const d = this.doc;
         if (!d) return '';

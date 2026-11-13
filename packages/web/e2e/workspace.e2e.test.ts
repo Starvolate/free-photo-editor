@@ -105,13 +105,20 @@ const clipped = (p: Page): Promise<string[]> => p.evaluate(() => {
       const a = el.getBoundingClientRect();
       if (!a.width || !a.height || getComputedStyle(el).visibility === 'hidden') continue;
       const name = `${card.dataset.group ?? 'learn'}: ${el.dataset.testid ?? ((el.textContent ?? '').trim().slice(0, 30) || el.tagName)}`;
+      // What can still be seen of it, walking outwards. A scroller that shows a fade on an edge hides what lies past that
+      // edge on purpose (app.ts fade), so from there on only its visible part counts: the card around the scroller then
+      // judges that part. Without this, a fading scroller inside a card could never pass, and a scroller cut by its own
+      // card is still caught.
+      let top = a.top, bottom = a.bottom;
       for (let up = el.parentElement; up && up !== card.parentElement; up = up.parentElement) {
         const cs = getComputedStyle(up);
         if (up !== card && cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
         const b = up.getBoundingClientRect(), f = up.dataset.fade ?? '', scrolls = up.scrollHeight > up.clientHeight + 1 && /auto|scroll/.test(cs.overflowY);
-        if (a.top < b.top - 0.5 && !(scrolls && f.includes('top'))) { out.push('cut at the top: ' + name); break; }
-        if (a.bottom > b.bottom + 0.5 && !(scrolls && f.includes('bottom'))) { out.push('cut at the bottom: ' + name); break; }
+        if (top < b.top - 0.5 && !(scrolls && f.includes('top'))) { out.push('cut at the top: ' + name); break; }
+        if (bottom > b.bottom + 0.5 && !(scrolls && f.includes('bottom'))) { out.push('cut at the bottom: ' + name); break; }
         if (a.left < b.left - 0.5 || a.right > b.right + 0.5) { out.push('cut at a side: ' + name); break; }
+        top = Math.max(top, b.top); bottom = Math.min(bottom, b.bottom);
+        if (bottom <= top) break;
       }
     }
   }

@@ -3,7 +3,8 @@
 /**
  * Automate and batch, loaded the first time one is used: Recorded steps (record what you do once, play it again on this
  * picture as one undo step), Edit many pictures the same way, Resize many pictures, a Sheet of small photos, Watermark,
- * Collage, a Passport photo sheet and Line up layers automatically (the matching lives in core/align.ts).
+ * Collage, a Passport photo sheet, Line up layers automatically, Stitch a panorama and Blend photos automatically (the
+ * matching, the stitch and the seam masks live in core/align.ts).
  * Steps are recorded from the command bus (a function's id plus its settings), never from mouse positions, and every
  * step is played by one player (`playSteps`) that does exactly what the editor's own dialog does, so a played set gives
  * the same pixels as doing the steps by hand. Many-picture work holds one picture in memory at a time.
@@ -11,8 +12,8 @@
  */
 import { WHITE, activeLayer, addLayer, docRect, intersect, writeRegion, combineCommands, commitResult, createDocument, documentFromBitmap, editRegion, findLayer, flatten, flattenDocument, hasPixels,
   innerOf, jobPadding, mergeVisible, paddedRegion, parseHex, readRegion, resizeBitmap, resizeDocument, runJob, trimDocument, turnDocument, turnLayer,
-  createLayer, type Bitmap, type Command, type Doc, type JobParams, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
-import { autoAlign } from '@free-photoeditor/core/align';
+  createLayer, type Bitmap, type Command, type Doc, type JobParams, type Layer, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
+import { autoAlign, blendSeams, stitch } from '@free-photoeditor/core/align';
 import { zipSync, type Zippable } from '@free-photoeditor/formats/zip';
 import { ADJ, BATCH_IDS } from './commands';
 import { BY_ID } from './registry';
@@ -786,9 +787,57 @@ function lineUp(host: AutoHost): void {
     (r.locked.length ? ` Locked, so left alone: ${names(r.locked)}.` : ''));
 }
 
+/** Each upper shown picture layer gets a seam mask that fades it into the ones below, as one undo step. */
+function blend(host: AutoHost): void {
+  const d = host.doc();
+  if (!d) return;
+  const r = blendSeams(d);
+  if (!r) { host.toast('Blend photos needs two or more shown picture layers that overlap. Line them up first with Line up layers automatically.'); return; }
+  if (r.cmd) host.push(r.cmd, true);
+  host.toast((r.blended.length ? `Blended ${names(r.blended)} into the photos below with a soft mask along the middle of each overlap, as one step you can undo.` : 'Nothing was blended.') +
+    (r.none.length ? ` No seam for ${names(r.none)}: it does not overlap the photos below, or it covers them or sits inside them.` : ''));
+}
+
+// ---- Stitch a panorama ------------------------------------------------------------------------------------------------------
+/** Two or three photos, each opened as a layer of one new picture, then stitched as one undo step (undo shows them unstitched). */
+function panorama(host: AutoHost): void {
+  const id = 'auto.panorama', b = sheetBody(host, id), pick = picker(id), status = note('', id + '-status');
+  const make = btn('Stitch the photos', true, id + '-make', () => void go());
+  const go = async (): Promise<void> => {
+    const files = pick.files();
+    if (files.length < 2 || files.length > 3) { status.textContent = 'Choose two or three photos that overlap.'; return; }
+    make.disabled = true;
+    status.textContent = 'Opening the photos…';
+    const ls: Layer[] = [], failed: string[] = [];
+    for (const f of files) {
+      const o = await openQuietly(f, f.name).catch(() => null);
+      if (!o) { failed.push(f.name); continue; }
+      const flat = flatten(o.doc);
+      ls.push(createLayer(baseName(f.name), flat.width, flat.height, { data: flat.data }));
+    }
+    status.textContent = 'Finding the same points in the photos…';
+    await new Promise((r) => setTimeout(r, 30));
+    const doc: Doc | null = ls.length > 1 ? { width: Math.max(...ls.map((l) => l.width)), height: Math.max(...ls.map((l) => l.height)), layers: ls, activeId: ls[ls.length - 1].id, selection: null } : null;
+    const r = doc ? stitch(doc) : null;
+    make.disabled = false;
+    const cant = failed.length ? ` Could not open: ${failed.join(', ')}.` : '';
+    if (!doc || !r?.cmd) { status.textContent = 'No matching points were found, so nothing was stitched. The photos must show one scene and overlap by about a third.' + cant; return; }
+    host.closeSheet();
+    host.openDoc(doc, 'Panorama');
+    host.push(r.cmd, true);
+    host.toast(`Stitched ${plural(r.placed.length, 'photo')} onto "${r.ref}", each on its own layer with a soft mask along the seams. Undo shows them unstitched.` +
+      (r.missed.length ? ` Left out, no matching points: ${names(r.missed)}.` : '') + cant);
+  };
+  b.replaceChildren(note('Pick two or three photos of one scene, taken left to right or top to bottom, each overlapping the next by about a third. They are lined up on the photo most of them match, the picture grows to hold them, and each seam fades over 40 px on a mask you can still paint. Corners no photo covers stay see-through: crop them after.'),
+    pick.el, status, h('div', { class: 'fpe-actions' }, btn('Cancel', false, id + '-cancel', () => host.closeSheet()), make));
+  host.sheet(id, 'Stitch a panorama', b);
+}
+
 /** Run one of the automate functions. */
 export function runAutomate(id: string, host: AutoHost): void {
   if (id === 'edit.auto-align') lineUp(host);
+  else if (id === 'edit.auto-blend') blend(host);
+  else if (id === 'auto.panorama') panorama(host);
   else if (id === 'panel.actions') actions(host);
   else if (id === 'file.batch') batch(host);
   else if (id === 'file.resize-many') resizeMany(host);

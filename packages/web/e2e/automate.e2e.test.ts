@@ -6,7 +6,8 @@
  * Edit many pictures the same way and Resize many pictures (one ZIP, names in the picked order, the right sizes), and
  * the Sheet of small photos (one new picture, a layer per photo), Watermark (this picture and many), Collage and the
  * Passport photo sheet, and Line up layers automatically (a real photo turned 7° and moved goes back onto itself; the
- * practice photo's copy moved 100 px down goes back to the same pixels).
+ * practice photo's copy moved 100 px down goes back to the same pixels), Stitch a panorama (two overlapping pieces of the
+ * real photo come back as the photo, one undo step) and Blend photos automatically (a seam mask, one undo step).
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts automate
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -395,5 +396,54 @@ suite('Automate and batch (headless Chrome)', () => {
     expect(await hash(p)).toBe(lined);
     expect(errors).toEqual([]);
   }, 60_000);
-});
 
+  it('Stitch a panorama: two overlapping pieces of a real photo become the photo again, as one undo step', async () => {
+    const png = decodePng(await readFile(join(WEB, 'e2e', 'fixtures', 'mug.png'))), W = png.width, H = png.height;
+    const piece = async (name: string, x0: number, w: number): Promise<string> => {
+      const data = new Uint8ClampedArray(w * H * 4);
+      for (let y = 0; y < H; y++) data.set(png.data.subarray((y * W + x0) * 4, (y * W + x0 + w) * 4), y * w * 4);
+      const file = join(dir, name);
+      await writeFile(file, encodePng({ width: w, height: H, data }));
+      return file;
+    };
+    const two = [await piece('left.png', 0, 230), await piece('right.png', 130, 230)];
+    const p = await open();
+    await reach(p, 'auto.panorama');
+    await pickFiles(p, 'auto.panorama', two);
+    await p.click('[data-testid="auto.panorama-make"]');
+    await p.waitForFunction((w) => (window as unknown as Win).fpe.getInfo()?.width === w, W, { timeout: 20_000 });
+    const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    expect([info?.width, info?.height, info?.layers.length]).toEqual([W, H, 2]);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('Stitched 2 photos');
+    // Across the whole picture, seam included, the pixels are the photo's (mean red difference under 2 on a 20 px grid).
+    const pts: [number, number][] = [];
+    for (let y = 10; y < H; y += 20) for (let x = 10; x < W; x += 20) pts.push([x, y]);
+    const ref = pts.map(([x, y]) => png.data[(y * W + x) * 4]);
+    const off = await p.evaluate(([q, r]) => {
+      const f = (window as unknown as Win).fpe;
+      return q.reduce((s, [x, y], i) => s + Math.abs((f.sample(x, y)?.[0] ?? 0) - r[i]), 0) / q.length;
+    }, [pts, ref] as const);
+    expect(off).toBeLessThan(2);
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'automate-panorama-1440.png') });
+    const h1 = await hash(p);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width).toBe(230);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.redo'));
+    expect(await hash(p)).toBe(h1);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Blend photos automatically: the practice photo\'s copy 100 px down gets a seam mask, as one undo step', async () => {
+    const p = await open();
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.select(850, 100, 100, 100); await f.run('layer.merge-down'); await f.run('layer.duplicate'); await f.run('layer.align-top'); });
+    const h0 = await hash(p), n0 = await steps(p);
+    await reach(p, 'edit.auto-blend');
+    await p.waitForFunction((n) => Number((window as unknown as Win).fpe.state().step) === n + 1, n0, { timeout: 20_000 });
+    expect(await p.textContent('[data-testid="toast"]')).toContain('Blended');
+    expect(await hash(p)).not.toBe(h0);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(h0);
+    expect(errors).toEqual([]);
+  }, 60_000);
+});

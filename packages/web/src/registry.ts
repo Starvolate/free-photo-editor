@@ -101,7 +101,7 @@ edit.smart-scale | Stretch without squashing people | Content-aware scale | Resi
 edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | P | 3
 edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | P | 3
 edit.auto-align | Line up layers automatically | Auto-align layers | Moves and turns layers of one scene so they line up with the bottom one. | panorama, align | R | 13
-edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: blending the seams is not written yet. | focus stack, blend | P | 13
+edit.auto-blend | Blend photos automatically | Auto-blend layers | Fades overlapping photos into each other along the middle of the overlap. Line them up first. | focus stack, blend | R | 13
 --
 edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | P | 4
 edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | P | 4

@@ -74,6 +74,7 @@ export class AppShell {
   private reloading = false;
   private off: (() => void)[] = [];
   private timer = 0;
+  private watch: PerformanceObserver | undefined;
 
   constructor(private host: ShellHost, private opts: AppOptions | undefined) {
     this.platform = typeof navigator === 'undefined' ? 'desktop'
@@ -113,7 +114,7 @@ export class AppShell {
       this.on(sw, 'controllerchange', () => {
         if (this.reloading) { location.reload(); return; }
         this.status = 'ready';
-        this.keepLoaded();
+        this.keepLoaded(true);
       });
       await sw.ready;
       if (hadController) { this.status = 'ready'; this.keepLoaded(); }
@@ -124,12 +125,15 @@ export class AppShell {
       this.status = 'failed';
     }
   }
-  /** Files this page loaded before the worker was in charge (on the very first visit) are saved too. */
-  private keepLoaded(): void {
+  /**
+   * Files this page loaded before the worker was in charge (on the very first visit) are saved too. `takeover`: the worker
+   * took charge just now, so files still downloading are watched for as well (keepUnseen).
+   */
+  private keepLoaded(takeover = false): void {
     const c = navigator.serviceWorker?.controller;
-    if (!c || typeof performance === 'undefined') return;
-    const urls = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => u.startsWith(location.origin));
-    c.postMessage({ type: 'keep', urls });
+    if (!c) return;
+    this.watch?.disconnect();
+    this.watch = keepUnseen(c, performance.now(), takeover);
   }
   private showUpdate(): void {
     this.updateReady = true;
@@ -211,10 +215,30 @@ export class AppShell {
   }
   dispose(): void {
     clearInterval(this.timer);
+    this.watch?.disconnect();
     for (const f of this.off) f();
     this.off = [];
     this.note?.remove();
   }
+}
+
+/**
+ * Asks the worker `to` to save the same-site files this page fetched before `at` (performance.now() when it took charge), which
+ * went past it to the network. Those already loaded are sent at once. With `watch`, so are the ones still downloading at `at`,
+ * each as it finishes: the browser lists a file's timing only once it has arrived, so on a first visit a slow lazy file (the
+ * ribbon, a tool kit) would otherwise never be saved and fail later offline. Files started after `at` passed through the worker,
+ * which saved them itself. Returns the watcher to stop when the page closes.
+ */
+export function keepUnseen(to: Pick<ServiceWorker, 'postMessage'>, at: number, watch: boolean): PerformanceObserver | undefined {
+  const send = (l: PerformanceEntryList): void => {
+    const urls = l.filter((e) => e.startTime < at && e.name.startsWith(location.origin)).map((e) => e.name);
+    if (urls.length) to.postMessage({ type: 'keep', urls });
+  };
+  send(performance.getEntriesByType('resource'));
+  if (!watch) return;
+  const o = new PerformanceObserver((l) => send(l.getEntries()));
+  o.observe({ type: 'resource' });
+  return o;
 }
 
 /**

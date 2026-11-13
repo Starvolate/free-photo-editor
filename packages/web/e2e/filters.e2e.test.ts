@@ -113,8 +113,9 @@ suite('W2 filters (headless Chrome)', () => {
     const original = await sum(p), bad: string[] = [];
     // The census rows (registry-union.ts) join the list when the ribbon loads; wait for them before counting.
     await p.waitForFunction(() => (window as unknown as Win).fpe.commands().some((c) => c.id === 'filter.kaleidoscope'));
+    // Liquify has a sheet with its own preview rather than this dialog; crop-warp.e2e drives it by its ribbon home.
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
-      .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id)).map((c) => c.id);
+      .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id) && c.id !== 'filter.liquify').map((c) => c.id);
     expect(ids.length).toBe(75);
     for (const id of ids) {
       const n = await step(p);

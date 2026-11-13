@@ -11,7 +11,8 @@ import {
   activeLayer, addEmptyLayer, addLayer, clamp, clearSelection, commitResult, compositeDoc, createDocument, createLayer, cropDocument, curveLut,
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
-  paddedRegion, parseHex, pixelCommand, propsCommand, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
+  paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
+  maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
@@ -74,6 +75,8 @@ export interface EditorController {
   checksum(x: number, y: number, w: number, h: number): number;
   /** Everything a person could notice changing, as plain data. */
   state(): Record<string, unknown>;
+  /** SHA-256 (hex) of the page's own flattened pixels, no background: the same bytes the command line and PSD previews get. */
+  flatHash(): Promise<string>;
   /** Open the practice photo; a `scale` below 1 opens a smaller copy (256 / 960 is the one Make it bigger starts with). */
   openSample(scale?: number): void;
   setZoom(zoom: number): void;
@@ -262,6 +265,9 @@ export class Editor {
   private sampleAll = true;
   private ratio = 0;
   private stroke: Stroke | null = null;
+  /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
+  private maskTarget = false;
+  private maskSurf: MaskSurface | null = null;
   private drag: Drag | null = null;
   private crop: Rect | null = null;
   private hoverPt: Pt | null = null;
@@ -1480,8 +1486,14 @@ export class Editor {
     const o = this.paintOpts(), pr = clamp(i.pressure, 0.05, 1), tilt = Math.min(1, Math.hypot(i.tiltX, i.tiltY) / 60);
     return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt) };
   }
-  private editable(l: Layer, pixels = true): boolean {
-    if (pixels && l.content && !l.locked) {
+  /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
+  private editable(l: Layer, pixels = true, onMask = false): boolean {
+    const mask = this.maskTarget && !!l.mask;
+    if (pixels && mask && !onMask && !l.locked) {
+      this.toast('You are editing the mask. Brush, pencil, eraser, Fill and Delete work on it; for this one, click the picture thumbnail in the Layers panel to edit pixels.');
+      return false;
+    }
+    if (pixels && !mask && l.content && !l.locked) {
       this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: change it with its own tool, or choose Layer › Turn into plain pixels to paint on it.`);
       return false;
     }
@@ -1507,10 +1519,11 @@ export class Editor {
     if (t === 'zoom') { this.fitted = false; this.zoomAt(i.alt ? 0.8 : 1.25, p.x * this.view.zoom + this.view.panX, p.y * this.view.zoom + this.view.panY); return; }
     if (t === 'brush' || t === 'eraser' || t === 'pencil') {
       const l = activeLayer(d);
-      if (!l || !this.editable(l)) return;
+      if (!l || !this.editable(l, true, true)) return;
       if (!l.visible) { this.toast('This layer is hidden. Show it to paint on it.'); return; }
-      const o = this.paintOpts();
-      this.stroke = new Stroke(d, l, { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' });
+      const o = this.paintOpts(), opts = { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' };
+      if (this.onMask(l)) { this.maskSurf = openMaskSurface(d, l); this.stroke = new Stroke(this.maskSurf.doc, this.maskSurf.layer, opts); }
+      else this.stroke = new Stroke(d, l, opts);
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       return;
@@ -1585,8 +1598,7 @@ export class Editor {
       const l = findLayer(d, g.id);
       if (!l) return;
       const old = layerRect(l);
-      l.x = Math.round(g.x + p.x - g.start.x);
-      l.y = Math.round(g.y + p.y - g.start.y);
+      placeLayer(l, Math.round(g.x + p.x - g.start.x), Math.round(g.y + p.y - g.start.y));
       this.markDirty(union(old, layerRect(l)));
       this.requestRender();
       return;
@@ -1610,9 +1622,10 @@ export class Editor {
     if (this.stroke) {
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
-      const cmd = this.stroke.end();
+      const cmd = this.stroke.end(), surf = this.maskSurf;
       this.stroke = null;
-      this.pushCmd(cmd);
+      this.maskSurf = null;
+      this.pushCmd(surf ? surf.finish(cmd?.label === 'Eraser' ? 'Erase on the mask' : 'Paint on the mask') : cmd);
       return;
     }
     const g = this.drag;
@@ -1634,10 +1647,50 @@ export class Editor {
     this.drag = null;
     if (g && g.kind === 'move' && this.doc) {
       const l = findLayer(this.doc, g.id);
-      if (l) { const old = layerRect(l); l.x = g.x; l.y = g.y; this.markDirty(union(old, layerRect(l))); this.requestRender(); }
+      if (l) { const old = layerRect(l); placeLayer(l, g.x, g.y); this.markDirty(union(old, layerRect(l))); this.requestRender(); }
     }
   }
-  private flushStroke(): void { const r = this.stroke?.takeDirty() ?? null; if (r) { this.markDirty(r); this.requestRender(); } }
+  private flushStroke(): void {
+    const r = this.stroke?.takeDirty() ?? null;
+    if (!r) return;
+    if (this.maskSurf) { this.maskSurf.fold(r); const f = this.active()?.mask?.feather ?? 0; this.markDirty(f ? expandRect(r, featherReach(f)) : r); }
+    else this.markDirty(r);
+    this.requestRender();
+  }
+  /** True when tools edit this layer's mask. */
+  private onMask(l: Layer): boolean { return this.maskTarget && !!l.mask; }
+  /** Choose what tools edit: the mask (true) or the pixels (false). View state, not an undo step. */
+  targetMask(id: string, mask: boolean): void {
+    const d = this.doc, l = d ? findLayer(d, id) : undefined;
+    if (!d || !l) return;
+    if (d.activeId !== id) this.selectLayer(id);
+    this.maskTarget = mask && !!l.mask;
+    this.renderPanels();
+    this.renderOptions();
+    if (this.maskTarget) this.toast('Painting on the mask: black hides, white shows, grey half shows.');
+  }
+  /** The mask functions of the Layer menu and the Layers panel. */
+  maskAction(kind: 'reveal' | 'hide' | 'selection' | 'hide-selection' | 'apply' | 'delete' | 'toggle' | 'link' | 'invert'): boolean {
+    const d = this.doc, l = this.active();
+    if (!d || !l) return false;
+    if (l.locked) { this.toast(`"${l.name}" is locked. Unlock it in the Layers panel to change it.`); return true; }
+    let cmd: Command | null = null, msg = '';
+    if (kind === 'reveal' || kind === 'hide' || kind === 'selection' || kind === 'hide-selection') {
+      if (l.mask) { this.toast('This layer already has a mask.'); return true; }
+      cmd = addMask(d, l, kind);
+      if (cmd) { this.maskTarget = true; msg = 'Mask added. Painting on the mask: black hides, white shows, grey half shows.'; }
+    } else if (kind === 'apply') {
+      if (l.content) { this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: choose Layer › Turn into plain pixels first, then make the mask permanent.`); return true; }
+      cmd = applyMask(d, l); this.maskTarget = false; msg = 'The mask is now part of the pixels.';
+    } else if (kind === 'delete') { cmd = deleteMask(d, l); this.maskTarget = false; msg = 'Mask removed: the whole layer shows.'; }
+    else if (kind === 'toggle' && l.mask) { cmd = setMaskSettings(d, l, { enabled: !l.mask.enabled }); msg = l.mask.enabled ? 'Mask switched on.' : 'Mask switched off: the whole layer shows; the mask is kept.'; }
+    else if (kind === 'link' && l.mask) { cmd = setMaskSettings(d, l, { linked: !l.mask.linked }); msg = l.mask.linked ? 'Mask linked: it moves with the layer.' : 'Mask unlinked: the layer moves on its own.'; }
+    else if (kind === 'invert') cmd = invertLayerMask(d, l);
+    if (!cmd) return false;
+    this.pushCmd(cmd, true);
+    if (msg) this.toast(msg);
+    return true;
+  }
   private pick(p: Pt): void {
     const d = this.doc;
     if (!d) return;
@@ -1774,14 +1827,14 @@ export class Editor {
     if (!d) return;
     if (!d.selection) { this.toast('Select an area first, then delete it.'); return; }
     const l = activeLayer(d);
-    if (!l || !this.editable(l)) return;
-    this.pushCmd(clearSelection(d, l), true);
+    if (!l || !this.editable(l, true, true)) return;
+    this.pushCmd(this.onMask(l) ? withMaskSurface(d, l, 'Hide the selected part', (sd, s) => clearSelection(sd, s)) : clearSelection(d, l), true);
   }
   fillArea(second: boolean): void {
     const d = this.doc, l = d ? activeLayer(d) : undefined;
-    if (!d || !l || !this.editable(l)) return;
-    const c = parseHex(second ? this.bgColor : this.brush.color) ?? BLACK;
-    this.pushCmd(fillSelection(d, l, c, second ? 'Fill with second colour' : 'Fill'), true);
+    if (!d || !l || !this.editable(l, true, true)) return;
+    const c = parseHex(second ? this.bgColor : this.brush.color) ?? BLACK, label = second ? 'Fill with second colour' : 'Fill';
+    this.pushCmd(this.onMask(l) ? withMaskSurface(d, l, label, (sd, s) => fillSelection(sd, s, c, label)) : fillSelection(d, l, c, label), true);
   }
   cropToSelection(): void { const s = this.doc?.selection; if (!s) { this.toast('Select an area first.'); return; } this.applyCropRect(s); }
   private applyCrop(): void { const r = this.crop; if (!r) return; this.crop = null; this.applyCropRect(r); }
@@ -1881,7 +1934,7 @@ export class Editor {
         h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn', 'aria-pressed': String(l.visible), 'aria-label': (l.visible ? 'Hide ' : 'Show ') + l.name,
           'data-help-title': l.visible ? 'Hide this layer' : 'Show this layer', 'data-help': 'The eye shows or hides a layer without deleting it.', 'data-testid': 'layer-eye',
           onclick: () => this.toggleVisible(l.id) }, icon(l.visible ? 'eye' : 'eye-off')),
-        h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' }),
+        ...this.layerThumbs(l, on),
         h('button', { type: 'button', class: 'fpe-btn fpe-layer-name', 'aria-label': `Layer ${l.name}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
           'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') }, h('span', {}, l.name)),
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
@@ -1897,7 +1950,7 @@ export class Editor {
         if (this.opacityStart === null) this.opacityStart = a.opacity;
         a.opacity = Number(op.value) / 100;
         opOut.textContent = op.value + '%';
-        this.markAll();
+        this.markDirty(intersect(layerRect(a), docRect(d)) ?? docRect(d));
         this.requestRender();
       });
       op.addEventListener('change', () => {
@@ -1915,10 +1968,55 @@ export class Editor {
           h('label', { for: id + 'o' }, 'Opacity'), op, opOut),
         h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
     }
+    if (a?.mask) {
+      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'mask-props' });
+      this.layerProps.append(box);
+      void import('./layerprops').then((m) => m.renderMaskProps(box, {
+        uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (id) => void this.run(id),
+        live: () => { this.markAll(); this.requestRender(); },
+      }));
+    }
     if (focused) this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`)?.focus({ preventScroll: true });
     this.queueThumbs();
   }
-  private queueThumbs(): void { clearTimeout(this.thumbTimer); this.thumbTimer = window.setTimeout(() => this.drawThumbs(), 180); }
+  /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
+  private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
+    const pic = h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
+    const m = l.mask;
+    if (!m) return [pic];
+    const maskOn = on && this.maskTarget;
+    return [
+      h('button', { type: 'button', class: 'fpe-btn fpe-thumb-btn' + (on && !maskOn ? ' fpe-target' : ''), 'aria-pressed': String(on && !maskOn), 'data-testid': 'layer-pixels',
+        'aria-label': `Edit the pixels of ${l.name}`, 'data-help-title': 'Edit the pixels', 'data-help': 'Click to paint on the picture itself instead of its mask.',
+        onclick: () => this.targetMask(l.id, false) }, pic),
+      h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-chain', 'aria-pressed': String(m.linked), 'data-testid': 'mask-link',
+        'aria-label': `${m.linked ? 'Unlink' : 'Link'} the mask of ${l.name}`, 'data-help-title': 'Link the mask to the layer · Link layer mask',
+        'data-help': 'Linked, the mask moves and turns with the layer; unlinked, they move apart.',
+        onclick: () => { if (this.doc?.activeId !== l.id) this.selectLayer(l.id); this.maskAction('link'); } }, icon(m.linked ? 'link' : 'unlink')),
+      h('button', { type: 'button', class: 'fpe-btn fpe-thumb-btn fpe-mask-thumb' + (maskOn ? ' fpe-target' : '') + (m.enabled ? '' : ' fpe-mask-off'),
+        'aria-pressed': String(maskOn), 'data-testid': 'layer-mask', 'aria-label': `Edit the mask of ${l.name}${m.enabled ? '' : ', switched off'}`,
+        'data-help-title': 'Layer mask', 'data-help': 'Click to paint on the mask: black hides, white shows, grey half shows. Shift+click switches it off or on.',
+        onclick: (ev: Event) => { if ((ev as MouseEvent).shiftKey) { if (this.doc?.activeId !== l.id) this.selectLayer(l.id); this.maskAction('toggle'); } else this.targetMask(l.id, true); } },
+      h('canvas', { width: 80, height: 80, 'data-mask-thumb': l.id, 'aria-hidden': 'true' })),
+    ];
+  }
+  /** Mask thumbnails in grey: the canvas area of each mask, scaled down. */
+  private drawMaskThumbs(): void {
+    const d = this.doc;
+    if (!d) return;
+    for (const l of d.layers) {
+      const m = l.mask, c = m ? this.root.querySelector<HTMLCanvasElement>(`canvas[data-mask-thumb="${l.id}"]`) : null, ctx = c?.getContext('2d');
+      if (!m || !c || !ctx) continue;
+      const S = c.width, img = ctx.createImageData(S, S), k = Math.max(d.width, d.height) / S, ox = (S - d.width / k) / 2, oy = (S - d.height / k) / 2;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const dx = Math.floor((x - ox) * k), dy = Math.floor((y - oy) * k), i = (y * S + x) * 4;
+        const v = dx < 0 || dy < 0 || dx >= d.width || dy >= d.height ? 128 : maskAt(m, dx, dy);
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+  }
+  private queueThumbs(): void { clearTimeout(this.thumbTimer); this.thumbTimer = window.setTimeout(() => { this.drawThumbs(); this.drawMaskThumbs(); }, 180); }
   private drawThumbs(): void {
     const d = this.doc;
     if (!d) return;
@@ -2057,6 +2155,7 @@ export class Editor {
     this.pushCmd(setLayerProps(d, id, { visible: !l.visible }), true);
   }
   private selectLayer(id: string): void {
+    if (id !== this.doc?.activeId) this.maskTarget = false;
     const d = this.doc;
     if (!d || d.activeId === id) return;
     this.cancelSession();
@@ -3135,12 +3234,20 @@ export class Editor {
           preview: this.session ? { scale: this.session.scale, done: this.session.ran && !this.session.running, applying: this.session.applying } : null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
           w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
+          maskTarget: !!this.active()?.mask && this.maskTarget,
+          layers: this.doc ? this.doc.layers.map((l) => ({ id: l.id, x: l.x, y: l.y, w: l.width, h: l.height, mask: l.mask ? maskSummary(l.mask) : null })) : [],
         };
       },
       openSample: (k?: number) => this.openSample(k),
       setZoom: (z) => this.zoomTo(z),
       appState: () => ({ ...this.appShell.info(), autosave: { enabled: this.saver.enabled, writes: this.saver.writes, error: this.saver.lastError }, left: this.left.map((m) => m.name) }),
       saveNow: () => this.saver.flush(),
+      flatHash: async () => {
+        const d = this.doc;
+        if (!d) return '';
+        const dg = await crypto.subtle.digest('SHA-256', compositeDoc(d, docRect(d)) as BufferSource);
+        return Array.from(new Uint8Array(dg), (b) => b.toString(16).padStart(2, '0')).join('');
+      },
       select: (x, y, w, hh) => { const d = this.doc; if (!d) return; this.lastSel = d.selection ?? this.lastSel; d.selection = { x, y, w, h: hh }; this.hole = null; this.afterSelection(); },
     };
   }

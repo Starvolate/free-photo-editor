@@ -216,10 +216,14 @@ layer.adj-threshold | Black and white split layer | Threshold layer | A threshol
 layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | P | 3
 layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | P | 3
 @Layer > Mask = Hide parts | Mask | Hide parts of a layer without erasing them.
-layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | P | 2
-layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | P | 2
-layer.mask-apply | Make the mask permanent | Apply mask | Erase what the mask hides. | apply mask | P | 2
-layer.mask-delete | Remove the mask | Delete mask | Throw the mask away and show the whole layer. | delete mask | P | 2
+layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | R | 2
+layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | R | 2
+layer.mask-apply | Make the mask permanent | Apply mask | Erase what the mask hides. | apply mask | R | 2
+layer.mask-delete | Remove the mask | Delete mask | Throw the mask away and show the whole layer. | delete mask | R | 2
+layer.mask-hide-all | Hide everything with a mask | Hide all | Hide the whole layer, then paint white where it should show. | mask, hide all, black mask | R | 2
+layer.mask-hide-sel | Hide the selection | Hide selection | Hide the selected part of the layer with a mask; its pixels are kept. | mask, hide selection | R | 2
+layer.mask-toggle | Switch the mask off | Disable layer mask | See the whole layer again without losing the mask; choose again to switch it back on. | mask on off, disable mask | R | 2
+layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | R | 2
 layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | P | 6
 layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text | P | 2 | Ctrl+Alt+G
 @Layer > Smart layer = Smart layer | Smart object | A layer that keeps its original pixels, so resizing never loses quality.

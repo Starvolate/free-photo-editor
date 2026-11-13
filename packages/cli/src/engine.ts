@@ -44,7 +44,7 @@ export function pickLayers(doc: Doc, which?: string | number): Layer[] {
 }
 export const layerList = (doc: Doc) => doc.layers.slice().reverse().map((l, i) => ({
   number: i + 1, name: l.name, visible: l.visible, opacity: Math.round(l.opacity * 100), blendMode: l.blendMode,
-  x: l.x, y: l.y, width: l.width, height: l.height, active: l.id === doc.activeId }));
+  x: l.x, y: l.y, width: l.width, height: l.height, active: l.id === doc.activeId , ...(l.mask ? { mask: l.mask.enabled ? 'on' : 'off' } : {}) }));
 
 export function colorNumber(hex: string | undefined, fallback: string): number {
   const c = parseHex(hex ?? fallback);

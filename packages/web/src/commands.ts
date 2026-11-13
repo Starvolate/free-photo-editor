@@ -214,6 +214,8 @@ const hasSel = (e: Editor): boolean => !!e.doc?.selection;
 const layers = (e: Editor): number => e.doc?.layers.length ?? 0;
 const notTop = (e: Editor): boolean => !!e.doc && e.activeIndex() < layers(e) - 1;
 const notBottom = (e: Editor): boolean => !!e.doc && e.activeIndex() > 0;
+const masked = (e: Editor): boolean => !!e.active()?.mask;
+const unmasked = (e: Editor): boolean => !!e.active() && !e.active()?.mask;
 const H = (run: Handler['run'], enabled: Handler['enabled'] = hasDoc, checked?: Handler['checked']): Handler => ({ run, enabled, checked });
 
 export const TOOLS: Record<string, ToolId> = {
@@ -310,6 +312,14 @@ export const HANDLERS: Record<string, Handler> = {
   'layer.merge-down': H((e) => e.mergeDownAction(), notBottom),
   'layer.merge-visible': H((e) => e.mergeVisibleAction(), (e) => (e.doc?.layers.filter((l) => l.visible).length ?? 0) > 1),
   'layer.flatten': H((e) => e.flattenAction(), (e) => layers(e) > 1),
+  'layer.mask-add': H((e) => e.maskAction('reveal'), unmasked),
+  'layer.mask-hide-all': H((e) => e.maskAction('hide'), unmasked),
+  'layer.mask-from-sel': H((e) => e.maskAction('selection'), (e) => unmasked(e) && hasSel(e)),
+  'layer.mask-hide-sel': H((e) => e.maskAction('hide-selection'), (e) => unmasked(e) && hasSel(e)),
+  'layer.mask-apply': H((e) => e.maskAction('apply'), masked),
+  'layer.mask-delete': H((e) => e.maskAction('delete'), masked),
+  'layer.mask-toggle': H((e) => e.maskAction('toggle'), masked, (e) => e.active()?.mask?.enabled === false),
+  'layer.mask-link': H((e) => e.maskAction('link'), masked, (e) => !!e.active()?.mask?.linked),
   'select.all': H((e) => e.selectAll()),
   'select.none': H((e) => e.deselect(), hasSel),
   'select.reselect': H((e) => e.reselect(), (e) => !!e.doc && !!e.lastSel),

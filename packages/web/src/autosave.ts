@@ -25,6 +25,7 @@ export function plainDoc(d: Doc, withContent = true): Doc {
     const out: Layer = { id: l.id, name: l.name, visible: l.visible, opacity: l.opacity, blendMode: l.blendMode, x: l.x, y: l.y, width: l.width, height: l.height, data: l.data };
     if (l.locked) out.locked = true;
     if (withContent && l.content) out.content = l.content;
+    if (l.mask) out.mask = { ...l.mask };
     return out;
   };
   const s = d.selection;

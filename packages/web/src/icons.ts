@@ -13,7 +13,7 @@ const ICONS: Record<string, unknown> = {
   'chev-down': ChevronDown, 'chev-left': ChevronLeft, 'chev-right': ChevronRight, close: X, code: Code, contrast: Contrast, copy: Copy,
   crop: Crop, dodge: SunDim, download: Download, droplet: Droplet, eraser: Eraser, eye: Eye, 'eye-off': EyeOff, 'file-plus': FilePlus,
   fit: Maximize, focus: Focus, hand: Hand, history: RotateCcw, image: ImageIcon, 'image-down': ImageDown, 'image-plus': ImagePlus,
-  info: Info, keyboard: Keyboard, lasso: Lasso, layers: Layers, lock: Lock, menu: Menu, merge: Merge, moon: Moon, move: Move,
+  info: Info, keyboard: Keyboard, lasso: Lasso, layers: Layers, link: Link, unlink: Unlink, lock: Lock, menu: Menu, merge: Merge, moon: Moon, move: Move,
   open: FolderOpen, palette: Palette, pen: PenTool, pipette: Pipette, plus: Plus, pointer: MousePointer2, redo: Redo2, scan: Scan,
   scissors: Scissors, search: Search, select: SquareDashed, shapes: Shapes, sliders: SlidersHorizontal, sparkles: Sparkles,
   square: Square, stamp: Stamp, sun: Sun, swap: ArrowLeftRight, trash: Trash2, type: Type, undo: Undo2, wand: Wand,
@@ -21,6 +21,7 @@ const ICONS: Record<string, unknown> = {
 };
 // W8 (offline and install): the install, reload, Share and Add to Home Screen marks.
 import { MonitorDown, RefreshCw, Share, SquarePlus } from 'lucide';
+import { Link, Unlink } from 'lucide';
 Object.assign(ICONS, { install: MonitorDown, refresh: RefreshCw, share: Share, 'add-square': SquarePlus });
 /** Every icon name the sprite holds (tests check that the interface only asks for these). */
 export const ICON_NAMES: readonly string[] = Object.keys(ICONS);

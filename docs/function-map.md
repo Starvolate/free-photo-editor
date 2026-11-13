@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**405 functions: 258 Ready, 147 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**409 functions: 266 Ready, 143 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -173,7 +173,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Planned | 13 |  |
 
-## Layer (24 Ready, 42 Planned)
+## Layer (32 Ready, 38 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -215,10 +215,14 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.adj-threshold | Black and white split layer | Threshold layer | A threshold that stays editable. | editable threshold | Layer › Adjustment layer | Planned | 3 |  |
 | layer.adj-gradient-map | Colour by brightness layer | Gradient map layer | A gradient map that stays editable. | editable gradient map | Layer › Adjustment layer | Planned | 3 |  |
 | layer.adj-selective-color | One colour family layer | Selective colour layer | Selective colour that stays editable. | editable selective colour | Layer › Adjustment layer | Planned | 3 |  |
-| layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | Layer › Mask | Planned | 2 |  |
-| layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | Layer › Mask | Planned | 2 |  |
-| layer.mask-apply | Make the mask permanent | Apply mask | Erase what the mask hides. | apply mask | Layer › Mask | Planned | 2 |  |
-| layer.mask-delete | Remove the mask | Delete mask | Throw the mask away and show the whole layer. | delete mask | Layer › Mask | Planned | 2 |  |
+| layer.mask-add | Hide parts with a mask | Add layer mask | Paint black to hide and white to show, without deleting pixels. | mask, hide part, non destructive | Layer › Mask | Ready | 2 |  |
+| layer.mask-from-sel | Mask from the selection | Reveal selection | Show only the selected part of the layer. | mask selection | Layer › Mask | Ready | 2 |  |
+| layer.mask-apply | Make the mask permanent | Apply mask | Erase what the mask hides. | apply mask | Layer › Mask | Ready | 2 |  |
+| layer.mask-delete | Remove the mask | Delete mask | Throw the mask away and show the whole layer. | delete mask | Layer › Mask | Ready | 2 |  |
+| layer.mask-hide-all | Hide everything with a mask | Hide all | Hide the whole layer, then paint white where it should show. | mask, hide all, black mask | Layer › Mask | Ready | 2 |  |
+| layer.mask-hide-sel | Hide the selection | Hide selection | Hide the selected part of the layer with a mask; its pixels are kept. | mask, hide selection | Layer › Mask | Ready | 2 |  |
+| layer.mask-toggle | Switch the mask off | Disable layer mask | See the whole layer again without losing the mask; choose again to switch it back on. | mask on off, disable mask | Layer › Mask | Ready | 2 |  |
+| layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | Layer › Mask | Ready | 2 |  |
 | layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | Layer › Mask | Planned | 6 |  |
 | layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text | Layer › Mask | Planned | 2 | Ctrl+Alt+G |
 | layer.smart-convert | Make a smart layer | Convert to smart object | Keep the layer's original pixels safe from resizing. | smart object | Layer › Smart layer | Planned | 3 |  |

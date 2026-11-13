@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**401 functions: 257 Ready, 144 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**404 functions: 260 Ready, 144 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -25,7 +25,7 @@ one plain line of help, the wish words search understands, where it lives, and w
 | W3 | Remaining tools |
 | W4 | Learn while you edit |
 
-## File (25 Ready, 11 Planned)
+## File (28 Ready, 11 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -38,6 +38,9 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | Planned | 7 |  |
 | file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | Planned | 8 |  |
 | file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | Planned | 8 |  |
+| file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | Ready | 8 |  |
+| file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | Ready | 8 |  |
+| file.install | Install as an app | Install app | Put the editor on your home screen or desktop. It opens in its own window and works offline. | install, app, home screen, desktop app, offline, add to dock, pwa | File | Ready | 8 |  |
 | file.close | Close picture | Close | Close this picture's tab. | close, done, finish | File | Ready | W1 |  |
 | file.close-all | Close all pictures | Close all | Close every open tab. | close everything | File | Ready | W1 |  |
 | file.revert | Go back to the opened version | Revert | Undo every change since the picture was opened. | reset, original, start over, undo everything | File | Ready | W1 |  |

@@ -24,6 +24,8 @@ import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice,
 import { HANDLES, type Guides } from './handles';
 import { JobRunner, JobStopped } from './jobs';
 import { NOTICES } from './notices';
+import { AppShell, type AppOptions } from './offline';
+import { Autosave, namesText, type OpenPicture, type SavedPicture } from './autosave';
 import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
@@ -37,7 +39,13 @@ type Answer = 'primary' | 'secondary' | 'cancel';
 type Screen = 'standard' | 'focus';
 type Flag = 'rulers' | 'grid' | 'extras';
 type DockState = 'closed' | 'half' | 'full';
-export interface MountOptions { theme?: 'dark' | 'light' | 'system'; standalone?: boolean; }
+export interface MountOptions {
+  theme?: 'dark' | 'light' | 'system'; standalone?: boolean;
+  /** Works offline and installs like an app (offline.ts): the standalone page passes the build's sw.js. Off when left out. */
+  app?: AppOptions;
+  /** Keep safety copies of open pictures in this browser (autosave.ts). On unless false. */
+  autosave?: boolean;
+}
 export interface LayerInfo { name: string; visible: boolean; opacity: number; blendMode: BlendMode; x: number; y: number; width: number; height: number; locked: boolean; }
 export interface DocInfo {
   width: number; height: number; layers: LayerInfo[]; active: number; canUndo: boolean; canRedo: boolean;
@@ -67,6 +75,10 @@ export interface EditorController {
   openSample(): void;
   setZoom(zoom: number): void;
   select(x: number, y: number, w: number, h: number): void;
+  /** Offline, install and safety-copy status, for automation and tests. */
+  appState(): Record<string, unknown>;
+  /** Write the safety copies now. */
+  saveNow(): Promise<void>;
 }
 
 interface Session {
@@ -177,6 +189,12 @@ export class Editor {
   private statusEl!: HTMLElement;
   private stat: Record<'zoom' | 'size' | 'pos' | 'sel' | 'hint', HTMLElement> = {} as Record<'zoom' | 'size' | 'pos' | 'sel' | 'hint', HTMLElement>;
   private startEl!: HTMLElement;
+  private restoreEl!: HTMLElement;
+  private installBody!: HTMLElement;
+  private appShell!: AppShell;
+  private saver!: Autosave;
+  /** Pictures left by an editor window that closed or crashed, waiting for Restore or Discard. */
+  private left: SavedPicture[] = [];
   private dropEl!: HTMLElement;
   private busyEl!: HTMLElement;
   private toastEl!: HTMLElement;
@@ -344,8 +362,8 @@ export class Editor {
     on(this.root, 'drop', (e) => {
       e.preventDefault();
       this.dropEl.hidden = true;
-      const f = (e as DragEvent).dataTransfer?.files?.[0];
-      if (f) void this.openFile(f, f.name, !!this.doc);
+      const files = [...((e as DragEvent).dataTransfer?.files ?? [])];
+      if (files.length) void this.openFiles(files, !!this.doc);
     });
     this.ro = new ResizeObserver(() => this.onRootResize());
     this.ro.observe(this.root);
@@ -357,6 +375,7 @@ export class Editor {
     this.onStageResize();
     this.setTool('brush');
     this.load(-1);
+    this.initApp(opts);
   }
 
   // ---------- small builders ----------
@@ -420,6 +439,7 @@ export class Editor {
     this.makeSheet('new', 'New picture', this.buildNew());
     this.makeSheet('about', 'About Free Photo Editor', this.buildAbout());
     this.makeSheet('keys', 'Keyboard shortcuts', this.buildKeys());
+    this.makeSheet('install', 'Install as an app', this.installBody = h('div', {}));
     this.menuSheetBody = h('div', { class: 'fpe-msheet', 'data-testid': 'menu-sheet' });
     this.makeSheet('menu', 'Menu', this.menuSheetBody);
     this.makeSheet('search', 'Search', this.buildSearch());
@@ -960,6 +980,7 @@ export class Editor {
     const btn = (id: string, ic: string, text: string, primary: boolean, testid: string): HTMLElement =>
       h('button', { type: 'button', class: 'fpe-btn ' + (primary ? 'fpe-btn-primary' : 'fpe-btn-ghost'), 'data-tipcmd': id, 'data-testid': testid, onclick: () => void this.run(id) }, icon(ic), text);
     return h('div', { class: modal ? 'fpe-start fpe-start-modal' : 'fpe-start', 'data-testid': modal ? 'start-modal' : 'start' },
+      modal ? null : (this.restoreEl = h('section', { class: 'fpe-restore', hidden: true, 'aria-label': 'Bring back your last pictures', 'data-testid': 'restore' })),
       modal ? null : h('h2', { class: 'fpe-start-title' }, 'What do you want to do?'),
       h('p', { class: 'fpe-start-sub' }, modal ? 'Pick a job. The editor opens the right tool and shows you where it lives.'
         : 'Pick a job and the editor opens the right tool, then shows you where it lives. Or open a photo, drop one here, or paste one.'),
@@ -1777,7 +1798,7 @@ export class Editor {
     if (all) this.markAll();
     this.afterEdit();
   }
-  private afterEdit(): void { this.renderPanels(); this.renderTabs(); this.syncChrome(); this.requestRender(); }
+  private afterEdit(): void { this.renderPanels(); this.renderTabs(); this.syncChrome(); this.requestRender(); this.saver?.touch(); }
   undo(gesture = false): void {
     const d = this.doc;
     if (!d || this.stroke) return;
@@ -2688,6 +2709,8 @@ export class Editor {
     return h('div', { class: 'fpe-about', 'data-testid': 'about' },
       h('p', { class: 'fpe-about-credit' }, h('strong', {}, 'Free Photo Editor by Bhawesh Tibrewal'), h('br'), link(AUTHOR_URL, 'bhaweshtibrewal.com', 'about-site')),
       h('p', {}, `Version ${APP_VERSION}. A free photo editor that runs fully in your browser. Your pictures stay on this device: nothing is uploaded. The AI tools (select the subject, remove the background or an object, make it bigger) download their models once, then run right here on this device.`),
+      h('p', { 'data-testid': 'about-offline' }, h('strong', {}, 'Works offline. '), 'After your first visit, the editor and every add-on you have used keep working without the internet. '
+        + 'Install it from File, Install as an app, to open it like any other app. Safety copies of open pictures stay in this browser and are never uploaded.'),
       h('h3', {}, 'Licence'),
       h('p', {}, 'Copyright (C) 2026 Bhawesh Tibrewal. This program is free software: you may share and change it under the GNU Affero General Public License, version 3 (AGPL-3.0-only), with additional terms: every copy must keep the credit "Free Photo Editor by Bhawesh Tibrewal" with a link to bhaweshtibrewal.com, and changed versions must say that they are changed. It comes with no warranty of any kind.'),
       h('p', {}, link(SOURCE_URL, 'Source code', 'about-source'), ' · ', link(SOURCE_URL + '/blob/main/LICENSE', 'Licence text'), ' · ', link(SOURCE_URL + '/blob/main/ADDITIONAL-TERMS.md', 'Additional terms')),
@@ -2813,6 +2836,92 @@ export class Editor {
       done();
     }
   }
+  /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */
+  async openFiles(files: File[], asLayer = false): Promise<void> {
+    for (const f of files) await this.openFile(f, f.name || 'Picture', asLayer && !!this.doc);
+  }
+
+  // ---------- offline, install and safety copies (offline.ts, autosave.ts) ----------
+  private initApp(opts: MountOptions): void {
+    this.appShell = new AppShell({ root: this.root, openFiles: (f) => this.openFiles(f), toast: (m, ms) => this.toast(m, ms),
+      openModal: (id) => this.openModal(id), beforeReload: () => this.saver.flush() }, opts.app);
+    this.installBody.replaceChildren(this.appShell.installSheet());
+    this.saver = new Autosave({ pictures: () => this.pictures(), busy: () => !!(this.stroke || this.drag || this.session) });
+    let on = true;
+    try { on = localStorage.getItem('fpe-autosave') !== 'off'; } catch { /* storage may be blocked */ }
+    this.saver.enabled = opts.autosave !== false && on && typeof indexedDB !== 'undefined';
+    if (!this.saver.enabled) return;
+    this.saver.start();
+    const hidden = (): void => { if (document.visibilityState === 'hidden') void this.saver.flush(); };
+    const gone = (): void => { void this.saver.flush(); };
+    document.addEventListener('visibilitychange', hidden);
+    window.addEventListener('pagehide', gone);
+    this.off.push(() => document.removeEventListener('visibilitychange', hidden), () => window.removeEventListener('pagehide', gone));
+    void this.saver.leftBehind().then((l) => { this.left = l; this.renderRestore(); this.syncChrome(); });
+  }
+  private pictures(): OpenPicture[] {
+    return this.tabs.map((t, i) => (i === this.cur && this.doc ? { tab: t, doc: this.doc, name: this.name, state: this.history.stateId() }
+      : { tab: t, doc: t.doc, name: t.name, state: t.history.stateId() }));
+  }
+  private renderRestore(): void {
+    const el = this.restoreEl, list = this.left;
+    el.hidden = !list.length;
+    if (!list.length) { el.replaceChildren(); return; }
+    el.replaceChildren(h('h3', { class: 'fpe-restore-title' }, 'Bring back your last pictures?'),
+      h('p', {}, `${list.length === 1 ? 'This picture was' : 'These pictures were'} open when the editor last closed. The copies stayed in this browser; nothing left your device.`),
+      h('ul', { class: 'fpe-restore-list' }, ...list.map((m) => h('li', {}, h('span', { class: 'fpe-restore-name' }, m.name),
+        h('span', { class: 'fpe-restore-size' }, ` · ${m.width} × ${m.height} px${m.layers > 1 ? `, ${m.layers} layers` : ''}`)))),
+      h('div', { class: 'fpe-actions' },
+        h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'restore-discard', onclick: () => void this.discardLeft() }, 'Discard'),
+        h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'restore-yes', onclick: () => void this.restoreLeft() }, 'Restore')));
+  }
+  hasLeft(): boolean { return this.left.length > 0; }
+  /** File > Bring back last pictures, for when a picture is already open and the start screen is hidden. */
+  async offerRestore(): Promise<void> {
+    const list = this.left;
+    if (!list.length) { this.toast('Nothing to bring back: no pictures were left open last time.'); return; }
+    const a = await this.ask(`Bring back your last pictures? ${namesText(list)} ${list.length === 1 ? 'was' : 'were'} open when the editor last closed. Nothing left your device.`, 'Restore', 'Discard');
+    if (a === 'primary') await this.restoreLeft();
+    else if (a === 'secondary') await this.discardLeft();
+  }
+  async restoreLeft(): Promise<void> {
+    const list = this.left;
+    if (!list.length) return;
+    this.left = [];
+    this.renderRestore();
+    try {
+      const got = await this.saver.load(list);
+      for (const g of got) {
+        this.stash();
+        this.tabs.push({ doc: g.doc, history: new History(60, historyBytesForDevice()), name: g.name, savedId: -1, view: { zoom: 1, panX: 0, panY: 0 }, fitted: true, lastSel: null, hole: null });
+        this.load(this.tabs.length - 1);
+      }
+      await this.saver.flush();
+      await this.saver.forget(list);
+      this.toast(got.length === 1 ? `Brought back ${got[0].name}. Undo starts fresh from here.` : `Brought back ${got.length} pictures. Undo starts fresh from here.`, 4000);
+    } catch (e) {
+      this.left = list;
+      this.renderRestore();
+      this.toast(errText(e, "The pictures couldn't be brought back."));
+    }
+  }
+  async discardLeft(): Promise<void> {
+    const list = this.left;
+    this.left = [];
+    this.renderRestore();
+    await this.saver.forget(list).catch(() => undefined);
+    this.toast('Discarded. Those copies are gone from this browser.');
+  }
+  autosaveOn(): boolean { return !!this.saver?.enabled; }
+  toggleAutosave(): void {
+    const on = !this.saver.enabled;
+    try { localStorage.setItem('fpe-autosave', on ? 'on' : 'off'); } catch { /* storage may be blocked */ }
+    if (on) { this.saver.start(); this.saver.enable(); this.toast('Safety copies are on: open pictures are kept in this browser, never sent anywhere.'); }
+    else { void this.saver.disable(); this.toast('Safety copies are off. Open pictures are no longer kept in this browser.'); }
+  }
+  canInstall(): boolean { return !!this.appShell?.enabled && !this.appShell.installed(); }
+  installApp(): void { this.appShell.install(); }
+
   private onPaste(e: ClipboardEvent): void {
     if (!this.isActive() || this.isTyping(document.activeElement)) return;
     const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/'));
@@ -3017,6 +3126,8 @@ export class Editor {
       },
       openSample: () => this.openSample(),
       setZoom: (z) => this.zoomTo(z),
+      appState: () => ({ ...this.appShell.info(), autosave: { enabled: this.saver.enabled, writes: this.saver.writes, error: this.saver.lastError }, left: this.left.map((m) => m.name) }),
+      saveNow: () => this.saver.flush(),
       select: (x, y, w, hh) => { const d = this.doc; if (!d) return; this.lastSel = d.selection ?? this.lastSel; d.selection = { x, y, w, h: hh }; this.hole = null; this.afterSelection(); },
     };
   }
@@ -3034,6 +3145,8 @@ export class Editor {
     this.dockRo.disconnect();
     this.jobs.dispose();
     this.renderer.dispose();
+    this.appShell?.dispose();
+    void this.saver?.flush().finally(() => this.saver.stop());
     for (const f of this.off) f();
     this.off = [];
     this.root.remove();

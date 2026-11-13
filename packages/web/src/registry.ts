@@ -21,6 +21,10 @@ file.open-url | Open from a web link | Open from URL | Load a picture from an in
 file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | P | 8
 file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | P | 8
 --
+file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | R | 8
+file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | R | 8
+file.install | Install as an app | Install app | Put the editor on your home screen or desktop. It opens in its own window and works offline. | install, app, home screen, desktop app, offline, add to dock, pwa | R | 8
+--
 file.close | Close picture | Close | Close this picture's tab. | close, done, finish | R | W1
 file.close-all | Close all pictures | Close all | Close every open tab. | close everything | R | W1
 file.revert | Go back to the opened version | Revert | Undo every change since the picture was opened. | reset, original, start over, undo everything | R | W1

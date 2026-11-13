@@ -43,7 +43,7 @@ const PREP: Record<string, string[]> = {
   'filter.last': ['filter.sharpen', 'apply'], 'layer.front': ['layer.backward'], 'layer.forward': ['layer.backward'], 'view.fit': ['view.zoom-in'],
   'view.screen-standard': ['view.screen-focus'], 'window.reset': ['panel.info'], 'tool.brush': ['tool.move'],
   'layer.mask-apply': ['layer.mask-from-sel'], 'layer.mask-delete': ['layer.mask-add'], 'layer.mask-toggle': ['layer.mask-add'], 'layer.mask-link': ['layer.mask-add'],
-  'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
+  'layer.clip': ['layer.new'], 'layer.onion-skin': ['layer.new'], 'layer.ungroup': ['layer.group'],
   // An outline from the box over the sun, then nothing selected, so the selection made from the outline is a visible change.
   'select.from-path': ['select.to-path', 'select.none'],
   // Shapes & text: an outline round the box over the sun; combining adds a second from everything else (a frame with a hole).

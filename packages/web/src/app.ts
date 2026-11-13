@@ -1498,7 +1498,7 @@ export class Editor {
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
       crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
-      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk || this.rigGuide ? (ctx) => { this.tk?.overlay(ctx); this.rigGuide?.(ctx); } : null });
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk || this.rigGuide || this.anim ? (ctx) => { this.anim?.overlay(ctx); this.tk?.overlay(ctx); this.rigGuide?.(ctx); } : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -3484,7 +3484,7 @@ export class Editor {
   /** Animation (animate.ts), loaded on first use: frames from layers and the timeline under the picture. */
   anim: import('./animate').AnimKit | null = null;
   async animate(id: string): Promise<void> {
-    try { const m = await import('./animate'); (this.anim ??= m.animKit({ ...this.toolHost(), exportAnim: () => void this.openExport('gif', true) })).run(id); }
+    try { const m = await import('./animate'); (this.anim ??= m.animKit({ ...this.toolHost(), exportAnim: () => void this.openExport('gif', true), openDoc: (d, n) => this.addTab(d, n) })).run(id); }
     catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Brush extras (paintkit.ts), loaded on first use: steady hand, symmetry, seamless tile, pen and speed. */

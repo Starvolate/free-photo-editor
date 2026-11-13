@@ -8,10 +8,10 @@
  * timeline's own preview, so nothing is saved or undone by it.
  * The pure parts (names, making frames, showing one, moving one, the loop step) are exported for the unit tests.
  */
-import { combineCommands, moveLayer, setLayerProps, type Command, type Doc, type Layer } from '@free-photoeditor/core';
+import { addLayer, combineCommands, createLayer, documentFromBitmap, moveLayer, setLayerProps, type Command, type Doc, type Layer } from '@free-photoeditor/core';
 import { delayOf } from '@free-photoeditor/formats/util';
 import { h } from './dom';
-import { toImageData } from './io';
+import { baseName, OPEN_ACCEPT, readImageFile, toImageData } from './io';
 import type { ToolHost } from './toolkit';
 
 export const DEFAULT_DELAY = 100;
@@ -51,6 +51,57 @@ export function setLoop(d: Doc, plays: number): Command | null {
   return { label: after === 1 ? 'Play once' : 'Play forever', bytes: 0, undo: (x) => put(x, before), redo: (x) => put(x, after) };
 }
 
+/** Onion skin: a frame's pixels pulled towards one colour (red for the frame before, green for the next); see-through parts stay see-through. */
+export function tint(src: Uint8ClampedArray, rgb: readonly [number, number, number], strength = 0.6): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(src.length), k = Math.max(0, Math.min(1, strength));
+  for (let i = 0; i < src.length; i += 4) {
+    out[i] = src[i] + (rgb[0] - src[i]) * k;
+    out[i + 1] = src[i + 1] + (rgb[1] - src[i + 1]) * k;
+    out[i + 2] = src[i + 2] + (rgb[2] - src[i + 2]) * k;
+    out[i + 3] = src[i + 3];
+  }
+  return out;
+}
+/** The frame just before and just after the one being worked on (frame n is layer n, bottom first). */
+export function neighbours(d: Doc): { prev: Layer | null; next: Layer | null } {
+  const i = d.layers.findIndex((l) => l.id === d.activeId);
+  return i < 0 || d.layers.length < 2 ? { prev: null, next: null } : { prev: d.layers[i - 1] ?? null, next: d.layers[i + 1] ?? null };
+}
+/** One picked picture, ready to be a frame. */
+export interface FramePic { name: string; width: number; height: number; data: Uint8ClampedArray; x?: number; y?: number; }
+/** Picked files in the order a person expects: by name, with numbers counted (walk2 before walk10). */
+export const byName = <T extends { name: string }>(list: T[]): T[] => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+/** Import animation frames: each picture becomes one new frame at the end, centred and hidden until picked, as one undo step. */
+export function addFrames(d: Doc, pics: FramePic[], delay = DEFAULT_DELAY): Command | null {
+  if (!pics.length) return null;
+  return combineCommands('Import animation frames', pics.map((p) => {
+    const l = createLayer(withDelay(p.name, delayOf(p.name, delay)), p.width, p.height, { data: p.data, x: p.x ?? Math.round((d.width - p.width) / 2), y: p.y ?? Math.round((d.height - p.height) / 2) });
+    l.visible = false;
+    return addLayer(d, l, d.layers.length, 'Import animation frames');
+  }));
+}
+/** No picture open: a new one the size of the first frame, every picture one frame, frame 1 showing. */
+export function framesDoc(pics: FramePic[], delay = DEFAULT_DELAY): Doc | null {
+  const [first, ...rest] = pics;
+  if (!first) return null;
+  const d = documentFromBitmap({ width: first.width, height: first.height, data: first.data }, withDelay(first.name, delayOf(first.name, delay)));
+  addFrames(d, rest, delay);
+  return d;
+}
+async function readFrames(files: File[]): Promise<{ pics: FramePic[]; skipped: string[] }> {
+  const pics: FramePic[] = [], skipped: string[] = [];
+  for (const f of byName(files)) {
+    try {
+      const o = await readImageFile(f, f.name);
+      if (o.kind === 'bitmap') pics.push({ name: baseName(f.name), width: o.bitmap.width, height: o.bitmap.height, data: o.bitmap.data });
+      else if (o.kind === 'doc') { for (const l of o.doc.layers) if (l.kind !== 'folder') pics.push({ name: l.name, width: l.width, height: l.height, data: l.data, x: l.x, y: l.y }); }
+      else skipped.push(f.name);
+    } catch { skipped.push(f.name); }
+  }
+  return { pics, skipped };
+}
+const RED = [230, 40, 40] as const, GREEN = [40, 190, 80] as const;
+
 /** One layer alone, scaled into a canvas the shape of the picture: a frame's thumbnail or the preview. */
 function drawFrame(c: HTMLCanvasElement, d: Doc, l: Layer | undefined, box: number): void {
   const s = box / Math.max(d.width, d.height), w = Math.max(1, Math.round(d.width * s)), hh = Math.max(1, Math.round(d.height * s));
@@ -89,8 +140,8 @@ const CSS = `.fpe-tl{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;pa
 @media (pointer:coarse){.fpe-tl .fpe-btn,.fpe-tl-row input,.fpe-tl-head select{height:44px;min-width:44px}}`;
 
 /** What the animation commands need from the editor besides the tool host: the export sheet, set for an animation. */
-export interface AnimHost extends ToolHost { exportAnim(): void; }
-export interface AnimKit { run(id: string): void; refresh(): void; state(): { timeline: boolean; playing: boolean }; }
+export interface AnimHost extends ToolHost { exportAnim(): void; openDoc(d: Doc, name: string): void; }
+export interface AnimKit { run(id: string): void; refresh(): void; overlay(ctx: CanvasRenderingContext2D): void; state(): { timeline: boolean; playing: boolean; onion: boolean }; }
 
 export function animKit(host: AnimHost): AnimKit {
   let panel: HTMLElement | null = null, timer = 0, queued = 0, playing = false, at = 0, drag = -1;
@@ -163,12 +214,47 @@ export function animKit(host: AnimHost): AnimKit {
     if (playing) mark(); else show(Math.max(0, d.layers.findIndex((l) => l.id === d.activeId)));
     if (keep) strip.querySelector<HTMLElement>(`li[data-i="${keep[0]}"] [data-testid="${keep[1]}"]`)?.focus();
   };
+  let onion = false;
+  const ghosts = new Map<'prev' | 'next', { l: Layer; data: Uint8ClampedArray; cv: HTMLCanvasElement }>();
+  const ghost = (k: 'prev' | 'next', l: Layer): HTMLCanvasElement => {
+    const g = ghosts.get(k);
+    if (g && g.l === l && g.data === l.data) return g.cv;
+    const cv = g?.cv ?? document.createElement('canvas');
+    cv.width = l.width; cv.height = l.height;
+    cv.getContext('2d')?.putImageData(toImageData({ width: l.width, height: l.height, data: tint(l.data, k === 'prev' ? RED : GREEN) }), 0, 0);
+    ghosts.set(k, { l, data: l.data, cv });
+    return cv;
+  };
+  const onionBtn = h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'tl-onion', 'aria-pressed': 'false', 'data-help-title': 'See neighbour frames · Onion skin',
+    'data-help': 'Shows the frame before in faint red and the next one in faint green, so you can draw the one in between.', onclick: () => toggleOnion() }, 'See neighbour frames');
+  const toggleOnion = (): void => {
+    const d = host.doc();
+    if (!onion && (!d || d.layers.length < 2)) { host.toast('Seeing neighbour frames needs two frames or more: add a layer first.'); return; }
+    onion = !onion; ghosts.clear(); onionBtn.setAttribute('aria-pressed', String(onion));
+    host.render(); host.panels();
+    host.toast(onion ? 'Onion skin on: the frame before shows in faint red, the next one in faint green.' : 'Onion skin off.');
+  };
+  const files = h('input', { type: 'file', multiple: '', accept: OPEN_ACCEPT, hidden: true, 'aria-hidden': 'true', 'data-testid': 'tl-files' }) as HTMLInputElement;
+  const pickFiles = (): void => { if (!files.isConnected) host.root.append(files); files.click(); };
+  const importFiles = async (list: File[]): Promise<void> => {
+    if (!list.length) return;
+    const { pics, skipped } = await readFrames(list);
+    const why = skipped.length ? ` Skipped, not a picture this can open: ${skipped.slice(0, 3).join(', ')}${skipped.length > 3 ? '…' : ''}.` : '';
+    if (!pics.length) { host.toast(`No frames added.${why}`); return; }
+    const d = host.doc();
+    if (d) push(addFrames(d, pics)); else { const nd = framesDoc(pics); if (nd) host.openDoc(nd, frameName(pics[0].name)); }
+    open();
+    host.toast(`${pics.length} frame${pics.length === 1 ? '' : 's'} added at the end, ${DEFAULT_DELAY} ms each. Pick one in the timeline to see it.${why}`);
+  };
+  files.addEventListener('change', () => { const list = Array.from(files.files ?? []); files.value = ''; void importFiles(list); });
+  const addBtn = h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'tl-import', 'data-help-title': 'Import animation frames · Image sequence',
+    'data-help': 'Pick several pictures: each becomes one frame at the end, in name order.', onclick: () => pickFiles() }, 'Add pictures as frames');
   const open = (): void => {
     if (panel) { fill(); return; }
     if (!document.getElementById('fpe-anim-css')) document.head.append(h('style', { id: 'fpe-anim-css' }, CSS));
     panel = h('section', { class: 'fpe-tl', 'data-testid': 'timeline', 'aria-label': 'Animation timeline' },
       h('div', { class: 'fpe-tl-head' }, h('b', {}, 'Animation timeline'), h('span', { class: 'fpe-tl-pro' }, 'Timeline'), count, h('span', { class: 'fpe-tl-sp' }),
-        playBtn, loopSel,
+        playBtn, loopSel, onionBtn, addBtn,
         h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'tl-export', 'data-help-title': 'Export the animation', 'data-help': 'Opens Export with each frame as one frame of a GIF, PNG or WebP.', onclick: () => { stop(); host.exportAnim(); } }, 'Export animation'),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'tl-close', 'aria-label': 'Close the timeline', onclick: () => close() }, 'Close')),
       h('div', { class: 'fpe-tl-body' }, preview, strip));
@@ -181,6 +267,8 @@ export function animKit(host: AnimHost): AnimKit {
     run(id) {
       const d = host.doc();
       if (id === 'panel.timeline') { if (panel) close(); else open(); return; }
+      if (id === 'layer.onion-skin') { toggleOnion(); return; }
+      if (id === 'layer.import-frames') { pickFiles(); return; }
       if (id !== 'layer.frames' || !d) return;
       const why = cannotFrame(d);
       if (why) { host.toast(why); return; }
@@ -189,7 +277,17 @@ export function animKit(host: AnimHost): AnimKit {
       open();
       host.toast(c ? `${d.layers.length} frames made, one per layer. Frame 1 shows; set each time in the timeline.` : 'These layers are frames already.');
     },
-    refresh() { if (panel && !queued) queued = requestAnimationFrame(() => { queued = 0; fill(); }); },
-    state: () => ({ timeline: !!panel, playing }),
+    refresh() { ghosts.clear(); if (panel && !queued) queued = requestAnimationFrame(() => { queued = 0; fill(); }); },
+    overlay(ctx) {
+      const d = onion ? host.doc() : null;
+      if (!d) return;
+      const v = host.view(), nb = neighbours(d);
+      ctx.save(); ctx.globalAlpha = 0.45; ctx.imageSmoothingEnabled = v.zoom < 1;
+      for (const [k, l] of [['prev', nb.prev], ['next', nb.next]] as const) {
+        if (l && l.width > 0 && l.height > 0 && l.kind !== 'folder') ctx.drawImage(ghost(k, l), v.panX + l.x * v.zoom, v.panY + l.y * v.zoom, l.width * v.zoom, l.height * v.zoom);
+      }
+      ctx.restore();
+    },
+    state: () => ({ timeline: !!panel, playing, onion }),
   };
 }

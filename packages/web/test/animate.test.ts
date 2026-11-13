@@ -5,11 +5,11 @@
  * PNG export keep all of it. Every number below is worked out by hand from the frame model: frame n is layer n, bottom
  * first, its time is in its name, and a GIF stores times in hundredths of a second.
  */
-import { createLayer, type Doc } from '@free-photoeditor/core';
+import { createDocument, createLayer, type Doc } from '@free-photoeditor/core';
 import { decodeGif, encodeApng, encodeGif, decodeApng } from '@free-photoeditor/formats/anim';
 import { framesOf } from '@free-photoeditor/formats/util';
 import { describe, expect, it } from 'vitest';
-import { cannotFrame, clampDelay, frameName, makeFrames, moveFrame, setDelay, setLoop, showOnly, withDelay } from '../src/animate';
+import { addFrames, byName, cannotFrame, clampDelay, frameName, framesDoc, makeFrames, moveFrame, neighbours, setDelay, setLoop, showOnly, tint, withDelay } from '../src/animate';
 
 const RED = { r: 255, g: 0, b: 0, a: 255 }, GREEN = { r: 0, g: 255, b: 0, a: 255 }, BLUE = { r: 0, g: 0, b: 255, a: 255 };
 function doc(names = ['Sky', 'Sun (250 ms)', 'Moon']): Doc {
@@ -104,5 +104,38 @@ describe('the export keeps the times and the loop setting', () => {
       expect([...b.subarray(i, i + 8)]).toEqual([0, 0, 0, 3, 0, 0, 0, plays]);
       expect(decodeApng(b).frames.map((f) => f.delay)).toEqual([100, 250, 100]);
     }
+  });
+});
+
+describe('onion skin and import frames', () => {
+  it('pulls a frame towards red or green and keeps its see-through parts', () => {
+    // 100 + (255 - 100) * 0.6 = 193; 50 - 50 * 0.6 = 20; 200 - 200 * 0.6 = 80; alpha kept. A clear pixel stays clear.
+    expect([...tint(new Uint8ClampedArray([100, 50, 200, 128, 0, 0, 0, 0]), [255, 0, 0], 0.6)]).toEqual([193, 20, 80, 128, 153, 0, 0, 0]);
+    // 100 - 60 = 40; 50 + 205 * 0.6 = 173; 80.
+    expect([...tint(new Uint8ClampedArray([100, 50, 200, 255]), [0, 255, 0], 0.6)]).toEqual([40, 173, 80, 255]);
+  });
+  it('finds the frame before and the frame after the one being worked on', () => {
+    const d = doc();
+    d.activeId = d.layers[1].id;
+    expect([neighbours(d).prev?.id, neighbours(d).next?.id]).toEqual([d.layers[0].id, d.layers[2].id]);
+    d.activeId = d.layers[0].id;
+    expect([neighbours(d).prev, neighbours(d).next?.id]).toEqual([null, d.layers[1].id]);
+  });
+  it('sorts picked files by name, numbers counted, and adds them as hidden frames at the end in one undo step', () => {
+    expect(byName([{ name: 'walk10.png' }, { name: 'walk2.png' }, { name: 'Walk1.png' }]).map((f) => f.name)).toEqual(['Walk1.png', 'walk2.png', 'walk10.png']);
+    const d = createDocument(6, 4, null), before = d.layers.length;
+    const px = new Uint8ClampedArray([1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]);
+    const c = addFrames(d, [{ name: 'a', width: 2, height: 2, data: px }, { name: 'b (40 ms)', width: 2, height: 2, data: px }]);
+    // Centred in 6 x 4: x = (6 - 2) / 2 = 2, y = (4 - 2) / 2 = 1.
+    expect(d.layers.slice(before).map((l) => [l.name, l.visible, l.x, l.y, l.width, l.data[4]])).toEqual([['a (100 ms)', false, 2, 1, 2, 4], ['b (40 ms)', false, 2, 1, 2, 4]]);
+    c?.undo(d);
+    expect(d.layers.length).toBe(before);
+    expect(addFrames(d, [])).toBeNull();
+  });
+  it('makes a new picture from the first frame when none is open, frame 1 showing', () => {
+    const px = new Uint8ClampedArray(2 * 3 * 4).fill(200);
+    const d = framesDoc([{ name: 'f1', width: 2, height: 3, data: px }, { name: 'f2', width: 2, height: 3, data: px }]);
+    expect([d?.width, d?.height, d?.layers.map((l) => [l.name, l.visible])]).toEqual([2, 3, [['f1 (100 ms)', true], ['f2 (100 ms)', false]]]);
+    expect(framesDoc([])).toBeNull();
   });
 });

@@ -481,6 +481,8 @@ for (const id of ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'pa
 // Animation (animate.ts, loaded on first use): frames from layers, and the timeline under the picture.
 HANDLERS['layer.frames'] = H((e) => e.animate('layer.frames'), (e) => layers(e) > 1);
 HANDLERS['panel.timeline'] = H((e) => e.animate('panel.timeline'), hasDoc, (e) => !!e.anim?.state().timeline);
+HANDLERS['layer.onion-skin'] = H((e) => e.animate('layer.onion-skin'), (e) => layers(e) > 1, (e) => !!e.anim?.state().onion);
+HANDLERS['layer.import-frames'] = H((e) => e.animate('layer.import-frames'), () => true);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

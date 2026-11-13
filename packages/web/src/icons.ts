@@ -2,14 +2,14 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** Lucide icons (ISC licence; some derived from Feather, MIT) built into one inline SVG sprite. Only these are bundled. */
 import { ArrowDown, ArrowLeftRight, ArrowUp, Bandage, Brush, Check, ChevronDown, ChevronLeft, ChevronRight, Code, Contrast, Copy, Crop,
-  Download, Droplet, Eraser, Eye, EyeOff, FilePlus, Focus, FolderOpen, Hand, Image as ImageIcon, ImageDown, ImagePlus, Info, Keyboard,
-  Lasso, Layers, Lock, Maximize, Menu, Merge, Moon, MousePointer2, Move, PaintBucket, Palette, PenTool, Pipette, Plus, Redo2, RotateCcw,
+  Download, Droplet, Ellipsis, Eraser, Eye, EyeOff, FilePlus, Focus, FolderOpen, Hand, Image as ImageIcon, ImageDown, ImagePlus, Info, Keyboard,
+  Lasso, Layers, Lightbulb, Lock, Maximize, Menu, Merge, Moon, MousePointer2, Move, PaintBucket, Palette, PenTool, Pipette, Plus, Redo2, RotateCcw,
   Scan, Scissors, Search, Shapes, SlidersHorizontal, Sparkles, Square, SquareDashed, Stamp, Sun, SunDim, Trash2, Type, Undo2, Wand, X,
   ZoomIn, ZoomOut } from 'lucide';
 
 type IconNode = ReadonlyArray<readonly [string, Record<string, string | number | undefined>]>;
 const ICONS: Record<string, unknown> = {
-  'arrow-down': ArrowDown, 'arrow-up': ArrowUp, bandage: Bandage, brush: Brush, bucket: PaintBucket, check: Check,
+  more: Ellipsis, idea: Lightbulb, 'arrow-down': ArrowDown, 'arrow-up': ArrowUp, bandage: Bandage, brush: Brush, bucket: PaintBucket, check: Check,
   'chev-down': ChevronDown, 'chev-left': ChevronLeft, 'chev-right': ChevronRight, close: X, code: Code, contrast: Contrast, copy: Copy,
   crop: Crop, dodge: SunDim, download: Download, droplet: Droplet, eraser: Eraser, eye: Eye, 'eye-off': EyeOff, 'file-plus': FilePlus,
   fit: Maximize, focus: Focus, hand: Hand, history: RotateCcw, image: ImageIcon, 'image-down': ImageDown, 'image-plus': ImagePlus,

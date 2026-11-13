@@ -201,6 +201,8 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     const a = await top();
     expect([a.n, a.width > 912]).toEqual([n0 + 1, true]);
     await p.screenshot({ path: join(OUT, 'shapes-text-comic.png') });
+    // On the 1440 px desktop the sheet sits at the right, beside the panels, not over the middle of the picture.
+    expect(((await p.locator('[data-testid="pathop-sheet"]').boundingBox())?.x ?? 0) > 720).toBe(true);
     // 4 columns: panels 216 wide, 8 boxes, the same layer redrawn.
     await p.fill('[data-testid="pathop-panelCols"]', '4');
     await p.click('[data-testid="pathop-update"]');
@@ -234,6 +236,19 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await click(p, 'path.roughen');
     s = await until(p, (x) => x.anchors === 50, 'wobble');
     expect(s.points.every((q) => Math.min(Math.abs(q.x - 300), Math.abs(q.x - 400), Math.abs(q.y - 200), Math.abs(q.y - 300)) <= 4.01)).toBe(true);
+  });
+
+  it('tilts a 100 px square outline back in perspective: the top edge narrows by 20%, one undo step', async () => {
+    const p = await open();
+    await outlines(p, [300, 200, 100, 100]);
+    await click(p, 'path.envelope');
+    const s = await until(p, (x) => x.anchors === 4 && x.points.some((q) => Math.abs(q.x - 310) < 0.5 && Math.abs(q.y - 200) < 0.5), 'envelope');
+    // Lean back 20%: the top corners move 10 px in, to (310, 200) and (390, 200); the bottom corners stay at (300, 300) and (400, 300).
+    expect(s.points.map((q) => [Math.round(q.x), Math.round(q.y)]).sort()).toEqual([[300, 300], [310, 200], [390, 200], [400, 300]]);
+    await p.screenshot({ path: join(OUT, 'shapes-text-envelope.png') });
+    expect(await undo(p)).toBe(true);
+    expect((await paths(p)).points.map((q) => [Math.round(q.x), Math.round(q.y)]).sort()).toEqual([[300, 200], [300, 300], [400, 200], [400, 300]]);
+    await p.click('[data-testid="pathop-done"]');
   });
 
   it('joins two outlines into one, then splits it back into two', async () => {

@@ -175,7 +175,7 @@ describe('the Task ribbon', () => {
       // Batch paint (paintkit.ts): the Brush extras sheet.
       'paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'paint.enclose-fill', 'paint.colorize-mask',
       // Batch shapes-text (pathops).
-      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
+      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke', 'path.envelope',
       // Automate and batch (automate.ts).
       'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());

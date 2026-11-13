@@ -190,7 +190,8 @@ function renderWarped(c: TextContent, warp: TextWarp): Placed {
   const up = st.size * 0.95, down = st.size * 0.3;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   at.forEach((s, i) => { if (s) for (const q of glyphCorners(s, gs[i].w, up, down)) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } });
-  if (!Number.isFinite(x0)) return renderPlain(c);
+  // No letter fits (a shape too small, a line too short): the words stay in the layer but nothing is drawn, as the sheet says.
+  if (!Number.isFinite(x0)) return chars.length ? { x: Math.floor(lay.box.x), y: Math.floor(lay.box.y), width: 1, height: 1, data: new Uint8ClampedArray(4) } : renderPlain(c);
   const pad = Math.ceil(st.size * 0.2) + 2, X = Math.floor(x0 - pad), Y = Math.floor(y0 - pad);
   const x = ctx2d(Math.min(16384, Math.ceil(x1 - x0 + 2 * pad)), Math.min(16384, Math.ceil(y1 - y0 + 2 * pad)));
   useFont(x, st);

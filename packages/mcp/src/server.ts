@@ -11,7 +11,7 @@ import { APP_VERSION, AUTHOR, AUTHOR_URL, CREDIT, SOURCE_URL, type Doc } from '@
 import { findOperation, opsIn, operationJson, searchWishes, type OpGroup } from '../../cli/src/catalog';
 import { FORMAT_NAMES, READ_FORMATS, WRITE_FORMATS } from '../../cli/src/codecs';
 import { DEFAULT_MAX_PIXELS, FLIPS, TURNS, applyOperation, cropPicture, describePicture, flattenLayers, keepOnlyLayer, layerList,
-  mergeLayers, openPicture, planOutput, previewOf, resizePicture, savePicture, turnPicture, type Picture } from '../../cli/src/engine';
+  mergeLayers, openPicture, planOutput, previewOf, resizePicture, savePicture, turnPicture, applyPrint, type Picture } from '../../cli/src/engine';
 import { Folders } from './folders';
 
 export const HELP = [`free-photo-editor-mcp ${APP_VERSION}: Free Photo Editor by ${AUTHOR} (${AUTHOR_URL}) as a local MCP server.`, '',
@@ -48,8 +48,10 @@ const out = {
   quality: z.number().min(0.01).max(100).optional().describe('JPEG and WebP quality from 0.01 to 1 (or 1 to 100). Default 0.92; 1 makes WebP lossless.'),
   overwrite: z.boolean().optional().describe('Replace the output file if it already exists. Default false: an existing file is never replaced.'),
   preview: z.boolean().optional().describe('Also return a small PNG preview of the result (at most 512 pixels on its long side).'),
+  dpi: z.number().min(1).max(10000).optional().describe('Print quality: the dots per inch (DPI/PPI) written into the file, e.g. 300 for print. The pixels stay the same: DPI alone never adds detail.'),
+  printSize: z.string().optional().describe('Resample to this print size at the DPI before saving, e.g. "10x15cm", "4x6in" or "210x297mm"; one side ("10cm") keeps the shape.'),
 };
-interface OutArgs { path: string; output?: string; format?: 'png' | 'jpeg' | 'webp' | 'psd'; quality?: number; overwrite?: boolean; preview?: boolean; }
+interface OutArgs { path: string; output?: string; format?: 'png' | 'jpeg' | 'webp' | 'psd'; quality?: number; overwrite?: boolean; preview?: boolean; dpi?: number; printSize?: string; }
 
 export interface ServerSettings { folders?: string[]; maxPixels?: number; }
 export async function createServer(s: ServerSettings = {}): Promise<{ server: McpServer; folders: Folders }> {
@@ -60,7 +62,7 @@ export async function createServer(s: ServerSettings = {}): Promise<{ server: Mc
   /** Open, change, save with the credit; the original stays as it was unless overwrite names it. */
   const edit = async (a: OutArgs, suffix: string | undefined, change: (p: Picture) => string[] | void, extra: Record<string, unknown> = {}): Promise<Reply> => {
     try {
-      const pic = await open(a.path), notes = [...pic.notes, ...(change(pic) ?? [])];
+      const pic = await open(a.path), notes = [...pic.notes, ...(change(pic) ?? []), ...applyPrint(pic.doc, { dpi: a.dpi, printSize: a.printSize }, maxPixels)];
       const plan = planOutput(pic.file, pic.format, { output: a.output ? folders.resolve(a.output) : undefined, to: a.format, suffix, cwd: folders.first });
       const saved = await savePicture(pic.doc, await folders.output(plan.file), plan.format, { quality: a.quality, overwrite: a.overwrite });
       return await reply({ ok: true, input: pic.file, ...extra, ...saved, type: FORMAT_NAMES[saved.format], notes: [...notes, ...saved.notes], credit: CREDIT },

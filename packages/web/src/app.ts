@@ -2995,7 +2995,9 @@ export class Editor {
         this.toast(`Added ${baseName(name)} as a new layer.`);
         return;
       }
-      this.addTab(documentFromBitmap(bmp), baseName(name));
+      const opened = documentFromBitmap(bmp);
+      if (o.kind === 'bitmap' && o.dpi) opened.dpi = o.dpi;
+      this.addTab(opened, baseName(name));
     } catch (e) {
       this.toast(errText(e, "This file couldn't be opened."));
     } finally {

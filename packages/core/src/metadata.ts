@@ -3,6 +3,8 @@
 /**
  * The author's credit inside every exported file, with no visible watermark: PNG tEXt "Software", JPEG EXIF
  * Software (tag 0x0131) plus XMP CreatorTool, WebP XMP (with a VP8X header). PSD gets XMP through psd.ts.
+ * The print resolution (DPI) goes in with it: PNG pHYs, JPEG JFIF density plus EXIF X/YResolution, WebP EXIF, and
+ * tiff:XResolution in every XMP packet. dpi.ts has the readers and the print-size maths.
  */
 import { CREDIT } from './credit';
 import { concatBytes, latin1Decode, latin1Encode, utf8Decode, utf8Encode } from './text';
@@ -21,13 +23,39 @@ const be32 = (b: Uint8Array, o: number): number => ((b[o] << 24) | (b[o + 1] << 
 const le32 = (b: Uint8Array, o: number): number => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 function putBe32(b: Uint8Array, o: number, v: number): void { b[o] = v >>> 24; b[o + 1] = (v >>> 16) & 255; b[o + 2] = (v >>> 8) & 255; b[o + 3] = v & 255; }
 function putLe32(b: Uint8Array, o: number, v: number): void { b[o] = v & 255; b[o + 1] = (v >>> 8) & 255; b[o + 2] = (v >>> 16) & 255; b[o + 3] = v >>> 24; }
+/** A print resolution as a TIFF rational: whole numbers over 1, otherwise in thousandths. */
+export function rationalOf(dpi: number): [number, number] { return Number.isInteger(dpi) ? [dpi, 1] : [Math.round(dpi * 1000), 1000]; }
+/**
+ * The resolution in a TIFF block (a TIFF file, or the EXIF inside JPEG, WebP and JPEG XL) starting at `t`: XResolution
+ * (282) in ResolutionUnit (296: 2 inches, the default; 3 centimetres), in dots per inch to tenths. Null when absent.
+ */
+export function tiffResolution(b: Uint8Array, t: number, end: number = b.length): number | null {
+  if (t + 8 > end) return null;
+  const le = b[t] === 0x49;
+  if (!le && b[t] !== 0x4d) return null;
+  const u16 = (o: number): number => (le ? b[t + o] | (b[t + o + 1] << 8) : (b[t + o] << 8) | b[t + o + 1]);
+  const u32 = (o: number): number => (le ? le32(b, t + o) : be32(b, t + o));
+  const ifd = u32(4);
+  if (t + ifd + 2 > end) return null;
+  let x = 0, unit = 2;
+  for (let i = 0, n = u16(ifd); i < n && t + ifd + 14 + i * 12 <= end; i++) {
+    const e = ifd + 2 + i * 12, tag = u16(e);
+    if (tag === 282 && u16(e + 2) === 5) { const o = u32(e + 8); if (t + o + 8 <= end) x = u32(o) / (u32(o + 4) || 1); }
+    else if (tag === 296) unit = u16(e + 8);
+  }
+  const dpi = Math.round((unit === 3 ? x * 2.54 : unit === 2 ? x : 0) * 10) / 10;
+  return dpi >= 1 && dpi <= 10000 ? dpi : null;
+}
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 export const xmlEscape = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c]);
-export function buildXmp(creatorTool: string = CREDIT): string {
+/** The XMP packet: the credit as CreatorTool, and the print resolution (tiff:XResolution) when given. */
+export function buildXmp(creatorTool: string = CREDIT, dpi?: number): string {
+  const r = dpi && dpi > 0 ? rationalOf(dpi).join('/') : '';
+  const res = r ? ` xmlns:tiff="http://ns.adobe.com/tiff/1.0/" tiff:XResolution="${r}" tiff:YResolution="${r}" tiff:ResolutionUnit="2"` : '';
   return '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/">\n' +
     ' <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
-    `  <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreatorTool="${xmlEscape(creatorTool)}"/>\n` +
+    `  <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreatorTool="${xmlEscape(creatorTool)}"${res}/>\n` +
     ' </rdf:RDF>\n</x:xmpmeta>\n<?xpacket end="w"?>';
 }
 
@@ -59,6 +87,15 @@ export function injectPngText(png: Uint8Array, keyword: string, text: string): U
   const at = chunks[0].end;
   return concatBytes(png.subarray(0, at), makePngChunk('tEXt', concatBytes(latin1Encode(keyword), new Uint8Array(1), latin1Encode(text))), png.subarray(at));
 }
+/** Store the print resolution in a PNG (pHYs, whole pixels per metre) right after the header, replacing any there. */
+export function setPngDpi(png: Uint8Array, dpi: number): Uint8Array {
+  const chunks = pngChunks(png);
+  if (!chunks.length || chunks[0].type !== 'IHDR') throw new Error('The PNG has no header chunk');
+  const ppm = Math.round(dpi / 0.0254), d = new Uint8Array(9);
+  putBe32(d, 0, ppm); putBe32(d, 4, ppm); d[8] = 1;
+  const rest = chunks.slice(1).filter((c) => c.type !== 'pHYs').map((c) => png.subarray(c.start, c.end));
+  return concatBytes(png.subarray(0, chunks[0].end), makePngChunk('pHYs', d), ...rest);
+}
 export function readPngText(png: Uint8Array): Record<string, string> {
   const out: Record<string, string> = {};
   for (const c of pngChunks(png)) {
@@ -86,16 +123,28 @@ export function jpegSegments(b: Uint8Array): JpegSegment[] {
   }
   return out;
 }
-/** A big-endian TIFF block with one IFD0 entry: Software (0x0131, ASCII). */
-export function buildExif(software: string): Uint8Array {
-  const sw = latin1Encode(software + '\0');
-  const t = new Uint8Array(26 + sw.length);
-  const dv = new DataView(t.buffer);
-  t[0] = 0x4d; t[1] = 0x4d; dv.setUint16(2, 42); dv.setUint32(4, 8);
-  dv.setUint16(8, 1);
-  dv.setUint16(10, 0x0131); dv.setUint16(12, 2); dv.setUint32(14, sw.length); dv.setUint32(18, 26);
-  dv.setUint32(22, 0);
-  t.set(sw, 26);
+/**
+ * A big-endian TIFF block for EXIF. IFD0 holds Software (0x0131, ASCII) and, with a print resolution, XResolution
+ * (0x011A) and YResolution (0x011B) as rationals with ResolutionUnit (0x0128) = 2, inches; entries in tag order.
+ */
+export function buildExif(software: string, dpi?: number): Uint8Array {
+  const sw = latin1Encode(software + '\0'), res = dpi && dpi > 0 ? rationalOf(dpi) : null, n = res ? 4 : 1;
+  const data = 8 + 2 + n * 12 + 4, swAt = data + (res ? 16 : 0);
+  const t = new Uint8Array(swAt + sw.length), dv = new DataView(t.buffer);
+  t[0] = 0x4d; t[1] = 0x4d; dv.setUint16(2, 42); dv.setUint32(4, 8); dv.setUint16(8, n);
+  let e = 10;
+  const entry = (tag: number, type: number, count: number, value: number): void => {
+    dv.setUint16(e, tag); dv.setUint16(e + 2, type); dv.setUint32(e + 4, count);
+    if (type === 3) dv.setUint16(e + 8, value); else dv.setUint32(e + 8, value);
+    e += 12;
+  };
+  if (res) {
+    entry(0x011a, 5, 1, data); entry(0x011b, 5, 1, data + 8); entry(0x0128, 3, 1, 2);
+    for (const o of [data, data + 8]) { dv.setUint32(o, res[0]); dv.setUint32(o + 4, res[1]); }
+  }
+  entry(0x0131, 2, sw.length, swAt);
+  dv.setUint32(e, 0);
+  t.set(sw, swAt);
   return t;
 }
 function app1(payload: Uint8Array): Uint8Array {
@@ -107,10 +156,40 @@ function app1(payload: Uint8Array): Uint8Array {
 }
 const EXIF_HEAD = latin1Encode('Exif\0\0');
 const XMP_HEAD = latin1Encode('http://ns.adobe.com/xap/1.0/\0');
-export function injectJpegMetadata(jpeg: Uint8Array, software: string, xmp: string): Uint8Array {
+export function injectJpegMetadata(jpeg: Uint8Array, software: string, xmp: string, dpi?: number): Uint8Array {
+  if (dpi) jpeg = setJpegDpi(jpeg, dpi);
   let at = 2;
   for (const s of jpegSegments(jpeg)) { if (s.marker === 0xe0) at = s.end; else break; }
-  return concatBytes(jpeg.subarray(0, at), app1(concatBytes(EXIF_HEAD, buildExif(software))), app1(concatBytes(XMP_HEAD, utf8Encode(xmp))), jpeg.subarray(at));
+  return concatBytes(jpeg.subarray(0, at), app1(concatBytes(EXIF_HEAD, buildExif(software, dpi))), app1(concatBytes(XMP_HEAD, utf8Encode(xmp))), jpeg.subarray(at));
+}
+/** Store the print resolution in a JPEG's JFIF header: patched in place when there is one, added after SOI when not. */
+export function setJpegDpi(jpeg: Uint8Array, dpi: number): Uint8Array {
+  const v = Math.max(1, Math.min(65535, Math.round(dpi)));
+  for (const s of jpegSegments(jpeg)) {
+    const d = s.dataStart;
+    if (s.marker !== 0xe0 || d + 12 > s.end || latin1Decode(jpeg, d, d + 5) !== 'JFIF\0') continue;
+    const out = jpeg.slice();
+    out[d + 7] = 1; out[d + 8] = v >> 8; out[d + 9] = v & 255; out[d + 10] = v >> 8; out[d + 11] = v & 255;
+    return out;
+  }
+  const app0 = new Uint8Array([0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 1, v >> 8, v & 255, v >> 8, v & 255, 0, 0]);
+  return concatBytes(jpeg.subarray(0, 2), app0, jpeg.subarray(2));
+}
+/**
+ * How a JPEG keeps colour, from its frame header: '4:4:4' (every colour pixel), '4:2:2' (colour at half width), '4:2:0'
+ * (colour at half width and height), 'grey', or the raw factors. Null when there is no frame header.
+ */
+export function jpegSampling(jpeg: Uint8Array): string | null {
+  for (const s of jpegSegments(jpeg)) {
+    if (s.marker < 0xc0 || s.marker > 0xcf || s.marker === 0xc4 || s.marker === 0xc8 || s.marker === 0xcc) continue;
+    const n = jpeg[s.dataStart + 5], f: number[] = [];
+    for (let i = 0; i < n; i++) f.push(jpeg[s.dataStart + 7 + i * 3]);
+    if (n === 1) return 'grey';
+    if (f.every((x) => x === f[0])) return '4:4:4';
+    if (f.slice(1).every((x) => x === 0x11)) { if (f[0] === 0x22) return '4:2:0'; if (f[0] === 0x21) return '4:2:2'; }
+    return f.map((x) => x.toString(16)).join(',');
+  }
+  return null;
 }
 export function readJpegSoftware(jpeg: Uint8Array): string | null {
   for (const s of jpegSegments(jpeg)) {
@@ -180,22 +259,23 @@ function riffChunk(fourcc: string, data: Uint8Array): Uint8Array {
   c.set(latin1Encode(fourcc), 0); putLe32(c, 4, data.length); c.set(data, 8);
   return c;
 }
-export function injectWebpXmp(webp: Uint8Array, xmp: string): Uint8Array {
+export function injectWebpXmp(webp: Uint8Array, xmp: string, exif?: Uint8Array): Uint8Array {
   const info = webpInfo(webp);
-  const chunks = webpChunks(webp).filter((c) => c.fourcc !== 'XMP ');
+  const chunks = webpChunks(webp).filter((c) => c.fourcc !== 'XMP ' && !(exif && c.fourcc === 'EXIF'));
   const copy = (c: WebpChunk): Uint8Array => riffChunk(c.fourcc, webp.subarray(c.dataStart, c.dataStart + c.size));
   const body: Uint8Array[] = [];
   if (chunks[0] && chunks[0].fourcc === 'VP8X') {
     const head = copy(chunks[0]);
-    head[8] |= 0x04;
+    head[8] |= 0x04 | (exif ? 0x08 : 0);
     body.push(head, ...chunks.slice(1).map(copy));
   } else {
     const head = new Uint8Array(10), w = info.width - 1, h = info.height - 1;
-    head[0] = 0x04 | (info.alpha ? 0x10 : 0);
+    head[0] = 0x04 | (exif ? 0x08 : 0) | (info.alpha ? 0x10 : 0);
     head[4] = w & 255; head[5] = (w >> 8) & 255; head[6] = (w >> 16) & 255;
     head[7] = h & 255; head[8] = (h >> 8) & 255; head[9] = (h >> 16) & 255;
     body.push(riffChunk('VP8X', head), ...chunks.map(copy));
   }
+  if (exif) body.push(riffChunk('EXIF', exif));
   body.push(riffChunk('XMP ', utf8Encode(xmp)));
   const out = concatBytes(latin1Encode('RIFF'), new Uint8Array(4), latin1Encode('WEBP'), ...body);
   putLe32(out, 4, out.length - 8);
@@ -203,9 +283,9 @@ export function injectWebpXmp(webp: Uint8Array, xmp: string): Uint8Array {
 }
 
 export type RasterFormat = 'png' | 'jpeg' | 'webp';
-/** Add the credit to an encoded PNG, JPEG or WebP file. */
-export function injectMetadata(bytes: Uint8Array, format: RasterFormat, credit: string = CREDIT): Uint8Array {
-  if (format === 'png') return injectPngText(bytes, 'Software', credit);
-  if (format === 'jpeg') return injectJpegMetadata(bytes, credit, buildXmp(credit));
-  return injectWebpXmp(bytes, buildXmp(credit));
+/** Add the credit, and the print resolution (DPI) when given, to an encoded PNG, JPEG or WebP file. */
+export function injectMetadata(bytes: Uint8Array, format: RasterFormat, credit: string = CREDIT, dpi?: number): Uint8Array {
+  if (format === 'png') { const out = injectPngText(bytes, 'Software', credit); return dpi ? setPngDpi(out, dpi) : out; }
+  if (format === 'jpeg') return injectJpegMetadata(bytes, credit, buildXmp(credit, dpi), dpi);
+  return injectWebpXmp(bytes, buildXmp(credit, dpi), dpi ? buildExif(credit, dpi) : undefined);
 }

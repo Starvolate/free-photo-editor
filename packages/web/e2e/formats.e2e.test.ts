@@ -6,19 +6,19 @@
  * the camera RAW develop step, OpenRaster and PSB with their layers, and the credit in every saved file with room for it.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts formats
  */
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writePsd } from 'ag-psd';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CREDIT, addLayer, createDocument, createLayer, webpInfo, type Bitmap } from '@free-photoeditor/core';
+import { CREDIT, addLayer, createDocument, createLayer, jpegSampling, readDpi, readJpegDpi, readPngDpi, setPngDpi, webpInfo, type Bitmap } from '@free-photoeditor/core';
 import { writePsdDocument } from '@free-photoeditor/core/psd';
 import { decodeGif, encodeGif, isAnimatedWebp, isApng } from '@free-photoeditor/formats/anim';
 import { decodeOra, encodeOra } from '@free-photoeditor/formats/ora';
 import { encodePdf } from '@free-photoeditor/formats/pdf';
-import { decodePng, pngText } from '@free-photoeditor/formats/png';
+import { decodePng, encodePng, pngText } from '@free-photoeditor/formats/png';
 import { tgaSoftware } from '@free-photoeditor/formats/tga';
 import { decodeTiff, encodeTiffPages, readTiff, writeTiff, type TiffEntry } from '@free-photoeditor/formats/tiff';
 
@@ -226,5 +226,22 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
   it('opens PSB (large PSD) files with their layers', async () => {
     const i = await waitTabs(page, await open(page, 'big.psb', 'image/vnd.adobe.photoshop', psbFile()));
     expect(i.layers.map((l) => l.name)).toEqual(['Bottom', 'Top']);
+  });
+  it('X1: reads the DPI on open and writes it into PNG, JPEG, TIFF and PDF; records how the best JPEG keeps colour', async () => {
+    const p = page, u8 = (b: Buffer): Uint8Array => new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+    const src = setPngDpi(encodePng(bmpOf(600, 400, (x, y) => [x % 256, y % 256, (x * y) % 256, 255])), 300);
+    await waitTabs(p, await open(p, 'x1-300.png', 'image/png', Buffer.from(src)));
+    const png = await save(p, 'png'), tif = await save(p, 'tiff'), pdf = await save(p, 'pdf');
+    await p.click('[data-testid="btn-export"]');
+    await p.click('[data-testid="export-format-jpeg"]');
+    await p.$eval('[data-testid="export-quality"]', (el) => { (el as HTMLInputElement).value = '100'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60_000 }), p.click('[data-testid="export-go"]')]);
+    const jpg = await readFile(await dl.path());
+    const finding = `Chrome canvas JPEG at quality 1.0 (Export at 100%): colour ${jpegSampling(u8(jpg))}`;
+    console.log(finding);
+    await writeFile(join(OUT, 'x1-jpeg-sampling.txt'), finding + '\n');
+    for (const [n, b] of [['x1-300.png', png], ['x1-300.tif', tif], ['x1-300.pdf', pdf], ['x1-300.jpg', jpg]] as const) await writeFile(join(OUT, n), b);
+    expect([readPngDpi(u8(png)), readDpi(u8(tif)), readJpegDpi(u8(jpg))]).toEqual([300, 300, 300]);
+    expect(latin(pdf)).toContain('/MediaBox [0 0 144 96]');
   });
 });

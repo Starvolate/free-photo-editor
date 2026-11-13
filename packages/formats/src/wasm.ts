@@ -6,7 +6,7 @@
  * libheif-js (LGPL-3.0; libde265, LGPL-3.0). Each library loads only when its format is first used. The browser's own
  * decoder is tried first, so Safari opens HEIC and JPEG XL without any download.
  */
-import { CREDIT, buildXmp, concatBytes, flatten, latin1Decode, latin1Encode, utf8Encode, type Bitmap, type Decoded, type FormatCodec, type FormatHost } from '@free-photoeditor/core';
+import { CREDIT, buildExif, buildXmp, concatBytes, flatten, latin1Decode, latin1Encode, utf8Encode, type Bitmap, type Decoded, type FormatCodec, type FormatHost } from '@free-photoeditor/core';
 import { docOf, isoBox } from './util';
 
 const asImageData = (b: Bitmap): ImageData => ({ data: b.data, width: b.width, height: b.height, colorSpace: 'srgb' }) as unknown as ImageData;
@@ -71,7 +71,7 @@ export function heifItems(b: Uint8Array): { id: number; type: string; data: Uint
  * every file offset after it moves by the same amount; the XMP itself goes in a new mdat box at the end. Files this
  * can't safely rewrite come back unchanged.
  */
-export function withHeifCredit(b: Uint8Array, credit: string = CREDIT): Uint8Array {
+export function withHeifCredit(b: Uint8Array, credit: string = CREDIT, dpi?: number): Uint8Array {
   const top = boxesIn(b, 0, b.length), meta = top.find((x) => x.type === 'meta');
   if (!meta || meta.body !== meta.start + 8 || top.some((x) => x.type === 'moov')) return b;
   const kids = boxesIn(b, meta.body + 4, meta.end);
@@ -83,7 +83,7 @@ export function withHeifCredit(b: Uint8Array, credit: string = CREDIT): Uint8Arr
   for (const e of boxesIn(b, iinf.body + 4 + cw, iinf.end)) if (e.type === 'infe' && b[e.body] >= 2) maxId = Math.max(maxId, rd(b, e.body + 4, b[e.body] === 2 ? 2 : 4));
   const id = maxId + 1, L = readIloc(b, iloc), irw = iref && b[iref.body] !== 0 ? 4 : 2;
   if (id > 0xffff || primary > 0xffff || !L.len || (!L.off && !L.base)) return b;
-  const xmp = utf8Encode(buildXmp(credit)), count: number[] = [], ref: number[] = [];
+  const xmp = utf8Encode(buildXmp(credit, dpi)), count: number[] = [], ref: number[] = [];
   wr(count, cw, rd(b, iinf.body + 4, cw) + 1);
   const newIinf = isoBox('iinf', concatBytes(b.subarray(iinf.body, iinf.body + 4), new Uint8Array(count), b.subarray(iinf.body + 4 + cw, iinf.end),
     isoBox('infe', concatBytes(new Uint8Array([2, 0, 0, 0, id >> 8, id & 255, 0, 0]), latin1Encode('mime\0application/rdf+xml\0')))));
@@ -109,9 +109,9 @@ export function withHeifCredit(b: Uint8Array, credit: string = CREDIT): Uint8Arr
   const delta = rebuild(buildIloc(0, 0)).length - (meta.end - meta.start);
   return concatBytes(b.subarray(0, meta.start), rebuild(buildIloc(delta, b.length + delta + 8)), b.subarray(meta.end), isoBox('mdat', xmp));
 }
-export async function encodeAvif(bmp: Bitmap, quality: number): Promise<Uint8Array> {
+export async function encodeAvif(bmp: Bitmap, quality: number, dpi?: number): Promise<Uint8Array> {
   const { default: encode } = await import('@jsquash/avif/encode.js');
-  return withHeifCredit(new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), speed: 6 })));
+  return withHeifCredit(new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), speed: 6 })), CREDIT, dpi);
 }
 export const avifCodec: FormatCodec = {
   async decode(bytes, host) {
@@ -120,7 +120,7 @@ export const avifCodec: FormatCodec = {
     const { default: decode } = await import('@jsquash/avif/decode.js');
     return one(fromImageData(await decode(bytes.slice().buffer), 'AVIF'));
   },
-  encode: async (doc, o) => encodeAvif(flatten(doc), o.quality),
+  encode: async (doc, o) => encodeAvif(flatten(doc), o.quality, o.dpi),
 };
 
 export interface IsoBoxInfo { type: string; start: number; end: number; }
@@ -137,16 +137,19 @@ export function isoBoxes(b: Uint8Array): IsoBoxInfo[] {
   return out;
 }
 const JXL_SIG = new Uint8Array([0, 0, 0, 12, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a]);
-/** Put the credit (XMP, in an "xml " box) into a JPEG XL file, wrapping a bare codestream in the container. */
-export function withJxlCredit(b: Uint8Array, credit: string = CREDIT): Uint8Array {
-  const xml = isoBox('xml ', utf8Encode(buildXmp(credit)));
-  if (b[0] === 0xff && b[1] === 0x0a) return concatBytes(JXL_SIG, isoBox('ftyp', concatBytes(latin1Encode('jxl '), new Uint8Array(4), latin1Encode('jxl '))), xml, isoBox('jxlc', b));
+/**
+ * Put the credit (XMP, in an "xml " box) and the print resolution (an "Exif" box, and tiff:XResolution in the XMP) into a
+ * JPEG XL file, wrapping a bare codestream in the container.
+ */
+export function withJxlCredit(b: Uint8Array, credit: string = CREDIT, dpi?: number): Uint8Array {
+  const meta = [isoBox('xml ', utf8Encode(buildXmp(credit, dpi))), ...(dpi ? [isoBox('Exif', concatBytes(new Uint8Array(4), buildExif(credit, dpi)))] : [])];
+  if (b[0] === 0xff && b[1] === 0x0a) return concatBytes(JXL_SIG, isoBox('ftyp', concatBytes(latin1Encode('jxl '), new Uint8Array(4), latin1Encode('jxl '))), ...meta, isoBox('jxlc', b));
   const ft = isoBoxes(b).find((x) => x.type === 'ftyp');
-  return ft ? concatBytes(b.subarray(0, ft.end), xml, b.subarray(ft.end)) : b;
+  return ft ? concatBytes(b.subarray(0, ft.end), ...meta, b.subarray(ft.end)) : b;
 }
-export async function encodeJxl(bmp: Bitmap, quality: number): Promise<Uint8Array> {
+export async function encodeJxl(bmp: Bitmap, quality: number, dpi?: number): Promise<Uint8Array> {
   const { default: encode } = await import('@jsquash/jxl/encode.js');
-  return withJxlCredit(new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), effort: 7 })));
+  return withJxlCredit(new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), effort: 7 })), CREDIT, dpi);
 }
 export const jxlCodec: FormatCodec = {
   async decode(bytes, host) {
@@ -155,7 +158,7 @@ export const jxlCodec: FormatCodec = {
     const { default: decode } = await import('@jsquash/jxl/decode.js');
     return one(fromImageData(await decode(bytes.slice().buffer), 'JPEG XL'));
   },
-  encode: async (doc, o) => encodeJxl(flatten(doc), o.quality),
+  encode: async (doc, o) => encodeJxl(flatten(doc), o.quality, o.dpi),
 };
 
 interface HeifImage {

@@ -115,6 +115,12 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     await p.waitForSelector('[data-testid="rhint"]:not([hidden])');
     expect((await p.textContent('[data-testid="rhint"]'))?.startsWith('Try this first: '), 'the one-line hint').toBe(true);
     expect(await p.$eval('[data-testid="rhint"]', (e) => e.getBoundingClientRect().height < 40), 'one line').toBe(true);
+    // It sits in the ribbon's own row, over no ruler and none of the picture area.
+    expect(await p.$eval('[data-testid="rhint"]', (e) => {
+      const a = e.getBoundingClientRect(), r = document.querySelector('[data-testid="ribbon-body"]')?.getBoundingClientRect();
+      const over = Array.from(document.querySelectorAll('.fpe-ruler, .fpe-stage')).some((x) => { const b = x.getBoundingClientRect(); return b.width > 0 && b.left < a.right && b.right > a.left && b.top < a.bottom && b.bottom > a.top; });
+      return !over && !!r && a.top >= r.top - 0.5 && a.bottom <= r.bottom + 0.5;
+    }), 'the tip covers nothing').toBe(true);
     expect(await p.$$eval('[data-testid="ribbon-body"] [data-cmd]', (els) => els.filter((e) => e.getAttribute('data-status') === 'ready').length * 2 >= els.length),
       'at least half the first-run tab is Ready').toBe(true);
     expect(await bodyShown(p)).toBe(true);
@@ -166,13 +172,16 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     step = 'planned';
     const p = await open();
     await rest(p);
-    const resting: string[] = [];
+    const resting: string[] = [], soon: string[] = [];
     for (const t of TABS) {
       await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
+      // A group with working commands shows only those; a group with none is off the resting ribbon: never a "Coming soon" tile.
+      if (await p.$$eval('[data-testid="ribbon-body"] .fpe-rsoon', (els) => els.length) || (await p.textContent('[data-testid="ribbon-body"]'))?.includes('Coming soon')) soon.push(t.plain);
       resting.push(...(await p.$$eval('[data-testid="ribbon-body"] [data-status="planned"], [data-testid="ribbon-body"] .fpe-tag',
         (els) => els.map((e) => e.getAttribute('data-testid') ?? e.textContent ?? ''))).map((x) => `${t.plain}: ${x}`));
     }
     expect(resting, 'Planned items in a resting row').toEqual([]);
+    expect(soon, 'a "Coming soon" tile on a resting tab').toEqual([]);
     // A command still Planned whose group has working ones (raw.filmic sat in Develop RAW's row until 13 Nov).
     const id = 'raw.filmic', home = homes().get(id);
     expect(BY_ID.get(id)?.status).not.toBe('ready');

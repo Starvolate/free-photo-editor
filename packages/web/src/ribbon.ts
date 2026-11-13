@@ -136,7 +136,11 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   };
   const press = (id: string, b: HTMLElement, planned: boolean): void => {
     if (b.getAttribute('aria-disabled') !== 'true') { closeList(); void host.run(id); } else if (!planned && !hasDoc()) { closeList(); askForPhoto(id); }
+    else if (b.dataset.why) { closeList(); host.toast(b.dataset.why); }
   };
+  /** A Ready layer effect that is off only because the active layer has no pixels of its own reads as normal; its tooltip and a click say what to do. */
+  const whyOff = (id: string, off: boolean): string | null =>
+    (off && ready(id) && hasDoc() && /^layer\.fx-/.test(id) ? `${plainOf(id)} goes on an unlocked picture layer: pick one in Layers.` : null);
 
   // ---------- the app bar: File, View, Help and Export sheets; the contextual chip; the document tabs ----------
   const sheetBtn = (plain: string, ids: string[], label = plain): HTMLButtonElement => {
@@ -205,16 +209,17 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     // A tile sits under a caption that already says what kind it is ("Editable light and colour"), so it drops " layer".
     const short = kind === 'tile' ? plain.replace(/ layer$/, '') : plain;
     const attrs = { type: 'button', class: 'fpe-r' + kind, 'data-cmd': id, 'data-testid': 'ri-' + id, 'data-status': planned ? 'planned' : 'ready',
-      'aria-disabled': planned || !host.enabled(id) ? 'true' : null, 'aria-label': `${plain}${pro && pro !== plain ? ' · ' + pro : ''}${planned ? ', planned' : ''}` };
+      'aria-disabled': planned || !host.enabled(id) ? 'true' : null, 'data-why': whyOff(id, planned || !host.enabled(id)), 'aria-label': `${plain}${pro && pro !== plain ? ' · ' + pro : ''}${planned ? ', planned' : ''}` };
     const b = kind === 'small'
       ? h('button', attrs, icon(iconFor(id, tab)), h('span', { class: 'fpe-rlabel' }, plain), planned ? tag() : null)
       : h('button', attrs, h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, short), planned ? tag() : null);
     b.addEventListener('click', () => press(id, b, planned));
     return b;
   };
-  /** A group at rest (ribbon-homes.ts restOf): its Ready commands, then one "More" at its end; with nothing Ready, one "Coming soon" tile. */
-  const groupEl = (t: Tab, g: Group): HTMLElement => {
+  /** A group at rest (ribbon-homes.ts restOf): its Ready commands, then one "More" at its end. With nothing Ready it stays off the resting ribbon; search finds each of its commands. */
+  const groupEl = (t: Tab, g: Group): HTMLElement | null => {
     const items = h('div', { class: 'fpe-ritems' }), r = restOf(g, ready);
+    if (!r.big.length && !r.shown.length && !r.more.length) return null;
     for (const id of r.big) items.append(cmd(id, 'big', t.plain));
     if (g.show === 'gallery' && r.shown.length) items.append(h('div', { class: 'fpe-rgal' }, ...r.shown.map((id) => cmd(id, 'tile', t.plain))));
     else if (r.shown.length) items.append(h('div', { class: 'fpe-rsmalls' }, ...r.shown.map((id) => cmd(id, 'small', t.plain))));
@@ -245,7 +250,10 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     return m;
   };
   /** The effect families (Blur, Sharpen, …) as one group of named buttons in three rows, so none repeats its caption. */
-  const familiesEl = (t: Tab, gs: Group[]): HTMLElement => {
+  const familiesEl = (t: Tab, all: Group[]): HTMLElement | null => {
+    // A family with nothing Ready stays off the resting ribbon, as a group does.
+    const gs = all.filter((g) => restOf(g, ready).more.length);
+    if (!gs.length) return null;
     const rows: HTMLElement[] = [];
     for (let r = 0, i = 0; r < 3 && i < gs.length; r++) {
       const n = Math.floor(gs.length / 3) + (r < gs.length % 3 ? 1 : 0);
@@ -300,10 +308,12 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     let fams: Group[] = [];
     for (const g of [...t.groups, null]) {
       if (g?.show === 'family') { fams.push(g); continue; }
-      if (fams.length) els.push(familiesEl(t, fams));
+      const f = fams.length ? familiesEl(t, fams) : null, e = g ? groupEl(t, g) : null;
+      if (f) els.push(f);
       fams = [];
-      if (g) els.push(groupEl(t, g));
+      if (e) els.push(e);
     }
+    if (!els.length) els.push(h('p', { class: 'fpe-rnone' }, 'Nothing on this tab works yet. Search lists what is coming.'));
     body.replaceChildren(...els);
     body.dataset.tab = slug(t.plain);
     body.hidden = false;
@@ -358,6 +368,7 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   let hadDoc = hasDoc();
   const endCoach = (): void => {
     coach.hidden = true;
+    root.removeAttribute('data-coaching');
     root.querySelector('[data-coach]')?.removeAttribute('data-coach');
     document.removeEventListener('pointerdown', endCoach, true);
     document.removeEventListener('keydown', endCoach, true);
@@ -367,13 +378,17 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     const b = body.querySelector<HTMLElement>('[data-cmd][data-status="ready"]:not([aria-disabled="true"])');
     if (!b) return;
     const r = BY_ID.get(b.dataset.cmd as string);
-    coach.textContent = `Try this first: ${plainOf(b.dataset.cmd as string)}${r?.help ? ' · ' + r.help : ''}`;
+    // One quiet line in the ribbon's own caption row (the captions step aside while it shows), so it covers nothing.
+    const cap = body.querySelector<HTMLElement>('.fpe-rcap');
+    if (!cap) return;
+    coach.replaceChildren(icon('idea'), h('span', { class: 'fpe-rcoach-text' }, `Try this first: ${plainOf(b.dataset.cmd as string)}${r?.help ? ' · ' + r.help : ''}`),
+      h('button', { type: 'button', class: 'fpe-rcoach-x', 'aria-label': 'Hide this tip', 'data-testid': 'rhint-close', onclick: endCoach }, icon('close')));
     root.append(coach);
     coach.hidden = false;
     b.setAttribute('data-coach', '');
-    const rr = root.getBoundingClientRect(), br = b.getBoundingClientRect();
-    coach.style.top = br.bottom - rr.top + 8 + 'px';
-    coach.style.left = Math.min(Math.max(8, br.left - rr.left), Math.max(8, rr.width - coach.offsetWidth - 8)) + 'px';
+    root.setAttribute('data-coaching', '');
+    const rr = root.getBoundingClientRect(), cr = cap.getBoundingClientRect(), wr = body.getBoundingClientRect();
+    Object.assign(coach.style, { top: cr.top - rr.top + 'px', height: cr.height + 'px', left: wr.left - rr.left + 8 + 'px', width: wr.width - 16 + 'px' });
     document.addEventListener('pointerdown', endCoach, true);
     document.addEventListener('keydown', endCoach, true);
     setTimeout(endCoach, 15000);
@@ -429,7 +444,7 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     const rows = [...ids, ...coming].map((id) => {
       const r = BY_ID.get(id), planned = !ready(id), off = planned || !host.enabled(id);
       const b = h('button', { type: 'button', role: 'menuitem', class: 'fpe-rrow', 'data-cmd': id, 'data-testid': 'ri-' + id, 'data-status': planned ? 'planned' : 'ready',
-        'aria-disabled': off ? 'true' : null },
+        'aria-disabled': off ? 'true' : null, 'data-why': whyOff(id, off) },
       icon(iconFor(id)), h('span', { class: 'fpe-names fpe-rline' }, h('span', { class: 'fpe-plain' }, plainOf(id)), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, ' · ' + r.pro) : null),
       planned ? tag() : null, r?.key ? h('kbd', {}, host.keyText(r.key)) : null);
       b.addEventListener('click', () => press(id, b, planned));

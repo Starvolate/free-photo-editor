@@ -31,8 +31,8 @@ editor adds the credit to the finished file as an XMP item.
 
 ## On-device AI (`packages/ai`)
 
-The AI commands load only when one is first used: Remove an object, Fill from the surroundings and Make it bigger (Select
-the main subject and Remove the background are Planned). They run on the person's own device with ONNX Runtime Web on
+The AI commands load only when one is first used: Select an object, Select the main subject, Remove the background,
+Remove an object, Fill from the surroundings and Make it bigger. They run on the person's own device with ONNX Runtime Web on
 WebAssembly, in a Web Worker. Before the first download the editor says how much comes down. The engine file and each
 model then download once from the public hosts below, are checked by their exact size and SHA-256
 (`packages/ai/src/models.ts` pins every file to a version or a commit), and are kept in the browser (IndexedDB), so the
@@ -46,11 +46,12 @@ commercial use and is GPLv3-compatible, so the AGPL-3.0 editor may use these par
 | ONNX Runtime Web 1.31.1, the engine: `ort-wasm-simd-threaded.wasm` (14,848,852 bytes) | Downloaded once from cdn.jsdelivr.net (npm `onnxruntime-web@1.31.1`), which sends it brotli-compressed: 3,195,270 bytes | The same MIT licence | The compiled engine the models run on |
 | MI-GAN, ONNX pipeline v2 | Downloaded once from huggingface.co/andraniksargsyan/migan at commit 406830d0fa60, `migan_pipeline_v2.onnx` (28,079,181 bytes) | "MIT License / Copyright (c) 2024 Picsart AI Research (PAIR)" (github.com/Picsart-AI-Research/MI-GAN, `LICENSE`) | Fills in what you remove: the Remove tool, Fill from the surroundings |
 | Real-ESRGAN general x4v3 | Downloaded once from huggingface.co/CoderViking/realesr-general-x4v3-onnx at commit c6a971706797, `realesr-general-x4v3.onnx` (4,866,417 bytes) | "BSD 3-Clause License / Copyright (c) 2021, Xintao Wang" (github.com/xinntao/Real-ESRGAN, `LICENSE`) | Makes pictures twice or four times as big |
-| U²-Net small (u2netp) | Downloaded only by Select the main subject and Remove the background. Both are Planned, so today only the browser test downloads it, through the automation hook `fpe.aiCmd`: huggingface.co/BritishWerewolf/U-2-Netp at commit 7112208dbac3, `onnx/model.onnx` (4,574,861 bytes) | "Apache License, Version 2.0, January 2004" (github.com/xuebinqin/U-2-Net, `LICENSE`) | Finds the main subject |
+| U²-Net small (u2netp) | Downloaded once, on the first use of Select the main subject or Remove the background, from huggingface.co/BritishWerewolf/U-2-Netp at commit 7112208dbac3, `onnx/model.onnx` (4,574,861 bytes) | "Apache License, Version 2.0, January 2004" (github.com/xuebinqin/U-2-Net, `LICENSE`) | Finds the main subject |
+| MobileSAM: the image encoder and the mask decoder | Downloaded once, on the first use of Select an object, Select the main subject or Remove the background, from huggingface.co/Acly/MobileSAM at commit 0d3b403339b4: `mobile_sam_image_encoder.onnx` (28,157,093 bytes) and `sam_mask_decoder_multi.onnx` (16,496,559 bytes) | "Apache License, Version 2.0, January 2004" (github.com/ChaoningZhang/MobileSAM, `LICENSE`); MobileSAM is built on Meta AI's Segment Anything, under the same licence (github.com/facebookresearch/segment-anything, `LICENSE`) | Selects the thing you tap or box, and finds all of the main subject |
 
 ONNX Runtime's loader and engine are built from ONNX Runtime and the open-source parts it lists in its own notices file,
 `ThirdPartyNotices.txt` at tag v1.31.1 (github.com/microsoft/onnxruntime/blob/v1.31.1/ThirdPartyNotices.txt). Using the
-graphics chip (WebGPU) is Planned and not shipped, so its 28.7 MB engine file is never downloaded. The U²-Net and
-Real-ESRGAN files are ONNX conversions of the authors' published weights, made and hosted by the Hugging Face accounts
+graphics chip (WebGPU) is Planned and not shipped, so its 28.7 MB engine file is never downloaded. The U²-Net, MobileSAM
+and Real-ESRGAN files are ONNX conversions of the authors' published weights, made and hosted by the Hugging Face accounts
 named; the MI-GAN file is published by one of its authors. The licence that applies to each is the authors' licence
 quoted above. Apache-2.0, MIT and BSD-3-Clause are all GPLv3-compatible.

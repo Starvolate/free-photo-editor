@@ -35,6 +35,10 @@ describe('prompts', () => {
     const a = segPromptFeeds('sam-onnx', { points: [{ x: 100, y: 50, add: true }] }, 640, 480);
     expect(Array.from(a.point_labels.data as Float32Array)).toEqual([1, -1]);
     expect(Array.from(a.orig_im_size.data as Float32Array)).toEqual([480, 640]);
+    // A 12 MP photo: the masks come back at 1024 x 768, not 4000 x 3000 (about 190 MB per tap), in the taps' own space.
+    const big = segPromptFeeds('sam-onnx', { points: [{ x: 2000, y: 1500, add: true }] }, 4000, 3000);
+    expect(Array.from(big.orig_im_size.data as Float32Array)).toEqual([768, 1024]);
+    expect(Array.from(big.point_coords.data as Float32Array).slice(0, 2)).toEqual([512, 384]);
     const b = segPromptFeeds('efficientsam', { points: [], box: { x: 10, y: 20, w: 30, h: 40 } }, 640, 480);
     expect(Array.from(b.batched_point_coords.data as Float32Array)).toEqual([10, 20, 40, 60]);
     expect(Array.from(b.batched_point_labels.data as Float32Array)).toEqual([2, 3]);

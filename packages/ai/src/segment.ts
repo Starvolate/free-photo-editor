@@ -85,7 +85,9 @@ export function segPromptFeeds(layout: SegLayout, prompt: SegPrompt, w: number, 
     return {
       point_coords: { type: 'float32', data: xy(all), dims: [1, n, 2] }, point_labels: { type: 'float32', data: f32(lab(all)), dims: [1, n] },
       mask_input: { type: 'float32', data: new Float32Array(256 * 256), dims: [1, 1, 256, 256] }, has_mask_input: { type: 'float32', data: f32([0]), dims: [1] },
-      orig_im_size: { type: 'float32', data: f32([h, w]), dims: [2] },
+      // The decoder enlarges its four masks to this size, so a big photo is asked at the model's own scale (long side 1024):
+      // the taps are already in that space, and segMask maps any mask size back to the picture.
+      orig_im_size: { type: 'float32', data: f32(Math.max(w, h) > SEG_SIZE ? [f.rh, f.rw] : [h, w]), dims: [2] },
     };
   }
   const all = [...pts, ...corners], n = all.length;

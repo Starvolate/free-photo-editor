@@ -5,7 +5,7 @@
  * this device: the engine and each model download once from their public hosts and are kept in the browser, and the
  * photo never leaves the device.
  */
-import { ENGINE, MODELS, type ModelId } from './models';
+import { ENGINE, MODELS, type FileDef, type ModelId } from './models';
 import type { Box, Rgba } from './process';
 import type { SegPick, SegPrompt } from './segment';
 import type { FromWorker, Progress, ToWorker } from './protocol';
@@ -22,12 +22,19 @@ export function cannotRun(): string | null {
   return typeof WebAssembly === 'object' && typeof Worker === 'function' && typeof fetch === 'function' ? null
     : "This browser can't run the AI tools. Try a recent Chrome, Edge, Firefox or Safari.";
 }
-/** About how many bytes the first use of `model` downloads (0 when the engine and the model are already on this device). */
-export async function downloadSize(model: ModelId, loaded = false): Promise<number> {
+/**
+ * About how many bytes the first use of `model` (or of several models together) downloads: 0 when the engine and the
+ * models are already on this device. A file two models share, such as the engine, counts once.
+ */
+export async function downloadSize(model: ModelId | ModelId[], loaded = false): Promise<number> {
   if (loaded) return 0;
+  const files = new Map<string, FileDef>();
+  for (const id of Array.isArray(model) ? model : [model]) {
+    const m = MODELS[id];
+    for (const f of [ENGINE, m, ...(m.decoder ? [m.decoder] : [])]) files.set(f.url, f);
+  }
   let n = 0;
-  const m = MODELS[model];
-  for (const f of [ENGINE, m, ...(m.decoder ? [m.decoder] : [])]) if (!(await hasFile(f.url))) n += f.transfer;
+  for (const f of files.values()) if (!(await hasFile(f.url))) n += f.transfer;
   return n;
 }
 /** Megabytes in plain words: one decimal under 10. */

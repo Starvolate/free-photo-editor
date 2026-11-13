@@ -9,7 +9,7 @@ import { COLOR_FAMILIES, GRADIENT_MAPS, PHOTO_FILTERS, SOURCE_URL, type JobOp } 
 import type { Editor } from './app';
 
 export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom'
-  | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
+  | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'object-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
   | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
   | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
@@ -225,6 +225,7 @@ export const TOOLS: Record<string, ToolId> = {
 /** W3 tools: their pointer handling, options bars and drawing live in toolkit.ts, which loads on first use. */
 export const W3_TOOLS: Record<string, ToolId> = {
   'tool.lasso': 'lasso', 'tool.lasso-poly': 'lasso-poly', 'tool.magic-wand': 'wand', 'tool.quick-select': 'quick-select', 'tool.gradient': 'gradient',
+  'tool.object-select': 'object-select',
   'tool.bucket': 'bucket', 'tool.magic-eraser': 'magic-eraser', 'tool.bg-eraser': 'bg-eraser', 'tool.color-replace': 'color-replace',
   'tool.history-brush': 'history-brush', 'tool.clone': 'clone', 'tool.heal': 'heal', 'tool.spot-heal': 'spot-heal', 'tool.remove': 'remove', 'tool.patch': 'patch',
   'tool.red-eye': 'red-eye', 'tool.dodge': 'dodge', 'tool.burn': 'burn', 'tool.sponge': 'sponge', 'tool.blur': 'blur', 'tool.sharpen': 'sharpen',
@@ -358,9 +359,8 @@ for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.con
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 /** W11 on-device AI: ai.ts, loaded on first use. */
 const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);
-// Select the main subject and Remove the background are Planned until a subject model passes on real photos. Their code
-// stays in ai.ts, and the browser test runs it through the automation hook (fpe.aiCmd).
-for (const id of ['image.upscale-2x', 'image.upscale-4x']) HANDLERS[id] = ai(id);
+// Select the main subject and Remove the background follow model check round 4's rule (u2netp, then MobileSAM).
+for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'image.upscale-4x']) HANDLERS[id] = ai(id);
 HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));

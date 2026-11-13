@@ -549,7 +549,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | Tools › Retouch | Retouch & remove › Remove · big button | Ready | 11 |  |
 | tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 |  |
 | tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 |  |
-| tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | Tools › Retouch | Retouch & remove › Remove · More list | Planned | 11 |  |
+| tool.smart-move | Move and fill the gap | Fill-aware move | Move something and fill the hole it leaves. | move object, content-aware move | Tools › Retouch | Retouch & remove › Remove · More list | Planned | 11 |  |
 | tool.red-eye | Fix red eyes | Red eye | Click a red eye to make it dark again. | red eye, flash eyes | Tools › Retouch | Retouch & remove › Repair · More list | Ready | W3 |  |
 | tool.brush | Paint brush | Brush | Paint with soft or hard edges; pens set the size by pressure. | paint, draw, brush, colour in | Tools › Paint | Paint & draw › Paint and erase · big button | Ready | 1 | B |
 | tool.pencil | Pencil | Pencil | Hard-edged lines, good for pixel art. | pixel art, hard line, sketch | Tools › Paint | Paint & draw › Paint and erase · small button | Ready | W1 |  |

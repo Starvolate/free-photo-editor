@@ -474,7 +474,7 @@ tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it bl
 tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | R | 11
 tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | R | W3
 tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | R | W3
-tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | P | 11
+tool.smart-move | Move and fill the gap | Fill-aware move | Move something and fill the hole it leaves. | move object, content-aware move | P | 11
 tool.red-eye | Fix red eyes | Red eye | Click a red eye to make it dark again. | red eye, flash eyes | R | W3
 @Tools > Paint = Paint | Brush | Paint and draw.
 tool.brush | Paint brush | Brush | Paint with soft or hard edges; pens set the size by pressure. | paint, draw, brush, colour in | R | 1 | B

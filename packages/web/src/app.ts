@@ -1604,6 +1604,8 @@ export class Editor {
     this.cardsLoad ??= import('./dockcards').then((m) => {
       this.cards = m;
       this.renderLearn();
+      this.renderLayers();
+      this.renderHistory();
       if (this.stat.hint) this.renderStatus();
       this.queueNav();
     }, () => { this.cardsLoad = null; });
@@ -2195,7 +2197,7 @@ export class Editor {
       let clipped = 0;
       for (let s = siblingAbove(d.layers, l.id); s?.clip; s = siblingAbove(d.layers, s.id)) clipped++;
       const n = folder ? subtreeOf(d.layers, l.id).length - 1 : 0, nl = (k: number): string => `${k} layer${k === 1 ? '' : 's'}`;
-      const sub = folder ? `Folder, ${open ? 'open' : 'closed'} · ${nl(n)}` : l.clip ? 'Clipped to the layer below' : clipped ? `${nl(clipped)} clipped to it` : '';
+      const sub = folder ? `Folder, ${open ? 'open' : 'closed'} · ${nl(n)}` : this.cards?.layerSub(l) ?? (l.clip ? 'Clipped to the layer below' : clipped ? `${nl(clipped)} clipped to it` : '');
       const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name' + (sub ? ' fpe-layer-two' : ''),
         'aria-label': `${folder ? 'Folder' : 'Layer'} ${l.name}${folder ? `, ${open ? 'open' : 'closed'}, ${nl(n)} inside` : ''}${l.clip ? ', clipped to the layer below' : ''}${clipped ? `, ${nl(clipped)} clipped to it` : ''}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
         'data-help-title': folder ? 'Choose this folder' : 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
@@ -2216,6 +2218,7 @@ export class Editor {
         ...this.layerThumbs(l, on),
         nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
+      if (l.fx && this.cards) list.append(...this.cards.fxRows(l, up.length, (c) => this.pushCmd(c, true)));
     }
     const a = activeLayer(d);
     if (a) {
@@ -2399,7 +2402,7 @@ export class Editor {
     const { labels, index } = this.history.entries(), ids = [0, ...this.history.stepIds()], m = this.marks.get(this.history) ?? 0, mark = ids.includes(m) ? m : 0;
     ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', { class: 'fpe-hist-row' },
       h('button', { type: 'button', class: 'fpe-hist-item', 'aria-current': k === index ? 'step' : null, 'data-undone': k > index ? '' : null, 'data-testid': 'history-step',
-        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, label),
+        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, this.cards?.histItem(label) ?? label),
       h('button', { type: 'button', class: 'fpe-hist-mark', 'aria-pressed': ids[k] === mark ? 'true' : 'false', 'aria-label': `Paint from here: ${label}`, 'data-testid': 'history-mark',
         'data-help-title': 'Paint from here · History brush source', 'data-help': 'The history brush paints back the step marked with this brush. Pick the brush beside another step to paint from that one.',
         onclick: () => this.markStep(ids[k], label) }, icon('brush')))));

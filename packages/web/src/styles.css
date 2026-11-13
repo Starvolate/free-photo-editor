@@ -370,8 +370,24 @@
 .fpe[data-layout=phone] .fpe-jobs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .fpe[data-layout=phone] .fpe-job{min-height:88px;padding:10px}
 @media (prefers-reduced-motion:reduce){.fpe [data-pulse]{animation:none;box-shadow:0 0 0 3px var(--accent)}.fpe *{transition:none!important}}
+
+/* W3 tools: options-bar fields, text panels, the text box */
+.fpe-w3-field{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fpe-w3-label{font-size:12px;opacity:.85}
+.fpe-w3-num{width:64px;min-height:32px}
+.fpe-w3-panel{gap:10px}
+.fpe-w3-panel .fpe-w3-field{justify-content:space-between;width:100%}
+.fpe-textedit{box-sizing:content-box}
 /* W2: the custom filter's number grid and the dialog's before/after switch */
 .fpe-kernel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:2px 0 6px}
 .fpe-kernel input{width:100%;min-width:0;min-height:32px;padding:4px 2px;text-align:center;font:inherit;color:var(--text);background:var(--input);border:1px solid var(--line);border-radius:6px}
 .fpe-actions .fpe-before{margin-right:auto}
 .fpe-before[aria-pressed=true]{background:var(--accent-bg);border-color:var(--accent)}
+/* W3b: the options bar keeps every control whole and scrolls sideways when too long, with a soft fade on the side that has more */
+.fpe-options>:not(.fpe-spacer){flex-shrink:0}
+.fpe-options[data-more=right]{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.fpe-options[data-more=left]{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent)}
+.fpe-options[data-more=both]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent)}
+/* W3b: a dialog moves by its title bar */
+.fpe-dlg-head{touch-action:none;cursor:move;user-select:none}
+.fpe-dlg-head button{cursor:pointer}

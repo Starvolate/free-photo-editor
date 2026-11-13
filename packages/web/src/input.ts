@@ -8,7 +8,7 @@
  */
 import type { View } from './renderer';
 
-export interface PointerInfo { type: string; pressure: number; tiltX: number; tiltY: number; shift: boolean; alt: boolean; }
+export interface PointerInfo { type: string; pressure: number; tiltX: number; tiltY: number; shift: boolean; alt: boolean; ctrl?: boolean; }
 export interface Pt { x: number; y: number; }
 export interface InputHost {
   toDoc(sx: number, sy: number): Pt;
@@ -72,7 +72,7 @@ export class CanvasInput {
   }
   private info(e: PointerEvent): PointerInfo {
     const pen = e.pointerType === 'pen';
-    return { type: e.pointerType, pressure: pen ? e.pressure || 0.5 : 1, tiltX: pen ? e.tiltX || 0 : 0, tiltY: pen ? e.tiltY || 0 : 0, shift: e.shiftKey, alt: e.altKey };
+    return { type: e.pointerType, pressure: pen ? e.pressure || 0.5 : 1, tiltX: pen ? e.tiltX || 0 : 0, tiltY: pen ? e.tiltY || 0 : 0, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey || e.metaKey };
   }
   private touches(): Ptr[] { return [...this.ptrs.values()].filter((p) => p.type === 'touch'); }
   private startTool(id: number, sx: number, sy: number, i: PointerInfo): void {

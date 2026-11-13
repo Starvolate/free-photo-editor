@@ -27,6 +27,9 @@ import { NOTICES } from './notices';
 import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
+import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
+import { TK_TOOLS } from './commands';
+import type { ToolHost, ToolKit } from './toolkit';
 
 type Layout = 'phone' | 'tablet' | 'desktop';
 type Answer = 'primary' | 'secondary' | 'cancel';
@@ -106,8 +109,8 @@ const GROUP_ICON: Record<string, string> = {
 };
 const GROUPS: { id: string; panels: string[] }[] = [
   { id: 'nav', panels: ['navigator', 'info'] }, { id: 'color', panels: ['color', 'swatches'] },
-  { id: 'props', panels: ['properties', 'adjustments', 'history'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
-const MORE_PANELS = ['brushes', 'character', 'paragraph', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
+  { id: 'props', panels: ['properties', 'adjustments', 'history', 'character', 'paragraph'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
+const MORE_PANELS = ['brushes', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
 const SWATCHES = ['#000000', '#3a3a3a', '#7a7a7a', '#b8b8b8', '#ffffff', '#e4572e', '#f3a712', '#f9e04b', '#9bc53d', '#2e9e5b', '#17bebb', '#2d7dd2',
   '#3d348b', '#8e44ad', '#d81e5b', '#ff8fab', '#7f5539', '#b08968', '#ddb892', '#ede0d4', '#0b132b', '#1c2541', '#3a506b', '#5bc0be', '#6fffe9',
   '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#bdb2ff', '#590d22', '#a4133c', '#ff4d6d', '#ffb3c1', '#264653', '#e9c46a'];
@@ -269,6 +272,12 @@ export class Editor {
   private ro: ResizeObserver;
   private stageRo: ResizeObserver;
   private off: (() => void)[] = [];
+  tk: ToolKit | null = null;
+  private tkLoad: Promise<ToolKit> | null = null;
+  private tkDown = false;
+  autoPick = false;
+  private olSel: Selection | null = null;
+  private olSegs: Float32Array | null = null;
 
   constructor(host: HTMLElement, opts: MountOptions) {
     this.opts = opts;
@@ -366,6 +375,7 @@ export class Editor {
       (this.busyEl = h('div', { class: 'fpe-busy', role: 'status', hidden: true }, h('span', { class: 'fpe-spinner', 'aria-hidden': 'true' }), 'Working…')),
       search, this.undoBtn, this.redoBtn, exp);
     this.optionsBar = h('div', { class: 'fpe-options', role: 'toolbar', 'aria-label': 'Tool options', 'data-testid': 'options' });
+    this.optionsBar.addEventListener('scroll', () => this.cueOptions(), { passive: true });
     this.toolsBar = h('div', { class: 'fpe-tools', role: 'toolbar', 'aria-label': 'Tools', 'data-testid': 'tools' });
     this.buildTools();
     this.tabsEl = h('div', { class: 'fpe-tabs', role: 'tablist', 'aria-label': 'Open pictures', 'data-testid': 'doc-tabs' });
@@ -639,7 +649,7 @@ export class Editor {
     const chips = h('div', { class: 'fpe-chips-col' }, h('div', { class: 'fpe-chip-pair' }, bg, fg),
       h('div', { class: 'fpe-chip-btns' }, this.cmdBtn('tool.swap-colors', 'swap', null, { class: 'fpe-btn fpe-icon-btn fpe-mini' }),
         this.cmdBtn('tool.default-colors', 'contrast', null, { class: 'fpe-btn fpe-icon-btn fpe-mini' })));
-    const qm = h('button', { type: 'button', class: 'fpe-tool fpe-tool-planned', 'data-cmd': 'select.quick-mask', 'aria-disabled': 'true', 'aria-label': 'Paint a selection (Quick mask), planned', 'data-testid': 'tool-quick-mask' }, icon('scan'));
+    const qm = this.cmdBtn('select.quick-mask', 'scan', null, { class: 'fpe-tool', 'aria-pressed': 'false', 'data-testid': 'tool-quick-mask' });
     const sm = this.cmdBtn('view.screen-cycle', 'fit', null, { class: 'fpe-tool', 'data-testid': 'tool-screen-mode' });
     const phone = h('div', { class: 'fpe-phone-panels' },
       iconButton('layers', 'Layers', { 'data-testid': 'btn-layers', 'aria-expanded': 'false', onclick: () => this.togglePhonePanel('layers') }),
@@ -791,6 +801,10 @@ export class Editor {
     } else if (pid === 'info') {
       this.infoBody = h('dl', { class: 'fpe-info', 'data-testid': 'info' });
       b.append(this.infoBody);
+    }
+    if (pid === 'character' || pid === 'paragraph') {
+      b.append(h('p', { class: 'fpe-note' }, 'Getting the text settings ready…'));
+      void this.toolkit().then((tk) => tk.fillPanel(pid, b));
     }
     this.bodies.set(pid, b);
     return b;
@@ -1195,6 +1209,23 @@ export class Editor {
     this.queueNav();
   }
 
+  /** Keeps a picture rectangle, plus a margin of screen pixels round it, inside the picture area and clear of the zoom buttons. */
+  fitBox(r: { x: number; y: number; w: number; h: number }, m: number): void {
+    const v = this.view, zb = this.stage.querySelector('.fpe-zoom')?.getBoundingClientRect().height ?? 0;
+    const W = this.stage.clientWidth, H = this.stage.clientHeight - (zb ? zb + 10 : 0);
+    const z = clamp(Math.min((W - m * 2) / Math.max(1, r.w), (H - m * 2) / Math.max(1, r.h), v.zoom), 0.01, 16);
+    // The smallest move that brings the box and its margin into view; centred on the box only when the view had to zoom out.
+    const shift = (pan: number, a: number, size: number, room: number): number => {
+      if (z !== v.zoom) return Math.round(room / 2 - (a + size / 2) * z);
+      const lo = pan + a * z, hi = lo + size * z;
+      return Math.round(lo < m ? pan + (m - lo) : hi > room - m ? pan - (hi - (room - m)) : pan);
+    };
+    const panX = shift(v.panX, r.x, r.w, W), panY = shift(v.panY, r.y, r.h, H);
+    if (z === v.zoom && panX === v.panX && panY === v.panY) return;
+    this.fitted = false;
+    this.setView({ zoom: z, panX, panY });
+  }
+
   // ---------- rendering ----------
   private markDirty(r: Rect | null): void {
     if (!r || !this.doc) return;
@@ -1220,9 +1251,11 @@ export class Editor {
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; }
     if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, compositeDoc(d, r)); }
     const t = this.tool, z = this.view.zoom, o = t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush;
-    const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil') ? { x: this.hoverPt.x, y: this.hoverPt.y, r: (o.size / 2) * z } : null;
+    const tks = this.tk?.cursorSize(t) ?? null;
+    const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
-      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides() });
+      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -1272,8 +1305,8 @@ export class Editor {
     s.size.textContent = d ? `${d.width} × ${d.height} px` : 'No picture open';
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
-    const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? '');
-    s.hint.textContent = r ? `${r.plain}: ${r.help}` : '';
+    const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
+    s.hint.textContent = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '';
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -1321,12 +1354,53 @@ export class Editor {
     ctx.strokeRect(ox + (-v.panX / v.zoom) * k, oy + (-v.panY / v.zoom) * k, (this.stage.clientWidth / v.zoom) * k, (this.stage.clientHeight / v.zoom) * k);
   }
 
+  // ---------- W3 tools (toolkit.ts, loaded on first use) ----------
+  toolkit(): Promise<ToolKit> {
+    return (this.tkLoad ??= import('./toolkit').then((m) => {
+      this.tk = m.createToolKit(this.toolHost());
+      this.renderOptions();
+      this.renderPanels();
+      this.requestRender();
+      return this.tk;
+    }));
+  }
+  private toolHost(): ToolHost {
+    return {
+      root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
+      fg: () => this.brush.color, bg: () => this.bgColor, push: (c, all) => this.pushCmd(c, all), dirty: (r) => { this.markDirty(r); this.requestRender(); },
+      all: () => { this.markAll(); this.requestRender(); }, render: () => this.requestRender(), selectionChanged: () => this.afterSelection(),
+      refreshOptions: () => this.renderOptions(), toast: (m) => this.toast(m), editable: (l, px) => this.editable(l, px), setTool: (t) => this.setTool(t),
+      tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
+      slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
+      forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
+      paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
+    };
+  }
+  private toolSheet(id: string, title: string, body: HTMLElement): void {
+    if (!this.sheets.has(id)) { this.makeSheet(id, title, body); this.root.insertBefore(this.sheets.get(id) as HTMLElement, this.scrim); }
+    const t = this.sheets.get(id)?.querySelector('.fpe-sheet-title');
+    if (t) t.textContent = title;
+    this.openModal(id);
+  }
+  private showPanelTab(pid: string): void {
+    if (this.layout === 'phone') { this.setDock(this.dockState === 'closed' ? 'half' : this.dockState, pid); return; }
+    const g = GROUPS.find((x) => x.panels.includes(pid));
+    if (g) this.activateTab(g.id, pid);
+  }
+  private outline(s: Selection): Float32Array {
+    if (this.olSel !== s) { this.olSel = s; this.olSegs = w3Outline(s); }
+    return this.olSegs as Float32Array;
+  }
+
   // ---------- tools ----------
   setTool(t: ToolId): void {
     if (this.stroke || this.drag) return;
     if (t !== 'crop') { this.crop = null; this.ratio = 0; }
+    const prevTool = this.tool;
     this.tool = t;
     this.root.dataset.tool = t;
+    if (prevTool !== t) this.tk?.toolChanged(prevTool, t);
+    if (TK_TOOLS.has(t) && !this.tk) void this.toolkit();
     const id = Object.keys(TOOLS).find((k) => TOOLS[k] === t);
     const r = id ? BY_ID.get(id) : undefined;
     if (r && id) {
@@ -1350,7 +1424,11 @@ export class Editor {
     const o = this.paintOpts(), pr = clamp(i.pressure, 0.05, 1), tilt = Math.min(1, Math.hypot(i.tiltX, i.tiltY) / 60);
     return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt) };
   }
-  private editable(l: Layer): boolean {
+  private editable(l: Layer, pixels = true): boolean {
+    if (pixels && l.content && !l.locked) {
+      this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: change it with its own tool, or choose Layer › Turn into plain pixels to paint on it.`);
+      return false;
+    }
     if (!l.locked) return true;
     this.toast(`"${l.name}" is locked. Unlock it in the Layers panel to change it.`);
     return false;
@@ -1362,6 +1440,12 @@ export class Editor {
     if (!d) return;
     if (this.session && this.handleStart(p)) return;
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
+    if (this.tk?.claims(this.tool) || TK_TOOLS.has(this.tool)) {
+      if (!this.tk) { this.toast('Getting the tool ready…'); void this.toolkit(); return; }
+      this.tkDown = true;
+      this.tk.start(p, i);
+      return;
+    }
     const t: ToolId = i.alt && (this.tool === 'brush' || this.tool === 'pencil') ? 'eyedropper' : this.tool;
     if (t === 'hand') { this.drag = { kind: 'pan', start: p }; return; }
     if (t === 'zoom') { this.fitted = false; this.zoomAt(i.alt ? 0.8 : 1.25, p.x * this.view.zoom + this.view.panX, p.y * this.view.zoom + this.view.panY); return; }
@@ -1375,9 +1459,14 @@ export class Editor {
       this.flushStroke();
       return;
     }
-    if (t === 'move') { const l = activeLayer(d); if (l && this.editable(l)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id }; return; }
+    if (t === 'move') {
+      if (this.autoPick) { const hit = w3LayerAt(d, p.x, p.y); if (hit && hit.id !== d.activeId) this.selectLayer(hit.id); }
+      const l = activeLayer(d);
+      if (l && this.editable(l, false)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id };
+      return;
+    }
     if (t === 'eyedropper') { this.drag = { kind: 'pick', start: p }; this.pick(p); return; }
-    this.drag = { kind: t, start: this.clampPt(p) };
+    this.drag = { kind: t as 'select' | 'crop', start: this.clampPt(p) };
     if (t === 'crop') this.crop = null; else { d.selection = null; this.hole = null; }
     this.updateAnts();
     this.requestRender();
@@ -1425,6 +1514,7 @@ export class Editor {
   private toolMove(p: Pt, i: PointerInfo): void {
     const d = this.doc;
     if (!d) return;
+    if (this.tkDown) { this.tk?.move(p, i); return; }
     if (this.hdrag) { this.handleMove(p); return; }
     if (this.stroke) { this.stroke.add(this.strokePoint(p, i)); this.flushStroke(); return; }
     const g = this.drag;
@@ -1458,6 +1548,7 @@ export class Editor {
     this.requestRender();
   }
   private toolEnd(p: Pt, i: PointerInfo): void {
+    if (this.tkDown) { this.tkDown = false; this.tk?.end(p, i); return; }
     const d = this.doc;
     if (this.hdrag) { this.hdrag = null; this.requestRender(); return; }
     if (this.stroke) {
@@ -1480,6 +1571,7 @@ export class Editor {
     this.requestRender();
   }
   private toolCancel(): void {
+    if (this.tkDown) { this.tkDown = false; this.tk?.cancel(); }
     this.hdrag = null;
     if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.markDirty(r); this.requestRender(); }
     const g = this.drag;
@@ -1513,7 +1605,9 @@ export class Editor {
     const o = this.optionsBar, t = this.tool, d = this.doc;
     o.replaceChildren();
     const id = Object.keys(TOOLS).find((k) => TOOLS[k] === t), r = id ? BY_ID.get(id) : undefined;
-    if (r) o.append(h('span', { class: 'fpe-opt-tool', 'data-tipcmd': r.id }, icon(GROUP_ICON[r.place] ?? 'square'), this.names(r.plain, r.pro)));
+    const act = this.tk?.activity() ?? null;
+    if (act) o.append(h('span', { class: 'fpe-opt-tool', 'data-testid': 'opt-tool', 'data-help-title': `${act.plain} · ${act.pro}`, 'data-help': act.help }, icon('move'), this.names(act.plain, act.pro)));
+    else if (r) o.append(h('span', { class: 'fpe-opt-tool', 'data-testid': 'opt-tool', 'data-tipcmd': r.id }, icon(GROUP_ICON[r.place] ?? 'square'), this.names(r.plain, r.pro)));
     const hint = (s: string): HTMLElement => h('span', { class: 'fpe-hint' }, s);
     const btn = (cmd: string, label: string, testid?: string): HTMLElement => this.cmdBtn(cmd, null, label, testid ? { 'data-testid': testid } : {});
     if (t === 'brush' || t === 'eraser' || t === 'pencil') {
@@ -1543,9 +1637,20 @@ export class Editor {
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'crop-cancel', onclick: () => { this.crop = null; this.renderOptions(); this.requestRender(); } }, 'Cancel'),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'crop-apply', onclick: () => this.applyCrop() }, 'Apply crop'));
       else o.append(hint('Drag over the picture to choose the part to keep.'));
-    } else if (t === 'move') o.append(hint('Drag to move the active layer. Arrow keys nudge it 1 px (Shift: 10 px).'), btn('edit.flip-layer-h', 'Mirror'), btn('edit.rotate-layer-cw', 'Turn right'));
+    } else if (t === 'move') {
+      const pick = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(this.autoPick), 'data-testid': 'move-autopick',
+        'data-help-title': 'Pick the layer under the pointer · Auto-select', 'data-help': 'When on, dragging moves whichever layer you press on, not only the active one.',
+        onclick: () => { this.autoPick = !this.autoPick; this.renderOptions(); } }, 'Pick by clicking');
+      const line = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-haspopup': 'menu', 'data-testid': 'move-align', 'data-help-title': 'Line up · Align',
+        'data-help': 'Line the layer up with the selection or the picture, or space layers out evenly.' }, 'Line up');
+      line.addEventListener('click', () => this.showPopover(['layer.align-left', 'layer.align-hcenter', 'layer.align-right', 'layer.align-top', 'layer.align-vcenter',
+        'layer.align-bottom', 'layer.distribute-h', 'layer.distribute-v'].map((id) => ({ label: BY_ID.get(id)?.plain ?? id, cmd: id, run: () => void this.run(id) })), line));
+      o.append(hint('Drag to move the active layer. Arrow keys nudge it 1 px (Shift: 10 px).'), pick, btn('edit.free-transform', 'Resize and turn'), line,
+        btn('edit.flip-layer-h', 'Mirror'), btn('edit.rotate-layer-cw', 'Turn right'));
+    }
     else if (t === 'hand') o.append(hint('Drag to move around the picture.'), btn('view.fit', 'Fit on screen'), btn('view.actual', '100%'));
     else if (t === 'zoom') o.append(hint('Click to zoom in; Alt-click to zoom out.'), btn('view.zoom-in', 'Zoom in'), btn('view.zoom-out', 'Zoom out'), btn('view.fit', 'Fit'), btn('view.actual', '100%'));
+    else if (TK_TOOLS.has(t)) { if (this.tk) this.tk.options(o, t); else o.append(hint('Getting the tool ready…')); }
     else {
       const seg = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': 'Pick from' });
       for (const [all, label] of [[true, 'All layers'], [false, 'This layer']] as const) {
@@ -1554,7 +1659,15 @@ export class Editor {
       o.append(h('span', { class: 'fpe-dot', 'data-swatch': '', style: 'background:' + this.brush.color, role: 'img', 'aria-label': 'Main colour ' + this.brush.color }),
         hint('Tap the picture to pick a colour to paint with.'), seg);
     }
+    this.tk?.decorate(o, t);
     this.syncChrome();
+    this.cueOptions();
+  }
+  /** The options bar scrolls sideways when it is too long (phones), with a soft fade on the side that has more, like the panel tabs. */
+  private cueOptions(): void {
+    const o = this.optionsBar, max = o.scrollWidth - o.clientWidth;
+    const more = max <= 1 ? '' : o.scrollLeft <= 1 ? 'right' : o.scrollLeft >= max - 1 ? 'left' : 'both';
+    if (more) o.dataset.more = more; else delete o.dataset.more;
   }
   private slider(label: string, help: string, min: number, max: number, value: number, unit: string, onInput: (v: number) => void, testid: string): HTMLElement {
     const id = `fpe-${this.uid}-${testid}`;
@@ -1691,6 +1804,7 @@ export class Editor {
 
   // ---------- panels ----------
   private renderPanels(): void {
+    this.tk?.refresh();
     this.renderLayers();
     this.renderHistory();
     this.renderProps();
@@ -1994,8 +2108,9 @@ export class Editor {
     const s = this.session, dlg = this.dlgEl;
     if (!s || s.def.instant) { dlg.hidden = true; dlg.replaceChildren(); this.dlgCanvas = null; return; }
     const r = BY_ID.get(s.id) as Row, params = (s.spec.params ??= {}), id = `fpe-${this.uid}-a`;
-    const kids: Node[] = [h('div', { class: 'fpe-dlg-head' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
-      iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() })),
+    const kids: Node[] = [this.dragHead(h('div', { class: 'fpe-dlg-head', 'data-testid': 'dialog-head', 'data-help-title': 'Move this box',
+      'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
+      iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
       h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     this.dlgCanvas = null;
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
@@ -2126,6 +2241,7 @@ export class Editor {
     if (b) { b.setAttribute('aria-pressed', String(s.showBefore)); b.textContent = s.showBefore ? 'Showing before' : 'Show before'; }
   }
   private cancelSession(): void {
+    this.tk?.abort();
     const s = this.session;
     if (!s) return;
     this.session = null;
@@ -2437,6 +2553,7 @@ export class Editor {
   pickFile(asLayer: boolean): void { this.fileAsLayer = asLayer && !!this.doc; this.fileInput.click(); }
   openSample(): void { this.addTab(makeSample(), 'Sample photo'); this.toast('Sample photo opened: two layers, a landscape and a sun.'); }
   private stash(): void {
+    this.tk?.abort();
     const t = this.tabs[this.cur];
     if (!t || !this.doc) return;
     Object.assign(t, { doc: this.doc, history: this.history, name: this.name, savedId: this.savedId, view: this.view, fitted: this.fitted, lastSel: this.lastSel, hole: this.hole });
@@ -2552,6 +2669,7 @@ export class Editor {
   private setSpace(on: boolean): void { this.space = on; this.root.toggleAttribute('data-space', on); }
   private onKey(e: KeyboardEvent): void {
     if (!this.isActive()) return;
+    if (this.tk?.key(e)) { e.preventDefault(); return; }
     const k = e.key, mod = e.ctrlKey || e.metaKey;
     if (k === 'Escape') {
       if (this.popover) this.closePopover();
@@ -2572,7 +2690,7 @@ export class Editor {
       if (k.startsWith('Arrow') && this.tool === 'move' && this.doc) {
         e.preventDefault();
         const d = this.doc, l = activeLayer(d), n = e.shiftKey ? 10 : 1;
-        if (!l || !this.editable(l)) return;
+        if (!l || !this.editable(l, false)) return;
         const old = layerRect(l);
         const dx = k === 'ArrowLeft' ? -n : k === 'ArrowRight' ? n : 0, dy = k === 'ArrowUp' ? -n : k === 'ArrowDown' ? n : 0;
         this.pushCmd(setLayerProps(d, l.id, { x: l.x + dx, y: l.y + dy }, 'Move layer'));
@@ -2611,8 +2729,67 @@ export class Editor {
     const t = this.toastEl;
     t.textContent = msg;
     t.setAttribute('data-on', '');
+    this.placeToast();
     clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => t.removeAttribute('data-on'), ms);
+  }
+
+  /**
+   * One rule for every toast: inside the picture area, never over the zoom buttons, an open dialog, a panel sheet or any bar.
+   * Tried at the top of the picture area, then at its bottom, across its width or beside an open dialog.
+   */
+  private placeToast(): void {
+    const t = this.toastEl, host = (t.offsetParent as HTMLElement | null) ?? this.root, hr = host.getBoundingClientRect(), st = this.stage.getBoundingClientRect();
+    const box = (el: Element | null | undefined): DOMRect | null => {
+      if (!el || (el as HTMLElement).hidden) return null;
+      const cs = getComputedStyle(el), b = el.getBoundingClientRect();
+      return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
+    };
+    const dlg = box(this.dlgEl);
+    const avoid = [this.stage.querySelector('.fpe-zoom'), this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'),
+      ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
+    const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
+    if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);
+    spans.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
+    Object.assign(t.style, { transform: 'none', bottom: 'auto', right: 'auto' });
+    const put = (x: number, y: number): void => { t.style.left = Math.round(x - hr.left) + 'px'; t.style.top = Math.round(y - hr.top) + 'px'; };
+    for (const [L, R] of spans) {
+      const w = R - L;
+      if (w < 140) continue;
+      t.style.maxWidth = Math.min(560, w) + 'px';
+      const tw = t.offsetWidth, th = t.offsetHeight, x = L + (w - tw) / 2;
+      for (const y of [st.top + pad, st.bottom - pad - th]) {
+        if (y < st.top || y + th > st.bottom) continue;
+        if (avoid.some((a) => a.left < x + tw && a.right > x && a.top < y + th && a.bottom > y)) continue;
+        put(x, y);
+        return;
+      }
+    }
+    // No clear spot (a full panel sheet covers the picture): at the very top, over the top bar, as on phones before.
+    t.style.maxWidth = Math.min(560, Math.max(140, hr.width - 32)) + 'px';
+    put(hr.left + (hr.width - t.offsetWidth) / 2, hr.top + 3);
+  }
+  /** Lets a dialog be dragged by its title bar, so it never has to cover the part of the picture being changed. */
+  private dragHead(head: HTMLElement): HTMLElement {
+    head.addEventListener('pointerdown', (e) => {
+      const box = head.closest<HTMLElement>('.fpe-dlg');
+      if (!box || e.button > 0 || (e.target as Element).closest('button, input, select, a')) return;
+      const host = (box.offsetParent as HTMLElement | null) ?? this.root, hr = host.getBoundingClientRect(), b = box.getBoundingClientRect();
+      const dx = e.clientX - b.left, dy = e.clientY - b.top;
+      Object.assign(box.style, { left: Math.round(b.left - hr.left) + 'px', top: Math.round(b.top - hr.top) + 'px', width: Math.round(b.width) + 'px', right: 'auto', bottom: 'auto' });
+      box.dataset.moved = '';
+      head.setPointerCapture(e.pointerId);
+      const move = (ev: PointerEvent): void => {
+        box.style.left = Math.round(clamp(ev.clientX - hr.left - dx, 0, Math.max(0, hr.width - b.width))) + 'px';
+        box.style.top = Math.round(clamp(ev.clientY - hr.top - dy, 0, Math.max(0, hr.height - b.height))) + 'px';
+      };
+      const up = (): void => { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up); };
+      head.addEventListener('pointermove', move);
+      head.addEventListener('pointerup', up);
+      head.addEventListener('pointercancel', up);
+      e.preventDefault();
+    });
+    return head;
   }
 
   // ---------- public API ----------
@@ -2667,6 +2844,7 @@ export class Editor {
           hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
           adjust: this.session?.id ?? null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
+          w3: this.tk?.state() ?? null, autoPick: this.autoPick,
         };
       },
       openSample: () => this.openSample(),

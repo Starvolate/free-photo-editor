@@ -18,3 +18,7 @@ export * from './jobs';
 export { FX_KINDS, fxReach, type FxKind } from './fx/meta';
 export * from './loss';
 export * from './metadata';
+export * from './selection';
+export * from './paint';
+export * from './transform';
+export * from './vector';

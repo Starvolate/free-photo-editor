@@ -4,6 +4,7 @@
 import { compositeRect, type BlendMode } from './blend';
 import { WHITE, type RGBA } from './color';
 import { contains, intersect, union, type Rect } from './geometry';
+import type { LayerContent } from './vector';
 
 export interface Bitmap { width: number; height: number; data: Uint8ClampedArray; }
 export interface Layer {
@@ -14,6 +15,8 @@ export interface Layer {
   x: number; y: number; width: number; height: number;
   /** RGBA, straight alpha, width * height * 4 bytes. */
   data: Uint8ClampedArray;
+  /** Text and shape layers: what the layer is made of, so it stays editable (vector.ts). */
+  content?: LayerContent;
 }
 /** A selected area. Without `alpha` the whole rectangle is selected; `alpha` (w * h) allows soft or shaped masks. */
 export interface Selection extends Rect { alpha?: Uint8Array | null; }

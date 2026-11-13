@@ -67,7 +67,7 @@ const plainOf = (id: string): string => BY_ID.get(id)?.plain ?? (id.split('.').p
 /** What the effect families (Filters & blur) are called as one group. */
 const FAMILIES = 'Every effect, by kind';
 /** The ribbon buttons that widen when their words would not show whole (fit() in mountRibbon). */
-const WIDE = '.fpe-rbig, .fpe-rtile';
+const WIDE = '.fpe-rbig, .fpe-rtile, .fpe-rsmall';
 /**
  * True when a button's words do not show whole: a label, plain or pro name wider or taller than its own box, one sticking
  * out of the button at either side (a word longer than the button is wide), or the button's bottom below `room`.
@@ -79,6 +79,9 @@ function notWhole(b: HTMLElement, room: number): boolean {
     const r = e.getBoundingClientRect();
     if (!r.width) continue;
     if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1 || r.left < br.left - 0.5 || r.right > br.right + 0.5) return true;
+    // A label taller than its button (a small button's label wrapping past its 27 px row) lies over the button below it
+    // and takes its clicks (Develop RAW at fit 4 hid Exposure, 13 Nov 2026).
+    if (r.top < br.top - 0.5 || r.bottom > br.bottom + 0.5) return true;
   }
   return false;
 }

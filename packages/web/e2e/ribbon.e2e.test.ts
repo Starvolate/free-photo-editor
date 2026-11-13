@@ -161,7 +161,8 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     step = 'planned';
     const p = await open();
     await rest(p);
-    const id = 'select.subject';
+    // A command still Planned with a resting ribbon home (select.subject was the example until W2 made it Ready, 13 Nov).
+    const id = 'raw.filmic';
     expect(BY_ID.get(id)?.status).not.toBe('ready');
     await p.click(`[data-testid="rtab-${slug(homes().get(id)?.tab ?? '')}"]`);
     const sel = `[data-testid="ribbon-body"] [data-testid="ri-${id}"]`;

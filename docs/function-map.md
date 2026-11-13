@@ -44,7 +44,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | View sheet · View, panels and workspace | app-bar sheet | 40 | 40 | 40 |
 | Help sheet · Help, learn and settings | app-bar sheet | 12 | 12 | 12 |
 
-Always on screen (1 click): App bar (help.search, edit.undo, edit.redo, file.export); Picture tabs (file.new, file.close); Your tools (tool.move, tool.select-rect, tool.brush, tool.eraser, tool.crop, tool.type); Layers card (panel.layers, layer.new, layer.duplicate, layer.delete, layer.hide, layer.lock); History (panel.history, edit.history-back, edit.history-forward); Properties (panel.properties); Zoom (view.zoom-out, view.zoom-in, view.fit).
+Always on screen (1 click): App bar (help.search, edit.undo, edit.redo, file.export); Picture tabs (file.new, file.close); Your tools (tool.move, tool.select-rect, tool.brush, tool.eraser, tool.crop, tool.type); Layers card (panel.layers, layer.new, layer.mask-add, layer.duplicate, layer.delete, layer.hide); History (panel.history, edit.history-back, edit.history-forward); Properties (panel.properties); Zoom (view.zoom-out, view.zoom-in, view.fit).
 
 ## Contextual tabs
 

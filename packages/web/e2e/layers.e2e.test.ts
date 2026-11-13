@@ -469,7 +469,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(errors).toEqual([]);
   });
 
-  it('Put in a folder from the Layer menu; the folder carries its layer through X in Properties and Align, one undo each; the card has labelled actions', async () => {
+  it('Put in a folder from the Layers card; the folder carries its layer through X in Properties and Align, one undo each; the card has labelled actions', async () => {
     const q = await open(1440, 900);
     await q.evaluate(() => (window as unknown as Win).fpe.newDocument(120, 80, '#808080'));
     expect(await run(q, 'layer.new')).toBe(true);
@@ -484,10 +484,9 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-blend"]').count()).toBe(1);
     expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-opacity"]').count()).toBe(1);
     expect(await q.textContent('[data-testid="layer-count"]')).toBe('2');
-    // Put in a folder from the menu bar: Layer > New > Put in a new folder.
-    await q.click('[data-testid="menu-top-layer"]');
-    await q.hover('[data-testid="sub-layer-new"]');
-    await q.click('[data-testid="mi-layer.group"]');
+    // Put in a folder from the Layers card's More menu (under the ribbon the menu bar is folded away at 1440).
+    await q.click('[data-testid="layer-more"]');
+    await q.click('.fpe-pop [data-tipcmd="layer.group"]');
     const s = await state(q), f = s.layers.find((l) => l.kind === 'folder'), kid = s.layers.find((l) => !!f && l.parentId === f.id);
     if (!f || !kid) throw new Error('no folder from the menu');
     expect(await q.textContent('[data-testid="layer-count"]')).toBe('3');

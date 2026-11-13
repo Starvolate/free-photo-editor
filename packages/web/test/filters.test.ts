@@ -6,6 +6,8 @@ import { FX_KINDS, runEffect } from '@free-photoeditor/core/fx';
 import { ADJ } from '../src/commands';
 import { HANDLES } from '../src/handles';
 import { BY_ID, ROWS } from '../src/registry';
+// The batch filters' dialogs load on first use; loading them here adds them to ADJ, so every effect kind has its dialog.
+import '../src/adj-more';
 
 const CARD = [
   'blur-box', 'blur-motion', 'blur-radial', 'blur-surface', 'blur-smart', 'blur-average', 'blur-lens', 'blur-field', 'blur-iris', 'blur-tilt',
@@ -69,6 +71,6 @@ describe('W2 filter dialogs', () => {
   });
   it('counts the Filter menu', () => {
     const rows = ROWS.filter((r) => r.id.startsWith('filter.'));
-    expect(rows.filter((r) => r.status === 'ready').length).toBe(56);
+    expect(rows.filter((r) => r.status === 'ready').length).toBe(64);
   });
 });

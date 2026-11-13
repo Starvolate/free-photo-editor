@@ -40,10 +40,13 @@ const CASES: Record<FxKind, P> = {
   mosaic: { size: 4 }, crystallize: { size: 5 }, pointillize: { size: 5, bg: 0xffffff }, halftone: { radius: 4 }, mezzotint: {}, facet: { radius: 2 },
   fragment: { distance: 2 }, clouds: { size: 8, fg: 0x102030, bg: 0xe0d0c0 }, 'diff-clouds': { size: 8 }, fibers: { variance: 4, strength: 16 },
   'high-pass': { radius: 2 }, maximum: { radius: 1 }, minimum: { radius: 1 }, offset: { dx: 50, dy: 25 }, custom: { k7: -1, k11: -1, k12: 5, k13: -1, k17: -1 },
+  'spin-blur': { angle: 90, size: 100 }, 'lens-fix': { distort: 40, vignette: 40 }, glass: { distort: 10, smooth: 1 }, 'ocean-ripple': { size: 2, amount: 14 },
+  'lens-flare': { bright: 150 }, lighting: { bumps: 50 }, 'color-to-alpha': { which: 0 }, dither: { tones: 2 }, 'replace-color': { fuzz: 120, hue: 120, light: 30 },
+  'reduce-colors': { count: 4 }, indexed: { palette: 3 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
-  'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom']);
+  'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed']);
 const FILLS = new Set<FxKind>(['clouds', 'fibers']);
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude');
 
@@ -66,7 +69,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(51);
+    expect(FX_KINDS.length).toBe(62);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

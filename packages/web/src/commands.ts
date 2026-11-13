@@ -388,6 +388,10 @@ for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'imag
 HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
+// The batch filters (13 Nov 2026): their dialogs live in adj-more.ts, loaded on first use so the first screen stays small.
+export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocean-ripple filter.lens-flare filter.lighting filter.color-to-alpha filter.dither '
+  + 'image.adj-replace image.reduce-colors image.mode-indexed').split(' ');
+for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));

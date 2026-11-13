@@ -13,6 +13,7 @@ export const FX_KINDS = [
   'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'diffuse', 'tiles', 'extrude', 'trace-contour', 'glowing-edges',
   'mosaic', 'crystallize', 'pointillize', 'halftone', 'mezzotint', 'facet', 'fragment',
   'clouds', 'diff-clouds', 'fibers', 'high-pass', 'maximum', 'minimum', 'offset', 'custom',
+  'spin-blur', 'lens-fix', 'glass', 'ocean-ripple', 'lens-flare', 'lighting', 'color-to-alpha', 'dither', 'replace-color', 'reduce-colors', 'indexed',
 ] as const;
 export type FxKind = (typeof FX_KINDS)[number];
 

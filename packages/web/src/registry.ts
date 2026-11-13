@@ -115,10 +115,10 @@ edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphic
 @Image = Image | Image | Size, turning and colour of the whole picture.
 @Image > Mode = Colour type | Mode | How the colours are stored.
 image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | P | 13
-image.mode-indexed | A few colours only | Indexed colour | Limit the picture to a small palette, like a GIF. | palette, gif colours | P | 13
-image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. | print colours | P | 13
-image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. | lab | P | 13
-image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. | 16 bit, high bit depth | P | 13
+image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | R | 13
+image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | P | 13
+image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | P | 13
+image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. Not built yet: pictures keep 8 bits per colour, as the browser draws them. | 16 bit, high bit depth | P | 13
 @Image > Adjustments = Light and colour | Adjustments | Fix brightness, contrast and colour, one tool at a time.
 image.adj-brightness | Brightness and contrast | Brightness/Contrast | Make the picture lighter or darker, and punchier or flatter. | brighter, darker, lighter, too dark, too bright, contrast, dull, dim | R | 1
 image.adj-levels | Light and dark balance | Levels | Set the darkest point, the brightest point and the middle tones. | tones, black point, white point, washed out, histogram | R | W1 | Ctrl+L
@@ -142,7 +142,7 @@ image.adj-selective-color | Change one colour family | Selective colour | Adjust
 image.adj-shadows | Lift shadows, calm highlights | Shadows/Highlights | Brighten dark areas and tame bright ones, judged by their surroundings. | backlit, dark face, recover shadows, bright sky | R | W1
 image.adj-desaturate | Remove colour | Desaturate | Make the picture grey in one step. | grey, colourless | R | W1 | Ctrl+Shift+U
 image.adj-match | Match another photo's colour | Match colour | Copy the colour mood of another picture. | match colours | P | 5
-image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | P | 5
+image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | R | 5
 image.adj-equalize | Even out the tones | Equalize | Spread the tones evenly from dark to light. | flat, even, histogram | R | W1
 @Image
 image.auto-tone | Fix the light automatically | Auto tone | Stretch each colour so the darkest part is black and the lightest white. | auto fix, one click, enhance, improve | R | W1 | Ctrl+Shift+L
@@ -171,7 +171,7 @@ image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so ever
 --
 image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | R | W1
 image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | P | 13
-image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | P | 5
+image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | R | 5
 image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | P | 6
 image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | P | 13
 
@@ -306,7 +306,7 @@ select.load | Load a saved selection | Load selection | Bring back a saved selec
 filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | R | W1 | Ctrl+Alt+F
 --
 filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
-filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | P | W2
+filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
 filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | P | 5
 filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | P | 5
@@ -324,7 +324,7 @@ filter.blur-field | Gradual blur | Field blur | Blur that changes smoothly acros
 filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | R | W2
 filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | R | W2
 filter.blur-path | Blur along a path | Path blur | Blur along a line you draw. | path blur | P | W2
-filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | P | W2
+filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | R | W2
 @Filter > Distort = Bend and twist | Distort | Bend, wave and twist the picture.
 filter.displace | Push by a map | Displace | Push pixels around by a pattern of light and dark, such as soft clouds. | displacement, warp, distort | R | W2
 filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | R | W2
@@ -335,8 +335,8 @@ filter.spherize | Bulge | Spherize | Bulge the picture like a ball. | bulge, fis
 filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | R | W2
 filter.wave | Waves | Wave | Bend the picture in waves. | wavy | R | W2
 filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | R | W2
-filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | P | W2
-filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | P | W2
+filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | R | W2
+filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | R | W2
 @Filter > Noise = Grain | Noise | Add or remove grain and specks.
 filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | R | W2
 filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | R | W2
@@ -355,8 +355,8 @@ filter.pointillize | Painted dots | Pointillize | Paint the picture with coloure
 filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | R | W2
 filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | R | W2
 filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | R | W2
-filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | P | W2
-filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | P | W2
+filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | R | W2
+filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | R | W2
 @Filter > Sharpen = Sharpen | Sharpen | Make edges crisper.
 filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | R | W1
 filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | R | W1
@@ -380,8 +380,8 @@ filter.maximum | Grow light areas | Maximum | Spread the light areas outwards. |
 filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | R | W2
 filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | R | W2
 filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | R | W2
-filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | P | W2
-filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | P | W2
+filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | R | W2
+filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | R | W2
 
 @View = View | View | Zoom, rulers, grid and screen modes.
 view.zoom-in | Zoom in | Zoom in | Look closer. | bigger view, magnify | R | 1 | Ctrl+=

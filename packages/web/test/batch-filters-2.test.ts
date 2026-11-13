@@ -28,7 +28,7 @@ describe('filters batch 2', () => {
     expect(NEW_ROWS.length).toBeGreaterThan(200);
     expect(BATCH2_IDS.length).toBe(28);
     for (const id of BATCH2_IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow', 'filter.gallery', 'image.mode-gray', 'image.rotate-any', 'edit.fade']) {
+    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow', 'filter.gallery']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
       expect(HANDLERS[id], id).toBeUndefined();
     }

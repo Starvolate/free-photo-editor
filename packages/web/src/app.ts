@@ -20,6 +20,7 @@ import {
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
 import { errText, fmtBytes, focusInSheet, h, icon, iconButton, type Attrs } from './dom';
 import type { DpiPanel } from './export-dpi';
+import type { LastChange } from './image-more';
 import { holdsDpi, n2, printText } from './print-text';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
@@ -322,6 +323,8 @@ export class Editor {
   lastSel: Selection | null = null;
   private hole: Rect | null = null;
   lastFilter: { id: string; params: JobParams } | null = null;
+  /** The last filter or colour fix applied, for Soften the last change (image-more.ts). */
+  lastChange: LastChange | null = null;
   /** Recorded steps (automate.ts): while recording, each command that ran, with a dialog's settings once applied. */
   onStep: ((id: string, p?: JobParams) => void) | null = null;
   proNames = false;
@@ -2794,6 +2797,7 @@ export class Editor {
     this.renderDialog();
     if (s.ran) {
       this.history.push(pixelCommand(s.label, s.layerId, s.r, s.before));
+      this.lastChange = { layerId: s.layerId, r: s.r, before: s.before, step: this.history.stateId(), label: s.label };
       if (s.id.startsWith('filter.')) this.lastFilter = { id: s.id, params: { ...s.spec.params } };
       this.onStep?.(s.id, { ...s.spec.params });
       this.afterEdit();
@@ -3395,6 +3399,12 @@ export class Editor {
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
+  /** Soften the last change, grey mode and turn by any angle (image-more.ts), loaded on first use. */
+  async imageMore(id: string): Promise<void> {
+    this.cancelSession();
+    try { (await import('./image-more')).runImageMore(id, { ...this.toolHost(), lastChange: () => this.lastChange, fit: () => this.fit() }); }
+    catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */
   async openFiles(files: File[], asLayer = false): Promise<void> {

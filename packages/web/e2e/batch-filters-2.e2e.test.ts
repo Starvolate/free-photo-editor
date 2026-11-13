@@ -17,6 +17,7 @@ import { reach } from './ribbon';
 interface Fpe {
   commands(): { id: string; status: string }[]; run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void;
   select(x: number, y: number, w: number, h: number): void; checksum(x: number, y: number, w: number, h: number): number;
+  getInfo(): { width: number; height: number } | null;
 }
 type Win = Window & { fpe: Fpe };
 /** The batch, as commands.ts BATCH2_IDS lists it (not imported: commands.ts pulls in the app's CSS imports). */
@@ -106,4 +107,50 @@ suite('Filters batch 2 (headless Chrome)', () => {
     expect(errors).toEqual([]);
     await ctx.close();
   }, 480_000);
+
+  it('softens the last filter, turns the picture grey, and turns it by any angle, each from its ribbon home as one step', async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    const fresh = async (): Promise<void> => {
+      await p.goto(url);
+      await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+      await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.openSample(); await f.run('layer.flatten'); });
+    };
+    // Soften the last change: Sharpen first, then Fade at its opening 50% changes the picture again and adds one step.
+    await fresh();
+    await p.evaluate(async () => { await (window as unknown as Win).fpe.run('filter.sharpen'); });
+    await p.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
+    let n = await step(p);
+    await p.click('[data-testid="adj-apply"]');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
+    let before = await sum(p);
+    n = await step(p);
+    await reach(p, 'edit.fade');
+    await p.waitForSelector('[data-testid="im-fade"]', { state: 'visible' });
+    await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, before] as const, { timeout: 20_000 });
+    await p.click('[data-testid="im-apply"]');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
+    expect(await sum(p)).not.toBe(before);
+    // Shades of grey: one click, one step.
+    await fresh();
+    before = await sum(p); n = await step(p);
+    await reach(p, 'image.mode-gray');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
+    expect(await sum(p)).not.toBe(before);
+    // Turn by any angle: 15 degrees grows the canvas; the dialog shows the turned preview first.
+    await fresh();
+    const w0 = (await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width ?? 0;
+    n = await step(p);
+    await reach(p, 'image.rotate-any');
+    await p.waitForSelector('[data-testid="im-rotate-preview"]', { state: 'visible' });
+    await p.$eval('[data-testid="im-angle"]', (el) => { (el as HTMLInputElement).value = '15'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'batch2-image.rotate-any.png') });
+    await p.click('[data-testid="im-apply"]');
+    await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width ?? 0).toBeGreaterThan(w0);
+    expect(errors).toEqual([]);
+    await ctx.close();
+  }, 120_000);
 });

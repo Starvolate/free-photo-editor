@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 410 Ready, 265 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 413 Ready, 262 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 192 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 208 | 442 | 0 |
-| Ready today | 410 | 25 | 171 | 214 | 0 |
+| All functions | 675 | 25 | 210 | 440 | 0 |
+| Ready today | 413 | 25 | 173 | 215 | 0 |
 
 ## The Task ribbon
 
@@ -37,8 +37,8 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 4 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
-| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
-| Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
+| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 11 |
+| Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 9 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
 | Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
 | View sheet · View, panels and workspace | app-bar sheet | 40 | 40 | 40 |
@@ -150,7 +150,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · small button | Ready | 13 |  |
 | file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Edit (29 Ready, 11 Planned)
+## Edit (30 Ready, 10 Planned)
 
 Groups: Turn and flip · Transform; Settings · Preferences.
 
@@ -161,7 +161,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.history-back | Step back | Step backward | Go one step back in the History list. | previous step | Edit | Always on screen › History | Ready | W1 |  |
 | edit.history-forward | Step forward | Step forward | Go one step forward in the History list. | next step | Edit | Always on screen › History | Ready | W1 |  |
 | edit.history-brush-step | Paint back from this step | History brush source | Make the step you are at the one the history brush paints back; History marks it with a brush, and the brush beside any step picks that one. | paint back from step, history brush source, paint from here | Edit | Paint & draw › Paint back · small button | Ready | W5 |  |
-| edit.fade | Soften the last change | Fade | Make the last filter or paint change weaker. | weaker, fade, reduce effect | Edit | Filters & blur › Again · More list | Planned | 13 |  |
+| edit.fade | Soften the last change | Fade | Make the last filter or colour fix weaker. | weaker, fade, reduce effect | Edit | Filters & blur › Again · small button | Ready | 13 |  |
 | edit.cut | Cut | Cut | Move the selected part of this layer to the clipboard. | cut out | Edit | Select & cut out › Copy and paste · More list | Ready | W1 | Ctrl+X |
 | edit.copy | Copy | Copy | Copy the selected part of this layer. | copy | Edit | Select & cut out › Copy and paste · small button | Ready | W1 | Ctrl+C |
 | edit.copy-merged | Copy everything you see | Copy merged | Copy the selected area with all layers together. | copy visible, copy all layers | Edit | Select & cut out › Copy and paste · More list | Ready | W1 | Ctrl+Shift+C |
@@ -197,13 +197,13 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Help sheet | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Help sheet | Planned | 11 |  |
 
-## Image (39 Ready, 10 Planned)
+## Image (41 Ready, 8 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
-| image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-gray | Shades of grey only | Grayscale | Turn every picture layer to shades of grey. | grey mode | Image › Mode | Light & colour › Colour type · small button | Ready | 13 |  |
 | image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | Image › Mode | Light & colour › Colour type · small button | Ready | 13 |  |
 | image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
 | image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
@@ -240,8 +240,8 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.canvas-size | Canvas size | Canvas size | Add or remove space around the picture without stretching it. | border, padding, frame, extend, more space | Image | Crop & resize › Size · small button | Ready | W1 | Ctrl+Alt+C |
 | image.rotate-cw | Turn right 90° | Rotate 90° clockwise | Turn the whole picture a quarter turn to the right. | rotate, sideways photo, portrait | Image › Rotate | Crop & resize › Turn the picture · small button | Ready | W1 |  |
 | image.rotate-ccw | Turn left 90° | Rotate 90° counter-clockwise | Turn the whole picture a quarter turn to the left. | rotate left | Image › Rotate | Crop & resize › Turn the picture · small button | Ready | W1 |  |
-| image.rotate-180 | Turn half way round | Rotate 180° | Turn the whole picture upside down. | upside down | Image › Rotate | Crop & resize › Turn the picture · small button | Ready | W1 |  |
-| image.rotate-any | Turn by any angle | Arbitrary rotation | Straighten a tilted horizon by any angle. | straighten, horizon, tilted | Image › Rotate | Crop & resize › Turn the picture · More list | Planned | 3 |  |
+| image.rotate-180 | Turn half way round | Rotate 180° | Turn the whole picture upside down. | upside down | Image › Rotate | Crop & resize › Turn the picture · More list | Ready | W1 |  |
+| image.rotate-any | Turn by any angle | Arbitrary rotation | Straighten a tilted horizon by any angle. | straighten, horizon, tilted | Image › Rotate | Crop & resize › Turn the picture · small button | Ready | 3 |  |
 | image.flip-h | Mirror the picture | Flip canvas horizontal | Mirror the whole picture left to right. | mirror, selfie flip | Image › Rotate | Crop & resize › Turn the picture · More list | Ready | W1 |  |
 | image.flip-v | Flip the picture upside down | Flip canvas vertical | Mirror the whole picture top to bottom. | reflection | Image › Rotate | Crop & resize › Turn the picture · More list | Ready | W1 |  |
 | image.crop | Cut to the selection | Crop | Keep only the selected area. | crop, cut out, trim | Image | Crop & resize › Crop · small button | Ready | 1 |  |

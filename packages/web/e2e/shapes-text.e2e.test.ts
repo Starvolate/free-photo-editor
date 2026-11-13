@@ -372,7 +372,8 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await p.waitForSelector('[data-testid="typelook-row"]', { state: 'visible' });
     await p.click('[data-testid="typelook-all"]');
     expect(await p.textContent('[data-testid="typelook-result"]')).toContain('is on 2 text layers');
-    const b2 = await wait((l) => l.width > b.width + 4, 'look on every text layer');
+    // New words take the last style used (heavy, small capitals); Heavy has no small capitals, so the width moves either way.
+    const b2 = await wait((l) => l.width !== b.width, 'look on every text layer');
     expect(await undo(p)).toBe(true);
     await wait((l) => l.width === b.width && l.height === b.height, 'one undo puts both back');
     await p.click('[data-testid="typelook-use"]');

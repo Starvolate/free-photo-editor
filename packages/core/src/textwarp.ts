@@ -199,8 +199,9 @@ export function stretchKeyword(pct: number): string {
 export type LookPart = 'all' | 'letters' | 'lines';
 /** A text style with a saved look put on it. Letters: font, size, colour, weight, spacing and edges; lines: alignment and line gap. */
 export function applyLook(st: TextStyle, look: TextStyle, part: LookPart): TextStyle {
-  if (part === 'all') return { ...look };
-  const lines: Partial<TextStyle> = { align: look.align, lineHeight: look.lineHeight };
-  if (part === 'lines') return { ...st, ...lines };
-  return { ...look, align: st.align, lineHeight: st.lineHeight };
+  if (part === 'lines') return { ...st, align: look.align, lineHeight: look.lineHeight };
+  // The optional keys are named even when the look leaves them out, so a change spread over a style clears them too
+  // (a look without small capitals takes them off).
+  const opt: Partial<TextStyle> = { smooth: look.smooth, weight: look.weight, stretch: look.stretch, kerning: look.kerning, caps: look.caps };
+  return part === 'all' ? { ...look, ...opt } : { ...look, ...opt, align: st.align, lineHeight: st.lineHeight };
 }

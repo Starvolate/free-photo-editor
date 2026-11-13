@@ -174,5 +174,10 @@ describe('text that fills a shape, letter widths and saved looks (part 5)', () =
     expect(applyLook(mine, look, 'all')).toEqual(look);
     expect(applyLook(mine, look, 'letters')).toEqual({ ...look, align: 'left', lineHeight: 1.2 });
     expect(applyLook(mine, look, 'lines')).toEqual({ ...mine, align: 'center', lineHeight: 2 });
+    // Spread over a style with small capitals (as a restyle does), a look without them takes them off; lines keep them.
+    const capsy: TextStyle = { ...mine, caps: 'small-caps', stretch: 75 };
+    expect({ ...capsy, ...applyLook(capsy, look, 'all') }).toMatchObject({ caps: undefined, stretch: undefined, weight: 800 });
+    expect({ ...capsy, ...applyLook(capsy, look, 'letters') }).toMatchObject({ caps: undefined, align: 'left' });
+    expect({ ...capsy, ...applyLook(capsy, look, 'lines') }.caps).toBe('small-caps');
   });
 });

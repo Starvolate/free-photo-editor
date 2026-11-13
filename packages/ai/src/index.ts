@@ -6,13 +6,15 @@
  * photo never leaves the device.
  */
 import { ENGINE, MODELS, type ModelId } from './models';
-import type { Rgba } from './process';
+import type { Box, Rgba } from './process';
+import type { SegPick, SegPrompt } from './segment';
 import type { FromWorker, Progress, ToWorker } from './protocol';
 import { hasFile } from './store';
 
 export { ENGINE, MODELS, ORT_VERSION, type FileDef, type ModelDef, type ModelId } from './models';
 export type { Progress, Stage } from './protocol';
 export * from './process';
+export * from './segment';
 
 export class Cancelled extends Error { constructor() { super('Stopped.'); this.name = 'Cancelled'; } }
 /** Why this browser can't run the AI tools, in plain words, or null when it can. */
@@ -24,7 +26,8 @@ export function cannotRun(): string | null {
 export async function downloadSize(model: ModelId, loaded = false): Promise<number> {
   if (loaded) return 0;
   let n = 0;
-  for (const f of [ENGINE, MODELS[model]]) if (!(await hasFile(f.url))) n += f.transfer;
+  const m = MODELS[model];
+  for (const f of [ENGINE, m, ...(m.decoder ? [m.decoder] : [])]) if (!(await hasFile(f.url))) n += f.transfer;
   return n;
 }
 /** Megabytes in plain words: one decimal under 10. */
@@ -101,6 +104,15 @@ export class AiClient {
   /** A mask (0 to 255, one byte per pixel) of the main subject. */
   async subject(src: Rgba, progress?: (p: Progress) => void): Promise<Uint8Array> {
     const r = await this.call({ type: 'subject', src }, progress, [buf(src.data)]);
+    if (r.type !== 'mask') throw new Error('The AI gave an unexpected answer.');
+    return r.mask;
+  }
+  /**
+   * A mask (0 or 255) of the thing at the taps, or inside the box. The picture is read once per picture state, so later taps
+   * on the same picture answer quickly. `clip` keeps only what lies inside a box.
+   */
+  async segment(src: Rgba, prompt: SegPrompt, pick: SegPick = 'best', clip: Box | null = null): Promise<Uint8Array> {
+    const r = await this.call({ type: 'segment', src, prompt, pick, clip }, undefined, [buf(src.data)]);
     if (r.type !== 'mask') throw new Error('The AI gave an unexpected answer.');
     return r.mask;
   }

@@ -9,7 +9,8 @@
 import * as ortWasm from 'onnxruntime-web/wasm';
 import { ENGINE, MODELS, type FileDef, type ModelId } from './models';
 import type { OrtModule, OrtSession, OrtTensor } from './ort';
-import { halve, inpaintInputs, maskFromPrediction, maskInput, upscaleTiled, type Rgba } from './process';
+import { halve, inpaintInputs, maskFromPrediction, maskInput, upscaleTiled, type Box, type Rgba } from './process';
+import { segEncoderInput, segMask, segOutputs, segPromptFeeds, type SegLayout, type SegPick, type SegPrompt, type TensorSpec } from './segment';
 import type { FromWorker, ToWorker } from './protocol';
 import { getFile, putFile } from './store';
 
@@ -18,6 +19,8 @@ const scope = self as unknown as Scope;
 const SUBJECT_SIZE = 320;
 let ort: OrtModule | null = null;
 const sessions = new Map<ModelId, OrtSession>();
+/** Second files (tap to select's prompt decoder), loaded with their model. */
+const decoders = new Map<ModelId, OrtSession>();
 const post = (m: FromWorker, t: Transferable[] = []): void => scope.postMessage(m, t);
 const hex = (b: ArrayBuffer): string => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, '0')).join('');
 
@@ -49,7 +52,7 @@ function ownFiles(): string[] {
   return [...new Set(names)].filter((u) => u.startsWith(scope.location.origin + '/'));
 }
 async function prepare(id: number, model: ModelId): Promise<void> {
-  const files: FileDef[] = [...(ort ? [] : [ENGINE]), ...(sessions.has(model) ? [] : [MODELS[model]])];
+  const def = MODELS[model], files: FileDef[] = [...(ort ? [] : [ENGINE]), ...(sessions.has(model) ? [] : [def, ...(def.decoder ? [def.decoder] : [])])];
   const total = files.reduce((a, f) => a + f.bytes, 0), got: Uint8Array[] = [];
   let base = 0, last = -1;
   for (const f of files) {
@@ -67,10 +70,15 @@ async function prepare(id: number, model: ModelId): Promise<void> {
     mod.env.logLevel = 'error';
     ort = mod;
   }
-  if (!sessions.has(model)) sessions.set(model, await (ort as OrtModule).InferenceSession.create(got.shift() as Uint8Array, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' }));
+  const opts = { executionProviders: ['wasm'], graphOptimizationLevel: 'all' };
+  if (!sessions.has(model)) {
+    sessions.set(model, await (ort as OrtModule).InferenceSession.create(got.shift() as Uint8Array, opts));
+    if (def.decoder) decoders.set(model, await (ort as OrtModule).InferenceSession.create(got.shift() as Uint8Array, opts));
+  }
   post({ type: 'ready', id, files: ownFiles() });
 }
-const T = (type: string, data: Float32Array | Uint8Array, dims: number[]): OrtTensor => new (ort as OrtModule).Tensor(type, data, dims);
+const T = (type: string, data: Float32Array | Uint8Array | BigInt64Array, dims: number[]): OrtTensor => new (ort as OrtModule).Tensor(type, data, dims);
+const TS = (t: TensorSpec): OrtTensor => T(t.type, t.data, t.dims);
 async function run(model: ModelId, feeds: (s: OrtSession) => Record<string, OrtTensor>): Promise<{ out: Record<string, OrtTensor>; s: OrtSession }> {
   const s = sessions.get(model);
   if (!s) throw new Error('The AI is not ready yet.');
@@ -80,6 +88,32 @@ async function subject(src: Rgba): Promise<Uint8Array> {
   const input = maskInput(src, SUBJECT_SIZE);
   const { out, s } = await run('subject', (x) => ({ [x.inputNames[0]]: T('float32', input, [1, 3, SUBJECT_SIZE, SUBJECT_SIZE]) }));
   return maskFromPrediction(out[s.outputNames[0]].data as Float32Array, SUBJECT_SIZE, SUBJECT_SIZE, src.width, src.height);
+}
+/** The picture tap to select last read, by a fingerprint of its pixels, and what the image encoder made of it. */
+let seen = '', embeds: Record<string, OrtTensor> | null = null;
+function fingerprint(src: Rgba): string {
+  const d = src.data, words = d.byteOffset % 4 === 0 ? new Uint32Array(d.buffer, d.byteOffset, d.length >> 2) : Uint32Array.from(d);
+  let a = 0x811c9dc5, b = 0x01000193;
+  for (let i = 0; i < words.length; i++) { a = Math.imul(a ^ words[i], 0x01000193); b = Math.imul(b + words[i], 0x5bd1e995) ^ (b >>> 15); }
+  return `${src.width}x${src.height}:${(a >>> 0).toString(16)}:${(b >>> 0).toString(16)}`;
+}
+async function segment(src: Rgba, prompt: SegPrompt, pick: SegPick, clip: Box | null): Promise<Uint8Array> {
+  const enc = sessions.get('segment'), dec = decoders.get('segment'), layout = MODELS.segment.layout as SegLayout;
+  if (!enc || !dec) throw new Error('The AI is not ready yet.');
+  const key = fingerprint(src);
+  if (key !== seen || !embeds) {
+    embeds = null;
+    embeds = await enc.run({ [enc.inputNames[0]]: TS(segEncoderInput(layout, src)) });
+    seen = key;
+  }
+  const spec = segPromptFeeds(layout, prompt, src.width, src.height), feeds: Record<string, OrtTensor> = {};
+  for (const n of dec.inputNames) {
+    const t = embeds[n] ?? (spec[n] ? TS(spec[n]) : null);
+    if (!t) throw new Error('The AI gave an unexpected answer.');
+    feeds[n] = t;
+  }
+  const out = await dec.run(feeds), on = segOutputs(dec.outputNames);
+  return segMask(layout, { data: out[on.masks].data as Float32Array, dims: out[on.masks].dims }, out[on.scores].data as Float32Array, src.width, src.height, pick, clip);
 }
 async function inpaint(src: Rgba, hole: Uint8Array): Promise<Uint8Array> {
   const { image, keep } = inpaintInputs(src, hole), { width: w, height: h } = src;
@@ -102,6 +136,7 @@ scope.onmessage = (e) => {
     try {
       if (m.type === 'prepare') await prepare(m.id, m.model);
       else if (m.type === 'subject') { const mask = await subject(m.src); post({ type: 'mask', id: m.id, mask }, [mask.buffer as ArrayBuffer]); }
+      else if (m.type === 'segment') { const mask = await segment(m.src, m.prompt, m.pick, m.clip); post({ type: 'mask', id: m.id, mask }, [mask.buffer as ArrayBuffer]); }
       else if (m.type === 'inpaint') { const rgb = await inpaint(m.src, m.hole); post({ type: 'fill', id: m.id, rgb }, [rgb.buffer as ArrayBuffer]); }
       else { const image = await upscale(m.id, m.src, m.factor); post({ type: 'image', id: m.id, image }, [image.data.buffer as ArrayBuffer]); }
     } catch (err) {

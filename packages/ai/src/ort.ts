@@ -9,6 +9,6 @@ export interface OrtSession {
 }
 export interface OrtModule {
   env: { logLevel?: string; wasm: { numThreads?: number; wasmBinary?: ArrayBufferLike | Uint8Array; proxy?: boolean } };
-  Tensor: new (type: string, data: Float32Array | Uint8Array, dims: readonly number[]) => OrtTensor;
+  Tensor: new (type: string, data: Float32Array | Uint8Array | BigInt64Array, dims: readonly number[]) => OrtTensor;
   InferenceSession: { create(model: Uint8Array, options?: { executionProviders?: string[]; graphOptimizationLevel?: string }): Promise<OrtSession> };
 }

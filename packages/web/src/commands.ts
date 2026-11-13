@@ -395,6 +395,11 @@ for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.con
 // Wave 4: outlines (pen.ts). The Paths panel sits in the Layers card, so it is not one of the dock's own tabs.
 HANDLERS['select.from-path'] = w3('select.from-path', (e) => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1)));
 HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
+// Shapes & text path operations: the pen kit loads their file (pathops.ts) on first use.
+const hasPath = (e: Editor): boolean => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1));
+for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen',
+  'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']) HANDLERS[id] = w3(id, hasPath);
+HANDLERS['shape.spiral-star'] = w3('shape.spiral-star');
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).

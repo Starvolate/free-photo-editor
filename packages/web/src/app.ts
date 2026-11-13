@@ -972,6 +972,11 @@ export class Editor {
     const v = sc ? [el.scrollTop > 1 ? 'top' : '', el.scrollTop < max - 1 ? 'bottom' : ''].filter(Boolean).join(' ') : '';
     if (v) el.dataset.fade = v; else delete el.dataset.fade;
   }
+  /** Properties is emptied and refilled, part of it later: its card works out its fade again, so a long one scrolls with the fade and is never simply cut. */
+  private refade(el: HTMLElement): void {
+    const s = el.closest<HTMLElement>('.fpe-gbody');
+    if (s) requestAnimationFrame(() => this.fade(s));
+  }
   private watchFade(el: HTMLElement): void {
     this.fadeRO ??= new ResizeObserver((es) => { for (const e of es) { const s = (e.target as HTMLElement).closest<HTMLElement>('.fpe-gbody, .fpe-layer-list'); if (s) this.fade(s); } });
     this.fadeRO.observe(el);
@@ -2475,6 +2480,7 @@ export class Editor {
           live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg),
         });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+        this.refade(b);
       });
     }
     if (isFolder(l)) {
@@ -2487,6 +2493,7 @@ export class Editor {
           live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg), toggleOpen: (fid) => this.toggleOpen(fid),
         });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+        this.refade(b);
       });
     }
     if (l.kind === 'adjust' || l.kind === 'fill') {
@@ -2498,6 +2505,7 @@ export class Editor {
           run: (cmd) => void this.run(cmd), live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg) };
         if (kind === 'adjust') m.renderAdjustProps(box, host); else m.renderFillProps(box, host);
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+        this.refade(b);
       });
     }
     if (l.fx) {
@@ -2508,9 +2516,11 @@ export class Editor {
         m.renderFxProps(box, { uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
           live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg) });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+        this.refade(b);
       });
     }
     b.append(...parts);
+    this.refade(b);
   }
   private fillStart: number | null = null;
   /** Fill, beside Opacity (W6 S4): how solid the layer's own pixels are; its effects stay. One undo step on release. */

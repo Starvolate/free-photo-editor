@@ -109,7 +109,7 @@ export function fxRows(l: Layer, depth: number, push: (c: Command) => void): HTM
         l.fx = toggleFx(from, e.key, e.i);
         push(propsCommand(l.id, { fx: from }, { fx: l.fx }, `${e.on ? 'Hide' : 'Show'} ${e.plain.toLowerCase()}`));
       } }, icon(e.on ? 'eye' : 'eye-off')),
-    icon('sparkles', 'fpe-icon fpe-fxrow-ico'), h('span', { class: 'fpe-fxrow-name' }, e.plain), h('span', { class: 'fpe-fxrow-tag' }, 'Effect')));
+    icon('sparkles', 'fpe-icon fpe-fxrow-ico'), h('span', { class: 'fpe-fxrow-name', title: e.plain }, e.plain), h('span', { class: 'fpe-fxrow-tag' }, 'Effect')));
 }
 const HIST: [RegExp, string][] = [[/^Opened/, 'image'], [/shadow|glow|outline|overlay|effect|bevel|satin/i, 'sparkles'], [/mask/i, 'scan'], [/clip/i, 'clip'],
   [/text|type|font|words/i, 'type'], [/curve|level|bright|contrast|hue|satur|exposure|tone|adjust|invert|vibrance|balance|colou?r|light/i, 'sliders'],
@@ -123,6 +123,6 @@ export const histIconName = (label: string): string => HIST.find(([re]) => re.te
 export function histItem(label: string): DocumentFragment {
   css();
   const f = document.createDocumentFragment();
-  f.append(icon(histIconName(label), 'fpe-icon fpe-hico'), h('span', { class: 'fpe-hist-text' }, label));
+  f.append(icon(histIconName(label), 'fpe-icon fpe-hico'), h('span', { class: 'fpe-hist-text', title: label }, label));
   return f;
 }

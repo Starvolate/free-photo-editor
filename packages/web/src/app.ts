@@ -91,7 +91,7 @@ export interface EditorController {
   appState(): Record<string, unknown>;
   /** Write the safety copies now. */
   saveNow(): Promise<void>;
-  /** Plug-ins and automation: show your own controls in a sheet. A later call with the same id and a new body shows that body. */
+  /** Plug-ins, automation and tests: show your own controls in a sheet; a later call with the same id and a new body shows that body. */
   sheet(id: string, title: string, body: HTMLElement): void;
 }
 
@@ -1540,7 +1540,7 @@ export class Editor {
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
     const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
-    const tip = act ? `${act.plain}: ${act.help}` : r ? (r.help ? `${r.plain}: ${r.help}` : `${r.plain} · ${r.pro}`) : '', ml = d ? activeLayer(d) : undefined;
+    const tip = act ? `${act.plain}: ${act.help}` : r ? (r.help ? `${r.plain}: ${r.help}` : r.pro !== r.plain ? `${r.plain} · ${r.pro}` : r.plain) : '', ml = d ? activeLayer(d) : undefined;
     // While the mask is the target the status line says so first, in plain words (design 6), then the tool's own line.
     s.hint.textContent = ml && this.onMask(ml) ? `Editing the mask of ${ml.name}: black hides, white shows, grey half shows. ${tip}` : tip;
     s.space.textContent = d ? 'sRGB · 8 bits a channel' : '';
@@ -1550,7 +1550,7 @@ export class Editor {
       s.color.replaceChildren(...(c ? [h('i', { class: 'fpe-stat-sw', style: 'background:' + hex }), `Under the pointer ${hex} · R ${c.r} G ${c.g} B ${c.b}`] : []));
     }
     const n = ml && this.cards ? this.cards.layerNames(ml) : null;
-    s.layer.textContent = n ? `${n.plain} · pros call it ${n.pro}` : '';
+    s.layer.textContent = n ? (n.pro !== n.plain ? `${n.plain} · pros call it ${n.pro}` : n.plain) : '';
   }
   /**
    * True for each picture: "Saved on this device" only after this picture's own safety copy is written. Runs when the saver

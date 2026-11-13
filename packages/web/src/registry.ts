@@ -455,8 +455,8 @@ tool.lasso | Draw around it | Lasso | Draw freely around what you want to select
 tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
 tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | P | 2
 @Tools > Smart select = Smart select | Quick selection | Let the editor find the edges for you.
-tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | R | 11
 tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | R | W3
+tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | R | 11
 tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | R | W3 | W
 @Tools > Crop = Crop | Crop | Cut the picture to a new shape.
 tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | R | 1 | C

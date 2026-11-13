@@ -277,7 +277,7 @@ export function createAiKit(host: ToolHost): AiKit {
     const W = d.width, H = d.height;
     let out: Mask | null = null;
     const work = async (): Promise<void> => {
-      const m = await client.segment({ width: W, height: H, data: compositeDoc(d, docRect(d)) }, prompt, 'best', prompt.box ?? null);
+      const m = await client.segment({ width: W, height: H, data: compositeDoc(d, docRect(d)).slice() }, prompt, 'best', prompt.box ?? null);
       if (!same(d, W, H)) { toast(CHANGED); return; }
       if (!m.some((v) => v > 0)) { toast('Nothing was found there. Tap the middle of the thing, or drag a box round it.'); return; }
       out = { width: W, height: H, data: m };

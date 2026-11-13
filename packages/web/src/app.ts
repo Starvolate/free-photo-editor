@@ -29,7 +29,7 @@ import { JobRunner, JobStopped } from './jobs';
 import { NOTICES } from './notices';
 import { AppShell, type AppOptions } from './offline';
 import { Autosave, namesText, type OpenPicture, type SavedPicture } from './autosave';
-import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
+import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, helpReady, loadHelp, onHelp, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
@@ -1162,6 +1162,7 @@ export class Editor {
     this.searchList = h('ul', { class: 'fpe-results', role: 'listbox', 'aria-label': 'Matching commands', 'data-testid': 'search-results' });
     this.searchInput.addEventListener('input', () => {
       this.renderSearch();
+      void loadHelp();
       if (!moreLoaded) void loadMoreRows().then(() => { if (moreLoaded && this.searchInput.value.trim()) this.renderSearch(); });
     });
     this.searchInput.addEventListener('keydown', (e) => {
@@ -1184,7 +1185,7 @@ export class Editor {
       const ok = r.status === 'ready';
       const li = h('li', { role: 'option', class: 'fpe-result', 'aria-selected': String(k === firstReady), 'aria-disabled': ok ? null : 'true', 'data-tipcmd': r.id, 'data-id': r.id, 'data-testid': 'search-result' },
         h('span', { class: 'fpe-result-top' }, this.names(r.plain, r.pro), ok ? null : this.tag(), r.key ? h('kbd', {}, keyText(r.key)) : null),
-        h('span', { class: 'fpe-result-help' }, `${r.help} · ${r.kind === 'tool' ? 'Tool column' : r.kind === 'panel' ? 'Panel' : placeText(r.place)}`));
+        h('span', { class: 'fpe-result-help' }, `${r.help ? r.help + ' · ' : ''}${r.kind === 'tool' ? 'Tool column' : r.kind === 'panel' ? 'Panel' : placeText(r.place)}`));
       li.addEventListener('click', () => { if (!ok) return; this.closeModal(false); void this.run(r.id).then((done) => { if (done) this.highlight(r.id); }); });
       return li;
     }));
@@ -1197,15 +1198,21 @@ export class Editor {
   private installTips(): void {
     const root = this.root;
     let timer = 0, press = 0, pressed = false, sx = 0, sy = 0, target: HTMLElement | null = null;
+    // The help lines come in their own chunk after the first screen: on idle, on the first search keystroke, or from a tip.
+    onHelp(() => { this.renderStatus(); this.renderOptions(); this.renderProps(); this.renderSearch(); });
+    const idle = (window as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (idle) idle(() => void loadHelp(), { timeout: 1500 }); else window.setTimeout(() => void loadHelp(), 1500);
     const find = (el: EventTarget | null): HTMLElement | null => (el instanceof Element ? el.closest<HTMLElement>('[data-cmd],[data-help],[data-tipcmd]') : null);
     const show = (el: HTMLElement): void => {
       if (!this.hints || !el.isConnected || el.closest('.fpe-fly')) return;
       const id = el.dataset.cmd ?? el.dataset.tipcmd, r = id ? BY_ID.get(id) : undefined;
-      const help = r?.help ?? el.dataset.help ?? '';
-      if (!help) return;
+      // Until the help lines arrive, a command's tip shows its plain and pro names, and fills in its help when they come.
+      const help = r?.help || el.dataset.help || '', waiting = !!r && !r.help && !helpReady();
+      if (!help && !waiting) return;
+      if (waiting) void loadHelp().then(() => { if (target === el && !this.tipEl.hidden && r?.help) show(el); });
       const title = r?.plain ?? el.dataset.helpTitle ?? el.getAttribute('aria-label') ?? '';
       this.tipEl.replaceChildren(...[h('span', { class: 'fpe-tip-head' }, h('strong', {}, title), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, r.pro) : null,
-        r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), h('span', { class: 'fpe-tip-help' }, help),
+        r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), help ? h('span', { class: 'fpe-tip-help' }, help) : null,
         // Where to find it again: every command, and a tool too when it is hovered on the ribbon (its home is a ribbon group).
         r && (r.kind === 'command' || el.closest('.fpe-ribbon, .fpe-rlist')) ? h('span', { class: 'fpe-tip-place' }, 'In ' + this.placeOf(r)) : null,
         el.getAttribute('aria-disabled') === 'true' && r?.status === 'ready' ? h('span', { class: 'fpe-tip-place' }, el.dataset.why ?? (this.doc ? 'Not available right now.' : 'Open or create a picture first.')) : null].filter((x): x is HTMLElement => !!x));
@@ -1533,7 +1540,7 @@ export class Editor {
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
     const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
-    const tip = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '', ml = d ? activeLayer(d) : undefined;
+    const tip = act ? `${act.plain}: ${act.help}` : r ? (r.help ? `${r.plain}: ${r.help}` : `${r.plain} · ${r.pro}`) : '', ml = d ? activeLayer(d) : undefined;
     // While the mask is the target the status line says so first, in plain words (design 6), then the tool's own line.
     s.hint.textContent = ml && this.onMask(ml) ? `Editing the mask of ${ml.name}: black hides, white shows, grey half shows. ${tip}` : tip;
     s.space.textContent = d ? 'sRGB · 8 bits a channel' : '';
@@ -2760,7 +2767,7 @@ export class Editor {
     const kids: Node[] = [this.dragHead(h('div', { class: 'fpe-dlg-head', 'data-testid': 'dialog-head', 'data-help-title': 'Move this box',
       'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
-      h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
+      h('p', { class: 'fpe-note' }, `${r.help ? r.help + ' ' : ''}It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     this.dlgCanvas = null;
     if (s.scale < 1) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-small' }, 'This picture is big, so the preview uses a smaller copy to stay quick. Apply then works on every pixel at full size, with a progress bar.'));
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {

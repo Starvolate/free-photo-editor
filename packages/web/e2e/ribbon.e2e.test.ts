@@ -16,7 +16,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cost, open as openSpot, ways } from './ribbon';
 import { SHEETS, TABS, clicks, firstTab, homeText, homes, restOf } from '../src/ribbon-homes';
-import { BY_ID } from '../src/registry';
+import { BY_ID, stem, words } from '../src/registry';
 
 interface Fpe { openSample(): void; state(): Record<string, unknown>; }
 type Win = Window & { fpe: Fpe; __n: { dl: number; open: number; pick: number } };
@@ -336,12 +336,39 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     const r = BY_ID.get(id)!;
     await p.hover(`[data-testid="ribbon-body"] [data-testid="ri-${id}"]`);
     await p.waitForSelector('[data-testid="tip"]:not([hidden])');
+    // The help lines come in their own chunk after the first screen; the tip fills its line in when they arrive.
+    await p.waitForSelector('[data-testid="tip"]:not([hidden]) .fpe-tip-help');
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-head strong'))?.trim()).toBe(r.plain);
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-head .fpe-pro'))?.trim()).toBe(r.pro);
     expect((await p.textContent('[data-testid="tip"] .fpe-tip-help'))?.trim()).toBe(r.help);
     const home = homes().get(id);
     if (home) expect(await p.textContent('[data-testid="tip"]')).toContain(homeText(home));
     await p.screenshot({ path: join(OUT, 'r2-tip-1440.png') });
+  }, 60_000);
+
+  it('search finds a Ready command by a word only its help line holds, once the help lines arrive', async () => {
+    step = 'help search';
+    // A word no name, pro name, wish word or place of any row starts with, and only one row's help line has.
+    const rows = [...BY_ID.values()];
+    const named = rows.flatMap((r) => words(`${r.plain} ${r.pro} ${r.wish} ${r.place}`).map(stem));
+    const text = rows.map((r) => `${r.plain} ${r.pro} ${r.wish}`.toLowerCase());
+    let pick: [string, string] | null = null;
+    for (const r of rows) {
+      if (r.status !== 'ready' || pick) continue;
+      const w = words(r.help).find((x) => {
+        const t = stem(x);
+        return x.length > 5 && /^[a-z]+$/.test(x) && !named.some((n) => n.startsWith(t)) && !text.some((s) => s.includes(x)) &&
+          rows.filter((o) => words(o.help).map(stem).some((n) => n.startsWith(t))).length === 1;
+      });
+      if (w) pick = [r.id, w];
+    }
+    if (!pick) throw new Error('no word in the map that only one help line holds');
+    const [id, word] = pick;
+    const p = await open();
+    await p.click('[data-testid="btn-search"]');
+    await p.fill('[data-testid="search-input"]', word);
+    await p.waitForSelector(`[data-testid="search-result"][data-id="${id}"]`, { timeout: 15_000 });
+    expect(await p.$$eval('[data-testid="search-result"]', (els) => els.map((e) => e.getAttribute('data-id'))), `"${word}" finds ${id}`).toEqual([id]);
   }, 60_000);
 
   it('reaches every Ready command with real clicks within the count its home promises', async () => {

@@ -407,8 +407,11 @@ function writeLooks(looks: Look[]): boolean {
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /** Effects & masks › Saved looks: put a look on the active layer, keep the active layer's effects as a look, delete your own. */
+const LOOKS_BODY = new WeakMap<object, HTMLElement>();
 export function openLooks(host: ToolHost): void {
-  const body = h('div', { class: 'fpe-stack', 'data-testid': 'looks-body' });
+  // The sheet keeps the body it was made with, so each opening draws the same body again with today's looks.
+  const body = LOOKS_BODY.get(host.root) ?? h('div', { class: 'fpe-stack', 'data-testid': 'looks-body' });
+  LOOKS_BODY.set(host.root, body);
   const active = (): Layer | undefined => { const d = host.doc(); return d?.layers.find((x) => x.id === d.activeId); };
   const use = (look: Look): void => {
     const t = active();

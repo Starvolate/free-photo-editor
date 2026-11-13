@@ -122,6 +122,7 @@ export function cameraProblem(e: unknown): string {
   if (n === 'NotAllowedError' || n === 'SecurityError') return 'The camera is blocked for this page. Allow the camera from the icon in the address bar, then try again.';
   if (n === 'NotFoundError' || n === 'OverconstrainedError' || n === 'DevicesNotFoundError') return 'No camera was found on this device.';
   if (n === 'NotReadableError' || n === 'TrackStartError' || n === 'AbortError') return 'The camera is busy in another app. Close that app, then try again.';
+  if (n === 'PolicyOff') return 'This website has switched the camera off for its pages, so the editor cannot use it here. Take the photo with your camera app, then open it.';
   if (n === 'NoMedia') return 'This browser cannot use a camera here. It needs a secure (https) page and a browser with camera support.';
   return 'The camera could not start. Try again.';
 }
@@ -200,6 +201,9 @@ function camera(host: FileHost): void {
   const sheet = b.closest<HTMLElement>('[data-sheet]');
   const md = typeof navigator !== 'undefined' ? navigator.mediaDevices : undefined;
   if (!md?.getUserMedia) { say(status, cameraProblem({ name: 'NoMedia' }), true); return; }
+  // A site can switch the camera off for its pages (Permissions-Policy: camera=()); asking would only fail, so say why.
+  const policy = document as Document & { permissionsPolicy?: { allowsFeature(f: string): boolean }; featurePolicy?: { allowsFeature(f: string): boolean } };
+  if ((policy.permissionsPolicy ?? policy.featurePolicy)?.allowsFeature('camera') === false) { say(status, cameraProblem({ name: 'PolicyOff' }), true); return; }
   md.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(async (s) => {
     // Closed while the browser was still asking: hand the camera straight back.
     if (sheet?.dataset.state !== 'open') { s.getTracks().forEach((t) => t.stop()); return; }

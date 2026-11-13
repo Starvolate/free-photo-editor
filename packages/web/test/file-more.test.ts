@@ -91,6 +91,7 @@ describe('Take a photo', () => {
     expect(cameraProblem({ name: 'NotFoundError' })).toContain('No camera');
     expect(cameraProblem({ name: 'NotReadableError' })).toContain('busy');
     expect(cameraProblem(null)).toContain('could not start');
+    expect(cameraProblem({ name: 'PolicyOff' })).toContain('switched the camera off');
   });
   it('names the photo from the time it was taken', () => {
     expect(photoName(new Date(2026, 10, 13, 9, 5, 7))).toBe('Camera photo 2026-11-13 09.05.07.png');

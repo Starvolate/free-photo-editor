@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**393 functions: 239 Ready, 154 Planned** (64 tools, 22 panels, 36 menus and submenus).
+**398 functions: 250 Ready, 148 Planned** (64 tools, 22 panels, 36 menus and submenus).
 
 ## Phases
 
@@ -25,14 +25,14 @@ one plain line of help, the wish words search understands, where it lives, and w
 | W3 | Remaining tools |
 | W4 | Learn while you edit |
 
-## File (14 Ready, 17 Planned)
+## File (25 Ready, 11 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|
 | file.new | New picture | New | Start an empty picture of any size. | blank, empty canvas, start fresh, new document | File | Ready | 1 | Ctrl+N |
-| file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file | File | Ready | 1 | Ctrl+O |
+| file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | File | Ready | 1 | Ctrl+O |
 | file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | File | Ready | 1 | Ctrl+Shift+O |
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | Ready | W1 |  |
 | file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | Planned | 7 |  |
@@ -42,18 +42,23 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.close-all | Close all pictures | Close all | Close every open tab. | close everything | File | Ready | W1 |  |
 | file.revert | Go back to the opened version | Revert | Undo every change since the picture was opened. | reset, original, start over, undo everything | File | Ready | W1 |  |
 | file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | File | Ready | 1 |  |
-| file.export | Export | Export as | Save a copy as PNG, JPEG, WebP or PSD, with a note on what each type loses. | save, download, png, jpg, save as | File | Ready | 1 | Ctrl+S |
+| file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | File | Ready | 1 | Ctrl+S |
 | file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | File | Ready | W1 | Ctrl+Shift+Alt+S |
 | file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | File › Export as | Ready | 1 |  |
 | file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | File › Export as | Ready | 1 |  |
 | file.export-webp | WebP picture | WebP | Small modern web pictures that can keep see-through areas. | webp, website picture | File › Export as | Ready | 1 |  |
 | file.export-psd | Layered file | PSD | Keeps the layers for other editors. | psd, layered | File › Export as | Ready | 1 |  |
-| file.export-avif | AVIF picture | AVIF | Very small modern picture files. | avif | File › Export as | Planned | 7 |  |
-| file.export-gif | GIF picture | GIF | Simple web pictures and animations. | gif, animation | File › Export as | Planned | 7 |  |
-| file.export-tiff | TIFF picture | TIFF | Files for print and archives. | tiff, tif, print | File › Export as | Planned | 7 |  |
-| file.export-pdf | PDF document | PDF | Share the picture as a document. | pdf, document | File › Export as | Planned | 7 |  |
-| file.export-svg | SVG drawing | SVG | A drawing file that stays sharp at any size. | svg, vector | File › Export as | Planned | 7 |  |
-| file.export-ico | Website icon | ICO | Small icon files for websites. | favicon, icon | File › Export as | Planned | 7 |  |
+| file.export-avif | AVIF picture | AVIF | Very small modern picture files. | avif | File › Export as | Ready | 7 |  |
+| file.export-gif | GIF picture | GIF | Simple web pictures and animations. | gif, animation | File › Export as | Ready | 7 |  |
+| file.export-tiff | TIFF picture | TIFF | Files for print and archives. | tiff, tif, print | File › Export as | Ready | 7 |  |
+| file.export-pdf | PDF document | PDF | Share the picture as a document. | pdf, document | File › Export as | Ready | 7 |  |
+| file.export-svg | SVG drawing | SVG | A drawing file that stays sharp at any size. | svg, vector | File › Export as | Ready | 7 |  |
+| file.export-ico | Website icon | ICO | Small icon files for websites. | favicon, icon | File › Export as | Ready | 7 |  |
+| file.export-jxl | JPEG XL picture | JPEG XL | Very small, high-quality files that keep see-through areas. | jxl, jpeg xl | File › Export as | Ready | 7 |  |
+| file.export-tga | TGA picture | TGA | Files for games and video tools; keeps see-through areas. | tga, targa | File › Export as | Ready | 7 |  |
+| file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression. | bmp, bitmap, windows picture | File › Export as | Ready | 7 |  |
+| file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | File › Export as | Ready | 7 |  |
+| file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | File › Export as | Ready | 7 |  |
 | file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Planned | 7 |  |
 | file.print | Print | Print | Print the picture on paper. | printer, paper | File | Planned | 8 |  |
 | file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | File | Planned | 7 |  |

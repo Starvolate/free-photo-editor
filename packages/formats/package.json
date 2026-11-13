@@ -1,0 +1,24 @@
+{
+  "name": "@free-photoeditor/formats",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Free Photo Editor file formats as add-ons: each format is its own entry, loaded only when first used.",
+  "license": "AGPL-3.0-only",
+  "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@free-photoeditor/core": "0.1.0",
+    "@jsquash/avif": "2.1.1",
+    "@jsquash/jxl": "1.3.0",
+    "fflate": "0.8.3",
+    "gifenc": "1.0.3",
+    "libheif-js": "1.23.5",
+    "libraw-wasm": "1.6.0",
+    "pdfjs-dist": "6.5.438"
+  }
+}

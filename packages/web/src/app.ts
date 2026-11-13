@@ -10,7 +10,7 @@ import {
   APP_NAME, APP_VERSION, AUTHOR, AUTHOR_URL, BLACK, BLEND_GROUPS, BLEND_LABELS, EXPORT_FORMATS, FORMAT_INFO, History, SOURCE_URL, Stroke, WHITE,
   activeLayer, addEmptyLayer, addLayer, clamp, clearSelection, commitResult, compositeDoc, createDocument, createLayer, cropDocument, curveLut,
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
-  innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
+  innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
@@ -20,7 +20,7 @@ import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type To
 import { errText, fmtBytes, h, icon, iconButton, type Attrs } from './dom';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
-import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData } from './io';
+import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData, exportList, fmtInfo, multiKind } from './io';
 import { HANDLES, type Guides } from './handles';
 import { JobRunner } from './jobs';
 import { NOTICES } from './notices';
@@ -52,7 +52,7 @@ export interface EditorController {
   sample(x: number, y: number, activeLayerOnly?: boolean): number[] | null;
   /** Page coordinates of a document position, for automation and tests. */
   toClient(x: number, y: number): { x: number; y: number } | null;
-  exportFile(format: ExportFormat, quality?: number): Promise<Blob>;
+  exportFile(format: string, quality?: number, multi?: boolean, delay?: number): Promise<Blob>;
   /** Every function of the map with its status, for automation and tests. */
   commands(): CommandInfo[];
   /** Run a function of the map by id. False when it is Planned, unknown or not available right now. */
@@ -262,7 +262,15 @@ export class Editor {
   private phonePanel = 'layers';
   private menuOpen: string | null = null;
   private menuStack: HTMLElement[] = [];
-  private exportFormat: ExportFormat = 'png';
+  private exportFormat = 'png';
+  private exportMulti = false;
+  private exportDelay = 100;
+  private multiRow!: HTMLElement;
+  private multiBox!: HTMLInputElement;
+  private multiText!: HTMLElement;
+  private delayRow!: HTMLElement;
+  private optionsBody!: HTMLElement;
+  private optionsResolve: ((v: boolean) => void) | null = null;
   private exportQuality = 0.92;
   private exportFacts: DocFacts | null = null;
   private askResolve: ((v: Answer) => void) | null = null;
@@ -396,6 +404,7 @@ export class Editor {
     this.statusEl = h('footer', { class: 'fpe-status', 'data-testid': 'status' }, this.stat.zoom, this.stat.size, this.stat.pos, this.stat.sel, this.stat.hint);
     this.shell = h('div', { class: 'fpe-shell' }, top, this.optionsBar, this.toolsBar, center, this.dock, this.statusEl);
     this.makeSheet('export', 'Export', this.buildExport());
+    this.makeSheet('open-options', 'Open', this.optionsBody = h('div', { class: 'fpe-stack' }));
     this.makeSheet('new', 'New picture', this.buildNew());
     this.makeSheet('about', 'About Free Photo Editor', this.buildAbout());
     this.makeSheet('keys', 'Keyboard shortcuts', this.buildKeys());
@@ -2278,6 +2287,7 @@ export class Editor {
     this.shell.inert = false;
     this.scrim.removeAttribute('data-on');
     if (id === 'ask' && this.askResolve) { const r = this.askResolve; this.askResolve = null; r('cancel'); }
+    if (id === 'open-options' && this.optionsResolve) { const r = this.optionsResolve; this.optionsResolve = null; r(false); }
     if (restore) { this.modalReturn?.focus({ preventScroll: true }); this.modalReturn = null; }
   }
   private ask(message: string, primary: string, secondary: string): Promise<Answer> {
@@ -2411,14 +2421,14 @@ export class Editor {
     const id = `fpe-${this.uid}-x`;
     this.exportName = h('input', { id: id + 'n', type: 'text', autocomplete: 'off', spellcheck: 'false', 'data-testid': 'export-name' });
     this.exportChips = h('div', { class: 'fpe-chips', role: 'radiogroup', 'aria-label': 'File format' },
-      ...EXPORT_FORMATS.map((f) => h('button', { type: 'button', class: 'fpe-chip', role: 'radio', 'aria-checked': 'false', 'data-format': f, 'data-testid': 'export-format-' + f,
-        onclick: () => { this.exportFormat = f; this.renderExport(); } }, FORMAT_INFO[f].label)));
+      ...exportList().map((f) => h('button', { type: 'button', class: 'fpe-chip', role: 'radio', 'aria-checked': 'false', 'data-format': f, 'data-testid': 'export-format-' + f,
+        onclick: () => { this.exportFormat = f; this.renderExport(); } }, fmtInfo(f).label)));
     this.exportChips.addEventListener('keydown', (e) => {
       const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown', back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
       if (!fwd && !back) return;
       e.preventDefault();
-      const n = EXPORT_FORMATS.length, i = EXPORT_FORMATS.indexOf(this.exportFormat);
-      this.exportFormat = EXPORT_FORMATS[(i + (fwd ? 1 : n - 1)) % n];
+      const list = exportList(), n = list.length, i = list.indexOf(this.exportFormat);
+      this.exportFormat = list[(i + (fwd ? 1 : n - 1)) % n];
       this.renderExport();
       this.exportChips.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     });
@@ -2427,18 +2437,40 @@ export class Editor {
     q.addEventListener('input', () => { this.exportQuality = Number(q.value) / 100; qOut.textContent = q.value + '%'; this.renderExport(); });
     this.qualityRow = h('div', { class: 'fpe-row', 'data-help-title': 'Quality', 'data-help': 'Higher keeps more detail and makes a bigger file.' }, h('label', { for: id + 'q' }, 'Quality'), q, qOut);
     this.lossBox = h('div', { class: 'fpe-loss', 'data-testid': 'loss-warning', 'aria-live': 'polite' });
+    this.multiBox = h('input', { id: id + 'm', type: 'checkbox', 'data-testid': 'export-multi' });
+    this.multiBox.addEventListener('change', () => { this.exportMulti = this.multiBox.checked; this.renderExport(); });
+    this.multiText = h('label', { for: id + 'm' }, 'Make an animation: each layer is one frame');
+    this.multiRow = h('div', { class: 'fpe-row', 'data-help-title': 'Layers as frames or pages', 'data-help': 'Turn each layer into one frame of an animation, or into its own page.' }, this.multiBox, this.multiText);
+    const dl = h('input', { id: id + 'd', type: 'number', min: 20, max: 10000, step: 10, value: 100, inputmode: 'numeric', 'data-testid': 'export-delay' });
+    dl.addEventListener('input', () => { const v = Number(dl.value); if (v >= 10) this.exportDelay = Math.min(10000, Math.round(v)); });
+    this.delayRow = h('div', { class: 'fpe-row', 'data-help-title': 'Time per frame', 'data-help': 'How long each frame shows, in thousandths of a second: 100 shows ten frames a second.' }, h('label', { for: id + 'd' }, 'Time per frame (ms)'), dl);
     this.exportGo = h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'export-go', onclick: () => void this.doExport() }, 'Export');
     return h('div', { class: 'fpe-stack' },
       h('div', { class: 'fpe-row' }, h('label', { for: id + 'n' }, 'File name'), this.exportName),
       h('div', { class: 'fpe-field-col' }, h('span', { class: 'fpe-label' }, 'File type'), this.exportChips),
-      this.qualityRow, this.lossBox,
+      this.qualityRow, this.multiRow, this.delayRow, this.lossBox,
       h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', onclick: () => this.closeModal() }, 'Cancel'), this.exportGo));
   }
-  openExport(fmt?: ExportFormat): void {
+  /** A sheet that asks how to open a file (the PDF page, the RAW develop step). Resolves false when closed. */
+  openOptions(title: string, body: HTMLElement, ok: string): Promise<boolean> {
+    if (this.optionsResolve) { const r = this.optionsResolve; this.optionsResolve = null; r(false); }
+    return new Promise<boolean>((res) => {
+      this.optionsResolve = res;
+      const done = (v: boolean): void => { const r = this.optionsResolve; this.optionsResolve = null; this.closeModal(); r?.(v); };
+      const t = this.sheets.get('open-options')?.querySelector('.fpe-sheet-title');
+      if (t) t.textContent = title;
+      this.optionsBody.replaceChildren(body, h('div', { class: 'fpe-actions' },
+        h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'options-cancel', onclick: () => done(false) }, 'Cancel'),
+        h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'options-ok', onclick: () => done(true) }, ok)));
+      this.openModal('open-options');
+    });
+  }
+  openExport(fmt?: string, multi?: boolean): void {
     const d = this.doc;
     if (!d) return this.needDoc();
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
     if (fmt) this.exportFormat = fmt;
+    if (multi !== undefined) this.exportMulti = multi;
     this.exportFacts = docFacts(d);
     this.exportName.value = this.name;
     this.renderExport();
@@ -2447,13 +2479,20 @@ export class Editor {
   private renderExport(): void {
     const f = this.exportFacts;
     if (!f) return;
-    const fmt = this.exportFormat, label = FORMAT_INFO[fmt].label, rep = lossReport(f, fmt, this.exportQuality);
+    const fmt = this.exportFormat, info = fmtInfo(fmt), label = info.label, kind = multiKind(fmt), def = formatDef(fmt), d = this.doc;
+    const multi = this.exportMulti && !!kind && f.layers > 1;
+    this.multiRow.hidden = !kind || f.layers < 2;
+    this.multiText.textContent = kind === 'pages' ? 'Each layer as its own page' : 'Make an animation: each layer is one frame';
+    this.multiBox.checked = this.exportMulti;
+    this.delayRow.hidden = !multi || kind !== 'frames';
+    const rep = def || multi ? formatLossReport(def ?? { id: fmt, label, caps: { alpha: 'full', lossy: info.lossy, multi: kind ?? undefined }, keeps: '' }, f, this.exportQuality, multi, d ? Math.max(d.width, d.height) : 0)
+      : lossReport(f, fmt as ExportFormat, this.exportQuality);
     for (const b of this.exportChips.querySelectorAll<HTMLElement>('[data-format]')) {
       const on = b.dataset.format === fmt;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
     }
-    this.qualityRow.hidden = !FORMAT_INFO[fmt].lossy;
+    this.qualityRow.hidden = !info.lossy;
     const kids: Node[] = [h('h3', {}, icon('info'), rep.losses.length ? `What ${label} loses for this picture` : `${label} keeps everything in this picture`)];
     if (rep.losses.length) kids.push(h('ul', {}, ...rep.losses.map((l) => h('li', {}, l.text))));
     kids.push(h('p', { class: 'fpe-kept' }, rep.kept));
@@ -2467,11 +2506,11 @@ export class Editor {
   private async doExport(): Promise<void> {
     const d = this.doc;
     if (!d) return;
-    const fmt = this.exportFormat, info = FORMAT_INFO[fmt], file = baseName(this.exportName.value || this.name) + '.' + info.ext;
+    const fmt = this.exportFormat, info = fmtInfo(fmt), file = baseName(this.exportName.value || this.name) + '.' + info.ext;
     const done = this.busyAfter(100);
     this.exportGo.disabled = true;
     try {
-      const { blob, note } = await encodeDocument(d, fmt, this.exportQuality);
+      const { blob, note } = await encodeDocument(d, fmt, this.exportQuality, { multi: this.exportMulti && d.layers.length > 1 && !!multiKind(fmt), delay: this.exportDelay });
       download(blob, file, this.root);
       this.savedId = this.history.stateId();
       this.renderTabs();
@@ -2612,11 +2651,22 @@ export class Editor {
     }), this.cmdBtn('file.new', 'plus', null, { class: 'fpe-btn fpe-icon-btn fpe-tab-new', 'data-testid': 'doc-tab-new' }));
   }
   async openFile(file: Blob, name: string, asLayer = false): Promise<void> {
-    const done = this.busyAfter(120);
+    const busy = this.busyAfter(120);
+    let ended = false;
+    const done = (): void => { if (!ended) { ended = true; busy(); } };
     try {
-      const o = await readImageFile(file, name);
+      const o = await readImageFile(file, name, { choose: (t, b, ok) => { done(); return this.openOptions(t, b, ok); } });
+      if (o.kind === 'none') return;
       let bmp: Bitmap;
-      if (o.kind === 'psd') {
+      if (o.kind === 'doc') {
+        if (asLayer && this.doc) bmp = flatten(o.doc);
+        else {
+          this.addTab(o.doc, baseName(name));
+          const n = o.doc.layers.length;
+          this.toast(`Opened ${name}${n > 1 ? `: ${n} layers` : ''}.${o.notes.length ? ' ' + o.notes.join(' ') : ''}`, o.notes.length ? 6000 : 2800);
+          return;
+        }
+      } else if (o.kind === 'psd') {
         const { readPsdDocument } = await import('@free-photoeditor/core/psd');
         const res = readPsdDocument(o.bytes);
         if (asLayer && this.doc) bmp = flatten(res.doc);
@@ -2819,9 +2869,9 @@ export class Editor {
         const r = this.canvas.getBoundingClientRect();
         return { x: r.left + this.view.panX + x * this.view.zoom, y: r.top + this.view.panY + y * this.view.zoom };
       },
-      exportFile: async (f, q = 0.92) => {
+      exportFile: async (f, q = 0.92, m = false, dl = 100) => {
         if (!this.doc) throw new Error('No picture is open.');
-        return (await encodeDocument(this.doc, f, q)).blob;
+        return (await encodeDocument(this.doc, f, q, { multi: m, delay: dl })).blob;
       },
       commands: () => ROWS.map((r) => {
         const hd = HANDLERS[r.id];

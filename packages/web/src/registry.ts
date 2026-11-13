@@ -14,7 +14,7 @@
 const SRC = String.raw`
 @File = File | File | Open, save and export pictures.
 file.new | New picture | New | Start an empty picture of any size. | blank, empty canvas, start fresh, new document | R | 1 | Ctrl+N
-file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file | R | 1 | Ctrl+O
+file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | R | 1 | Ctrl+O
 file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | R | 1 | Ctrl+Shift+O
 file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | R | W1
 file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | P | 7
@@ -26,19 +26,24 @@ file.close-all | Close all pictures | Close all | Close every open tab. | close 
 file.revert | Go back to the opened version | Revert | Undo every change since the picture was opened. | reset, original, start over, undo everything | R | W1
 --
 file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | R | 1
-file.export | Export | Export as | Save a copy as PNG, JPEG, WebP or PSD, with a note on what each type loses. | save, download, png, jpg, save as | R | 1 | Ctrl+S
+file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | R | 1 | Ctrl+S
 file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | R | W1 | Ctrl+Shift+Alt+S
 @File > Export as = Save a copy as | Export as | Pick the file type for the copy.
 file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | R | 1
 file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | R | 1
 file.export-webp | WebP picture | WebP | Small modern web pictures that can keep see-through areas. | webp, website picture | R | 1
 file.export-psd | Layered file | PSD | Keeps the layers for other editors. | psd, layered | R | 1
-file.export-avif | AVIF picture | AVIF | Very small modern picture files. | avif | P | 7
-file.export-gif | GIF picture | GIF | Simple web pictures and animations. | gif, animation | P | 7
-file.export-tiff | TIFF picture | TIFF | Files for print and archives. | tiff, tif, print | P | 7
-file.export-pdf | PDF document | PDF | Share the picture as a document. | pdf, document | P | 7
-file.export-svg | SVG drawing | SVG | A drawing file that stays sharp at any size. | svg, vector | P | 7
-file.export-ico | Website icon | ICO | Small icon files for websites. | favicon, icon | P | 7
+file.export-avif | AVIF picture | AVIF | Very small modern picture files. | avif | R | 7
+file.export-gif | GIF picture | GIF | Simple web pictures and animations. | gif, animation | R | 7
+file.export-tiff | TIFF picture | TIFF | Files for print and archives. | tiff, tif, print | R | 7
+file.export-pdf | PDF document | PDF | Share the picture as a document. | pdf, document | R | 7
+file.export-svg | SVG drawing | SVG | A drawing file that stays sharp at any size. | svg, vector | R | 7
+file.export-ico | Website icon | ICO | Small icon files for websites. | favicon, icon | R | 7
+file.export-jxl | JPEG XL picture | JPEG XL | Very small, high-quality files that keep see-through areas. | jxl, jpeg xl | R | 7
+file.export-tga | TGA picture | TGA | Files for games and video tools; keeps see-through areas. | tga, targa | R | 7
+file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression. | bmp, bitmap, windows picture | R | 7
+file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | R | 7
+file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | R | 7
 @File
 file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | P | 7
 file.print | Print | Print | Print the picture on paper. | printer, paper | P | 8

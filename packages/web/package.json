@@ -6,8 +6,19 @@
   "license": "AGPL-3.0-only",
   "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
   "type": "module",
-  "sideEffects": ["*.css"],
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "vite build", "dev": "vite" },
-  "dependencies": { "@free-photoeditor/core": "0.1.0", "lucide": "1.72.0" }
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@free-photoeditor/core": "0.1.0",
+    "lucide": "1.72.0",
+    "@free-photoeditor/formats": "0.1.0"
+  }
 }

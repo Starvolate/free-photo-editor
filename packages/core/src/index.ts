@@ -22,3 +22,4 @@ export * from './selection';
 export * from './paint';
 export * from './transform';
 export * from './vector';
+export * from './formats';

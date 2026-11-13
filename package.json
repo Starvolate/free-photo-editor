@@ -7,16 +7,22 @@
   "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
   "homepage": "https://github.com/Starvolate/free-photo-editor",
   "type": "module",
-  "workspaces": ["packages/core", "packages/web"],
+  "workspaces": [
+    "packages/core",
+    "packages/formats",
+    "packages/web"
+  ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/core/tsconfig.test.json && tsc --noEmit -p packages/web && tsc --noEmit -p packages/web/tsconfig.node.json",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/core/tsconfig.test.json && tsc --noEmit -p packages/formats && tsc --noEmit -p packages/formats/tsconfig.test.json && tsc --noEmit -p packages/web && tsc --noEmit -p packages/web/tsconfig.node.json",
     "build": "npm run build -w @free-photoeditor/web",
     "size": "npm run build && node packages/web/scripts/size.mjs",
     "e2e": "npm run build && vitest run --config packages/web/vitest.e2e.config.ts",
     "dev": "npm run dev -w @free-photoeditor/web"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@types/node": "26.6.6",
     "@types/pngjs": "6.0.5",

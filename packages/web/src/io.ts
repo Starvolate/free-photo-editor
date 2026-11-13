@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
-/** Opening and saving files. Browsers decode the common formats; the engine adds the credit and handles PSD. */
-import { CREDIT, FORMAT_INFO, WHITE, flatten, injectMetadata, webpInfo, type Bitmap, type Doc, type ExportFormat } from '@free-photoeditor/core';
+/**
+ * Opening and saving files. Browsers decode the common formats; the engine adds the credit and handles PSD (and PSB);
+ * the format add-ons (packages/formats) open and save the rest, each loaded only when first used.
+ */
+import {
+  CREDIT, EXPORT_FORMATS, FORMAT_INFO, WHITE, flatten, formatDef, injectMetadata, listFormats, sniffFormat, webpInfo,
+  type Bitmap, type Doc, type ExportFormat, type FormatHost,
+} from '@free-photoeditor/core';
+import { OPEN_EXTS, PLANNED_OPEN, registerAllFormats } from '@free-photoeditor/formats';
 
-export const OPEN_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,image/vnd.adobe.photoshop,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.ico,.psd';
-export type Opened = { kind: 'bitmap'; bitmap: Bitmap } | { kind: 'psd'; bytes: Uint8Array };
+registerAllFormats();
+export const OPEN_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,image/vnd.adobe.photoshop,' +
+  'image/tiff,image/heic,image/heif,image/jxl,image/apng,image/x-tga,image/openraster,application/pdf,' +
+  '.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.ico,.psd,.psb,' + OPEN_EXTS.map((e) => '.' + e).join(',');
+export type Opened = { kind: 'bitmap'; bitmap: Bitmap } | { kind: 'psd'; bytes: Uint8Array } | { kind: 'doc'; doc: Doc; notes: string[] } | { kind: 'none' };
+/** How the open step asks a question (the PDF page, the RAW develop step). False means the person cancelled. */
+export interface OpenUi { choose(title: string, body: HTMLElement, ok: string): Promise<boolean>; }
 export const baseName = (n: string): string => n.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'image';
 
 function draw(src: CanvasImageSource, w: number, h: number): Bitmap {
@@ -29,10 +41,43 @@ async function viaImg(file: Blob, svg: boolean): Promise<Bitmap> {
     return draw(img, w, h);
   } finally { URL.revokeObjectURL(url); }
 }
-/** Decode a picture file. PSD comes back as bytes for the engine; everything else as pixels. */
-export async function readImageFile(file: Blob, name: string): Promise<Opened> {
-  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+export function toImageData(b: Bitmap): ImageData {
+  return new ImageData(b.data as unknown as Uint8ClampedArray<ArrayBuffer>, b.width, b.height);
+}
+/** The browser's own still-picture decoders and encoders, offered to the format add-ons. */
+export const HOST: FormatHost = {
+  async decodeStill(bytes, mime) {
+    const bmp = await createImageBitmap(new Blob([bytes as unknown as BlobPart], { type: mime }));
+    try { return draw(bmp, bmp.width, bmp.height); } finally { bmp.close(); }
+  },
+  async encodeStill(b, mime, quality) {
+    const c = document.createElement('canvas');
+    c.width = b.width; c.height = b.height;
+    c.getContext('2d')?.putImageData(toImageData(b), 0, 0);
+    const blob = await new Promise<Blob | null>((res) => c.toBlob(res, mime, quality));
+    c.width = 0;
+    if (!blob || blob.type !== mime) throw new Error(`This browser can't make ${mime.replace('image/', '').toUpperCase()} files. Try PNG instead.`);
+    return new Uint8Array(await blob.arrayBuffer());
+  },
+};
+/** Decode a picture file. PSD and PSB come back as bytes for the engine; add-on formats as a document; the rest as pixels. */
+export async function readImageFile(file: Blob, name: string, ui?: OpenUi): Promise<Opened> {
+  const head = new Uint8Array(await file.slice(0, 65536).arrayBuffer());
   if (head[0] === 0x38 && head[1] === 0x42 && head[2] === 0x50 && head[3] === 0x53) return { kind: 'psd', bytes: new Uint8Array(await file.arrayBuffer()) };
+  const planned = PLANNED_OPEN.find((p) => p.test(head, name));
+  if (planned) throw new Error(planned.message);
+  const def = sniffFormat(head, name);
+  if (def) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if ((def.id === 'pdf' || def.id === 'raw') && ui) {
+      const m = await import('./open-options');
+      const bmp = def.id === 'pdf' ? await m.openPdfPage(bytes, ui) : await m.developRaw(bytes, ui);
+      return bmp ? { kind: 'bitmap', bitmap: bmp } : { kind: 'none' };
+    }
+    const res = await (await def.load()).decode?.(bytes, HOST);
+    if (!res) throw new Error(`${def.label} files can't be opened yet.`);
+    return { kind: 'doc', doc: res.doc, notes: res.notes };
+  }
   const svg = file.type === 'image/svg+xml' || /\.svg$/i.test(name);
   if (!svg && typeof createImageBitmap === 'function') {
     try {
@@ -53,9 +98,6 @@ export function historyBytesForDevice(): number {
   const m = typeof gb === 'number' ? gb : 4;
   return Math.min(1024, Math.max(128, m * 96)) * 1024 * 1024;
 }
-export function toImageData(b: Bitmap): ImageData {
-  return new ImageData(b.data as unknown as Uint8ClampedArray<ArrayBuffer>, b.width, b.height);
-}
 export function scaleBitmap(b: Bitmap, w: number, h: number): Bitmap {
   const c = document.createElement('canvas');
   c.width = b.width; c.height = b.height;
@@ -64,23 +106,49 @@ export function scaleBitmap(b: Bitmap, w: number, h: number): Bitmap {
   c.width = 0;
   return out;
 }
-/** Encode the picture. Every file carries the credit in its metadata. */
-export async function encodeDocument(doc: Doc, format: ExportFormat, quality: number): Promise<{ blob: Blob; note: string | null }> {
-  const info = FORMAT_INFO[format];
-  if (format === 'psd') {
+/** Every type the Export sheet offers: the built-in four, then the add-ons that can save. */
+export const exportList = (): string[] => [...EXPORT_FORMATS, ...listFormats().filter((f) => f.save).map((f) => f.id)];
+export function fmtInfo(id: string): { label: string; ext: string; mime: string; lossy: boolean } {
+  const b = FORMAT_INFO[id as ExportFormat];
+  if (b) return b;
+  const d = formatDef(id);
+  return d ? { label: d.label, ext: d.ext, mime: d.mime, lossy: !!d.caps.lossy } : { label: id.toUpperCase(), ext: id, mime: 'application/octet-stream', lossy: false };
+}
+/** Whether a type can hold the layers as animation frames or as pages. PNG and WebP move as APNG and animated WebP. */
+export const multiKind = (id: string): 'frames' | 'pages' | null => (id === 'png' || id === 'webp' ? 'frames' : formatDef(id)?.caps.multi ?? null);
+export interface SaveOptions { multi: boolean; delay: number; }
+/** Encode the picture. Every file carries the credit in its metadata where the format has room for it. */
+export async function encodeDocument(doc: Doc, format: string, quality: number, opts: SaveOptions = { multi: false, delay: 100 }): Promise<{ blob: Blob; note: string | null }> {
+  const multi = opts.multi && doc.layers.length > 1;
+  if (multi && (format === 'png' || format === 'webp')) {
+    const { apngCodec, webpAnimCodec } = await import('@free-photoeditor/formats/anim');
+    const bytes = await (format === 'png' ? apngCodec : webpAnimCodec).encode?.(doc, { quality, multi: true, delay: opts.delay }, HOST);
+    if (!bytes) throw new Error("The animation couldn't be made.");
+    return { blob: new Blob([bytes as unknown as BlobPart], { type: FORMAT_INFO[format].mime }), note: null };
+  }
+  const def = formatDef(format);
+  if (def) {
+    const codec = await def.load();
+    if (!codec.encode) throw new Error(`${def.label} files can't be saved yet.`);
+    const bytes = await codec.encode(doc, { quality, multi, delay: opts.delay }, HOST);
+    return { blob: new Blob([bytes as unknown as BlobPart], { type: def.mime }), note: null };
+  }
+  const fmt = format as ExportFormat, info = FORMAT_INFO[fmt];
+  if (!info) throw new Error("This file type can't be saved.");
+  if (fmt === 'psd') {
     const { writePsdDocument } = await import('@free-photoeditor/core/psd');
     return { blob: new Blob([writePsdDocument(doc, CREDIT) as unknown as BlobPart], { type: info.mime }), note: null };
   }
-  const flat = flatten(doc, format === 'jpeg' ? WHITE : null);
+  const flat = flatten(doc, fmt === 'jpeg' ? WHITE : null);
   const c = document.createElement('canvas');
   c.width = flat.width; c.height = flat.height;
   c.getContext('2d')?.putImageData(toImageData(flat), 0, 0);
-  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, info.mime, format === 'png' ? undefined : quality));
+  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, info.mime, fmt === 'png' ? undefined : quality));
   c.width = 0;
   if (!blob) throw new Error("This browser couldn't make the file.");
   if (blob.type !== info.mime) throw new Error(`This browser can't save ${info.label} files. Try PNG instead.`);
-  const bytes = injectMetadata(new Uint8Array(await blob.arrayBuffer()), format, CREDIT);
-  const note = format === 'webp' && quality >= 1 && !webpInfo(bytes).lossless ? 'This browser saved the WebP with light compression.' : null;
+  const bytes = injectMetadata(new Uint8Array(await blob.arrayBuffer()), fmt, CREDIT);
+  const note = fmt === 'webp' && quality >= 1 && !webpInfo(bytes).lossless ? 'This browser saved the WebP with light compression.' : null;
   return { blob: new Blob([bytes as unknown as BlobPart], { type: info.mime }), note };
 }
 export function download(blob: Blob, filename: string, host: HTMLElement): void {

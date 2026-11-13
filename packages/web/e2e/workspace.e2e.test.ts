@@ -48,6 +48,8 @@ const PREP: Record<string, string[]> = {
   'select.from-path': ['select.to-path', 'select.none'],
   // A guide line first, so removing the guides is a visible change.
   'view.guide-clear': ['view.guide-new'],
+  // A second layer, so reversing the order is a visible change.
+  'layer.reverse': ['layer.new'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 
@@ -350,45 +352,140 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(Math.abs(g.pic.bottom - g.pic.top - full0), 'the picture fills the space again once the sheet closes').toBeLessThanOrEqual(1);
   }, 60_000);
 
-  it('desktop and tablet: each panel group is one tidy row of tabs, nothing cut, the rest behind its "+n" button', async () => {
+  it('desktop and tablet: the dock is calm cards, two columns at 1400 px and wider, one tabbed card below, no "+n" chip, nothing cut', async () => {
     const check = (p: Page): Promise<string[]> => p.evaluate(() => {
       const out: string[] = [];
-      for (const strip of Array.from(document.querySelectorAll<HTMLElement>('.fpe-group:not([hidden]) .fpe-gtabs'))) {
-        const s = strip.getBoundingClientRect(), tabs = Array.from(strip.querySelectorAll<HTMLElement>('.fpe-gtab')).filter((t) => t.getBoundingClientRect().width > 0);
+      for (const strip of Array.from(document.querySelectorAll<HTMLElement>('[data-testid="dock"] :is(.fpe-gtabs, .fpe-dswitch)'))) {
+        const s = strip.getBoundingClientRect();
+        if (!s.width || !s.height || getComputedStyle(strip).visibility === 'hidden') continue;
+        const tabs = Array.from(strip.querySelectorAll<HTMLElement>('.fpe-gtab, .fpe-dview')).filter((t) => t.getBoundingClientRect().width > 0);
         const label = tabs.map((t) => (t.textContent ?? '').trim()).join(' | ');
-        if (!tabs.length) out.push('a panel group shows no tab');
+        if (!tabs.length) out.push('a tab strip shows no tab');
         if (new Set(tabs.map((t) => Math.round(t.getBoundingClientRect().top))).size > 1) out.push('two rows: ' + label);
         for (const t of tabs) {
           const a = t.getBoundingClientRect(), name = (t.textContent ?? '').trim();
           if (a.left < s.left - 1 || a.right > s.right + 1 || t.scrollWidth > t.clientWidth + 1) out.push('cut: ' + name);
           if (parseFloat(getComputedStyle(t).fontSize) < 12) out.push('smaller than 12 px: ' + name);
+          if (t.querySelector('.fpe-tag')) out.push('a Planned tab at rest: ' + name);
         }
+      }
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-testid="dock"] *'))) {
+        const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join('').trim();
+        if (/^\+\d+$/.test(own) && el.getBoundingClientRect().width > 0) out.push('a "+n" chip: ' + own);
       }
       return out;
     });
-    for (const [w, hgt] of [[1440, 900], [1024, 768], [820, 1180]] as const) {
+    const cards = (p: Page): Promise<string[]> => p.locator('[data-testid="dock"] .fpe-group').evaluateAll((els) =>
+      els.filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getAttribute('data-group') ?? ''));
+    for (const [w, hgt] of [[1440, 900], [1280, 800], [1024, 768], [820, 1180]] as const) {
       const p = await open(w, hgt);
+      // No picture: no dock at all, and the start screen takes the full width; the dock comes with the first picture.
+      expect(await p.isVisible('[data-testid="dock"]'), `${w} px: no dock with no picture`).toBe(false);
+      expect(await cards(p), `${w} px: no empty panels`).toEqual([]);
+      expect(await p.$eval('.fpe-center', (e) => e.getBoundingClientRect().right), `${w} px: the start screen reaches the right edge`).toBeGreaterThanOrEqual(w - 2);
+      if (w === 1440) await p.screenshot({ path: join(OUT, 'ui-b-1440-empty.png') });
       await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+      await p.waitForSelector('[data-testid="dock"]', { state: 'visible' });
       await p.waitForTimeout(150);
       expect(await check(p), `${w} px`).toEqual([]);
       if (w === 1440) {
+        // Two columns as in a-deep: Properties, History and the Tone graph card on the left; Layers and Learn as you go on the right.
+        const c1 = await p.locator('[data-testid="dock-col-1"]').boundingBox(), c2 = await p.locator('[data-testid="dock-col-2"]').boundingBox();
+        expect(!!c1 && !!c2 && c1.x + c1.width <= c2.x, 'two columns side by side').toBe(true);
+        for (const id of ['group-props', 'group-history', 'group-nav']) expect(await p.isVisible(`[data-testid="dock-col-1"] [data-testid="${id}"]`), id).toBe(true);
+        for (const id of ['group-layers', 'learn-card']) expect(await p.isVisible(`[data-testid="dock-col-2"] [data-testid="${id}"]`), id).toBe(true);
+        expect(await p.isVisible('[data-testid="dock-views"]'), 'no tab strip over two columns').toBe(false);
+        expect(await p.isVisible('[data-testid="tab-histogram"]') && await p.isVisible('[data-testid="tab-navigator"]'), 'Tone graph and Navigator tabs').toBe(true);
+        await p.waitForFunction(() => /^Mostly (dark|middle|light) tones · /.test(document.querySelector('[data-testid="tone-note"]')?.textContent ?? ''));
+        await p.waitForFunction(() => /Pros call it/.test(document.querySelector('[data-testid="learn-text"]')?.textContent ?? ''));
+        expect((await p.textContent('[data-testid="learn-text"]'))?.trim()).toMatch(/Pros call it an? [A-Z]/);
         await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-tabs.png') });
-        await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-dock.png'), clip: { x: 1440 - 320, y: 84, width: 320, height: 520 } });
+        await p.screenshot({ path: join(OUT, 'w1b-desktop-1440-dock.png'), clip: { x: 1440 - 660, y: 200, width: 660, height: 700 } });
+        continue;
       }
+      // Below 1400 px: one card at a time, picked from Layers, Properties and History.
+      expect(await cards(p), `${w} px: one card`).toEqual(['layers']);
+      expect(await p.locator('[data-testid="dock-views"] [role="tab"]').allTextContents()).toEqual(['Layers', 'Properties', 'History']);
+      await p.click('[data-testid="dview-history"]');
+      await p.waitForSelector('[data-testid="history-list"]', { state: 'visible' });
+      expect(await cards(p), `${w} px: History alone`).toEqual(['history']);
+      expect(await check(p), `${w} px, History`).toEqual([]);
       if (w !== 820) continue;
+      // The Properties card's "..." menu reaches Text style; the three tabs stay.
+      await p.click('[data-testid="dview-props"]');
       const more = p.locator('[data-testid="gmore-props"]');
-      expect(await more.isVisible(), 'the Properties group has a "+n" button on a 252 px dock').toBe(true);
-      // History has its own card now (layout A), so the overflowed panel picked here is Text style.
+      expect(await more.isVisible(), 'the Properties card has its "..." menu on a 252 px dock').toBe(true);
       expect(await more.getAttribute('aria-label')).toContain('Text style');
       await more.click();
       await p.click('.fpe-pop button:has-text("Text style")');
       await p.waitForSelector('[data-testid="tab-character"][aria-selected="true"]');
       expect(await p.isVisible('[data-testid="tab-character"]')).toBe(true);
       await p.waitForSelector('[data-testid="panel-character"]', { state: 'visible' });
-      expect(await p.isVisible('[data-testid="history-list"]'), 'the History card stays').toBe(true);
+      expect(await p.isVisible('[data-testid="dock-views"]'), 'the Layers, Properties and History tabs stay').toBe(true);
       expect(await check(p), `${w} px after picking Text style`).toEqual([]);
       await p.screenshot({ path: join(OUT, 'w1b-tablet-820-tabs.png') });
     }
+  }, 120_000);
+
+  it('1440 x 900, the sample with a Tone curve layer: the Layers card shows its four action words and Properties its first four controls in full; 1280 is one tabbed card', async () => {
+    const p = await open(1440, 900);
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    expect(await run(p, 'layer.adj-curves')).toBe(true);
+    await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)', { state: 'visible' });
+    await p.waitForTimeout(300);
+    // A slider is an .fpe-field (controls.ts), a list an .fpe-row: both are controls.
+    // Fully in view: inside the window, not cut by any card or scroll box around it, and no word cut short.
+    const fully = (sel: string, k: number): Promise<string[]> => p.evaluate(([s, n]) => {
+      const out: string[] = [], els = Array.from(document.querySelectorAll<HTMLElement>(s)).filter((e) => e.getBoundingClientRect().width > 0).slice(0, n);
+      if (els.length < n) out.push(`only ${els.length} of ${n}: ${s}`);
+      for (const el of els) {
+        const a = el.getBoundingClientRect(), name = el.getAttribute('data-testid') ?? (el.textContent ?? '').trim().slice(0, 30);
+        if (a.top < 0 || a.bottom > innerHeight || a.left < 0 || a.right > innerWidth) out.push('off screen: ' + name);
+        for (let up = el.parentElement; up; up = up.parentElement) {
+          const cs = getComputedStyle(up);
+          if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+          const b = up.getBoundingClientRect();
+          if (a.top < b.top - 0.5 || a.bottom > b.bottom + 0.5 || a.left < b.left - 0.5 || a.right > b.right + 0.5) { out.push('cut by its card: ' + name); break; }
+        }
+        if (el.scrollWidth > el.clientWidth + 1) out.push('words cut: ' + name);
+      }
+      return out;
+    }, [sel, k] as const);
+    const acts = ['layer-add', 'layer-mask-add', 'layer-duplicate', 'layer-delete'].map((t) => `[data-testid="${t}"] .fpe-btn-text`).join(', ');
+    const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)';
+    expect(await fully(acts, 4), 'New, Mask, Copy and Delete in full').toEqual([]);
+    expect(await fully(props, 4), 'the first four controls in full').toEqual([]);
+    // Read in the page: inside a quoted CSS selector "\\d" is a hex escape, so a :text-matches regex never ran.
+    expect(await p.$$eval('[data-testid="dock"] *', (els) => els.filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && /^\+\d+$/.test((e.textContent ?? '').trim())).length),
+      'no "+n" chip on the resting dock').toBe(0);
+    // The status bar as in a-deep: size, colour space, the layer's plain and pro names, saved on this device.
+    expect(await p.textContent('[data-testid="status-layer"]')).toBe('Tone curve layer · pros call it Curves');
+    expect(await p.textContent('[data-testid="status-space"]')).toBe('sRGB · 8 bits a channel');
+    expect(await p.textContent('[data-testid="learn-text"]')).toContain('Pros call it a Curves layer.');
+    await p.screenshot({ path: join(OUT, 'ui-b-1440-adjust.png') });
+    // Below 1400 px the dock is one card with three tabs; nothing in it is cramped.
+    await p.setViewportSize({ width: 1280, height: 800 });
+    await p.waitForSelector('[data-testid="dock-views"]', { state: 'visible' });
+    await p.click('[data-testid="dview-layers"]');
+    await p.waitForTimeout(200);
+    expect(await fully(acts, 4), '1280: New, Mask, Copy and Delete in full').toEqual([]);
+    await p.screenshot({ path: join(OUT, 'ui-b-1280-tabs.png') });
+    await p.click('[data-testid="dview-props"]');
+    await p.waitForSelector(props, { state: 'visible' });
+    expect(await fully(props, 4), '1280: the first four controls in full').toEqual([]);
+    await p.screenshot({ path: join(OUT, 'ui-b-1280-props.png') });
+    // A folder's Blend reads "Pass through" in full.
+    await p.click('[data-testid="dview-layers"]');
+    expect(await run(p, 'layer.group')).toBe(true);
+    await p.waitForTimeout(150);
+    const fit = await p.$eval('[data-testid="layer-top"] [data-testid="layer-blend"]', (el) => {
+      const s = el as HTMLSelectElement, cs = getComputedStyle(s), ctx = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const text = s.selectedOptions[0]?.text ?? '';
+      return { text, need: ctx.measureText(text).width + 28, have: s.clientWidth };
+    });
+    expect(fit.text).toBe('Pass through');
+    expect(fit.need, 'Blend shows "Pass through" in full').toBeLessThanOrEqual(fit.have);
   }, 60_000);
 
   for (const [w, hgt, touch] of [[1440, 900, false], [1024, 768, false], [820, 1180, true], [390, 844, true], [360, 740, true]] as const) {

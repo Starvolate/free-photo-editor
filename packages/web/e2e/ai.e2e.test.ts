@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * The on-device AI (W11) through the real editor in headless Chrome, with the real models downloaded from their pinned
- * public hosts. Select the main subject and Remove the background are Planned (on real photos the subject model still
- * cuts away parts of some subjects), so their kept code runs through the automation hook `fpe.aiCmd` on a real photo,
- * e2e/fixtures/mug.jpg (CC0): the mask must cover the jug and not the cloth. Remove an object (the sun painted over
+ * The on-device AI (W11, W2) through the real editor in headless Chrome, with the real models downloaded from their pinned
+ * public hosts. On a real photo, e2e/fixtures/mug.jpg (CC0): Select an object (a tap, a box, Shift adds, Alt takes away),
+ * Select the main subject (the mask covers the jug and not the cloth) and Remove the background (onto a layer mask:
+ * switched off, the photo is back unchanged). Remove an object (the sun painted over
  * disappears into the sky) and Make it bigger (from the start screen, on the small sample) run as a person would. Last,
  * the AI works offline: with the server switched off and the internet cut, Remove an object runs again from the files
  * kept on the first use, with no Download button and no request to the server, jsDelivr or Hugging Face. Each test
  * presses Cancel in `finally`, so one failure never leaks into the next. Headless Chrome has no GPU; the AI runs on
- * WebAssembly. Needs the network. Screenshots: e2e/out/w11-*.png.
+ * WebAssembly. Needs the network. Screenshots: e2e/out/w11-*.png and w2-*.png.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts ai
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -19,7 +19,6 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page, type Request } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { show } from './ribbon';
 
 interface Info { width: number; height: number; layers: { name: string; visible: boolean }[]; }
 interface Fpe {
@@ -87,7 +86,6 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
   });
   afterAll(async () => { await browser?.close(); s?.server.close(); });
   const run = (id: string): Promise<void> => page.evaluate((x) => { void (window as unknown as Win).fpe.run(x); }, id);
-  const aiCmd = (id: string): Promise<void> => page.evaluate((x) => { void (window as unknown as Win).fpe.aiCmd(x); }, id);
   const px = (p: { x: number; y: number }): Promise<number[]> => page.evaluate(([x, y]) => (window as unknown as Win).fpe.sample(x, y) ?? [], [p.x, p.y] as [number, number]);
   const info = (): Promise<Info | null> => page.evaluate(() => (window as unknown as Win).fpe.getInfo());
   const layers = async (): Promise<number> => (await info())?.layers.length ?? 0;
@@ -148,48 +146,106 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
     return f();
   }
 
-  it('shows Select the main subject and Remove the background as Planned, on the start screen and in the Select menu', async () => {
+  it('shows Select an object, Select the main subject and Remove the background as Ready, with the job on the start screen', async () => {
     try {
-      const st = await page.evaluate(() => (window as unknown as Win).fpe.commands().filter((c) => c.id === 'select.subject' || c.id === 'image.remove-bg').map((c) => c.status));
-      expect(st).toEqual(['planned', 'planned']);
-      expect(await page.getAttribute('[data-testid="start"] [data-testid="job-remove-the-background"]', 'aria-disabled')).toBe('true');
-      await page.screenshot({ path: join(OUT, 'w11-planned-start.png') });
-      await freshSample();
-      await show(page, 'select.subject');
-      expect(await page.getAttribute('[data-testid="ri-select.subject"]', 'aria-disabled')).toBe('true');
-      expect(await page.textContent('[data-testid="ri-select.subject"]')).toContain('Planned');
-      await page.screenshot({ path: join(OUT, 'w11-planned-select-menu.png') });
-      expect(await page.evaluate(() => (window as unknown as Win).fpe.run('select.subject'))).toBe(false);
-      expect(await page.textContent('[data-testid="toast"]')).toContain('planned');
+      const ids = ['select.subject', 'image.remove-bg', 'tool.object-select'];
+      const st = await page.evaluate((list) => (window as unknown as Win).fpe.commands().filter((c) => list.includes(c.id)).map((c) => `${c.id}:${c.status}`), ids);
+      expect(st.sort()).toEqual(ids.map((id) => `${id}:ready`).sort());
+      expect(await page.getAttribute('[data-testid="start"] [data-testid="job-remove-the-background"]', 'aria-disabled')).not.toBe('true');
     } finally { await cleanUp(); }
   }, 60_000);
 
-  it('Select the main subject and Remove the background (Planned, code kept): on a real photo the mask covers the jug and not the cloth', async () => {
+  /** The mug photo in this tab, at picture pixel (x, y) on the screen. */
+  async function openMug(): Promise<void> {
+    const jpg = (await readFile(MUG)).toString('base64');
+    await page.evaluate(async (b64) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      await (window as unknown as Win).fpe.openFile(new Blob([bytes], { type: 'image/jpeg' }), 'mug.jpg');
+    }, jpg);
+    await page.waitForFunction(() => { const i = (window as unknown as Win).fpe.getInfo(); return i?.width === 480 && i.height === 640; });
+  }
+  async function at(x: number, y: number): Promise<{ x: number; y: number }> {
+    const c = await page.evaluate(([xx, yy]) => (window as unknown as Win).fpe.toClient(xx, yy), [x, y] as [number, number]);
+    expect(c).toBeTruthy();
+    return c!;
+  }
+  const lowest = async (boxes: Box[]): Promise<number> => Math.min(...(await means(boxes)));
+  const highest = async (boxes: Box[]): Promise<number> => Math.max(...(await means(boxes)));
+
+  it('Select an object on a real photo: a tap finds the jug, a box finds it too, Shift adds the wall and Alt takes it away', async () => {
     try {
-      const jpg = (await readFile(MUG)).toString('base64');
-      await page.evaluate(async (b64) => {
-        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-        await (window as unknown as Win).fpe.openFile(new Blob([bytes], { type: 'image/jpeg' }), 'mug.jpg');
-      }, jpg);
-      await page.waitForFunction(() => { const i = (window as unknown as Win).fpe.getInfo(); return i?.width === 480 && i.height === 640; });
-      const t0 = Date.now();
-      await aiCmd('select.subject');
-      await download('w11-download-sheet.png');
+      await openMug();
+      await run('select.none');
+      await run('tool.object-select');
+      await page.getByText('Tap a thing, or drag a box round it. Shift adds', { exact: false }).first().waitFor({ timeout: 30_000 });
+      const t0 = Date.now(), jug = await at(230, 290);
+      await page.mouse.click(jug.x, jug.y);
+      await download('w2-tap-download-sheet.png');
       await settled(240_000);
+      await expect.poll(() => lowest(JUG), { timeout: 30_000, interval: 250 }).toBeGreaterThanOrEqual(179);
+      console.log(`W2 tap on the jug: jug ${await means(JUG)}, cloth ${await means(CLOTH)}, ${Date.now() - t0} ms with the download`);
+      expect(await highest(CLOTH)).toBeLessThanOrEqual(38);
+      await page.screenshot({ path: join(OUT, 'w2-tap-selection.png') });
+
+      await run('select.none');
+      await expect.poll(() => highest(JUG), { timeout: 10_000, interval: 250 }).toBe(0);
+      const a = await at(50, 140), b = await at(395, 400);
+      await page.mouse.move(a.x, a.y);
+      await page.mouse.down();
+      await page.mouse.move(b.x, b.y, { steps: 8 });
+      await page.mouse.up();
+      await expect.poll(() => lowest(JUG), { timeout: 60_000, interval: 250 }).toBeGreaterThanOrEqual(179);
+      console.log(`W2 box round the jug: jug ${await means(JUG)}, cloth ${await means(CLOTH)}`);
+      expect(await highest(CLOTH)).toBeLessThanOrEqual(38);
+
+      const wall = await at(215, 60);
+      await page.keyboard.down('Shift');
+      await page.mouse.click(wall.x, wall.y);
+      await page.keyboard.up('Shift');
+      await expect.poll(async () => (await means([CLOTH[0]]))[0], { timeout: 60_000, interval: 250 }).toBeGreaterThanOrEqual(128);
+      console.log(`W2 Shift adds the wall: jug ${await means(JUG)}, wall ${await means([CLOTH[0]])}`);
+      expect(await lowest(JUG)).toBeGreaterThanOrEqual(179);
+      await page.keyboard.down('Alt');
+      await page.mouse.click(wall.x, wall.y);
+      await page.keyboard.up('Alt');
+      await expect.poll(async () => (await means([CLOTH[0]]))[0], { timeout: 60_000, interval: 250 }).toBeLessThanOrEqual(38);
+      expect(await lowest(JUG)).toBeGreaterThanOrEqual(179);
+    } finally {
+      await page.keyboard.up('Shift').catch(() => undefined);
+      await page.keyboard.up('Alt').catch(() => undefined);
+      await cleanUp();
+    }
+  }, 300_000);
+
+  it('Select the main subject and Remove the background: the jug and not the cloth, and the cut-out sits on a layer mask over the unchanged photo', async () => {
+    try {
+      if ((await info())?.width !== 480) await openMug();
+      await run('select.none');
+      const t0 = Date.now();
+      await run('select.subject');
+      await download();
+      await settled(240_000);
+      await expect.poll(() => lowest(JUG), { timeout: 30_000, interval: 250 }).toBeGreaterThanOrEqual(179);
       const jug = await means(JUG), cloth = await means(CLOTH);
-      console.log(`W11 select subject on the mug: jug ${jug}, cloth ${cloth}, ${Date.now() - t0} ms with the download`);
-      for (const v of jug) expect(v).toBeGreaterThanOrEqual(179);
+      console.log(`W2 select the main subject on the mug: jug ${jug}, cloth ${cloth}, ${Date.now() - t0} ms with the download`);
       for (const v of cloth) expect(v).toBeLessThanOrEqual(38);
       const n = await layers();
-      await aiCmd('image.remove-bg');
+      await run('image.remove-bg');
       await expect.poll(layers, { timeout: 120_000, interval: 250 }).toBe(n + 1);
       await settled(30_000);
       const a = await px({ x: 230, y: 290 }), b = await px({ x: 215, y: 60 }), i = await info();
-      console.log(`W11 remove background on the mug: jug ${a}, cloth ${b}, layers ${JSON.stringify(i?.layers.map((l) => [l.name, l.visible]))}`);
+      const masks = await page.evaluate(() => (window as unknown as Win).fpe.state().layers.map((l) => !!l.mask));
+      console.log(`W2 remove the background on the mug: jug ${a}, wall ${b}, layers ${JSON.stringify(i?.layers.map((l) => [l.name, l.visible]))}, masks ${masks}`);
       expect(a[3]).toBeGreaterThan(200);
       expect(b[3]).toBeLessThan(40);
       expect(i?.layers.filter((l) => l.visible).map((l) => l.name)).toEqual(['Background removed']);
-      await page.screenshot({ path: join(OUT, 'w11-removed-background.png') });
+      expect(masks.filter(Boolean).length).toBe(1);
+      await page.screenshot({ path: join(OUT, 'w2-cutout-on-mask.png') });
+      // Nothing was deleted: with the mask switched off the wall is back, as it was; switched on again it hides.
+      await run('layer.mask-toggle');
+      await expect.poll(async () => (await px({ x: 215, y: 60 }))[3], { timeout: 10_000, interval: 250 }).toBe(255);
+      await run('layer.mask-toggle');
+      await expect.poll(async () => (await px({ x: 215, y: 60 }))[3], { timeout: 10_000, interval: 250 }).toBeLessThan(40);
     } finally { await cleanUp(); }
   }, 300_000);
 

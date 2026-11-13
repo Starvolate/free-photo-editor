@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 273 Ready, 402 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 276 Ready, 399 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 all Planned, which never join the menu bar: search lists them with their "Planned" tag, and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 273 | 25 | 118 | 130 | 0 |
+| Ready today | 276 | 25 | 121 | 130 | 0 |
 
 ## The Task ribbon
 
@@ -197,7 +197,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Help sheet | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Help sheet | Planned | 11 |  |
 
-## Image (35 Ready, 14 Planned)
+## Image (36 Ready, 13 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
@@ -234,7 +234,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+B |
 | image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | Image | Crop & resize › Size · small button | Ready | W1 | Ctrl+Alt+I |
 | image.resolution | Print resolution | Resolution (DPI/PPI) | Set how many pixels print in one inch. With Resample off the pixels stay and only the print size changes. | dpi, ppi, print size, pixels per inch, document size, 300 dpi | Image | Crop & resize › Size · More list | Ready | 7 |  |
-| image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Select & cut out › Select with AI · small button | Planned | 11 |  |
+| image.remove-bg | Remove the background | Remove background | Keep the main subject and hide everything behind it on a layer mask; nothing is deleted. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | Image › Make it bigger | Crop & resize › Size · small button | Ready | 11 |  |
 | image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | Image › Make it bigger | Crop & resize › Size · More list | Ready | 11 |  |
 | image.canvas-size | Canvas size | Canvas size | Add or remove space around the picture without stretching it. | border, padding, frame, extend, more space | Image | Crop & resize › Size · small button | Ready | W1 | Ctrl+Alt+C |
@@ -347,7 +347,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Planned | 6 |  |
 
-## Select (16 Ready, 3 Planned)
+## Select (17 Ready, 2 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -357,7 +357,7 @@ Groups: Change the selection · Modify.
 | select.none | Select nothing | Deselect | Drop the selection, so changes apply everywhere. | deselect, clear selection, unselect | Select | Select & cut out › Change it · More list | Ready | 1 | Ctrl+D |
 | select.reselect | Bring back the last selection | Reselect | Select again what you had selected before. | previous selection | Select | Select & cut out › Change it · More list | Ready | W1 | Ctrl+Shift+D |
 | select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | Select | Select & cut out › Change it · More list | Ready | W1 | Ctrl+Shift+I |
-| select.subject | Select the main subject | Subject | Find the person or thing in front automatically. Planned: it still cuts away parts of some subjects. | person, subject, auto select, select person, select object automatically | Select | Select & cut out › Select with AI · big button | Planned | 11 |  |
+| select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | Select | Select & cut out › Select with AI · big button | Ready | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
 | select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · More list | Planned | 11 |  |
 | select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Select & cut out › Perfect and keep · big button | Planned | 2 |  |
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · small button | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (39 Ready, 26 Planned)
+## Tools (40 Ready, 25 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -535,8 +535,8 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | Tools › Lasso | Select & cut out › Draw or paint · small button | Ready | W3 | L |
 | tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Ready | W3 |  |
 | tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Planned | 2 |  |
-| tool.object-select | Select an object | Object selection | Drag a box around an object and its edges are found. | object | Tools › Smart select | Select & cut out › Select with AI · small button | Planned | 11 |  |
 | tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | Tools › Smart select | Select & cut out › Draw or paint · small button | Ready | W3 |  |
+| tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | Tools › Smart select | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | Tools › Smart select | Select & cut out › Draw or paint · small button | Ready | W3 | W |
 | tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | Tools › Crop | Crop & resize › Crop · big button | Ready | 1 | C |
 | tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | Tools › Crop | Crop & resize › Crop · small button | Planned | 3 |  |

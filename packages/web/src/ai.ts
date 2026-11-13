@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * The on-device AI commands in the editor (W11), loaded the first time one is used: Remove an object (the brush, and
- * Edit › Fill from the surroundings) and Make it bigger (2x and 4x). Select the main subject and Remove the background are
- * Planned for now (on real photos the subject model still cuts away parts of some subjects); their code stays here and the
- * browser test runs it through the automation hook `fpe.aiCmd`. Before the first download a sheet says how much comes
- * down, once; the photo itself never leaves this device. No caller ever waits on the person: `cmd()` resolves as soon as
+ * The on-device AI commands in the editor (W11, W2), loaded the first time one is used: Select an object (tap to select),
+ * Select the main subject, Remove the background (onto a layer mask, so nothing is deleted), Remove an object (the brush,
+ * and Edit › Fill from the surroundings) and Make it bigger (2x and 4x). Before the first download a sheet says how much
+ * comes down, once; the photo itself never leaves this device. No caller ever waits on the person: `cmd()` resolves as soon as
  * the sheet is open, and closing the sheet while it waits for a yes counts as no.
  */
-import { AiClient, Cancelled, blendFill, cannotRun, contextBox, downloadSize, estimateSeconds, extrapolateSeconds, fillOnly, mb, minutesText, timeVerdict, type ModelId, type Progress } from '@free-photoeditor/ai';
 import {
-  activeLayer, addLayer, compositeDoc, createLayer, docCommand, docRect, expandMask, featherMask, maskBounds, maskFromSelection, pixelCommand, readRegion,
+  AiClient, Cancelled, blendFill, cannotRun, contextBox, deepestPoint, downloadSize, estimateSeconds, extrapolateSeconds, fillOnly, mb, minutesText, timeVerdict,
+  unionMask, type ModelId, type Progress, type SegPrompt,
+} from '@free-photoeditor/ai';
+import {
+  activeLayer, addLayer, compositeDoc, createLayer, docCommand, docRect, expandMask, featherMask, makeMask, maskBounds, maskFromSelection, pixelCommand, readRegion,
   resizeBitmap, resizeMask, selectionFromMask, snapshotDoc, writeRegion, type Command, type Doc, type Mask, type Rect, type Selection,
 } from '@free-photoeditor/core';
 import { errText, h } from './dom';
+import { placeCutout } from './cutout-place';
 import { maxPixelsForDevice } from './io';
 import { keepFiles } from './offline';
 import type { ToolHost } from './toolkit';
@@ -23,11 +26,14 @@ export interface AiKit {
   cmd(id: string): Promise<void>;
   /** The Remove tool: fill the painted mask (picture size, any value above 0) from its surroundings. Resolves when the job has ended (done, stopped, closed or failed), so the tool can clear its marks. */
   removeObject(mask: Mask): Promise<void>;
+  /** Tap to select: the thing at the tap, or inside the box, as a picture-sized mask (0 or 255); null when nothing came of it. */
+  objectSelect(prompt: SegPrompt): Promise<Mask | null>;
   busy(): boolean;
 }
 const TITLE: Record<string, string> = {
   'select.subject': 'Select the main subject', 'image.remove-bg': 'Remove the background', 'edit.smart-fill': 'Fill from the surroundings',
   'image.upscale-2x': 'Make it twice as big', 'image.upscale-4x': 'Make it four times as big', 'tool.remove': 'Remove an object',
+  'tool.object-select': 'Select an object',
 };
 /** The refusal for a job over about 20 minutes, and the warning for one over about 30 seconds, in plain words. */
 const tooSlow = (secs: number): string => `This device is too slow for this picture: it would take ${minutesText(secs)}. Make the picture smaller first, or use a computer.`;
@@ -76,7 +82,7 @@ export function createAiKit(host: ToolHost): AiKit {
   const working = (text: string): void => { bar.removeAttribute('value'); status.textContent = text; };
 
   /** Open the sheet at once. The first time, say how much downloads and wait for a yes. False when the person says no or closes the sheet. */
-  async function ask(model: ModelId, title: string, slow: string): Promise<boolean> {
+  async function ask(models: ModelId[], title: string, slow: string): Promise<boolean> {
     const why = cannotRun();
     if (why) { toast(why); return false; }
     const mine = ++asked;
@@ -89,7 +95,7 @@ export function createAiKit(host: ToolHost): AiKit {
     go.hidden = true;
     bar.hidden = true;
     show(title);
-    const size = await downloadSize(model, client.loaded.has(model));
+    const size = await downloadSize(models, models.every((m) => client.loaded.has(m)));
     if (mine !== asked || !shown()) return false;
     if (size <= 0) { msg.textContent = 'Your photo never leaves this device.'; bar.hidden = false; return true; }
     msg.textContent = `This downloads once, about ${mb(size)} MB. Your photo never leaves this device.`;
@@ -101,16 +107,17 @@ export function createAiKit(host: ToolHost): AiKit {
     return true;
   }
   /** Ask, download and load the model, then do the work; errors and Cancel end in plain words. Resolves when the job has ended. */
-  async function job(model: ModelId, title: string, slow: string, work: () => Promise<void>): Promise<void> {
+  async function job(model: ModelId | ModelId[], title: string, slow: string, work: () => Promise<void>): Promise<void> {
+    const models = Array.isArray(model) ? model : [model];
     if (running) { show(current); toast('The AI is still working on the last job. Wait for it, or press Cancel.'); return; }
-    if (!(await ask(model, title, slow))) return;
+    if (!(await ask(models, title, slow))) return;
     running = true;
     current = title;
     stopText = null;
     try {
       working('Getting the AI ready on this device…');
       // The worker's own file is not in the page's list of loaded files: ask the offline worker to keep it too.
-      keepFiles(await client.prepare(model, progress));
+      for (const m of models) keepFiles(await client.prepare(m, progress));
       await work();
     } catch (e) {
       if (e instanceof Cancelled) toast(stopText ?? 'Stopped. Nothing was changed.');
@@ -133,35 +140,48 @@ export function createAiKit(host: ToolHost): AiKit {
     host.selectionChanged();
   }
 
-  /** Select the main subject, or (remove) cut it out onto its own layer and hide the original layers. */
+  /**
+   * The main subject's mask, by model check round 4's rule: u2netp's answer, joined with MobileSAM's whole object at
+   * u2netp's deepest pixel, which recovers the parts u2netp alone leaves out. Where only MobileSAM found the subject the
+   * edge is hard until Refine edge.
+   */
+  async function subjectMask(comp: Uint8ClampedArray, W: number, H: number): Promise<Uint8Array> {
+    const soft = await client.subject({ width: W, height: H, data: comp.slice() }, progress);
+    const p = deepestPoint(soft, W, H);
+    if (!p) return soft;
+    working('Finding all of it…');
+    return unionMask(soft, await client.segment({ width: W, height: H, data: comp.slice() }, { points: [p] }, 'largest'));
+  }
+  /**
+   * Select the main subject, or (remove) show only it: a copy of the picture whose layer mask hides the background, over
+   * the original layers, hidden. Nothing is deleted: switch the mask off and the whole picture is back.
+   */
   async function subject(d: Doc, remove: boolean): Promise<void> {
     const W = d.width, H = d.height, title = TITLE[remove ? 'image.remove-bg' : 'select.subject'];
-    await job('subject', title, '', async () => {
+    await job(['subject', 'segment'], title, '', async () => {
       working('Finding the main subject…');
-      const comp = compositeDoc(d, docRect(d));
-      const mask = await client.subject({ width: W, height: H, data: comp.slice() }, progress);
+      const comp = compositeDoc(d, docRect(d)), mask = await subjectMask(comp, W, H);
       if (!same(d, W, H)) { toast(CHANGED); return; }
       const sel = selectionFromMask({ width: W, height: H, data: mask });
-      if (!sel) { toast('No clear subject was found. Try Paint to select or Draw around it instead.'); return; }
+      if (!sel) { toast('No clear subject was found. Try Select an object, Paint to select or Draw around it instead.'); return; }
       if (!remove) {
         select(d, sel, title);
-        toast('Main subject selected. Fine-tune it with Select › Change the selection, or add to it with Paint to select.');
+        toast('Main subject selected. Fine-tune it with Select › Change the selection, or add to it with Select an object.');
         return;
       }
-      const cut = new Uint8ClampedArray(comp.length);
-      for (let i = 0, n = W * H; i < n; i++) { const j = i * 4; cut[j] = comp[j]; cut[j + 1] = comp[j + 1]; cut[j + 2] = comp[j + 2]; cut[j + 3] = (comp[j + 3] * mask[i] + 127) / 255; }
-      const before = snapshotDoc(d), after = snapshotDoc(d), layer = createLayer('Background removed', W, H, { data: cut });
-      for (const l of after.layers) l.visible = false;
-      after.layers.push(layer);
-      after.activeId = layer.id;
+      const before = snapshotDoc(d), after = snapshotDoc(d), layer = createLayer('Background removed', W, H, { data: comp });
       after.selection = sel;
+      const lm = makeMask(after, 'selection');
+      if (!lm) { toast('No clear subject was found. Try Select an object instead.'); return; }
+      layer.mask = lm;
+      placeCutout(after, layer);
       const cmd = docCommand(title, before, after);
       cmd.redo(d);
       host.forgetHole();
       host.push(cmd, true);
       host.selectionChanged();
       host.panels();
-      toast('Background removed. The original is kept, hidden, under it in Layers.');
+      toast('Background removed on a mask, so nothing is deleted. The original is kept, hidden, under it in Layers.');
     });
   }
 
@@ -246,6 +266,28 @@ export function createAiKit(host: ToolHost): AiKit {
     });
   }
 
+  /**
+   * Tap to select. The first use asks for the download in the sheet; once the AI is ready on this device a tap answers
+   * without opening it (the picture is read once, so each later tap takes a fraction of a second).
+   */
+  async function objectSelect(prompt: SegPrompt): Promise<Mask | null> {
+    const d = host.doc();
+    if (!d) return null;
+    const W = d.width, H = d.height;
+    let out: Mask | null = null;
+    const work = async (): Promise<void> => {
+      const m = await client.segment({ width: W, height: H, data: compositeDoc(d, docRect(d)).slice() }, prompt, 'best', prompt.box ?? null);
+      if (!same(d, W, H)) { toast(CHANGED); return; }
+      if (!m.some((v) => v > 0)) { toast('Nothing was found there. Tap the middle of the thing, or drag a box round it.'); return; }
+      out = { width: W, height: H, data: m };
+    };
+    if (!running && client.loaded.has('segment')) {
+      running = true;
+      try { await work(); } catch (e) { console.warn('[ai]', e); toast(`The AI could not finish: ${errText(e)}`); } finally { running = false; }
+    } else await job('segment', TITLE['tool.object-select'], '', async () => { working('Finding the object…'); await work(); });
+    return out;
+  }
+
   /** Where each command goes; resolves when its job has ended. */
   async function route(id: string): Promise<void> {
     const d = host.doc();
@@ -261,6 +303,7 @@ export function createAiKit(host: ToolHost): AiKit {
   return {
     busy: () => running,
     async removeObject(mask) { const d = host.doc(); if (d) await fill(d, mask, TITLE['tool.remove']); },
+    objectSelect,
     cmd(id) {
       return new Promise<void>((resolve) => {
         waiting.add(resolve);

@@ -6,6 +6,8 @@
  * so what runs is what was reviewed. These files come down once and are kept on the device, so the AI tools work without
  * the internet from then on; the photo is never sent.
  */
+import type { SegLayout } from './segment';
+
 export const ORT_VERSION = '1.31.1';
 /** `bytes` is the file's real size; `transfer` is what comes over the network (the host may compress it). */
 export interface FileDef { url: string; bytes: number; sha256?: string; transfer: number; }
@@ -19,8 +21,12 @@ export const ENGINE: FileDef = {
   url: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.wasm`, bytes: 14_848_852, transfer: 3_195_270,
   sha256: '4b884c203b0fa48d057be3332c65513ff85aa3c5bddd6946acc0fab7ecda001d',
 };
-export type ModelId = 'subject' | 'inpaint' | 'upscale';
-export interface ModelDef extends FileDef { id: ModelId; name: string; does: string; licence: string; authors: string; source: string; converted: string; }
+export type ModelId = 'subject' | 'inpaint' | 'upscale' | 'segment';
+/**
+ * `decoder`: a second file the model needs, kept and checked the same way (tap to select reads the picture once with the
+ * main file, then answers each tap with this small one). `layout`: how tap to select talks to it (segment.ts).
+ */
+export interface ModelDef extends FileDef { id: ModelId; name: string; does: string; licence: string; authors: string; source: string; converted: string; decoder?: FileDef; layout?: SegLayout; }
 const HF = (repo: string, commit: string, file: string): string => `https://huggingface.co/${repo}/resolve/${commit}/${file}`;
 export const MODELS: Record<ModelId, ModelDef> = {
   subject: {
@@ -40,5 +46,15 @@ export const MODELS: Record<ModelId, ModelDef> = {
     source: 'https://github.com/xinntao/Real-ESRGAN', converted: 'ONNX copy on Hugging Face: CoderViking/realesr-general-x4v3-onnx',
     url: HF('CoderViking/realesr-general-x4v3-onnx', 'c6a971706797c7502945a2b4c4274fce4900d4ab', 'realesr-general-x4v3.onnx'), bytes: 4_866_417, transfer: 4_866_417,
     sha256: '1940a93ee08283a0a7286183186357b1688fe9fa8ede74604b424586aaddf112',
+  },
+  segment: {
+    id: 'segment', name: 'MobileSAM', does: 'selects the thing you tap', licence: 'Apache-2.0', authors: 'Chaoning Zhang and co-authors (MobileSAM), from Meta AI\'s Segment Anything',
+    source: 'https://github.com/ChaoningZhang/MobileSAM', converted: 'ONNX copy on Hugging Face: Acly/MobileSAM', layout: 'sam-onnx',
+    url: HF('Acly/MobileSAM', '0d3b403339b4674a82493d5e97964dd78089ddc8', 'mobile_sam_image_encoder.onnx'), bytes: 28_157_093, transfer: 28_157_093,
+    sha256: '580f5fb648ea1062c0aabc26217aed56921985f03f0cbbd852bba81d760cc749',
+    decoder: {
+      url: HF('Acly/MobileSAM', '0d3b403339b4674a82493d5e97964dd78089ddc8', 'sam_mask_decoder_multi.onnx'), bytes: 16_496_559, transfer: 16_496_559,
+      sha256: '8976b90a87ba50a6a72217a5ff994f7d25ce16f2229fcc1ed259e1294c622ffe',
+    },
   },
 };

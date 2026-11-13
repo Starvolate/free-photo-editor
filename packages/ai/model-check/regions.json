@@ -1,0 +1,123 @@
+{
+ "_note": "Copied unchanged from rounds 1 to 3 of the W11 model check (written before any model ran). Rects are [x,y,w,h] in pixels of the 640 px (long side) photo. Pass bar: both subject rects mean alpha >= 179, both background rects <= 38; a mode passes on 3 of 4 photos.",
+ "cat.jpg": {
+  "subject": [
+   [
+    330,
+    110,
+    100,
+    60
+   ],
+   [
+    40,
+    180,
+    130,
+    120
+   ]
+  ],
+  "background": [
+   [
+    580,
+    110,
+    55,
+    80
+   ],
+   [
+    585,
+    280,
+    50,
+    120
+   ]
+  ]
+ },
+ "mug.jpg": {
+  "subject": [
+   [
+    180,
+    250,
+    100,
+    80
+   ],
+   [
+    205,
+    335,
+    80,
+    30
+   ]
+  ],
+  "background": [
+   [
+    80,
+    20,
+    270,
+    80
+   ],
+   [
+    20,
+    480,
+    100,
+    140
+   ]
+  ]
+ },
+ "tulip.jpg": {
+  "subject": [
+   [
+    100,
+    150,
+    200,
+    130
+   ],
+   [
+    400,
+    330,
+    160,
+    90
+   ]
+  ],
+  "background": [
+   [
+    10,
+    5,
+    110,
+    65
+   ],
+   [
+    280,
+    5,
+    120,
+    55
+   ]
+  ]
+ },
+ "squirrel.jpg": {
+  "subject": [
+   [
+    262,
+    140,
+    43,
+    50
+   ],
+   [
+    258,
+    222,
+    38,
+    28
+   ]
+  ],
+  "background": [
+   [
+    60,
+    400,
+    140,
+    160
+   ],
+   [
+    340,
+    330,
+    120,
+    140
+   ]
+  ]
+ }
+}

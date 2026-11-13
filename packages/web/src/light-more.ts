@@ -10,7 +10,21 @@ import { runJob, type Doc, type JobSpec } from '@free-photoeditor/core';
 import { contrastRatio, LEVELS, textColour, wcagLum } from '@free-photoeditor/core/fx';
 import type { Editor } from './app';
 import { ADJ, type AdjDef, type Ctl } from './commands';
-import { download } from './io';
+
+/**
+ * Hand a file to the browser's download. Kept here rather than imported from io.ts: the CLI bundles commands.ts, which
+ * loads this file, with dynamic imports inlined, and io.ts pulls in the formats package (and fflate, which the CLI does
+ * not ship). This file must stay free of io.ts and of formats.
+ */
+function download(blob: Blob, filename: string, host: HTMLElement): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener'; a.style.display = 'none';
+  host.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step: 1, unit, group });

@@ -224,6 +224,14 @@ export function addFolder(doc: Doc, name = nextLayerName(doc, 'Folder')): Comman
   const order = [...doc.layers.slice(0, at), f, ...doc.layers.slice(at)];
   return commitShape(doc, 'New folder', order, new Map(), f.id, [f]);
 }
+/** Insert a new node (an adjustment or colour layer) above the active node, inside its folder, as one undo step. */
+export function addNode(doc: Doc, n: Layer, label: string): Command | null {
+  const a = doc.layers.find((l) => l.id === doc.activeId);
+  const at = a ? doc.layers.indexOf(a) + 1 : doc.layers.length;
+  if (a?.parentId) n.parentId = a.parentId; else delete n.parentId;
+  const order = [...doc.layers.slice(0, at), n, ...doc.layers.slice(at)];
+  return commitShape(doc, label, order, new Map(), n.id, [n]);
+}
 /** Wrap a node (with its subtree) in a new folder in its place (Put in a new folder · Group layers). */
 export function groupNode(doc: Doc, id: string, name = nextLayerName(doc, 'Folder')): Command | null {
   const r = subtreeRange(doc.layers, id), node = doc.layers.find((l) => l.id === id);

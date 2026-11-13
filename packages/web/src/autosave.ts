@@ -33,6 +33,8 @@ export function plainDoc(d: Doc, withContent = true): Doc {
     if (l.passThrough !== undefined) out.passThrough = l.passThrough;
     if (l.open !== undefined) out.open = l.open;
     if (l.psdKeep) out.psdKeep = l.psdKeep;
+    if (l.adjust) out.adjust = l.adjust;
+    if (l.fill) out.fill = l.fill;
     return out;
   };
   const s = d.selection;

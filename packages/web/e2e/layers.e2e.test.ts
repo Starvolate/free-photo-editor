@@ -561,4 +561,63 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect((await state(q)).layers.some((l) => l.kind === 'folder')).toBe(false);
     expect(errors).toEqual([]);
   });
+
+  it('editable light and colour (W6 S3): a Light and dark balance layer changes the picture from Properties; undo, redo, hide and Restore after a reload; the same for a solid colour layer', async () => {
+    const q = await open(1440, 900);
+    await q.evaluate(() => (window as unknown as Win).fpe.newDocument(120, 80, '#808080'));
+    const plain = await hash(q);
+    expect(await run(q, 'layer.adj-levels')).toBe(true);
+    const adj = top(await state(q));
+    expect(adj.kind).toBe('adjust');
+    expect(await hash(q)).toBe(plain); // the starting settings change nothing
+    const slider = '[data-testid="adjust-props"] [data-testid="ctl-inB"]';
+    await q.waitForSelector(slider);
+    await q.$eval(slider, (el) => { const i = el as HTMLInputElement; i.value = '100'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+    const changed = await hash(q);
+    expect(changed).not.toBe(plain);
+    expect((await px(q, 60, 40))[0]).toBeLessThan(100);
+    await q.waitForSelector('[data-testid="adjust-props"] [data-testid="ctl-inB"]');
+    await q.screenshot({ path: join(OUT, 'w6-s3-adjust-props-1440.png') });
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(await hash(q)).toBe(plain);
+    expect(await run(q, 'edit.redo')).toBe(true);
+    expect(await hash(q)).toBe(changed);
+    await q.click(`[data-id="${adj.id}"] [data-testid="layer-eye"]`);
+    expect(await hash(q)).toBe(plain);
+    await q.click(`[data-id="${adj.id}"] [data-testid="layer-eye"]`);
+    expect(await hash(q)).toBe(changed);
+    // A solid colour layer: the main colour over everything, its colour changed in Properties, one undo step.
+    expect(await run(q, 'layer.fill-color')).toBe(true);
+    const fill = top(await state(q));
+    expect(fill.kind).toBe('fill');
+    const first = await hash(q);
+    expect(first).not.toBe(changed);
+    const picker = '[data-testid="fill-props"] [data-testid="fill-color"]';
+    await q.waitForSelector(picker, { state: 'attached' });
+    await q.$eval(picker, (el) => { const i = el as HTMLInputElement; i.value = '#ff0000'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(await px(q, 60, 40)).toEqual([255, 0, 0, 255]);
+    const red = await hash(q);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(await hash(q)).toBe(first);
+    expect(await run(q, 'edit.redo')).toBe(true);
+    expect(await hash(q)).toBe(red);
+    await q.click(`[data-id="${fill.id}"] [data-testid="layer-eye"]`);
+    expect(await hash(q)).toBe(changed);
+    await q.click(`[data-id="${fill.id}"] [data-testid="layer-eye"]`);
+    expect(await hash(q)).toBe(red);
+    // Restore after a reload brings both layers back with their settings.
+    const shape = (x: State) => x.layers.map((l) => ({ id: l.id, kind: l.kind, opacity: l.opacity, blendMode: l.blendMode }));
+    const want = shape(await state(q));
+    await q.evaluate(() => (window as unknown as Win).fpe.saveNow());
+    await q.reload();
+    await q.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await q.waitForSelector('[data-testid="restore"]:not([hidden])', { timeout: 15_000 });
+    await q.click('[data-testid="restore-yes"]');
+    await q.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Brought back'), null, { timeout: 15_000 });
+    expect(shape(await state(q))).toEqual(want);
+    expect(await hash(q)).toBe(red);
+    await q.click(`[data-id="${fill.id}"] [data-testid="layer-eye"]`);
+    expect(await hash(q)).toBe(changed);
+    expect(errors).toEqual([]);
+  });
 });

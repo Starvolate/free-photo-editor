@@ -6,10 +6,13 @@
  * Sliders show their change live and add one undo step when released; buttons run the Layer menu's own functions.
  */
 import {
-  carriesLocked, effectiveBox, isFolder, moveNode, makeMask, maskCommand, subtreeOf,
-  type Command, type Doc, type Layer, type LayerMask,
+  carriesLocked, effectiveBox, isFolder, moveNode, makeMask, maskCommand, parseHex, propsCommand, subtreeOf, toHex,
+  type AdjustLayer, type Command, type Doc, type FillLayer, type Layer, type LayerMask,
 } from '@free-photoeditor/core';
+import { ADJ } from './commands';
+import { renderControls } from './controls';
 import { h } from './dom';
+import { BY_ID } from './registry';
 
 export interface MaskPropsHost {
   uid: string | number;
@@ -113,4 +116,70 @@ export function renderFolderProps(el: HTMLElement, host: FolderPropsHost): void 
     h('div', { class: 'fpe-mask-actions' },
       btn(open ? 'Close the folder' : 'Open the folder', 'Collapse group', 'Hides or shows the rows inside in the Layers panel. The picture does not change.', 'folder-toggle', () => host.toggleOpen(f.id)),
       btn('Take out of the folder', 'Ungroup layers', 'The layers inside move out, in the same order, and the folder goes.', 'folder-ungroup', () => host.run('layer.ungroup'))));
+}
+
+/**
+ * An editable light and colour layer (W6 S3, design 6): the exact controls of its Image › Adjustments dialog, drawn by the
+ * one shared renderer. Moving a control shows live on the canvas; letting go adds one undo step. Clip and Reset sit below.
+ */
+export function renderAdjustProps(el: HTMLElement, host: MaskPropsHost): void {
+  const l = host.layer(), a = l?.adjust;
+  if (!l || !a) return;
+  const def = ADJ[a.from], row = BY_ID.get(a.from), job = a.job, name = row?.plain ?? 'Light and colour';
+  const head = h('div', { class: 'fpe-mask-head' }, name + ' ', h('small', { class: 'fpe-pro' }, row?.pro ?? ''));
+  if (!def || !job) {
+    el.replaceChildren(head, h('p', { class: 'fpe-note' }, 'This layer came from a file with settings this editor cannot show yet. It is kept as it is and saved back unchanged.'));
+    return;
+  }
+  const params: Record<string, number | undefined> = { ...job.params };
+  let start: AdjustLayer | null = null;
+  const input = (): void => {
+    const t = host.layer();
+    if (!t?.adjust?.job) return;
+    start ??= t.adjust;
+    t.adjust = { ...t.adjust, job: { ...t.adjust.job, params: { ...params } } };
+    host.live();
+  };
+  const commit = (): void => {
+    const t = host.layer(), from = start;
+    start = null;
+    if (t?.adjust && from && from !== t.adjust) host.push(propsCommand(t.id, { adjust: from }, { adjust: t.adjust }, name));
+  };
+  const draw = (): void => {
+    const clipId = `fpe-${host.uid}-adj-clip`;
+    const cb = h('input', { id: clipId, type: 'checkbox', checked: !!host.layer()?.clip, 'data-testid': 'adjust-clip' }) as HTMLInputElement;
+    cb.addEventListener('change', () => host.run('layer.clip'));
+    const reset = h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'adjust-reset', 'data-help-title': 'Back to the start · Reset',
+      'data-help': 'Puts every setting of this layer back where it started.', onclick: () => { for (const c of def.controls) params[c.key] = c.value; input(); commit(); draw(); } }, 'Back to the start');
+    el.replaceChildren(head,
+      h('p', { class: 'fpe-note' }, `${row?.help ?? ''} As a layer it changes everything below and keeps their pixels: change it at any time, or hide it to compare.`),
+      ...renderControls(def.controls, params, `fpe-${host.uid}-adj-`, { input, commit, rerender: draw }),
+      h('div', { class: 'fpe-check', 'data-help-title': 'Affects only the layer below · Clip', 'data-help': 'Changes only the layer directly below it instead of everything below.' },
+        cb, h('label', { for: clipId }, 'Affects only the layer below ', h('small', { class: 'fpe-pro' }, 'Clip'))),
+      h('div', { class: 'fpe-mask-actions' }, reset));
+  };
+  draw();
+}
+
+/** A solid colour layer (W6 S3): its colour, live on the canvas while it changes, one undo step when it is set. */
+export function renderFillProps(el: HTMLElement, host: MaskPropsHost): void {
+  const l = host.layer(), f = l?.fill;
+  if (!l || !f) return;
+  const id = `fpe-${host.uid}-fill`, inp = h('input', { id, type: 'color', value: toHex(f.color), 'data-testid': 'fill-color' }) as HTMLInputElement;
+  let start: FillLayer | null = null;
+  inp.addEventListener('input', () => {
+    const t = host.layer(), c = parseHex(inp.value);
+    if (!t?.fill || !c) return;
+    start ??= t.fill;
+    t.fill = { type: 'solid', color: { r: c.r, g: c.g, b: c.b, a: 255 } };
+    host.live();
+  });
+  inp.addEventListener('change', () => {
+    const t = host.layer(), from = start;
+    start = null;
+    if (t?.fill && from && from !== t.fill) host.push(propsCommand(t.id, { fill: from }, { fill: t.fill }, 'Change the colour'));
+  });
+  el.replaceChildren(h('div', { class: 'fpe-mask-head' }, 'Solid colour layer ', h('small', { class: 'fpe-pro' }, 'Solid colour fill')),
+    h('p', { class: 'fpe-note' }, 'One colour over the whole picture. Change it at any time; lower the opacity or pick a blend to mix it with what is below.'),
+    h('div', { class: 'fpe-row', 'data-help-title': 'Colour', 'data-help': 'The colour that fills the layer.' }, h('label', { for: id }, 'Colour'), inp));
 }

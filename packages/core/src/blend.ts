@@ -4,7 +4,7 @@
  * Blend modes: how a layer mixes with what is below it. The separable modes and the colour modes
  * follow the public W3C "Compositing and Blending Level 1" formulas; alpha uses source-over.
  */
-import type { LayerMask } from './document';
+import type { AdjustLayer, FillLayer, LayerMask } from './document';
 
 export const BLEND_MODES = ['normal', 'dissolve', 'darken', 'multiply', 'color-burn', 'linear-burn', 'darker-color',
   'lighten', 'screen', 'color-dodge', 'linear-dodge', 'lighter-color', 'overlay', 'soft-light', 'hard-light',
@@ -106,4 +106,5 @@ export interface BlendLayer {
   mask?: LayerMask;
   /** The tree fields (document.ts): plain objects without them are plain pixel layers at the top level. */
   id?: string; kind?: 'pixel' | 'folder' | 'adjust' | 'fill'; parentId?: string; clip?: boolean; passThrough?: boolean;
+  adjust?: AdjustLayer; fill?: FillLayer;
 }

@@ -380,6 +380,10 @@ for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'imag
 HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
+// W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
+for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
+  HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));
+HANDLERS['layer.fill-color'] = H((e) => e.addFillLayer());
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */

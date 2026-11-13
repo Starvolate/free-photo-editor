@@ -16,6 +16,19 @@ import type { RGBA } from './color';
 import { intersect, type Rect } from './geometry';
 import { maskRows, type MaskRows } from './mask';
 import { buildTree, type TreeNode } from './tree';
+import { adjust as adjustBytes, type AdjustKind, type AdjustParams } from './adjustments';
+import { TONE_KINDS, tone, type ToneKind } from './tone';
+import type { JobSpec } from './jobs';
+
+/** Rows per band when a big redraw is split over frames (design 3.3): about a quarter of a million pixels, so one band stays short. */
+export const SLICE_PX = 1 << 18;
+export const bandRows = (width: number): number => Math.max(16, Math.floor(SLICE_PX / Math.max(1, width)));
+/** The dialog's own engine for an adjustment (the same functions runJob calls for op 'adjust'), on 8-bit pixels. */
+function runAdjust(job: JobSpec, data: Uint8ClampedArray, width: number): Uint8ClampedArray {
+  const k = job.kind ?? 'invert';
+  if ((TONE_KINDS as readonly string[]).includes(k)) return tone({ width, height: data.length / 4 / width, data }, k as ToneKind, job.params);
+  return adjustBytes(data, k as AdjustKind, (job.params ?? {}) as AdjustParams);
+}
 
 /** True when any node is in a folder, clipped, or is not a plain pixel layer. */
 const isTree = (layers: readonly BlendLayer[]): boolean =>
@@ -92,6 +105,8 @@ interface Prep {
   kids: Item[] | null;
   /** Folders: the isolated sheet, or the pass-through "before" copy. */
   sheet: Float32Array | null;
+  /** Colour layers: one row of their colour; adjustment layers: the row below turned into 8-bit. */
+  buf: Uint8ClampedArray | null;
 }
 /** A node, or a clip group: a base with the clipped nodes directly above it (`run`, possibly all off this rectangle). */
 interface Item { base: Prep; run: Item[] | null; sheet: Float32Array | null; shape: Float32Array | null; }
@@ -123,13 +138,20 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const k of kids) { x0 = Math.min(x0, k.base.x0); x1 = Math.max(x1, k.base.x1); y0 = Math.min(y0, k.base.y0); y1 = Math.max(y1, k.base.y1); }
       const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
-      return { l, folder: true, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids, sheet: new Float32Array(w * 4) };
+      return { l, folder: true, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids, sheet: new Float32Array(w * 4), buf: null };
     }
-    if (l.kind && l.kind !== 'pixel') return null; // adjustment and fill layers are drawn from S3 on
+    if (l.kind === 'adjust' || l.kind === 'fill') {
+      // No pixels of their own (L3): they cover the whole rectangle, shaped only by their mask.
+      if (l.kind === 'adjust' ? !l.adjust?.job : !l.fill) return null;
+      const box = { x: r.x, y: r.y, w, h }, mk = l.mask ? lazyMask(l.mask, box) : null, buf = new Uint8ClampedArray(w * 4);
+      if (l.kind === 'fill' && l.fill) { const f = l.fill.color; for (let i = 0; i < buf.length; i += 4) { buf[i] = f.r; buf[i + 1] = f.g; buf[i + 2] = f.b; buf[i + 3] = f.a; } }
+      return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf };
+    }
+    if (l.kind && l.kind !== 'pixel') return null;
     const x0 = Math.max(r.x, l.x), x1 = Math.min(r.x + w, l.x + l.width), y0 = Math.max(r.y, l.y), y1 = Math.min(r.y + h, l.y + l.height);
     if (x0 >= x1 || y0 >= y1) return null;
     const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
-    return { l, folder: false, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null };
+    return { l, folder: false, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf: null };
   };
   const items = (nodes: TreeNode<BlendLayer>[]): Item[] => {
     const groups: { base: TreeNode<BlendLayer>; run: TreeNode<BlendLayer>[] }[] = [];
@@ -142,6 +164,12 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       const base = prep(g.base);
       if (!base) continue;
       const shownRun = g.run.filter((n) => shown(n.layer));
+      if (g.base.layer.kind === 'adjust') {
+        // An adjustment layer has no shape of its own, so what is clipped to it draws as if unclipped (exact without a mask).
+        out.push({ base, run: null, sheet: null, shape: null });
+        for (const n of shownRun) { const p = prep(n); if (p) out.push({ base: p, run: null, sheet: null, shape: null }); }
+        continue;
+      }
       if (!shownRun.length) { out.push({ base, run: null, sheet: null, shape: null }); continue; }
       const run: Item[] = [];
       for (const n of shownRun) { const p = prep(n); if (p) run.push({ base: p, run: null, sheet: null, shape: null }); }
@@ -192,8 +220,10 @@ function drawItem(it: Item, acc: Float32Array, y: number, lo: number, hi: number
 function drawNode(p: Prep, acc: Float32Array, y: number, x0: number, x1: number, c: Ctx): void {
   const l = p.l;
   if (!p.folder) {
+    if (l.kind === 'adjust') { drawAdjust(p, acc, y, x0, x1, c); return; }
     if (p.mk) p.mk(y, x0, x1, p.mrow as Float32Array);
-    blendSpan(acc, (x0 - c.rx) * 4, l.data, ((y - l.y) * l.width + (x0 - l.x)) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
+    if (l.kind === 'fill') blendSpan(acc, (x0 - c.rx) * 4, p.buf as Uint8ClampedArray, (x0 - c.rx) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
+    else blendSpan(acc, (x0 - c.rx) * 4, l.data, ((y - l.y) * l.width + (x0 - l.x)) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
     return;
   }
   const kids = p.kids as Item[], s = p.sheet as Float32Array;
@@ -205,6 +235,34 @@ function drawNode(p: Prep, acc: Float32Array, y: number, x0: number, x1: number,
     clearSpan(s, c, x0, x1);
     drawItems(kids, 0, kids.length, s, y, x0, x1, c);
     sheetDown(p, acc, y, x0, x1, c);
+  }
+}
+/**
+ * An adjustment layer (design 2.5): what is below, turned into 8-bit exactly as the output would be, runs through the
+ * dialog's engine; the result is mixed back by opacity × mask with the layer's blend mode. Alpha never changes. All the
+ * kinds are point operations, so any split into rows, bands or tiles gives the same bytes.
+ */
+function drawAdjust(p: Prep, acc: Float32Array, y: number, x0: number, x1: number, c: Ctx): void {
+  const l = p.l, n = x1 - x0, ai = (x0 - c.rx) * 4, b = (p.buf as Uint8ClampedArray).subarray(0, n * 4);
+  for (let i = 0; i < n * 4; i++) b[i] = acc[ai + i] * 255;
+  const res = runAdjust((l.adjust as { job: JobSpec }).job, b, n), mr = p.mrow, op = l.opacity, mode = l.blendMode;
+  if (p.mk) p.mk(y, x0, x1, mr as Float32Array);
+  const sep = SEPARABLE[mode], plain = mode === 'normal' || mode === 'dissolve', dissolve = mode === 'dissolve', mix = c.mix;
+  for (let j = 0, i = ai, k = 0; j < n; j++, i += 4, k += 4) {
+    const ab = acc[i + 3];
+    if (!(ab > 0)) continue;
+    let t = mr ? op * mr[j] : op;
+    if (t <= 0) continue;
+    if (dissolve) { if (hash01(x0 + j, y) >= t) continue; t = 1; }
+    const sr = res[k] / 255, sg = res[k + 1] / 255, sb = res[k + 2] / 255, br = acc[i], bg = acc[i + 1], bb = acc[i + 2];
+    let mR = sr, mG = sg, mB = sb;
+    if (!plain) {
+      if (sep) { mR = sep(br, sr); mG = sep(bg, sg); mB = sep(bb, sb); }
+      else { nonSeparable(mode, br, bg, bb, sr, sg, sb, mix); mR = mix[0]; mG = mix[1]; mB = mix[2]; }
+      mR = (1 - ab) * sr + ab * mR; mG = (1 - ab) * sg + ab * mG; mB = (1 - ab) * sb + ab * mB;
+    }
+    if (t >= 1) { acc[i] = mR; acc[i + 1] = mG; acc[i + 2] = mB; }
+    else { acc[i] = br + (mR - br) * t; acc[i + 1] = bg + (mG - bg) * t; acc[i + 2] = bb + (mB - bb) * t; }
   }
 }
 /** Pass through: out = before mixed towards after by opacity × mask (premultiplied); unchanged pixels stay exact. */
@@ -238,7 +296,8 @@ function startClip(it: Item, y: number, x0: number, x1: number, c: Ctx): void {
     clearSpan(f, c, x0, x1);
     drawItems(kids, 0, kids.length, f, y, x0, x1, c);
     src = f; si = (x0 - c.rx) * 4; div = 1;
-  } else { const l = b.l; src = l.data; si = ((y - l.y) * l.width + (x0 - l.x)) * 4; div = 255; }
+  } else if (b.l.kind === 'fill') { src = b.buf as Uint8ClampedArray; si = (x0 - c.rx) * 4; div = 255; }
+  else { const l = b.l; src = l.data; si = ((y - l.y) * l.width + (x0 - l.x)) * 4; div = 255; }
   if (b.mk) b.mk(y, x0, x1, mr as Float32Array);
   for (let x = x0, j = 0; x < x1; x++, j++, si += 4) {
     const i = (x - c.rx) * 4;

@@ -6,6 +6,7 @@ import { compositeRect } from './composite';
 import { WHITE, type RGBA } from './color';
 import { contains, intersect, union, type Rect } from './geometry';
 import type { LayerContent } from './vector';
+import type { JobSpec } from './jobs';
 
 export interface Bitmap { width: number; height: number; data: Uint8ClampedArray; }
 export interface Layer {
@@ -32,7 +33,18 @@ export interface Layer {
   open?: boolean;
   /** Small PSD fields read but not modelled, written back unchanged. A value object. */
   psdKeep?: Record<string, unknown>;
+  /** Editable light and colour layers (kind 'adjust'): the dialog it came from and its settings. A value object. */
+  adjust?: AdjustLayer;
+  /** Colour layers (kind 'fill'): what fills the canvas. A value object. */
+  fill?: FillLayer;
 }
+/**
+ * An editable light and colour layer (design 2.5): `from` is the Image › Adjustments dialog's id (it picks the controls and
+ * the name), `job` the same numbers-only settings the dialog runs; null = kept from a file but not drawn here.
+ */
+export interface AdjustLayer { from: string; job: JobSpec | null; psd?: unknown; }
+/** A colour layer (design 2.6). Solid now; the colour fade and the pattern join it in the next part. */
+export type FillLayer = { type: 'solid'; color: RGBA };
 /** Pixel layers paint; folders hold other nodes (adjustment and fill layers come in later slices). */
 export type LayerKind = 'pixel' | 'folder' | 'adjust' | 'fill';
 /** True for nodes with pixels of their own to paint on: plain pixel, text and shape layers. */
@@ -84,6 +96,16 @@ export function createLayer(name: string, width: number, height: number,
 export function createFolder(name: string): Layer {
   return { id: newId(), name, visible: true, opacity: 1, blendMode: 'normal', x: 0, y: 0, width: 1, height: 1,
     data: new Uint8ClampedArray(4), kind: 'folder', passThrough: true, open: true };
+}
+/** A new editable light and colour layer: no pixels of its own (L3), drawn over everything below it. */
+export function createAdjustLayer(name: string, from: string, job: JobSpec): Layer {
+  return { id: newId(), name, visible: true, opacity: 1, blendMode: 'normal', x: 0, y: 0, width: 1, height: 1,
+    data: new Uint8ClampedArray(4), kind: 'adjust', adjust: { from, job: { op: job.op, kind: job.kind, params: { ...job.params } } } };
+}
+/** A new solid colour layer: it covers the whole canvas with one colour you can change at any time. */
+export function createFillLayer(name: string, color: RGBA): Layer {
+  return { id: newId(), name, visible: true, opacity: 1, blendMode: 'normal', x: 0, y: 0, width: 1, height: 1,
+    data: new Uint8ClampedArray(4), kind: 'fill', fill: { type: 'solid', color: { ...color } } };
 }
 export function createDocument(width: number, height: number, background: RGBA | null = WHITE): Doc {
   const layer = createLayer(background ? 'Background' : 'Layer 1', width, height, { fill: background });

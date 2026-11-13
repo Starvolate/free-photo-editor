@@ -33,7 +33,7 @@ import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS,
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
-import { addFolder, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
+import { addFolder, addNode, bandRows, createAdjustLayer, createFillLayer, SLICE_PX, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -109,7 +109,7 @@ const PREVIEW_MAX = 2_000_000, PREVIEW_PX = 1_000_000;
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const keyText = (k: string): string => (MAC ? k.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧').replace(/Alt\+/g, '⌥') : k);
 const hexNum = (hex: string): number => { const c = parseHex(hex) ?? BLACK; return (c.r << 16) | (c.g << 8) | c.b; };
-const fmtNum = (v: number): string => (Number.isInteger(v) ? String(v) : Math.abs(v) < 1 ? v.toFixed(2) : v.toFixed(1));
+import { field as ctlField, fmtNum, renderControls } from './controls';
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const luma = (r: number, g: number, b: number): number => 0.299 * r + 0.587 * g + 0.114 * b;
 const CODES: Record<string, string> = { BracketLeft: '[', BracketRight: ']', Equal: '=', Minus: '-', Quote: "'", Comma: ',', Slash: '/', Period: '.' };
@@ -272,6 +272,8 @@ export class Editor {
   private rendW = 0;
   private rendH = 0;
   private dirty: Rect | null = null;
+  /** Bands of a big redraw still to draw (design 3.3). */
+  private pend: Rect[] = [];
   private raf = 0;
   private ants = 0;
   private antsTimer = 0;
@@ -434,7 +436,7 @@ export class Editor {
     return b;
   }
   private field(id: string, label: string, help: string, control: HTMLElement, out?: HTMLElement | null): HTMLElement {
-    return h('div', { class: 'fpe-field', 'data-help-title': label, 'data-help': help }, h('div', { class: 'fpe-field-top' }, h('label', { for: id }, label), out ?? null), control);
+    return ctlField(id, label, help, control, out);
   }
 
   // ---------- building the interface ----------
@@ -1387,6 +1389,14 @@ export class Editor {
     const target = Math.max(d.width, d.height) / 12;
     return [10, 20, 25, 50, 100, 200, 250, 500, 1000].find((s) => s >= target) ?? 1000;
   }
+  /** Split a redraw into bands: the ones in view first, then the rest; older bands inside it are dropped (it redraws them). */
+  private queueBands(r: Rect): void {
+    const rows = bandRows(r.w), v = this.view, top = -v.panY / v.zoom, bot = (this.stage.clientHeight - v.panY) / v.zoom, bands: Rect[] = [];
+    for (let y = r.y; y < r.y + r.h; y += rows) bands.push({ x: r.x, y, w: r.w, h: Math.min(rows, r.y + r.h - y) });
+    const seen = (b: Rect): boolean => b.y < bot && b.y + b.h > top;
+    const inside = (b: Rect): boolean => b.x >= r.x && b.y >= r.y && b.x + b.w <= r.x + r.w && b.y + b.h <= r.y + r.h;
+    this.pend = [...bands.filter(seen), ...bands.filter((b) => !seen(b)), ...this.pend.filter((b) => !inside(b))];
+  }
   private renderNow(): void {
     this.raf = 0;
     const d = this.doc;
@@ -1394,8 +1404,20 @@ export class Editor {
       this.renderer.setDocumentSize(d.width, d.height);
       this.rendW = d.width; this.rendH = d.height;
       this.dirty = docRect(d);
-    } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; }
-    if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, this.strokeCache ? this.strokeCache.composite(r) : compositeDoc(d, r)); }
+      this.pend = [];
+    } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; this.pend = []; }
+    if (d && this.dirty) {
+      const r = this.dirty;
+      this.dirty = null;
+      if (this.strokeCache) this.renderer.upload(r, this.strokeCache.composite(r));
+      else if (r.w * r.h <= SLICE_PX && !this.pend.length) this.renderer.upload(r, compositeDoc(d, r));
+      else this.queueBands(r);
+    }
+    if (d && this.pend.length) {
+      const t0 = performance.now();
+      do { const b = this.pend.shift() as Rect; this.renderer.upload(b, compositeDoc(d, b)); } while (this.pend.length && performance.now() - t0 < 12);
+      if (this.pend.length) this.requestRender();
+    }
     const t = this.tool, z = this.view.zoom, o = t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush;
     const tks = this.tk?.cursorSize(t) ?? null;
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
@@ -1587,6 +1609,10 @@ export class Editor {
       if (pixels) { this.toast('This is a folder: pick a layer inside it.'); return false; }
       if (this.doc && carriesLocked(this.doc, l.id)) { this.toast('Something in this folder is locked: unlock it first.'); return false; }
       return true;
+    }
+    if ((l.kind === 'adjust' || l.kind === 'fill') && !(this.maskTarget && l.mask)) {
+      this.toast(`${l.name} is ${l.kind === 'adjust' ? 'an editable light and colour layer' : 'a colour layer'} with no pixels of its own: change it in Properties, or pick a picture layer.`);
+      return false;
     }
     const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
     const mask = this.maskTarget && !!l.mask;
@@ -2113,7 +2139,10 @@ export class Editor {
   }
   /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
   private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
+    const swatch = (): HTMLElement => { const s = h('span', { class: 'fpe-layer-thumb fpe-layer-folder', 'aria-hidden': 'true', 'data-testid': 'fill-swatch' }); if (l.fill) s.style.background = toHex(l.fill.color); return s; };
     const pic = isFolder(l) ? h('span', { class: 'fpe-layer-thumb fpe-layer-folder', 'aria-hidden': 'true' }, icon(l.open === false ? 'folder' : 'open'))
+      : l.kind === 'adjust' ? h('span', { class: 'fpe-layer-thumb fpe-layer-folder', 'aria-hidden': 'true', 'data-testid': 'adjust-thumb' }, icon('sliders'))
+      : l.kind === 'fill' ? swatch()
       : h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
     const m = l.mask;
     if (!m) return [pic];
@@ -2300,6 +2329,17 @@ export class Editor {
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
       });
     }
+    if (l.kind === 'adjust' || l.kind === 'fill') {
+      // Editable light and colour, or a colour layer (W6 S3): its settings replace X, Y and size; the same controls as its dialog.
+      const kind = l.kind, box = h('div', { class: 'fpe-mask-props', 'data-testid': kind === 'adjust' ? 'adjust-props' : 'fill-props' });
+      parts.splice(parts.indexOf(own) - 1, 4, box);
+      void import('./layerprops').then((m) => {
+        const host: import('./layerprops').MaskPropsHost = { uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true),
+          run: (cmd) => void this.run(cmd), live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg) };
+        if (kind === 'adjust') m.renderAdjustProps(box, host); else m.renderFillProps(box, host);
+        if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+      });
+    }
     b.append(...parts);
   }
   private renderColor(): void {
@@ -2376,6 +2416,26 @@ export class Editor {
     this.pushCmd(mergeDown(d), true);
   }
   /** New empty folder, put the active node in a new folder, or take its folder apart (design 2.4). */
+  /** Layer › Editable light and colour › (kind): above the active node, in its folder, with the dialog's starting settings (design 2.5). */
+  addAdjustLayer(from: string): void {
+    const d = this.doc, def = ADJ[from], row = BY_ID.get(from);
+    if (!d) return this.needDoc();
+    if (!def || !row) return;
+    this.cancelSession();
+    const params: JobParams = {};
+    for (const c of def.controls) params[c.key] = c.value;
+    this.pushCmd(addNode(d, createAdjustLayer(nextLayerName(d, row.plain), from, { op: def.op, kind: def.kind, params }), row.plain + ' layer'), true);
+    this.showPanelTab('properties');
+  }
+  /** Layer › Colour layer › Solid colour: the main colour over the whole canvas, changeable at any time in Properties. */
+  addFillLayer(): void {
+    const d = this.doc;
+    if (!d) return this.needDoc();
+    this.cancelSession();
+    const c = parseHex(this.brush.color) ?? BLACK;
+    this.pushCmd(addNode(d, createFillLayer(nextLayerName(d, 'Colour'), { r: c.r, g: c.g, b: c.b, a: 255 }), 'Solid colour layer'), true);
+    this.showPanelTab('properties');
+  }
   folderAction(k: 'new' | 'group' | 'ungroup'): void {
     const d = this.doc;
     if (!d) return this.needDoc();
@@ -2527,39 +2587,7 @@ export class Editor {
       this.dlgCanvas = h('canvas', { class: 'fpe-histo', width: 256, height: 96, 'aria-label': 'Graph of dark to light tones in the picture', 'data-testid': 'adj-graph' });
       kids.push(this.dlgCanvas);
     }
-    let group = '';
-    for (const c of s.def.controls) {
-      if (c.group && c.group !== group) { group = c.group; kids.push(h('h3', { class: 'fpe-group-title' }, group)); }
-      const cid = id + c.key;
-      if (c.type === 'select') {
-        const sel = h('select', { id: cid, 'data-testid': 'ctl-' + c.key }, ...(c.options ?? []).map((o, k) => h('option', { value: k, selected: k === params[c.key] }, o)));
-        sel.addEventListener('change', () => {
-          params[c.key] = Number(sel.value);
-          const fill = c.fills?.[Number(sel.value)];
-          if (fill) { Object.assign(params, fill); this.renderDialog(); }
-          this.preview();
-        });
-        kids.push(h('div', { class: 'fpe-row', 'data-help-title': c.label, 'data-help': c.help }, h('label', { for: cid }, c.label), sel));
-      } else if (c.type === 'num') {
-        const last = kids[kids.length - 1];
-        let grid = last instanceof HTMLElement && last.classList.contains('fpe-kernel') ? last : null;
-        if (!grid) { grid = h('div', { class: 'fpe-kernel', role: 'group', 'aria-label': c.group ?? 'Numbers' }); kids.push(grid); }
-        const inp = h('input', { id: cid, type: 'number', inputmode: 'numeric', min: c.min ?? -99, max: c.max ?? 99, step: c.step ?? 1, value: params[c.key] ?? c.value,
-          'aria-label': c.label, 'data-testid': 'ctl-' + c.key, 'data-help-title': c.label, 'data-help': c.help });
-        inp.addEventListener('input', () => { const v = Number(inp.value); if (inp.value !== '' && Number.isFinite(v)) { params[c.key] = v; this.preview(); } });
-        grid.append(inp);
-      } else if (c.type === 'check') {
-        const cb = h('input', { id: cid, type: 'checkbox', checked: !!params[c.key], 'data-testid': 'ctl-' + c.key });
-        cb.addEventListener('change', () => { params[c.key] = cb.checked ? 1 : 0; this.preview(); });
-        kids.push(h('div', { class: 'fpe-check', 'data-help-title': c.label, 'data-help': c.help }, cb, h('label', { for: cid }, c.label)));
-      } else {
-        const val = Number(params[c.key] ?? c.value), unit = c.unit ?? '';
-        const out = h('output', { class: 'fpe-out', for: cid }, fmtNum(val) + unit);
-        const inp = h('input', { id: cid, type: 'range', min: c.min ?? 0, max: c.max ?? 100, step: c.step ?? 1, value: val, 'data-testid': 'ctl-' + c.key });
-        inp.addEventListener('input', () => { const v = Number(inp.value); params[c.key] = v; out.textContent = fmtNum(v) + unit; this.preview(); this.drawGraph(); });
-        kids.push(this.field(cid, c.label, c.help, inp, out));
-      }
-    }
+    kids.push(...renderControls(s.def.controls, params, id, { input: () => { this.preview(); this.drawGraph(); }, rerender: () => this.renderDialog() }));
     kids.push(h('div', { class: 'fpe-actions' },
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-before', 'aria-pressed': s.showBefore ? 'true' : 'false', 'data-testid': 'adj-before',
         'data-help-title': 'Before and after', 'data-help': 'Show the picture as it was, to compare. Press again to see the change.', onclick: () => this.toggleBefore() },

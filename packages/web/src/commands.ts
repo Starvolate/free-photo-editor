@@ -401,9 +401,10 @@ for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 
   'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']) HANDLERS[id] = w3(id, hasPath);
 HANDLERS['shape.spiral-star'] = w3('shape.spiral-star');
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
-HANDLERS['type.add'] = H((e) => e.setTool('type'));
+// Add text clears a pending "Add up-down text" in the tool kit, so the next words are straight again.
+HANDLERS['type.add'] = H((e) => { if (e.tk) e.tk.cmd('type.add'); else e.setTool('type'); });
 // Shapes & text, type: bent text and text along a line (typekit.ts, loaded by the tool kit on first use).
-for (const id of ['type.warp', 'type.path', 'type.find', 'type.smooth', 'type.add-vertical', 'type.to-shape']) HANDLERS[id] = w3(id);
+for (const id of ['type.warp', 'type.path', 'type.find', 'type.smooth', 'type.add-vertical', 'type.to-shape', 'type.styles', 'type.opentype', 'type.in-shape']) HANDLERS[id] = w3(id);
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
 const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
 const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>

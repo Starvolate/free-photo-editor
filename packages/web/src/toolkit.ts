@@ -20,7 +20,7 @@ import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
 import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
-import { glyphCorners, hardEdges, warpGlyphs, type GlyphBox, type TextWarp } from '@free-photoeditor/core/textwarp';
+import { fillShape, glyphCorners, hardEdges, stretchKeyword, warpGlyphs, type GlyphBox, type TextWarp } from '@free-photoeditor/core/textwarp';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
@@ -167,23 +167,33 @@ function drawLine(x: CanvasRenderingContext2D, t: string, px: number, py: number
   let cx = px;
   for (const ch of t) { x.fillText(ch, cx, py); cx += x.measureText(ch).width + ls; }
 }
+/** Set a canvas's font for a text style: weight, letter width, letter-pair fitting and small capitals too (type.opentype). */
+function useFont(x: CanvasRenderingContext2D, st: TextStyle): void {
+  x.font = fontString(st);
+  // Older browsers lack these three; they then draw the font's normal width, fitting and capitals.
+  if ('fontStretch' in x) x.fontStretch = stretchKeyword(st.stretch ?? 100) as CanvasFontStretch;
+  if ('fontKerning' in x) x.fontKerning = st.kerning === false ? 'none' : 'auto';
+  if ('fontVariantCaps' in x) x.fontVariantCaps = st.caps ?? 'normal';
+}
 /** Draw bent text or text along a line: each letter placed and turned on its own (core textwarp.ts). */
 function renderWarped(c: TextContent, warp: TextWarp): Placed {
   const st = c.style, m = meas();
-  m.font = fontString(st);
+  useFont(m, st);
   const lay = layoutText(c, (s) => m.measureText(s).width), asc = st.size * 0.8 + (lay.advance - st.size) / 2;
   const gs: GlyphBox[] = [], chars: string[] = [];
   for (const ln of lay.lines) {
     let gx = ln.x;
     for (const ch of ln.text) { const w = m.measureText(ch).width; gs.push({ x: gx, w, base: ln.y + asc }); chars.push(ch); gx += w + st.letterSpacing; }
   }
-  const at = warpGlyphs(gs, warp, st.size), up = st.size * 0.95, down = st.size * 0.3;
+  // Text in a shape (type.in-shape) wraps the words into the outline; every other bend moves the straight letters.
+  const at = warp.style === 'shape' ? fillShape(gs, chars, warp.path ?? [], { size: st.size, advance: lay.advance, align: st.align }) : warpGlyphs(gs, warp, st.size);
+  const up = st.size * 0.95, down = st.size * 0.3;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   at.forEach((s, i) => { if (s) for (const q of glyphCorners(s, gs[i].w, up, down)) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } });
   if (!Number.isFinite(x0)) return renderPlain(c);
   const pad = Math.ceil(st.size * 0.2) + 2, X = Math.floor(x0 - pad), Y = Math.floor(y0 - pad);
   const x = ctx2d(Math.min(16384, Math.ceil(x1 - x0 + 2 * pad)), Math.min(16384, Math.ceil(y1 - y0 + 2 * pad)));
-  x.font = fontString(st);
+  useFont(x, st);
   x.fillStyle = st.color;
   x.textBaseline = 'alphabetic';
   at.forEach((s, i) => {
@@ -197,7 +207,7 @@ function renderWarped(c: TextContent, warp: TextWarp): Placed {
   return { x: X, y: Y, width: x.canvas.width, height: x.canvas.height, data: x.getImageData(0, 0, x.canvas.width, x.canvas.height).data };
 }
 /** Bent, along a line or up-down: the letters are placed one by one (renderWarped). */
-const bent = (c: TextContent): boolean => !!c.warp && (!!c.warp.bend || c.warp.style === 'path' || c.warp.style === 'vertical');
+const bent = (c: TextContent): boolean => !!c.warp && (!!c.warp.bend || c.warp.style === 'path' || c.warp.style === 'vertical' || c.warp.style === 'shape');
 /** Draw a text layer's words into pixels (the browser's own fonts); sharp edges when its style says so. */
 export function renderText(c: TextContent): Placed {
   const p = c.warp && bent(c) ? renderWarped(c, c.warp) : renderPlain(c);
@@ -206,11 +216,11 @@ export function renderText(c: TextContent): Placed {
 }
 function renderPlain(c: TextContent): Placed {
   const st = c.style, m = meas();
-  m.font = fontString(st);
+  useFont(m, st);
   const lay = layoutText(c, (s) => m.measureText(s).width), pad = Math.ceil(st.size * 0.35) + 2;
   const x0 = Math.floor(lay.box.x - pad), y0 = Math.floor(lay.box.y - pad), w = Math.ceil(lay.box.w + 2 * pad), hh = Math.ceil(lay.box.h + 2 * pad);
   const x = ctx2d(w, hh);
-  x.font = fontString(st);
+  useFont(x, st);
   x.fillStyle = st.color;
   x.textBaseline = 'alphabetic';
   const asc = st.size * 0.8 + (lay.advance - st.size) / 2;
@@ -520,7 +530,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     const t = te, d = doc();
     if (!t || !d) return;
     const cv = host.canvas().getBoundingClientRect(), rr = host.root.getBoundingClientRect(), st = t.content.style, m = meas();
-    m.font = fontString(st);
+    useFont(m, st);
     const l = findLayer(d, t.id);
     if (bent(t.content) && l) {
       // Bent words: the picture shows the bend as you type. The box under the words holds the same words in a straight,
@@ -528,7 +538,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       const r = layerRect(l), a = scr({ x: r.x, y: r.y + r.h }), n = t.content.text.split('\n').length, bw = Math.min(320, cv.width - 8);
       const x = Math.max(cv.left - rr.left + 4, Math.min(cv.left - rr.left + a.x, cv.right - rr.left - bw - 4));
       const y = Math.max(cv.top - rr.top + 4, Math.min(cv.top - rr.top + a.y + 6, cv.bottom - rr.top - n * 20 - 40));
-      Object.assign(t.note.style, { display: 'block', left: x + 'px', top: y + 'px', maxWidth: bw + 'px' });
+      Object.assign(t.note.style, { display: 'flex', left: x + 'px', top: y + 'px', maxWidth: bw + 'px' });
       Object.assign(t.area.style, {
         left: x + 'px', top: y + 26 + 'px', width: bw - 12 + 'px', height: n * 20 + 4 + 'px', font: '14px system-ui, sans-serif', lineHeight: '20px',
         letterSpacing: '0px', textAlign: 'left', color: '#f2f3f5', background: 'rgba(24,26,31,.92)', padding: '2px 6px', outline: '1px solid rgba(120,170,255,.9)',
@@ -542,6 +552,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       left: cv.left - rr.left + left + 'px', top: cv.top - rr.top + anchor.y + 'px', width: w + 'px', height: lay.box.h * zz + st.size * zz * 0.4 + 'px',
       font: fontString(st, st.size * zz), lineHeight: st.size * st.lineHeight * zz + 'px', letterSpacing: st.letterSpacing * zz + 'px', textAlign: st.align,
       color: 'transparent', background: 'transparent', padding: '0', outline: '1px dashed rgba(120,170,255,.9)',
+      fontStretch: stretchKeyword(st.stretch ?? 100), fontKerning: st.kerning === false ? 'none' : 'auto', fontVariantCaps: st.caps ?? 'normal',
     });
   }
   function drawText(): void {
@@ -562,9 +573,12 @@ export function createToolKit(host: ToolHost): ToolKit {
   }
   const newArea = (): HTMLTextAreaElement => h('textarea', { class: 'fpe-textedit', 'aria-label': 'Your words', 'data-testid': 'text-edit', spellcheck: 'false',
     style: 'position:absolute;z-index:6;margin:0;padding:0;border:0;outline:1px dashed rgba(120,170,255,.9);background:transparent;color:transparent;caret-color:#78aaff;resize:none;overflow:hidden;white-space:pre' });
+  // The note carries its own Done: the options bar's Done can sit on a ribbon tab that is not open.
   const newNote = (): HTMLElement => h('div', { 'data-testid': 'text-bent-note', role: 'note',
-    style: 'position:absolute;z-index:6;display:none;padding:2px 6px;border-radius:4px;background:rgba(24,26,31,.92);color:#f2f3f5;font:13px/20px system-ui,sans-serif' },
-  'The picture shows the bend as you type. Type here; Done keeps it.');
+    style: 'position:absolute;z-index:6;display:none;align-items:center;gap:8px;padding:2px 2px 2px 6px;border-radius:4px;background:rgba(24,26,31,.92);color:#f2f3f5;font:13px/20px system-ui,sans-serif' },
+  h('span', {}, 'The picture shows the bend as you type. Type here; Done keeps it.'),
+  h('button', { type: 'button', 'data-testid': 'text-bent-done', title: 'Keep these words (Ctrl+Enter).', onclick: () => commitText(),
+    style: 'flex:none;font:13px/18px system-ui,sans-serif;padding:0 10px;border:0;border-radius:3px;background:#dbe6ff;color:#0b1020;cursor:pointer' }, 'Done'));
   function beginText(p: Pt): void {
     const d = doc();
     if (!d) return;
@@ -660,7 +674,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       out.push(field('Font', 'The typeface. Fonts on this device are listed.', sel),
         field('Size', 'How tall the letters are, in pixels.', num('text-size', st.size, 4, 1000, 1, (n) => restyle({ size: n }))),
         field('Colour', 'The colour of the words.', col),
-        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold }), () => styleNow().bold),
+        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold, weight: undefined }), () => styleNow().bold),
         toggle('text-italic', 'Slanted · Italic', st.italic, 'Slanted letters (italic).', () => restyle({ italic: !styleNow().italic }), () => styleNow().italic),
         field('Letter gap', 'Extra space between letters, in pixels (tracking).', num('text-tracking', st.letterSpacing, -50, 200, 1, (n) => restyle({ letterSpacing: n }))));
     }
@@ -1121,7 +1135,9 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'layer.distribute-h': distribute('h'); break;
       case 'layer.distribute-v': distribute('v'); break;
       case 'layer.rasterize': case 'type.rasterize': rasterize(); break;
+      case 'type.add': S.vertical = false; host.setTool('type'); break;
       case 'type.warp': case 'type.path': case 'type.find': case 'type.smooth': case 'type.add-vertical': case 'type.to-shape':
+      case 'type.styles': case 'type.opentype': case 'type.in-shape':
         return import('./typekit').then((m) => m.runType(id, {
           render: renderText, change: contentStep, restyle, style: styleNow, addPath: (p, label) => pen.addPath(p, label),
           vertical: () => { S.vertical = true; host.setTool('type'); }, commit: () => { if (te) commitText(); },
@@ -1344,6 +1360,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       pen.toolChanged(prev, next);
       view.cancel();
       if (prev === 'type' && te) commitText();
+      if (next !== 'type') S.vertical = false; // a pending "Add up-down text" ends when the Text tool is left
       if (prev === 'lasso-poly') poly = null;
       if (prev === 'remove' && rm && !rm.busy) rm = null;
       if (prev === next) return;

@@ -8,7 +8,7 @@
  */
 import { combineCommands, currentContent, newPathId, type Command, type Doc, type Layer, type Placed, type TextContent, type TextStyle, type VectorPath } from '@free-photoeditor/core';
 import { ringPoints, traceAlpha } from '@free-photoeditor/core/pathops';
-import { replaceText, type TextWarp, type WarpStyle } from '@free-photoeditor/core/textwarp';
+import { applyLook, replaceText, STRETCHES, type LookPart, type TextWarp, type WarpStyle } from '@free-photoeditor/core/textwarp';
 import type { ToolHost } from './toolkit';
 import { h } from './dom';
 
@@ -29,7 +29,7 @@ export interface TypeKit {
   vertical(): void;
   commit(): void;
 }
-type Bend = Exclude<WarpStyle, 'path' | 'vertical'>;
+type Bend = Exclude<WarpStyle, 'path' | 'vertical' | 'shape'>;
 /** The bend used last (it stays for the next run in this tab). */
 export const W = { style: 'arc' as Bend, bend: 50, start: 0 };
 const STYLES: [Bend, string, string][] = [
@@ -72,6 +72,7 @@ export function runType(id: string, k: TypeKit): void {
   if (!d) return;
   if (id === 'type.warp' || id === 'type.path') { runTypeWarp(id, k); return; }
   if (id === 'type.find') { findSheet(k); return; }
+  if (id === 'type.styles') { looksSheet(k); return; }
   if (id === 'type.add-vertical') {
     if (k.layer()) { if (k.set({ style: 'vertical', bend: 0 }, 'Up-down text')) host.toast('The letters now run top to bottom. Bend text, Straight again, lays them back in a line.'); return; }
     k.vertical();
@@ -81,6 +82,8 @@ export function runType(id: string, k: TypeKit): void {
   if (!k.layer()) { host.toast(NO_TEXT); return; }
   if (id === 'type.smooth') smoothSheet(k);
   else if (id === 'type.to-shape') toShape(k);
+  else if (id === 'type.opentype') fontSheet(k);
+  else if (id === 'type.in-shape') inShape(k, d);
 }
 
 /** Find and replace (kept for the next run in this tab). Capitals are ignored unless "Match capitals" is ticked. */
@@ -199,4 +202,127 @@ function onLine(k: TypeKit, d: Doc): void {
     row('Start along the line (pixels)', num('typepath-start', W.start, 0, 100000, 10, (n) => { W.start = n; go(); })),
     actions(k, 'path'));
   show(host, 'Text along a line (Type on a path)', body);
+}
+
+// ---- Saved text looks (Character and paragraph styles) ---------------------------------------------------------------
+/** The looks saved in this browser: a name and a whole text style. They stay for later visits when the browser allows it. */
+export const LOOKS: { name: string; style: TextStyle }[] = [];
+const LOOK_KEY = 'fpe-text-looks';
+let loaded = false;
+function loadLooks(): void {
+  if (loaded) return;
+  loaded = true;
+  try { const v = JSON.parse(localStorage.getItem(LOOK_KEY) ?? '[]'); if (Array.isArray(v)) for (const x of v) if (x && typeof x.name === 'string' && x.style) LOOKS.push(x); } catch { /* private window: this tab only */ }
+}
+function saveLooks(): void { try { localStorage.setItem(LOOK_KEY, JSON.stringify(LOOKS)); } catch { /* kept for this tab */ } }
+const PARTS: [LookPart, string, string][] = [
+  ['all', 'Everything', 'Font, size, colour, weight, spacing, alignment and line gap.'],
+  ['letters', 'Only the letters (Character style)', 'Font, size, colour, weight and spacing; each layer keeps its alignment and line gap.'],
+  ['lines', 'Only the lines (Paragraph style)', 'Alignment and line gap; each layer keeps its letters.'],
+];
+const L = { part: 'all' as LookPart };
+function looksSheet(k: TypeKit): void {
+  const host = k.host;
+  k.commit();
+  loadLooks();
+  const d = host.doc();
+  if (!k.layer() && !LOOKS.length) { host.toast(NO_TEXT); return; }
+  if (!k.layer()) host.toast('No text layer is picked: a look you use now is kept for the next words you type.');
+  const name = h('input', { type: 'text', 'data-testid': 'typelook-name', 'aria-label': 'Name for this look', placeholder: 'Title, Caption…', style: 'width:180px' });
+  const out = h('p', { 'data-testid': 'typelook-result', role: 'status', style: 'margin:0;font-size:13px' }, '');
+  const list = h('div', { 'data-testid': 'typelook-list', style: 'display:grid;gap:6px' });
+  const btn = (testid: string, text: string, title: string, run: () => void): HTMLElement =>
+    h('button', { type: 'button', class: 'fpe-btn', 'data-testid': testid, title, onclick: run }, text);
+  const useOn = (i: number, every: boolean): void => {
+    const look = LOOKS[i], dd = host.doc();
+    if (!look || !dd) return;
+    if (!every) {
+      const l = k.layer(), c = l ? currentContent(l) : null;
+      k.restyle(applyLook(c?.kind === 'text' ? c.style : k.style(), look.style, L.part));
+      out.textContent = l ? `“${look.name}” is on the picked words.` : `Your next words will use “${look.name}”.`;
+      return;
+    }
+    const steps: Command[] = [];
+    for (const l of texts(dd)) {
+      const c = currentContent(l);
+      if (c?.kind === 'text') steps.push(k.change(l, { ...c, style: applyLook(c.style, look.style, L.part) }, 'Use a text look'));
+    }
+    if (!steps.length) { out.textContent = NO_WORDS; return; }
+    host.push(steps.length === 1 ? steps[0] : combineCommands('Use a text look', steps), true);
+    out.textContent = `“${look.name}” is on ${steps.length} text layer${steps.length === 1 ? '' : 's'}. Undo (Ctrl+Z) puts them all back at once.`;
+  };
+  const paint = (): void => {
+    list.replaceChildren(...(LOOKS.length ? LOOKS.map((lk, i) => {
+      const st = lk.style;
+      // The name is shown in its own look (at a readable size), so the list reads like a menu of styles.
+      const sample = h('span', { 'data-testid': 'typelook-sample', style: `flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-family:${JSON.stringify(st.font)};font-weight:${st.weight ?? (st.bold ? 700 : 400)};font-style:${st.italic ? 'italic' : 'normal'};color:${st.color}` }, lk.name);
+      return h('div', { 'data-testid': 'typelook-row', style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid rgba(128,128,128,.35);border-radius:6px;background:#f6f7f9' },
+        sample,
+        btn('typelook-use', 'Use on picked', 'Put this look on the picked text layer (one undo step).', () => useOn(i, false)),
+        btn('typelook-all', 'Use on every text layer', 'Put this look on every text layer at once (one undo step).', () => useOn(i, true)),
+        btn('typelook-delete', 'Remove', 'Forget this look (text that has it keeps it).', () => { LOOKS.splice(i, 1); saveLooks(); paint(); }));
+    }) : [h('p', { style: 'margin:0;font-size:13px' }, 'No looks saved yet: pick some styled words and save their look.')]));
+  };
+  const save = (): void => {
+    const l = k.layer(), c = l ? currentContent(l) : null;
+    if (c?.kind !== 'text') { out.textContent = NO_TEXT; return; }
+    const n = name.value.trim() || `Look ${LOOKS.length + 1}`, at = LOOKS.findIndex((x) => x.name === n);
+    const st = { ...c.style };
+    if (at >= 0) LOOKS[at] = { name: n, style: st }; else LOOKS.push({ name: n, style: st });
+    saveLooks();
+    paint();
+    out.textContent = `Saved “${n}”. Use it on other text layers below.`;
+  };
+  const part = h('select', { 'data-testid': 'typelook-part', 'aria-label': 'What a look changes', onchange: () => { L.part = part.value as LookPart; } },
+    ...PARTS.map(([v, text, help]) => h('option', { value: v, title: help }, text)));
+  part.value = L.part;
+  paint();
+  const body = h('div', { 'data-testid': 'typewarp-sheet', 'data-cmd': 'type.styles', style: 'display:grid;gap:8px;min-width:min(380px,100%)' },
+    h('p', { style: 'margin:0;font-size:13px' }, 'Save how some words look (font, size, colour, spacing, alignment) under a name, then put that look on other text with one click. Saved looks stay in this browser.'),
+    row('Name', name),
+    h('div', { class: 'fpe-actions' }, btn('typelook-save', 'Save the picked words\u2019 look', 'Keep the picked text layer\u2019s look under this name.', save)),
+    row('What a look changes', part), list, out,
+    h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'typewarp-done', onclick: () => host.closeSheet() }, 'Done')));
+  show(host, 'Text looks (Character and paragraph styles)', body);
+}
+
+// ---- Weight, width and font features (Variable fonts and OpenType features) -----------------------------------------
+const WIDTH_NAMES = ['Narrowest', 'Very narrow', 'Narrow', 'A little narrow', 'Normal', 'A little wide', 'Wide', 'Very wide', 'Widest'];
+function fontSheet(k: TypeKit): void {
+  const st = k.style(), weight = st.weight ?? (st.bold ? 700 : 400);
+  const shown = h('output', { 'data-testid': 'typefont-weight-out', style: 'min-width:3ch;font-size:13px' }, String(weight));
+  const w = h('input', { type: 'range', min: 100, max: 900, step: 50, value: String(weight), 'data-testid': 'typefont-weight', 'aria-label': 'Weight', style: 'width:160px' });
+  w.addEventListener('input', () => { shown.textContent = w.value; });
+  w.addEventListener('change', () => { const n = Number(w.value); k.restyle({ weight: n, bold: n >= 600 }); });
+  const width = h('select', { 'data-testid': 'typefont-width', 'aria-label': 'Letter width', onchange: () => k.restyle({ stretch: Number(width.value) }) },
+    ...STRETCHES.map(([pct], i) => h('option', { value: String(pct) }, `${WIDTH_NAMES[i]} (${pct}%)`)));
+  width.value = String(STRETCHES.find(([pct]) => pct === (st.stretch ?? 100))?.[0] ?? 100);
+  const kern = h('input', { type: 'checkbox', 'data-testid': 'typefont-kerning', onchange: () => k.restyle({ kerning: kern.checked }) });
+  kern.checked = st.kerning !== false;
+  const caps = h('select', { 'data-testid': 'typefont-caps', 'aria-label': 'Small capitals', onchange: () => k.restyle({ caps: caps.value as TextStyle['caps'] }) },
+    h('option', { value: 'normal' }, 'Off'), h('option', { value: 'small-caps' }, 'Small letters as small capitals'), h('option', { value: 'all-small-caps' }, 'Every letter a small capital'));
+  caps.value = st.caps ?? 'normal';
+  const body = h('div', { 'data-testid': 'typewarp-sheet', 'data-cmd': 'type.opentype', style: 'display:grid;gap:8px;min-width:min(380px,100%)' },
+    h('p', { style: 'margin:0;font-size:13px' }, 'Thicker or thinner letters, narrower or wider ones, and the font\u2019s own extras. Each change is one undo step.'),
+    row('Weight: thin 100 to heavy 900 (Font weight)', h('span', { style: 'display:flex;gap:6px;align-items:center' }, w, shown)),
+    row('Letter width (Width axis)', width),
+    row('Fit letter pairs (Kerning)', kern),
+    row('Small capitals (Small caps)', caps),
+    h('p', { style: 'margin:0;font-size:12px;opacity:.8' }, 'Variable fonts take any weight; others jump to their nearest face. Width works only when the font has narrow or wide faces. Joined letters and alternate shapes (ligatures and stylistic sets) are not offered: a browser canvas cannot switch them, so fonts keep their standard ones.'),
+    h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'typewarp-done', onclick: () => k.host.closeSheet() }, 'Done')));
+  show(k.host, 'Weight, width and font extras (Variable fonts and OpenType)', body);
+}
+
+// ---- Text that fills a shape (Shape text) ---------------------------------------------------------------------------
+const NO_SHAPE = 'Draw a closed outline first: the words fill it. Use the shape tools or Draw curves (Pen), or make one from a selection in Outlines.';
+function inShape(k: TypeKit, d: Doc): void {
+  const host = k.host, p = k.outline(d), sub = p?.subpaths.find((s) => s.closed && s.anchors.length > 2);
+  if (!p || !sub) { host.toast(NO_SHAPE); return; }
+  const path = ringPoints(sub);
+  if (!k.set({ style: 'shape', bend: 0, path, closed: true }, 'Text in a shape')) { host.toast(NO_TEXT); return; }
+  const body = h('div', { 'data-testid': 'typewarp-sheet', 'data-cmd': 'type.in-shape', style: 'display:grid;gap:8px;min-width:min(340px,100%)' },
+    h('p', { style: 'margin:0;font-size:13px' },
+      `The words fill “${p.name}”, line by line from its top, each line as wide as the shape is there. Words that do not fit are hidden: make the text smaller or the shape bigger. Change alignment in Text style. The words stay words.`),
+    actions(k, 'shape'));
+  show(host, 'Text that fills a shape (Shape text)', body);
 }

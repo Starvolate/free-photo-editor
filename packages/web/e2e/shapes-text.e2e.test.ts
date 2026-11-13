@@ -98,7 +98,8 @@ function typing(p: Page): { at: (i: number) => Promise<L>; last: () => Promise<L
     throw new Error(`${label}: ${JSON.stringify(await at(i))}`);
   };
   const write = async (x: number, y: number, words: string): Promise<L> => {
-    await p.evaluate(() => (window as unknown as Win).fpe.run('tool.type'));
+    // Another tool first, so picking the Text tool opens its ribbon tab (and its Done) even after a command elsewhere.
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; await f.run('tool.move'); await f.run('tool.type'); });
     const c = await p.evaluate(([a, b]) => (window as unknown as Win).fpe.toClient(a, b), [x, y] as const);
     await p.mouse.click(c!.x, c!.y);
     await p.waitForSelector('[data-testid="text-edit"]');
@@ -273,7 +274,8 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await p.keyboard.press('Control+End');
     await p.keyboard.type(' now');
     await wait((l) => l.height > flat.height + 20 && l.width !== arc2.width, 'typing keeps the bend');
-    await p.click('[data-testid="text-done"]');
+    // The note's own Done: the options bar's Done sits on the Text tab, and the ribbon is still on Shapes & text.
+    await p.click('[data-testid="text-bent-done"]');
 
     const line = await write(560, 520, 'Words along a line');
     await go(p, 'type.path');
@@ -339,5 +341,63 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     const kept = await at(-1);
     expect([kept.x, kept.y, kept.width, kept.height]).toEqual([b.x, b.y, b.width, b.height]);
     await p.screenshot({ path: join(OUT, 'shapes-text-type2.png') });
+  });
+
+  it('weight and small capitals, a saved text look on every text layer, words that fill a shape; Add text after Add up-down text is straight', async () => {
+    const p = await open();
+    await outlines(p, [520, 260, 220, 300]);
+    const { wait, write } = typing(p);
+    const a = await write(80, 140, 'Look at me');
+    // Weight 900 makes the letters thicker and wider; small capitals change them again; each change is one undo step.
+    await go(p, 'type.opentype');
+    await p.waitForSelector('[data-testid="typewarp-sheet"][data-cmd="type.opentype"]', { state: 'visible' });
+    const set = (sel: string, v: string): Promise<void> =>
+      p.$eval(sel, (el, x) => { (el as HTMLInputElement).value = x; el.dispatchEvent(new Event('change', { bubbles: true })); }, v);
+    await set('[data-testid="typefont-weight"]', '900');
+    const heavy = await wait((l) => l.width > a.width + 4, 'heavier');
+    await set('[data-testid="typefont-caps"]', 'all-small-caps');
+    await wait((l) => l.width !== heavy.width, 'small capitals');
+    expect(await undo(p)).toBe(true);
+    await wait((l) => l.width === heavy.width && l.height === heavy.height, 'undo small capitals');
+    await p.click('[data-testid="typewarp-done"]');
+    // Save that look under a name, then put it on every text layer at once (one undo step), then on the picked words.
+    await go(p, 'type.styles');
+    await p.waitForSelector('[data-testid="typewarp-sheet"][data-cmd="type.styles"]', { state: 'visible' });
+    await p.fill('[data-testid="typelook-name"]', 'Heavy');
+    await p.click('[data-testid="typelook-save"]');
+    expect(await p.textContent('[data-testid="typelook-result"]')).toContain('Saved “Heavy”');
+    await p.click('[data-testid="typewarp-done"]');
+    const b = await write(80, 420, 'plain words here');
+    await go(p, 'type.styles');
+    await p.waitForSelector('[data-testid="typelook-row"]', { state: 'visible' });
+    await p.click('[data-testid="typelook-all"]');
+    expect(await p.textContent('[data-testid="typelook-result"]')).toContain('is on 2 text layers');
+    const b2 = await wait((l) => l.width > b.width + 4, 'look on every text layer');
+    expect(await undo(p)).toBe(true);
+    await wait((l) => l.width === b.width && l.height === b.height, 'one undo puts both back');
+    await p.click('[data-testid="typelook-use"]');
+    await wait((l) => l.width === b2.width && l.height === b2.height, 'look on the picked words');
+    await p.click('[data-testid="typewarp-done"]');
+    // The words fill the 220 × 300 outline (520..740 × 260..560): one word a line, so taller, and inside its box.
+    await go(p, 'type.in-shape');
+    await p.waitForSelector('[data-testid="typewarp-sheet"][data-cmd="type.in-shape"]', { state: 'visible' });
+    const fill = await wait((l) => l.height > b2.height + 40 && l.x >= 490, 'in the shape');
+    expect(fill.x + fill.width).toBeLessThanOrEqual(770);
+    expect(fill.y).toBeGreaterThanOrEqual(230);
+    expect(fill.y + fill.height).toBeLessThanOrEqual(590);
+    await p.screenshot({ path: join(OUT, 'shapes-text-type3.png') });
+    expect(await undo(p)).toBe(true);
+    await wait((l) => l.width === b2.width && l.height === b2.height && l.x === b2.x, 'undo in the shape');
+    await p.click('[data-testid="typewarp-done"]');
+    // Add up-down text with no words picked waits for the next click; Add text after it gives straight words again.
+    await p.evaluate(() => (window as unknown as Win).fpe.run('layer.new'));
+    await go(p, 'type.add-vertical');
+    await p.evaluate(() => (window as unknown as Win).fpe.run('type.add'));
+    const c = await p.evaluate(([x, y]) => (window as unknown as Win).fpe.toClient(x, y), [900, 200] as const);
+    await p.mouse.click(c!.x, c!.y);
+    await p.waitForSelector('[data-testid="text-edit"]');
+    await p.keyboard.type('flat words');
+    await wait((l) => l.width > l.height * 2, 'Add text after Add up-down text is straight');
+    await p.keyboard.press('Control+Enter');
   });
 });

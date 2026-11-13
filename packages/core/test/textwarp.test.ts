@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 import { describe, expect, it } from 'vitest';
-import { glyphCorners, hardEdges, replaceText, warpGlyphs, type GlyphBox, type GlyphSpot } from '../src/textwarp';
+import { applyLook, fillShape, glyphCorners, hardEdges, replaceText, shapeSpans, stretchKeyword, warpGlyphs, type GlyphBox, type GlyphSpot } from '../src/textwarp';
+import { DEFAULT_TEXT_STYLE, fontString, type TextStyle } from '../src/vector';
 
 // Four letters 25 px wide from x 0 to 100 on a baseline at y 100: their middles are at x 12.5, 37.5, 62.5 and 87.5.
 const ROW: GlyphBox[] = [0, 25, 50, 75].map((x) => ({ x, w: 25, base: 100 }));
@@ -123,5 +124,55 @@ describe('text along a line', () => {
     expect(replaceText('Cat cat CAT', 'cat', 'dog', false)).toEqual({ text: 'dog dog dog', count: 3 });
     expect(replaceText('a.b.c', '.', '$&')).toEqual({ text: 'a$&b$&c', count: 2 });
     expect(replaceText('abc', '', 'x')).toEqual({ text: 'abc', count: 0 });
+  });
+});
+
+describe('text that fills a shape, letter widths and saved looks (part 5)', () => {
+  // "aaaa bbbb cccc": every letter (and space) 10 px wide in one straight line from x 0; size 20, lines 24 apart.
+  const text = 'aaaa bbbb cccc', chars = [...text], gs: GlyphBox[] = chars.map((_, i) => ({ x: i * 10, w: 10, base: 16 }));
+  const o = { size: 20, advance: 24, align: 'left' as const };
+  const spots = (r: (GlyphSpot | null)[]): (number[] | null)[] => r.map((s) => (s ? [s.x, s.y] : null));
+  it('finds the runs inside an outline at a height', () => {
+    // A right triangle (0,0) (100,0) (0,100): at height y the inside runs from 0 to 100 − y.
+    expect(shapeSpans([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }], 20)).toEqual([[0, 80]]);
+    // A ring from two squares (0..100 and 40..60): two runs either side of the hole.
+    const ring = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }, { x: 40, y: 40 }, { x: 40, y: 60 }, { x: 60, y: 60 }, { x: 60, y: 40 }, { x: 40, y: 40 }];
+    expect(shapeSpans(ring, 50)).toEqual([[0, 40], [60, 100]]);
+  });
+  it('wraps words into a box 95 wide: two words fit on the first line, the third goes under', () => {
+    const box = [{ x: 0, y: 0 }, { x: 95, y: 0 }, { x: 95, y: 100 }, { x: 0, y: 100 }];
+    // Baselines at 0.8 × 20 = 16, then 16 + 24 = 40; each letter's middle is 5 past its left edge; spaces are not drawn.
+    expect(spots(fillShape(gs, chars, box, o))).toEqual([[5, 16], [15, 16], [25, 16], [35, 16], null, [55, 16], [65, 16], [75, 16], [85, 16], null,
+      [5, 40], [15, 40], [25, 40], [35, 40]]);
+    // Centred: the first line is 90 wide in 95, so it starts 2.5 in; the second is 40 wide, so it starts 27.5 in.
+    const mid = spots(fillShape(gs, chars, box, { ...o, align: 'center' }));
+    expect([mid[0], mid[5], mid[10]]).toEqual([[7.5, 16], [57.5, 16], [32.5, 40]]);
+  });
+  it('narrows the lines down a triangle, breaks a long word, and hides what does not fit', () => {
+    const tri = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }];
+    // Line 1 (band 1..20) has 80 inside: "aaaa". Line 2 (band 25..44) has 56: "bbbb". Line 3 (band 49..68) has 32: only
+    // "ccc" (30). Line 4 (band 73..92) has 8, less than one letter size, so it is skipped; line 5 would pass the bottom.
+    expect(spots(fillShape(gs, chars, tri, o))).toEqual([[5, 16], [15, 16], [25, 16], [35, 16], null, [5, 40], [15, 40], [25, 40], [35, 40], null,
+      [5, 64], [15, 64], [25, 64], null]);
+  });
+  it('starts each paragraph on a new line', () => {
+    const two = [...'ab'].map((_, i) => ({ x: i * 10, w: 10, base: 16 })).concat([...'cd'].map((_, i) => ({ x: i * 10, w: 10, base: 40 })));
+    const box = [{ x: 0, y: 0 }, { x: 95, y: 0 }, { x: 95, y: 100 }, { x: 0, y: 100 }];
+    expect(spots(fillShape(two, [...'abcd'], box, o))).toEqual([[5, 16], [15, 16], [5, 40], [15, 40]]);
+  });
+  it('maps a width to the nearest word a browser knows, and writes the weight into the font', () => {
+    expect([stretchKeyword(100), stretchKeyword(80), stretchKeyword(140), stretchKeyword(40), stretchKeyword(300)])
+      .toEqual(['normal', 'condensed', 'extra-expanded', 'ultra-condensed', 'ultra-expanded']);
+    const st: TextStyle = { ...DEFAULT_TEXT_STYLE, font: 'serif', size: 30 };
+    expect(fontString(st)).toBe('400 30px serif');
+    expect(fontString({ ...st, bold: true })).toBe('700 30px serif');
+    expect(fontString({ ...st, bold: true, weight: 350, italic: true })).toBe('italic 350 30px serif');
+  });
+  it('puts a saved look on a style: everything, only the letters, or only the lines', () => {
+    const mine: TextStyle = { ...DEFAULT_TEXT_STYLE, font: 'serif', size: 20, color: '#111111', align: 'left', lineHeight: 1.2 };
+    const look: TextStyle = { ...DEFAULT_TEXT_STYLE, font: 'monospace', size: 64, color: '#ff0000', bold: true, align: 'center', lineHeight: 2, weight: 800 };
+    expect(applyLook(mine, look, 'all')).toEqual(look);
+    expect(applyLook(mine, look, 'letters')).toEqual({ ...look, align: 'left', lineHeight: 1.2 });
+    expect(applyLook(mine, look, 'lines')).toEqual({ ...mine, align: 'center', lineHeight: 2 });
   });
 });

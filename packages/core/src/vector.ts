@@ -16,6 +16,10 @@ export interface TextStyle {
   /** Distance between lines, as a multiple of the size. */ lineHeight: number;
   /** Extra space between letters, in pixels. */ letterSpacing: number;
   /** false: sharp letter edges, no anti-aliasing (textwarp.ts hardEdges). Missing means smooth. */ smooth?: boolean;
+  /** Font weight 100 to 900 (variable fonts take any number between); missing means 400, or 700 when bold. */ weight?: number;
+  /** Letter width as a percentage (textwarp.ts STRETCHES); missing means 100. */ stretch?: number;
+  /** false: letter pairs are not fitted (kerning off). */ kerning?: boolean;
+  /** Small capitals. */ caps?: 'normal' | 'small-caps' | 'all-small-caps';
 }
 export interface TextContent {
   kind: 'text'; text: string; x: number; y: number; style: TextStyle;
@@ -35,7 +39,7 @@ export const DEFAULT_TEXT_STYLE: TextStyle = { font: 'system-ui', size: 48, colo
 const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui']);
 /** A CSS font string for a text style. */
 export const fontString = (st: TextStyle, size = st.size): string =>
-  `${st.italic ? 'italic ' : ''}${st.bold ? '700' : '400'} ${size}px ${GENERIC.has(st.font) ? st.font : `"${st.font.replace(/"/g, '')}"`}`;
+  `${st.italic ? 'italic ' : ''}${st.weight ?? (st.bold ? 700 : 400)} ${size}px ${GENERIC.has(st.font) ? st.font : `"${st.font.replace(/"/g, '')}"`}`;
 
 export interface TextLine { text: string; x: number; y: number; width: number; }
 export interface TextLayout { lines: TextLine[]; box: Rect; advance: number; }

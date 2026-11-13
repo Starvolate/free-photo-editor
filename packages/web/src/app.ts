@@ -318,6 +318,8 @@ export class Editor {
   lastSel: Selection | null = null;
   private hole: Rect | null = null;
   lastFilter: { id: string; params: JobParams } | null = null;
+  /** Recorded steps (automate.ts): while recording, each command that ran, with a dialog's settings once applied. */
+  onStep: ((id: string, p?: JobParams) => void) | null = null;
   proNames = false;
   hints = true;
   screen: Screen = 'standard';
@@ -1228,6 +1230,7 @@ export class Editor {
     this.closeMenus();
     this.closePopover();
     await hd.run(this);
+    this.onStep?.(id);
     this.syncChrome();
     return true;
   }
@@ -2725,6 +2728,7 @@ export class Editor {
     if (s.ran) {
       this.history.push(pixelCommand(s.label, s.layerId, s.r, s.before));
       if (s.id.startsWith('filter.')) this.lastFilter = { id: s.id, params: { ...s.spec.params } };
+      this.onStep?.(s.id, { ...s.spec.params });
       this.afterEdit();
       this.toast(`${s.label}: done.`);
     }
@@ -2902,7 +2906,11 @@ export class Editor {
       const out = lib.sizeRows(d, { fid, w, hh, keep, note: rows[0] as HTMLElement, actions }, {
         toast: (m) => this.toast(m),
         setDpi: (make) => { this.closeModal(); this.pushCmd(make()); },
-        resize: (make) => { this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit(); },
+        resize: (make) => {
+          const sw = d.width, sh = d.height;
+          this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit();
+          this.onStep?.('image.size', { w: d.width, h: d.height, sw, sh });
+        },
       }, maxPixelsForDevice());
       rows.unshift(out.presets);
       rows.push(...out.rows);
@@ -3308,6 +3316,13 @@ export class Editor {
     try {
       const m = await import('./file-more');
       m.runFileMore(id, { ...this.toolHost(), name: () => this.name, open: (f, n) => this.openFile(f, n) });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
+  /** Recorded steps and the many-pictures functions (automate.ts), loaded on first use. */
+  async automate(id: string): Promise<void> {
+    try {
+      const m = await import('./automate');
+      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; } });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */

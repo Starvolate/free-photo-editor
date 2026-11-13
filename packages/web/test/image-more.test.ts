@@ -23,11 +23,14 @@ const doc = (w: number, h: number, f: (x: number, y: number) => number[]): Doc =
 describe('image extras', () => {
   it('are Ready, with handlers that load the module on first use', async () => {
     for (const id of IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    const imageMore = vi.fn(async () => undefined), e = { doc: {}, lastChange: null, imageMore } as unknown as Editor;
+    // The handlers reach image-more.ts through adj-more.ts: the open dialog is closed, then the module gets the tool host.
+    const cancelSession = vi.fn(), toolHost = vi.fn(() => ({ doc: null, toast: vi.fn() }));
+    const e = { doc: {}, lastChange: null, cancelSession, toolHost, fit: vi.fn() } as unknown as Editor;
     expect(HANDLERS['edit.fade'].enabled(e)).toBe(false);
     expect(HANDLERS['image.mode-gray'].enabled(e)).toBe(true);
     await HANDLERS['image.rotate-any'].run(e);
-    expect(imageMore).toHaveBeenCalledWith('image.rotate-any');
+    expect(cancelSession).toHaveBeenCalledTimes(1);
+    expect(toolHost).toHaveBeenCalledTimes(1);
   });
   it('soften: 25% of a change from 200 grey to 100 grey leaves 175; a see-through pixel brings in only the new colour', () => {
     // 200 + (100 - 200) x 0.25 = 175. Second pixel: before is see-through black, after is solid red 240.

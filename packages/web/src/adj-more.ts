@@ -6,6 +6,18 @@
  * file the first time one of them runs (BATCH_IDS, BATCH2_IDS), so the first screen never downloads it; loading it adds them to ADJ.
  */
 import { ADJ, type AdjDef, type Ctl } from './commands';
+import type { Editor } from './app';
+import { errText } from './dom';
+
+/**
+ * Soften the last change, shades of grey and turn by any angle (image-more.ts). commands.ts reaches them through this
+ * file's import, so the first screen carries no import of its own for them; image-more.ts loads on the first use.
+ */
+export async function imageMore(id: string, e: Editor): Promise<void> {
+  e.cancelSession();
+  const host = { ...e.toolHost(), lastChange: () => e.lastChange, fit: () => e.fit() };
+  try { (await import('./image-more')).runImageMore(id, host); } catch (err) { host.toast(errText(err, "This couldn't load. Check the connection and try again.")); }
+}
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, unit = ''): Ctl => ({ key, label, help, min, max, value, step: 1, unit });
 const PCT = (key: string, label: string, help: string, min: number, max: number, value: number): Ctl => R(key, label, help, min, max, value, '%');

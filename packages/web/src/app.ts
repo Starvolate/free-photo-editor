@@ -1608,7 +1608,7 @@ export class Editor {
   }
   // ---------- W11 on-device AI (ai.ts and packages/ai, loaded on first use) ----------
   ai(): Promise<AiKit> { return (this.aiLoad ??= import('./ai').then((m) => m.createAiKit(this.toolHost()))); }
-  private toolHost(): ToolHost {
+  toolHost(): ToolHost {
     return {
       root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
       fg: () => this.brush.color, bg: () => this.bgColor, push: (c, all) => this.pushCmd(c, all), dirty: (r) => { this.markDirty(r); this.requestRender(); },
@@ -2895,7 +2895,7 @@ export class Editor {
     const b = this.dlgEl.querySelector('[data-testid="adj-before"]');
     if (b) { b.setAttribute('aria-pressed', String(s.showBefore)); b.textContent = s.showBefore ? 'Showing before' : 'Show before'; }
   }
-  private cancelSession(): void {
+  cancelSession(): void {
     this.tk?.abort();
     const s = this.session;
     if (!s) return;
@@ -3406,12 +3406,6 @@ export class Editor {
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
-  }
-  /** Soften the last change, grey mode and turn by any angle (image-more.ts), loaded on first use. */
-  async imageMore(id: string): Promise<void> {
-    this.cancelSession();
-    try { (await import('./image-more')).runImageMore(id, { ...this.toolHost(), lastChange: () => this.lastChange, fit: () => this.fit() }); }
-    catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Split into colour channel layers (light-more.ts, loaded on first use). */
   async decompose(): Promise<void> {

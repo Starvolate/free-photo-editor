@@ -468,8 +468,8 @@ for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p s
   HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
 }
 
-// Fade, grey mode and turn by any angle (image-more.ts, loaded on first use).
-for (const id of ['edit.fade', 'image.mode-gray', 'image.rotate-any']) HANDLERS[id] = H((e) => e.imageMore(id), id === 'edit.fade' ? (e) => !!e.doc && !!e.lastChange : hasDoc);
+// Fade, grey mode and turn by any angle (image-more.ts), reached through adj-more.ts so the first screen adds no import of its own.
+for (const id of ['edit.fade', 'image.mode-gray', 'image.rotate-any']) HANDLERS[id] = H(async (e) => (await import('./adj-more')).imageMore(id, e), id === 'edit.fade' ? (e) => !!e.doc && !!e.lastChange : hasDoc);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

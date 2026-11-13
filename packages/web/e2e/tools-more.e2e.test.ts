@@ -182,6 +182,11 @@ suite('Batch tools: Turn the view and Crop and straighten (headless Chrome)', ()
     await p.waitForTimeout(150);
     const back = await info(p);
     expect([back.width, back.height]).toEqual([W, H]);
+    // Enter does the same as the button, as its help line says (the corners start again at the 10% inset).
+    await p.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await p.keyboard.press('Enter');
+    await p.waitForFunction((w) => (window as unknown as Win).fpe.getInfo()?.width !== w, W, { timeout: 15000 });
+    expect((await info(p)).width).toBe(Math.round(W * 0.8));
     expect(errors).toEqual([]);
   });
 });

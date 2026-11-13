@@ -1617,7 +1617,9 @@ export class Editor {
       paintFrom: () => this.marks.get(this.history) ?? 0, paintFromGone: () => this.paintFromGone(),
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
       fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
-      ai: () => this.ai(), turn: () => this.turn, setTurn: (r) => this.setTurn(r),
+      ai: () => this.ai(),
+      // Turn the view (toolkit-more.ts): the renderer draws turned and input turns points back.
+      turn: () => this.input.turn, setTurn: (r) => { this.renderer.turn = this.input.turn = r; this.requestRender(); },
     };
   }
   private toolSheet(id: string, title: string, body: HTMLElement): void {
@@ -1659,9 +1661,6 @@ export class Editor {
   }
   /** Set when the tool changes, so the ribbon opens the new tool's options once they are built. */
   private ribbonTool = false;
-  /** Turn the view (toolkit-more.ts), radians: the renderer draws turned and input turns points back. */
-  turn = 0;
-  setTurn(r: number): void { this.turn = this.renderer.turn = this.input.turn = r; this.requestRender(); }
   private clampPt(p: Pt): Pt {
     const d = this.doc as Doc;
     return { x: clamp(Math.round(p.x), 0, d.width), y: clamp(Math.round(p.y), 0, d.height) };
@@ -3656,10 +3655,9 @@ export class Editor {
       },
       toClient: (x, y) => {
         if (!this.doc) return null;
+        if (this.input.turn) return this.tk?.toClient(x, y) ?? null;
         const r = this.canvas.getBoundingClientRect();
-        const v = this.view, cx = this.canvas.clientWidth / 2, cy = this.canvas.clientHeight / 2, k = Math.cos(this.turn), s = Math.sin(this.turn);
-        const dx = v.panX + x * v.zoom - cx, dy = v.panY + y * v.zoom - cy;
-        return { x: r.left + cx + k * dx - s * dy, y: r.top + cy + s * dx + k * dy };
+        return { x: r.left + this.view.panX + x * this.view.zoom, y: r.top + this.view.panY + y * this.view.zoom };
       },
       exportFile: async (f, q = 0.92, m = false, dl = 100) => {
         if (!this.doc) throw new Error('No picture is open.');

@@ -134,6 +134,7 @@ export interface MoreKit {
   toolChanged(prev: ToolId, next: ToolId): void;
   busy(): boolean;
   state(): Record<string, unknown>;
+  toClient(x: number, y: number): Pt;
 }
 
 export function createMoreKit(host: ToolHost): MoreKit {
@@ -186,7 +187,7 @@ export function createMoreKit(host: ToolHost): MoreKit {
         const q = ensureQuad();
         if (!q) return;
         const z = host.view().zoom;
-        let best = -1, bd = 14;
+        let best = -1, bd = 22; // a 44 px target round each corner, for fingers
         q.forEach((c, i) => { const dd = dist(c, p) * z; if (dd < bd) { bd = dd; best = i; } });
         grab = best >= 0 ? { k: 'corner', i: best } : { k: 'box', a: p };
       }
@@ -225,7 +226,7 @@ export function createMoreKit(host: ToolHost): MoreKit {
         ensureQuad();
         const s = quad ? quadSize(quad) : null;
         bar.append(
-          hint(s ? `Result ${s.w} × ${s.h} px` : ''),
+          hint(!quad ? '' : quadOk(quad) && s ? `Result ${s.w} × ${s.h} px` : 'The corners cross or sit on one line (red outline): drag them apart.'),
           btn('Straighten and crop', 'quad-apply', applyQuad, 'Straighten the four-cornered area into a rectangle and crop to it, as one step you can undo. Enter does the same.', true),
           btn('Start again', 'quad-reset', resetQuad, 'Put the four corners back to where they started. Esc does the same.'),
           hint('Drag the four round corners onto the corners of a slanted surface (a sign, a page, a screen), or drag a new box.'));
@@ -278,6 +279,10 @@ export function createMoreKit(host: ToolHost): MoreKit {
       turnDrag = null; grab = null;
       if (prev === 'crop-quad' && next !== 'crop-quad') quad = null;
       if (next === 'crop-quad') { ensureQuad(); host.render(); }
+    },
+    toClient(x, y) {
+      const r = host.canvas().getBoundingClientRect(), s = scr({ x, y }), c = centre(), t = turnPoint(s.x, s.y, c.x, c.y, host.turn());
+      return { x: r.left + t.x, y: r.top + t.y };
     },
     state: () => ({ turn: turnDegrees(host.turn()), quad: quad ? quad.map((c) => ({ x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10 })) : null }),
   };

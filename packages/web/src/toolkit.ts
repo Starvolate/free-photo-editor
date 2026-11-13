@@ -93,6 +93,8 @@ export interface ToolKit {
   refresh(): void;
   /** What is going on instead of the tool (a transform, painting a selection), for the options bar and the status line. */
   activity(): { plain: string; pro: string; help: string } | null;
+  /** Where a picture point shows on the page while the view is turned (toolkit-more.ts; the e2e helper). */
+  toClient(x: number, y: number): Pt;
 }
 
 type XfMode = 'free' | 'skew' | 'distort' | 'perspective';
@@ -1248,6 +1250,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); more.overlay(ctx); },
     cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
     viewFlags: () => view.flags(),
+    toClient: (x, y) => more.toClient(x, y),
     fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),
     decorate,
     key(e) {

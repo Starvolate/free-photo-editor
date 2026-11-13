@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cost, open as openSpot, ways } from './ribbon';
-import { TABS, clicks, homeText, homes } from '../src/ribbon-homes';
+import { SHEETS, TABS, clicks, firstTab, homeText, homes } from '../src/ribbon-homes';
 import { BY_ID } from '../src/registry';
 
 interface Fpe { openSample(): void; state(): Record<string, unknown>; }
@@ -81,7 +81,8 @@ async function ready(p: Page): Promise<void> {
 async function rest(p: Page): Promise<void> {
   await p.evaluate(() => (window as unknown as Win).fpe.openSample());
   await p.waitForFunction(() => !!document.querySelector('[data-testid="doc-tab"]'));
-  await p.evaluate(() => { const t = document.querySelector('[data-testid="toast"]'); if (t) t.textContent = ''; });
+  // Hide the toast (blanking its text left an empty pill in the shots).
+  await p.evaluate(() => { const t = document.querySelector<HTMLElement>('[data-testid="toast"]'); if (t) t.style.visibility = 'hidden'; });
 }
 const selected = (p: Page): Promise<string[]> =>
   p.$$eval('[data-testid^="rtab-"][aria-selected="true"]', (els) => els.map((e) => e.getAttribute('data-testid') ?? ''));
@@ -100,13 +101,17 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     server?.close();
   });
 
-  it('opens Effects & masks on first run, then the tab last used after a reload', async () => {
+  // The first tab, deep-first, that is at least half Ready at rest; it becomes Effects & masks once wave 1 lands.
+  const FIRST = 'rtab-' + slug(firstTab((id) => BY_ID.get(id)?.status === 'ready'));
+  it('opens the first mostly Ready tab on first run, then the tab last used after a reload', async () => {
     step = 'first run';
     const p = await open();
-    expect(await selected(p)).toEqual(['rtab-effects-masks']);
+    expect(await selected(p)).toEqual([FIRST]);
     expect(await bodyShown(p)).toBe(true);
     await rest(p);
-    expect(await selected(p), 'opening a photo keeps the first-run tab').toEqual(['rtab-effects-masks']);
+    expect(await selected(p), 'opening a photo keeps the first-run tab').toEqual([FIRST]);
+    expect(await p.$$eval('[data-testid="ribbon-body"] [data-cmd]', (els) => els.filter((e) => e.getAttribute('data-status') === 'ready').length * 2 >= els.length),
+      'at least half the first-run tab is Ready').toBe(true);
     expect(await bodyShown(p)).toBe(true);
     await p.waitForTimeout(300);
     await p.screenshot({ path: join(OUT, 'r2-rest-1440.png') });
@@ -180,6 +185,44 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     expect(await p.locator('[aria-modal="true"]:visible').count()).toBe(0);
   }, 60_000);
 
+  it('names every ribbon item in plain words, never an id, and fits each tab at 1440 with no word cut off', async () => {
+    step = 'plain words';
+    const p = await open();
+    await rest(p);
+    const ID = /^[a-z]+\.[a-z0-9.-]+$/;
+    const lines = (sel: string): Promise<string[]> => p.$$eval(sel, (els) => els.flatMap((e) => (e as HTMLElement).innerText.split('\n')).map((x) => x.trim()).filter(Boolean));
+    const raw: string[] = [], bad: string[] = [], log: string[] = [];
+    for (const t of TABS) {
+      await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
+      raw.push(...(await lines('.fpe-top, .fpe-rtabs, [data-testid="ribbon-body"]')).filter((x) => ID.test(x)).map((x) => `${t.plain}: ${x}`));
+      const m = await p.evaluate(() => {
+        const b = document.querySelector<HTMLElement>('[data-testid="ribbon-body"]')!, rb = b.getBoundingClientRect();
+        return { over: b.scrollWidth - b.clientWidth, fit: b.dataset.fit ?? '',
+          cut: [...b.querySelectorAll<HTMLElement>('.fpe-rcap')].filter((c) => c.getBoundingClientRect().bottom > rb.bottom + 1).map((c) => 'caption below the ribbon: ' + c.textContent),
+          clipped: [...b.querySelectorAll<HTMLElement>('.fpe-rlabel, .fpe-plain')].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1).map((e) => 'word cut: ' + e.textContent) };
+      });
+      log.push(`${t.plain}: fit ${m.fit}, ${m.over > 1 ? m.over + ' px too wide' : 'fits'}${m.cut.length + m.clipped.length ? ', ' + [...m.cut, ...m.clipped].join('; ') : ''}`);
+      // Filters & blur and the first-run tab must fit whole; the others are logged for R3.
+      if (t.plain === 'Filters & blur' || 'rtab-' + slug(t.plain) === FIRST) bad.push(...[...(m.over > 1 ? [`${m.over} px too wide`] : []), ...m.cut, ...m.clipped].map((x) => `${t.plain}: ${x}`));
+      if (t.plain === 'Effects & masks') await p.screenshot({ path: join(OUT, 'r2-effects-1440.png') });
+      for (const more of await p.$$eval('[data-testid="ribbon-body"] [data-testid^="rmore-"]', (els) => els.map((e) => e.getAttribute('data-testid') ?? ''))) {
+        await p.click(`[data-testid="${more}"]`);
+        await p.waitForSelector('[data-testid="rlist"]');
+        raw.push(...(await lines('[data-testid="rlist"]')).filter((x) => ID.test(x.split(' · ')[0])).map((x) => `${more}: ${x}`));
+        await p.keyboard.press('Escape');
+      }
+    }
+    for (const s of SHEETS) {
+      await p.click(`[data-testid="rsheet-${slug(s.plain)}"]`);
+      await p.waitForSelector('[data-testid="rlist"]');
+      raw.push(...(await lines('[data-testid="rlist"]')).filter((x) => ID.test(x.split(' · ')[0])).map((x) => `${s.plain} sheet: ${x}`));
+      await p.keyboard.press('Escape');
+    }
+    console.log('R2 ribbon at 1440 x 900, per tab:\n' + log.join('\n'));
+    expect(raw, 'ids shown as labels').toEqual([]);
+    expect(bad).toEqual([]);
+  }, 120_000);
+
   it('the hover card shows the plain name, the pro name, the help line and the ribbon home', async () => {
     step = 'hover card';
     const p = await open();
@@ -227,11 +270,9 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
       await p.waitForTimeout(30);
     }
     console.log(`R2 sweep at 1440 x 900: ${ids.length} Ready commands; ${ids.length - late.length - missed.length} within their promise; ${off} reached but disabled on the resting screen; late ${JSON.stringify(late)}; missed ${JSON.stringify(missed)}`);
-    // Known gap, named so it cannot grow unseen: ribbon-homes.ts promises History never leaves the screen, but at 1440 the
-    // History panel is the third tab of the Properties group (it overflows behind "+n") and step back and forward have no
-    // button of their own. The docked History card with its two arrows (layout A) closes it; then this list must be empty.
-    const GAP = ['panel.history', 'edit.history-back', 'edit.history-forward'];
-    expect(missed).toEqual(GAP.filter((id) => ids.includes(id)));
+    // No known gap: the History card (its tab, step back and step forward) keeps History on screen as ribbon-homes.ts promises.
+    const GAP: string[] = [];
+    expect(missed).toEqual(GAP);
     expect(late).toEqual([]);
   }, 600_000);
 

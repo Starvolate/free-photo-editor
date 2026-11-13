@@ -187,6 +187,22 @@ export function homes(): Map<string, Home> {
   return m;
 }
 
+/** The commands a tab shows at rest, before any More list or family sheet is opened: its big buttons, small buttons and gallery tiles. */
+export const restingIds = (t: Tab): string[] => t.groups.flatMap((gr) => [...gr.big, ...gr.shown]);
+
+/**
+ * The tab a first run opens: the first, in the deep-first order above, where at least half the commands shown at rest
+ * are Ready, so the first screen shows working tools rather than a half-disabled ribbon. It moves to Effects & masks by
+ * itself once that tab is mostly Ready. After the first run the ribbon opens the tab used last.
+ */
+export function firstTab(ready: (id: string) => boolean): string {
+  for (const t of TABS) {
+    const ids = restingIds(t);
+    if (ids.length && ids.filter(ready).length * 2 >= ids.length) return t.plain;
+  }
+  return TABS[0].plain;
+}
+
 /** "Effects & masks › New", "File sheet", "Always on screen › History". */
 export const homeText = (h: Home): string => h.place === 'sheet' ? `${h.tab} sheet` : `${h.tab} › ${h.group}`;
 

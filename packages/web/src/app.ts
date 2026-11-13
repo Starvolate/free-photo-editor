@@ -139,7 +139,9 @@ const GROUP_ICON: Record<string, string> = {
 };
 const GROUPS: { id: string; panels: string[] }[] = [
   { id: 'nav', panels: ['navigator', 'info'] }, { id: 'color', panels: ['color', 'swatches'] },
-  { id: 'props', panels: ['properties', 'adjustments', 'history', 'character', 'paragraph'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
+  { id: 'props', panels: ['properties', 'adjustments', 'character', 'paragraph'] },
+  // History is its own card so it never leaves the screen (layout A): the last steps, with step back and forward in its head.
+  { id: 'history', panels: ['history'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
 const MORE_PANELS = ['brushes', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
 const SWATCHES = ['#000000', '#3a3a3a', '#7a7a7a', '#b8b8b8', '#ffffff', '#e4572e', '#f3a712', '#f9e04b', '#9bc53d', '#2e9e5b', '#17bebb', '#2d7dd2',
   '#3d348b', '#8e44ad', '#d81e5b', '#ff8fab', '#7f5539', '#b08968', '#ddb892', '#ede0d4', '#0b132b', '#1c2541', '#3a506b', '#5bc0be', '#6fffe9',
@@ -266,6 +268,7 @@ export class Editor {
   private ants = 0;
   private antsTimer = 0;
   private toastTimer = 0;
+  private histCount: HTMLElement | null = null;
   private thumbTimer = 0;
   private navTimer = 0;
   private busyCount = 0;
@@ -791,7 +794,10 @@ export class Editor {
         return { label: (r?.plain ?? pid) + (ok ? '' : ' (planned)'), cmd: 'panel.' + pid, disabled: !ok, run: () => this.activateTab(g.id, pid) };
       }), more));
       this.moreBtns.set(g.id, more);
-      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, more, fold), body);
+      const steps = g.id === 'history' ? [this.histCount = h('span', { class: 'fpe-hist-count', 'data-testid': 'history-count' }),
+        this.cmdBtn('edit.history-back', 'undo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-back' }),
+        this.cmdBtn('edit.history-forward', 'redo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-forward' })] : [];
+      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, ...steps, more, fold), body);
       this.groupEls.set(g.id, sec);
       dock.append(sec);
     }
@@ -2120,7 +2126,7 @@ export class Editor {
   private renderHistory(): void {
     const ul = this.histList;
     if (!ul) return;
-    if (!this.doc) { ul.replaceChildren(h('li', { class: 'fpe-note' }, 'Your steps appear here.')); return; }
+    if (!this.doc) { ul.replaceChildren(h('li', { class: 'fpe-note' }, 'Your steps appear here.')); if (this.histCount) this.histCount.textContent = ''; return; }
     const { labels, index } = this.history.entries(), ids = [0, ...this.history.stepIds()], m = this.marks.get(this.history) ?? 0, mark = ids.includes(m) ? m : 0;
     ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', { class: 'fpe-hist-row' },
       h('button', { type: 'button', class: 'fpe-hist-item', 'aria-current': k === index ? 'step' : null, 'data-undone': k > index ? '' : null, 'data-testid': 'history-step',
@@ -2128,6 +2134,7 @@ export class Editor {
       h('button', { type: 'button', class: 'fpe-hist-mark', 'aria-pressed': ids[k] === mark ? 'true' : 'false', 'aria-label': `Paint from here: ${label}`, 'data-testid': 'history-mark',
         'data-help-title': 'Paint from here · History brush source', 'data-help': 'The history brush paints back the step marked with this brush. Pick the brush beside another step to paint from that one.',
         onclick: () => this.markStep(ids[k], label) }, icon('brush')))));
+    if (this.histCount) this.histCount.textContent = labels.length ? `${labels.length} step${labels.length === 1 ? '' : 's'}` : '';
     ul.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest' });
   }
   /** Edit › Paint back from this step: the step you are at becomes the one the history brush paints back. */

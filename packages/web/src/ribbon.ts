@@ -7,9 +7,12 @@
  * `clicks()` promises are the same data. app.ts loads this file lazily the first time the layout is desktop, so the
  * first-screen budget holds; it keeps today's menu bar for narrower screens.
  */
-import { CONTEXTUAL, SHEETS, TABS, homes, homeText, type Group, type Tab } from './ribbon-homes';
-import './registry-union';
-import { BY_ID } from './registry';
+import { CONTEXTUAL, SHEETS, TABS, firstTab, homes, homeText, type Group, type Tab } from './ribbon-homes';
+// The new Planned rows must be in BY_ID before any label is drawn. A bare `import './registry-union'` is dropped by the
+// build (package.json declares only CSS as having side effects), which left raw ids such as "layer.smart-filters" on
+// screen; importing a name keeps the module, and the line below registers any row still missing.
+import { NEW_ROWS } from './registry-union';
+import { BY_ID, addRows } from './registry';
 import { h, icon } from './dom';
 import css from './ribbon.css?inline';
 
@@ -58,6 +61,11 @@ export function iconFor(id: string, tab = ''): string {
   for (const [re, name] of rules) if (re.test(id)) return name;
   return ICON_BY_TAB[tab] ?? 'square';
 }
+if (NEW_ROWS.some((r) => !BY_ID.has(r.id))) addRows(NEW_ROWS.filter((r) => !BY_ID.has(r.id)));
+/** A command's plain name; never its id ("layer.smart-filters" reads "Smart filters" if a row is ever missing). */
+const plainOf = (id: string): string => BY_ID.get(id)?.plain ?? (id.split('.').pop() ?? id).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+/** What the effect families (Filters & blur) are called as one group. */
+const FAMILIES = 'Every effect, by kind';
 const readTab = (): string | null => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const writeTab = (t: string): void => { try { localStorage.setItem(KEY, t); } catch { /* private window: the tab is simply not remembered */ } };
 
@@ -108,7 +116,8 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   const right = h('div', { class: 'fpe-rapp-right' }, viewBtn, helpBtn);
 
   // ---------- the tab row ----------
-  let current = TABS.some((t) => t.plain === readTab()) ? (readTab() as string) : TABS[0].plain;
+  // First run: the first tab, deep-first, that is at least half Ready at rest (firstTab); after that, the tab used last.
+  let current = TABS.some((t) => t.plain === readTab()) ? (readTab() as string) : firstTab(ready);
   let view: 'tab' | 'ctx' = 'tab';
   const tabBtns = new Map<string, HTMLButtonElement>();
   for (const t of TABS) {
@@ -135,12 +144,14 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   ribbon.append(body, ctxWrap);
 
   const cmd = (id: string, kind: 'big' | 'small' | 'tile', tab: string): HTMLButtonElement => {
-    const r = BY_ID.get(id), plain = r?.plain ?? id, pro = r?.pro ?? '', planned = !ready(id);
+    const r = BY_ID.get(id), plain = plainOf(id), pro = r?.pro ?? '', planned = !ready(id);
+    // A tile sits under a caption that already says what kind it is ("Editable light and colour"), so it drops " layer".
+    const short = kind === 'tile' ? plain.replace(/ layer$/, '') : plain;
     const attrs = { type: 'button', class: 'fpe-r' + kind, 'data-cmd': id, 'data-testid': 'ri-' + id, 'data-status': planned ? 'planned' : 'ready',
       'aria-disabled': planned || !host.enabled(id) ? 'true' : null, 'aria-label': `${plain}${pro && pro !== plain ? ' · ' + pro : ''}${planned ? ', planned' : ''}` };
     const b = kind === 'small'
       ? h('button', attrs, icon(iconFor(id, tab)), h('span', { class: 'fpe-rlabel' }, plain), planned ? tag() : null)
-      : h('button', attrs, h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, plain), planned ? tag() : null);
+      : h('button', attrs, h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, short), planned ? tag() : null);
     b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') !== 'true') void host.run(id); });
     return b;
   };
@@ -149,32 +160,66 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     for (const id of g.big) items.append(cmd(id, 'big', t.plain));
     if (g.show === 'gallery' && g.shown.length) items.append(h('div', { class: 'fpe-rgal' }, ...g.shown.map((id) => cmd(id, 'tile', t.plain))));
     else if (g.shown.length) items.append(h('div', { class: 'fpe-rsmalls' }, ...g.shown.map((id) => cmd(id, 'small', t.plain))));
-    const gid = slug(t.plain) + '-' + slug(g.plain);
-    if (g.more.length) {
-      const whole = g.show === 'button' || g.show === 'family';
-      const label = whole ? (g.show === 'family' ? g.plain : `${g.more.length} commands`) : `+${g.more.length}`;
-      const m = h('button', { type: 'button', class: whole ? 'fpe-rbig fpe-rgroupbtn' : 'fpe-rmore', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
-        'data-testid': 'rmore-' + gid, 'data-help-title': `${g.plain} · ${g.pro}`, 'data-help': `${g.more.length} more: ${g.more.slice(0, 4).map((id) => BY_ID.get(id)?.plain ?? id).join(', ')}${g.more.length > 4 ? '…' : ''}`,
-        'aria-label': `More in ${g.plain}: ${g.more.length}` },
-      whole ? h('span', { class: 'fpe-rico' }, icon(iconFor(g.more[0], t.plain))) : icon('chev-down'), h('span', { class: 'fpe-rlabel' }, label));
-      m.addEventListener('click', () => (openList === m ? closeList() : showList(g.plain, g.pro, g.more, m, 'more')));
-      items.append(m);
-    }
-    return h('div', { class: 'fpe-rgroup', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + gid },
+    if (g.more.length) items.append(moreBtn(t, g));
+    return h('div', { class: 'fpe-rgroup', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + slug(t.plain) + '-' + slug(g.plain) },
       items, h('div', { class: 'fpe-rcap', 'data-help-title': g.plain, 'data-help': `Pros call this ${g.pro}.` }, g.plain));
   };
+  /** A group's More list opener: "+n" beside its buttons, a whole-group button ("4 commands"), or a family's named button. */
+  const moreBtn = (t: Tab, g: Group): HTMLButtonElement => {
+    const gid = slug(t.plain) + '-' + slug(g.plain), kind = g.show === 'family' ? 'family' : g.show === 'button' ? 'button' : 'more';
+    const help = `${g.more.length} ${kind === 'family' ? 'kinds' : 'more'}: ${g.more.slice(0, 4).map(plainOf).join(', ')}${g.more.length > 4 ? '…' : ''}`;
+    const m = h('button', { type: 'button', class: kind === 'family' ? 'fpe-rpill' : kind === 'button' ? 'fpe-rbig fpe-rgroupbtn' : 'fpe-rmore', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+      'data-testid': 'rmore-' + gid, 'data-help-title': `${g.plain} · ${g.pro}`, 'data-help': help, 'aria-label': `More in ${g.plain}: ${g.more.length}` },
+    ...(kind === 'family' ? [icon(iconFor(g.more[0], t.plain)), h('span', { class: 'fpe-rlabel' }, g.plain), icon('chev-down')]
+      : kind === 'button' ? [h('span', { class: 'fpe-rico' }, icon(iconFor(g.more[0], t.plain))), h('span', { class: 'fpe-names fpe-rlabel' },
+        h('span', { class: 'fpe-plain' }, `${g.more.length} commands`, icon('chev-down')), h('span', { class: 'fpe-pro' }, g.pro))]
+        : [icon('chev-down'), h('span', { class: 'fpe-rlabel' }, `+${g.more.length}`)]));
+    m.addEventListener('click', () => (openList === m ? closeList() : showList(g.plain, g.pro, g.more, m, 'more')));
+    return m;
+  };
+  /** The effect families (Blur, Sharpen, …) as one group of named buttons in three rows, so none repeats its caption. */
+  const familiesEl = (t: Tab, gs: Group[]): HTMLElement => {
+    const rows: HTMLElement[] = [];
+    for (let r = 0, i = 0; r < 3 && i < gs.length; r++) {
+      const n = Math.floor(gs.length / 3) + (r < gs.length % 3 ? 1 : 0);
+      rows.push(h('div', { class: 'fpe-rfamrow' }, ...gs.slice(i, i + n).map((g) =>
+        h('div', { class: 'fpe-rfamily', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + slug(t.plain) + '-' + slug(g.plain) }, moreBtn(t, g)))));
+      i += n;
+    }
+    return h('div', { class: 'fpe-rgroup fpe-rfams', role: 'group', 'aria-label': FAMILIES },
+      h('div', { class: 'fpe-ritems' }, h('div', { class: 'fpe-rfamrows' }, ...rows)),
+      h('div', { class: 'fpe-rcap', 'data-help-title': FAMILIES, 'data-help': 'Each opens its own list. Pros call this the Filter menu.' }, FAMILIES));
+  };
+  /** Tightens the ribbon a step at a time (spacing, then narrower buttons) until the open tab fits without scrolling. */
+  const fit = (): void => {
+    body.dataset.fit = '0';
+    for (const lvl of ['1', '2']) {
+      if (!body.clientWidth || body.scrollWidth <= body.clientWidth + 1) return;
+      body.dataset.fit = lvl;
+    }
+  };
+  new ResizeObserver(() => { if (!body.hidden) fit(); }).observe(ribbon);
   function showTab(plain: string): void {
     closeList();
     const t = TABS.find((x) => x.plain === plain) ?? TABS[0];
     current = t.plain;
     view = 'tab';
     for (const [p, b] of tabBtns) b.setAttribute('aria-selected', String(p === current));
-    body.replaceChildren(...t.groups.map((g) => groupEl(t, g)));
+    const els: HTMLElement[] = [];
+    let fams: Group[] = [];
+    for (const g of [...t.groups, null]) {
+      if (g?.show === 'family') { fams.push(g); continue; }
+      if (fams.length) els.push(familiesEl(t, fams));
+      fams = [];
+      if (g) els.push(groupEl(t, g));
+    }
+    body.replaceChildren(...els);
     body.dataset.tab = slug(t.plain);
     body.hidden = false;
     ctxWrap.hidden = true;
     chip.setAttribute('aria-pressed', 'false');
     body.scrollLeft = 0;
+    fit();
     host.sync();
   }
 
@@ -228,7 +273,7 @@ export function mountRibbon(host: RibbonHost): Ribbon {
       const r = BY_ID.get(id), planned = !ready(id), off = planned || !host.enabled(id);
       const b = h('button', { type: 'button', role: 'menuitem', class: 'fpe-rrow', 'data-cmd': id, 'data-testid': 'ri-' + id, 'data-status': planned ? 'planned' : 'ready',
         'aria-disabled': off ? 'true' : null },
-      icon(iconFor(id)), h('span', { class: 'fpe-names fpe-rline' }, h('span', { class: 'fpe-plain' }, r?.plain ?? id), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, ' · ' + r.pro) : null),
+      icon(iconFor(id)), h('span', { class: 'fpe-names fpe-rline' }, h('span', { class: 'fpe-plain' }, plainOf(id)), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, ' · ' + r.pro) : null),
       planned ? tag() : null, r?.key ? h('kbd', {}, host.keyText(r.key)) : null);
       b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') === 'true') return; closeList(); void host.run(id); });
       return b;

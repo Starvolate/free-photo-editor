@@ -11,7 +11,7 @@ import { iconFor } from '../src/ribbon';
 // Loading the new Planned functions adds them to ROWS, as search does on first use, so every check below covers all of them.
 import { NEW_PHASES, NEW_ROWS } from '../src/registry-union';
 import { functionMapMarkdown } from '../src/function-map';
-import { ALWAYS, CONTEXTUAL, TABS, homes, reach, spots } from '../src/ribbon-homes';
+import { ALWAYS, CONTEXTUAL, TABS, firstTab, homes, reach, restingIds, spots } from '../src/ribbon-homes';
 
 const MAP = fileURLToPath(new URL('../../../docs/function-map.md', import.meta.url));
 const APP = readFileSync(fileURLToPath(new URL('../src/app.ts', import.meta.url)), 'utf8');
@@ -127,6 +127,17 @@ describe('the Task ribbon', () => {
     const loose = fx.groups.filter((g) => g.show !== 'family').reduce((n, g) => n + g.big.length + g.shown.length + g.more.length, 0);
     expect(loose).toBeLessThanOrEqual(20);
     for (const g of fx.groups.filter((x) => x.show === 'family')) expect(g.more.length, g.plain).toBeLessThanOrEqual(20);
+  });
+  it('opens on first run the first tab, in deep-first order, that is at least half Ready at rest, and moves to Effects & masks once it is', () => {
+    const ready = (id: string): boolean => BY_ID.get(id)?.status === 'ready';
+    const share = (t: (typeof TABS)[number]): number => restingIds(t).filter(ready).length / restingIds(t).length;
+    const open = firstTab(ready), i = TABS.findIndex((t) => t.plain === open);
+    expect(share(TABS[i]), open).toBeGreaterThanOrEqual(0.5);
+    for (const t of TABS.slice(0, i)) expect(share(t), t.plain).toBeLessThan(0.5);
+    // When wave 1 makes most of Effects & masks Ready, the first run opens it without any other change.
+    const fx = new Set(restingIds(TABS[0]).slice(0, Math.ceil(restingIds(TABS[0]).length / 2)));
+    expect(firstTab((id) => ready(id) || fx.has(id))).toBe(TABS[0].plain);
+    expect(firstTab(() => false), 'nothing Ready: the first tab').toBe(TABS[0].plain);
   });
   it('reaches every function within three clicks, and writes the count into the map', () => {
     const r = reach(ids());

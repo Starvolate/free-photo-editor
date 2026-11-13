@@ -373,13 +373,15 @@ suite('W1 workspace (headless Chrome)', () => {
       if (w !== 820) continue;
       const more = p.locator('[data-testid="gmore-props"]');
       expect(await more.isVisible(), 'the Properties group has a "+n" button on a 252 px dock').toBe(true);
-      expect(await more.getAttribute('aria-label')).toContain('History');
+      // History has its own card now (layout A), so the overflowed panel picked here is Text style.
+      expect(await more.getAttribute('aria-label')).toContain('Text style');
       await more.click();
-      await p.click('.fpe-pop button:has-text("History")');
-      await p.waitForSelector('[data-testid="tab-history"][aria-selected="true"]');
-      expect(await p.isVisible('[data-testid="tab-history"]')).toBe(true);
-      await p.waitForSelector('[data-testid="history-list"]', { state: 'visible' });
-      expect(await check(p), `${w} px after picking History`).toEqual([]);
+      await p.click('.fpe-pop button:has-text("Text style")');
+      await p.waitForSelector('[data-testid="tab-character"][aria-selected="true"]');
+      expect(await p.isVisible('[data-testid="tab-character"]')).toBe(true);
+      await p.waitForSelector('[data-testid="panel-character"]', { state: 'visible' });
+      expect(await p.isVisible('[data-testid="history-list"]'), 'the History card stays').toBe(true);
+      expect(await check(p), `${w} px after picking Text style`).toEqual([]);
       await p.screenshot({ path: join(OUT, 'w1b-tablet-820-tabs.png') });
     }
   }, 60_000);

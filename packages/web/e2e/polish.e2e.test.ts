@@ -283,6 +283,88 @@ suite('W5 polish (headless Chrome)', () => {
     expect(errors).toEqual([]);
   }, 120_000);
 
+  it('the bucket never refuses on the picture: a text, locked or hidden layer gets the fill on a new layer just above, in one undo step', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    await run(p, 'tool.type');
+    await click(p, 160, 230);
+    await p.waitForSelector('[data-testid="text-edit"]');
+    await p.keyboard.type('Hello');
+    await p.click('[data-testid="text-done"]');
+    await p.waitForTimeout(150);
+    const base = await info(p), ti = base.active, n = base.layers.length;
+    await run(p, 'tool.bucket');
+    const fills = async (why: string): Promise<void> => {
+      await click(p, 480, 5);
+      const now = await info(p);
+      expect(now.layers.length, why).toBe(n + 1);
+      expect(now.active, `${why}: the new layer sits just above`).toBe(ti + 1);
+      expect(near(await px(p, 480, 5), FG, 3), `${why}: the frame is filled`).toBe(true);
+      expect(await p.textContent('[data-testid="toast"]')).toContain(`because that layer ${why}`);
+      await run(p, 'edit.undo');
+      expect((await info(p)).layers.length, `${why}: one undo removes the new layer and the fill`).toBe(n);
+      expect(near(await px(p, 480, 5), FG, 3)).toBe(false);
+      expect((await info(p)).active).toBe(ti);
+    };
+    await fills('is a text layer');
+    await run(p, 'layer.lock');
+    await fills('is locked');
+    await run(p, 'layer.lock');
+    await run(p, 'layer.hide');
+    await fills('is hidden');
+    await run(p, 'layer.hide');
+    await run(p, 'tool.select-rect');
+    await drag(p, [[100, 100], [200, 200]]);
+    await run(p, 'tool.bucket');
+    await click(p, 480, 5);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('outside the selected area');
+    await run(p, 'select.none');
+    await p.evaluate(() => (window as unknown as Win).fpe.setZoom(0.5));
+    await p.waitForTimeout(100);
+    await click(p, -40, 200);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('outside the picture');
+    expect((await info(p)).layers.length).toBe(n);
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  it('the history brush paints back the step marked "Paint from here", and the mark stays through undo and redo', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    await p.locator('[data-testid="layer-row"]').last().click();
+    await p.waitForFunction(() => (window as unknown as Win).fpe.getInfo()?.active === 0);
+    await run(p, 'edit.history-brush-step');
+    await p.waitForSelector('[data-testid="history-mark"]', { state: 'visible' });
+    const marks = p.locator('[data-testid="history-mark"]');
+    const pressed = async (): Promise<number[]> =>
+      (await marks.evaluateAll((els) => els.map((e, k) => (e.getAttribute('aria-pressed') === 'true' ? k : -1)))).filter((k) => k >= 0);
+    expect(await pressed(), 'at first the brush paints the picture as opened').toEqual([0]);
+    const opened = await px(p, 620, 250);
+    await run(p, 'tool.brush');
+    await drag(p, [[600, 250], [640, 250]]);
+    const first = await px(p, 620, 250);
+    await run(p, 'tool.swap-colors');
+    await drag(p, [[600, 250], [640, 250]]);
+    const second = await px(p, 620, 250);
+    expect(near(first, opened, 10), 'the first stroke changed the photo').toBe(false);
+    expect(near(second, first, 10), 'the second stroke has the other colour').toBe(false);
+    await marks.nth(1).click();
+    expect(await pressed()).toEqual([1]);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('paints back');
+    await run(p, 'tool.history-brush');
+    await drag(p, [[590, 250], [650, 250]]);
+    expect(near(await px(p, 620, 250), first, 12), 'it paints back the first stroke, not the photo as opened').toBe(true);
+    await shot(p, 'w5-history-mark.png');
+    await run(p, 'edit.undo');
+    expect(near(await px(p, 620, 250), second, 2)).toBe(true);
+    expect(await pressed(), 'the mark stays on its step through undo').toEqual([1]);
+    await run(p, 'edit.redo');
+    expect(await pressed(), 'and through redo').toEqual([1]);
+    expect(near(await px(p, 620, 250), first, 12)).toBe(true);
+    await run(p, 'edit.history-brush-step');
+    expect(await pressed(), 'Edit > Paint back from this step marks the step you are at').toEqual([3]);
+    expect(errors).toEqual([]);
+  }, 120_000);
+
   it('every button keeps its own text colour and reads at WCAG AA contrast in the dark and the light look', async () => {
     const p = await open(1440, 900);
     await sample(p);

@@ -241,6 +241,8 @@ export class Editor {
   private modalReturn: HTMLElement | null = null;
   private popover: HTMLElement | null = null;
   private session: Session | null = null;
+  /** Per tab (each has its own History): the step the history brush paints back, by id; none means as opened. */
+  private marks = new WeakMap<History, number>();
   private hdrag: string | null = null;
   clip: Clip | null = null;
   lastSel: Selection | null = null;
@@ -1373,6 +1375,7 @@ export class Editor {
       tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
       slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
       forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
+      paintFrom: () => this.marks.get(this.history) ?? 0, paintFromGone: () => this.paintFromGone(),
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
       fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
     };
@@ -1892,11 +1895,31 @@ export class Editor {
     const ul = this.histList;
     if (!ul) return;
     if (!this.doc) { ul.replaceChildren(h('li', { class: 'fpe-note' }, 'Your steps appear here.')); return; }
-    const { labels, index } = this.history.entries();
-    ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', {},
+    const { labels, index } = this.history.entries(), ids = [0, ...this.history.stepIds()], m = this.marks.get(this.history) ?? 0, mark = ids.includes(m) ? m : 0;
+    ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', { class: 'fpe-hist-row' },
       h('button', { type: 'button', class: 'fpe-hist-item', 'aria-current': k === index ? 'step' : null, 'data-undone': k > index ? '' : null, 'data-testid': 'history-step',
-        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, label))));
+        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, label),
+      h('button', { type: 'button', class: 'fpe-hist-mark', 'aria-pressed': ids[k] === mark ? 'true' : 'false', 'aria-label': `Paint from here: ${label}`, 'data-testid': 'history-mark',
+        'data-help-title': 'Paint from here · History brush source', 'data-help': 'The history brush paints back the step marked with this brush. Pick the brush beside another step to paint from that one.',
+        onclick: () => this.markStep(ids[k], label) }, icon('brush')))));
     ul.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest' });
+  }
+  /** Edit › Paint back from this step: the step you are at becomes the one the history brush paints back. */
+  paintFromHere(): void {
+    if (!this.doc) return this.needDoc();
+    const { labels, index } = this.history.entries();
+    this.markStep(index ? this.history.stepIds()[index - 1] : 0, index ? labels[index - 1] : 'Opened ' + this.name);
+    this.showPanelTab('history');
+  }
+  private markStep(id: number, label: string): void {
+    this.marks.set(this.history, id);
+    this.renderHistory();
+    this.toast(`The history brush now paints back “${label}”.`);
+  }
+  private paintFromGone(): void {
+    this.marks.delete(this.history);
+    this.renderHistory();
+    this.toast('The step marked in History is gone (a newer change replaced it), so the history brush paints from the oldest step.');
   }
   private renderProps(): void {
     const b = this.propsBody;

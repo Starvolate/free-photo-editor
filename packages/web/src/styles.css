@@ -16,6 +16,7 @@
 .fpe-btn:hover{background:var(--hover)}
 .fpe-icon-btn{width:32px;padding:0}
 .fpe-btn-ghost{border-color:var(--line);background:var(--panel-2)}
+.fpe-btn-ghost[aria-pressed=true]{border-color:var(--accent);background:var(--sel)}
 .fpe-btn-primary{background:var(--accent-bg);color:var(--accent-fg)}
 /* white text on the blue button (WCAG AA), above the generic ".fpe button{color:inherit}" */
 .fpe .fpe-btn-primary{color:var(--accent-fg)}
@@ -160,6 +161,13 @@
 .fpe-hist-item:hover{background:var(--hover)}
 .fpe-hist-item[aria-current=step]{background:var(--sel);font-weight:600}
 .fpe-hist-item[data-undone]{color:var(--dim);font-style:italic}
+.fpe-hist-row{display:flex;align-items:center;gap:2px}
+.fpe-hist-row .fpe-hist-item{flex:1;min-width:0;width:auto}
+.fpe-hist-mark{flex:none;display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid transparent;border-radius:5px;background:none;color:var(--muted);cursor:pointer}
+.fpe-hist-mark svg{width:15px;height:15px}
+.fpe-hist-mark:hover{background:var(--hover);color:var(--text)}
+.fpe-hist-mark[aria-pressed=true]{background:var(--sel);border-color:var(--accent);color:var(--text)}
+.fpe[data-layout=phone] .fpe-hist-mark{width:44px;height:44px}
 .fpe-adj-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .fpe-adj{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);text-align:left;cursor:pointer}
 .fpe-adj:hover{background:var(--hover)}

@@ -252,6 +252,7 @@ export const HANDLERS: Record<string, Handler> = {
   'edit.undo': H((e) => e.undo(), (e) => !!e.doc && e.history.canUndo),
   'edit.redo': H((e) => e.redo(), (e) => !!e.doc && e.history.canRedo),
   'edit.history-back': H((e) => e.undo(), (e) => !!e.doc && e.history.canUndo),
+  'edit.history-brush-step': H((e) => e.paintFromHere(), (e) => !!e.doc),
   'edit.history-forward': H((e) => e.redo(), (e) => !!e.doc && e.history.canRedo),
   'edit.cut': H((e) => e.copy(false, true)),
   'edit.copy': H((e) => e.copy(false, false)),

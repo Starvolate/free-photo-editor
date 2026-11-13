@@ -49,6 +49,8 @@ export class History {
   entries(): { labels: string[]; index: number } {
     return { labels: [...this.done.map((e) => e.cmd.label), ...this.undone.slice().reverse().map((e) => e.cmd.label)], index: this.done.length };
   }
+  /** Each step's id, in the order of `entries().labels`; an id stays with its step through undo and redo. */
+  stepIds(): number[] { return [...this.done.map((e) => e.id), ...this.undone.slice().reverse().map((e) => e.id)]; }
   private trim(): void {
     let total = 0;
     for (const e of this.done) total += e.cmd.bytes;

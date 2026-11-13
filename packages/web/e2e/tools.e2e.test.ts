@@ -548,12 +548,12 @@ suite('W3 tools (headless Chrome)', () => {
         }
         return hit;
       });
-      await run(p, 'edit.history-brush-step');
+      await run(p, 'select.subject');
       expect(await p.textContent('[data-testid="toast"]')).toContain('planned');
       expect(await clear(), `${w} px`).toEqual([]);
       await run(p, 'image.adj-brightness');
       await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
-      await run(p, 'edit.history-brush-step');
+      await run(p, 'select.subject');
       expect(await clear(), `${w} px with a dialog open`).toEqual([]);
       await shot(p, `w3b-toast-${w}.png`);
       await p.click('[data-testid="dialog-head"] button');

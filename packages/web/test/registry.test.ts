@@ -181,7 +181,7 @@ describe('the Task ribbon', () => {
       // Batch shapes-text (pathops).
       'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
       // Automate and batch (automate.ts).
-      'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
+      'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits', 'layer.fx-blur', 'layer.blend-if']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

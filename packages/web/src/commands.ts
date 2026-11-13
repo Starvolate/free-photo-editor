@@ -450,7 +450,15 @@ HANDLERS['layer.fill-color'] = H((e) => e.addFillLayer());
 // W6 S4: layer effects stay live settings of the layer (the engine, core/layerfx, loads on first use).
 const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasPixels(a) && !a.locked; };
 for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
-  ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
+  ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke'],
+  ['bevel', 'raised-edge'], ['satin', 'satin-sheen'], ['pattern', 'pattern-overlay'], ['blur', 'blur']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
+HANDLERS['layer.blend-if'] = H((e) => e.addEffect('brightness-blend'), canFx);
+// Batch effects 3: colour fade and pattern layers and the Saved looks sheet (fxprops.ts, with the engine, on first use).
+const fxp = (go: (m: typeof import('./fxprops'), e: Editor) => void, enabled: Handler['enabled']): Handler =>
+  H(async (e) => { const [m] = await Promise.all([import('./fxprops'), e.layerFx()]); go(m, e); }, enabled);
+HANDLERS['layer.fill-gradient'] = fxp((m, e) => m.addFillOf(e.toolHost(), 'gradient'), hasDoc);
+HANDLERS['layer.fill-pattern'] = fxp((m, e) => m.addFillOf(e.toolHost(), 'pattern'), hasDoc);
+HANDLERS['panel.styles'] = fxp((m, e) => m.openLooks(e.toolHost()), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 // Photo developing (raw-more.ts, loaded on first use): one develop sheet; each command opens it at its own section.
 export const RAW_IDS = ('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading '

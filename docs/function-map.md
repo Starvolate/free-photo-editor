@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 485 Ready, 190 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 493 Ready, 182 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-143 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+141 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 232 | 418 | 0 |
-| Ready today | 485 | 25 | 197 | 263 | 0 |
+| All functions | 675 | 25 | 231 | 419 | 0 |
+| Ready today | 493 | 25 | 196 | 272 | 0 |
 
 ## The Task ribbon
 
@@ -27,7 +27,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
-| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
+| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 12 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 13 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (60 Ready, 12 Planned)
+## Layer (65 Ready, 7 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -269,22 +269,22 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | Layer | Arrange layers › This layer · More list | Ready | 1 |  |
 | layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | Layer | Arrange layers › This layer · small button | Ready | W1 |  |
 | layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
-| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
 | layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
-| layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
 | layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
-| layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern, built in or from part of your picture. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
 | layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
-| layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
-| layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
+| layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
+| layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
 | layer.adj-brightness | Brightness and contrast layer | Brightness/Contrast layer | Brightness and contrast that stay editable. | editable brightness | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-levels | Light and dark balance layer | Levels layer | Levels that stay editable. | editable levels | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-curves | Tone curve layer | Curves layer | Curves that stay editable. | editable curves | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
-| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
+| layer.adj-exposure | Exposure layer | Exposure layer | Exposure that stays editable. | editable exposure | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
 | layer.adj-vibrance | Colour boost layer | Vibrance layer | Vibrance that stays editable. | editable vibrance | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-hue | Colour and strength layer | Hue/Saturation layer | Hue and saturation that stay editable. | editable hue | Layer › Adjustment layer | Effects & masks › Editable light and colour · live-preview gallery | Ready | 3 |  |
 | layer.adj-color-balance | Colour tint layer | Colour balance layer | Colour balance that stays editable. | editable colour balance | Layer › Adjustment layer | Effects & masks › Editable light and colour · More list | Ready | 3 |  |
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (15 Ready, 7 Planned)
+## Panels (Window menu and the dock) (16 Ready, 6 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -512,7 +512,7 @@ Groups: Screen mode · Screen mode.
 | panel.brushes | Brush tips | Brushes | Choose, turn and space brush tips. | brush shapes | Window | Paint & draw › Brush settings · small button | Ready | 4 |  |
 | panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · small button | Ready | W2 |  |
 | panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | Window | Automate & batch › Record steps · big button | Ready | 13 |  |
-| panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | Window | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| panel.styles | Saved looks | Styles | Save a layer's effects as a named look and put it on other layers; a few ready-made looks to start. | styles, saved effects | Window | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | Window | Paint & draw › Brush settings · More list | Ready | 4 |  |
 | panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | Window | Shapes & text › Text style · More list | Planned | 6 |  |
 | panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | Window | View sheet | Planned | 13 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (143 Planned, 118 Ready), by home
+## New functions from the feature census (141 Planned, 120 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -606,18 +606,18 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | layer.mask-edge | U008 | Mask edge and density | Mask refinement (feather, density) | Blur, feather, guided-filter and contrast the mask edge. | mask edge, feather mask, soften mask, mask density | Effects & masks › Hide parts · More list | Planned | B9 |
 | layer.smart-linked | U009 | Keep an image linked to a file on disk | Linked Smart Object | A layer that points to an external file and updates when it changes. | linked file, link image, place linked, update from file | Effects & masks › Live effects · More list | Planned | B1 |
 | layer.clone | U010 | Linked copy of a layer | Clone Layer | A layer that always mirrors another and updates when it changes. | clone layer, mirror layer, linked copy, instance | Effects & masks › Live effects · More list | Planned | B1 |
-| layer.blend-if | U011 | Show by brightness | Blend If (blend ranges) | Let a layer show only where it, or the layer below, is light or dark (or a chosen colour); a blend-mode list with live preview. | blend if, blend ranges, show only in shadows, show only in highlights | Effects & masks › Blending · More list | Planned | B9 |
+| layer.blend-if | U011 | Show by brightness | Blend If (blend ranges) | Let a layer show only where it, or the layer below, is light or dark, with soft fades between. | blend if, blend ranges, show only in shadows, show only in highlights | Effects & masks › Blending · More list | Ready | B9 |
 | layer.fill-opacity | U012 | Opacity for fill and effects separately | Fill opacity vs layer opacity | Fade a layer's pixels but keep its effects. | fill opacity, fade pixels keep effects, inner opacity | Effects & masks › Blending · More list | Planned | B9 |
 | layer.adj-presets | U013 | Save adjustment looks as layer presets | Adjustment presets | One-click saved settings for Curves, Levels and others. | adjustment preset, save look, reuse adjustment, preset | Effects & masks › Shadows and glows · More list | Planned | B1 |
-| layer.3d-paint | U094 | Paint on a 3D object | 3D layers, Substance textures | Import 3D models, paint textures, and render (being wound down by Adobe). | 3d object, paint on 3d, 3d model, texture painting | Effects & masks › New · More list | Planned | T3 |
-| layer.fx-3d | U095 | 3D lighting effect | Layer effect: 3D | Light a layer as if it were raised in 3D, kept editable. | 3d effect, 3d lighting, emboss light, raised 3d look | Effects & masks › Shadows and glows · More list | Planned | T3 |
-| layer.fx-blur | U096 | Gaussian blur as a layer effect | Layer effect: Gaussian Blur | Blurs a layer's result without touching its pixels. | blur effect on layer, live blur, layer blur style | Effects & masks › Shadows and glows · More list | Planned | T3 |
+| layer.3d-paint | U094 | Paint on a 3D object | 3D layers, Substance textures | Import 3D models, paint textures, and render. Planned: it needs a 3D engine and model formats, beyond this 2D editor today. | 3d object, paint on 3d, 3d model, texture painting | Effects & masks › New · More list | Planned | T3 |
+| layer.fx-3d | U095 | 3D lighting effect | Layer effect: 3D | Light a layer as if it were raised in 3D, kept editable. Planned: real 3D light needs a 3D renderer; Raised edge gives the common look today. | 3d effect, 3d lighting, emboss light, raised 3d look | Effects & masks › Shadows and glows · More list | Planned | T3 |
+| layer.fx-blur | U096 | Gaussian blur as a layer effect | Layer effect: Gaussian Blur | Blurs a layer's result without touching its pixels. | blur effect on layer, live blur, layer blur style | Effects & masks › Shadows and glows · More list | Ready | T3 |
 | layer.split-alpha | U097 | Split transparency into its own mask | Split Alpha | Move a layer's see-through part into a separate mask and back. | split alpha, transparency to mask, alpha to mask | Effects & masks › Hide parts · More list | Planned | T3 |
 | layer.mask-shared | U098 | Use a mask made in another effect | Raster masks / external raster mask | Reuse one effect's mask in a different effect. | reuse mask, shared mask, raster mask, external mask | Effects & masks › Hide parts · More list | Planned | T3 |
 | layer.linked-resources | U099 | Share one layer's content across files | Linked Services / Resource Manager | Lists every placed file and lets you relink or embed them. | linked resources, share layer across files, shared assets in files | Effects & masks › Live effects · More list | Planned | T3 |
 | layer.clones-array | U100 | Make many linked copies | Clones Array | Builds a grid of clone layers, handy for sprites. | clones array, grid of copies, sprite sheet copies | Effects & masks › Live effects · More list | Planned | T3 |
 | layer.blend-special | U101 | Dissolve, Erase and Merge blend modes | Dissolve, Color Erase, Erase, Merge, Split | Special blend modes that scatter, knock out or merge pixels. | dissolve, erase blend, merge blend, split blend mode | Effects & masks › Blending · More list | Planned | T3 |
-| layer.blend-space | U102 | Choose the blend space (linear or perceptual) | Layer composite mode and space | Pick how colours mix: linear light or perceptual. | linear blending, perceptual blending, blend space, gamma blending | Effects & masks › Blending · More list | Planned | T3 |
+| layer.blend-space | U102 | Choose the blend space (linear or perceptual) | Layer composite mode and space | Pick how colours mix: linear light or perceptual. Planned: linear light would change every blend formula and slow the whole picture. | linear blending, perceptual blending, blend space, gamma blending | Effects & masks › Blending · More list | Planned | T3 |
 
 ### Select & cut out (14)
 

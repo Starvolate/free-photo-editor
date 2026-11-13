@@ -29,11 +29,15 @@ export interface FxRows {
   behind(acc: Float32Array, ai: number, y: number, x0: number, x1: number, opacity: number, mix: Float64Array): void;
   /** The layer itself with Fill, its inside effects and its outline: straight RGBA from 0 to 1, written to `out` from index 0. */
   unit(y: number, x0: number, x1: number, out: Float32Array): void;
+  /** Blend by brightness: per pixel 0..1, how much of the unit (src, from 0) shows over acc (from ai); absent = all of it. */
+  weights?(acc: Float32Array, ai: number, src: Float32Array, n: number): Float32Array;
 }
 export interface LayerFxEngine {
   rows(l: BlendLayer, r: Rect, live: boolean): FxRows;
   /** How far past the layer's edge its effects can reach, in pixels. */
   reach(l: BlendLayer): number;
+  /** A colour fade or pattern layer's row, as bytes, written to out from index o. */
+  fillRow(l: BlendLayer, y: number, x0: number, x1: number, out: Uint8ClampedArray, o: number): void;
 }
 let fxEngine: LayerFxEngine | null = null;
 let fxSkip = false;
@@ -52,11 +56,12 @@ export const layerFxReach = (l: BlendLayer): number => (fxEngine && hasLayerFx(l
 /** Effects for one layer over a rectangle, or null when it has none (or the screen draws it plain while the module loads). */
 function fxFor(l: BlendLayer, r: Rect): FxRows | null {
   if (!hasLayerFx(l)) return null;
-  if (!fxEngine) {
-    if (fxSkip) return null;
-    throw new Error('This picture has layer effects: load "@free-photoeditor/core/layerfx" (installLayerFx) before drawing it.');
-  }
+  if (!fxEngine) return noEngine();
   return fxEngine.rows(l, r, l === fxLive);
+}
+function noEngine(): null {
+  if (fxSkip) return null;
+  throw new Error('This picture has layer effects: load "@free-photoeditor/core/layerfx" (installLayerFx) before drawing it.');
 }
 
 /** Rows per band when a big redraw is split over frames (design 3.3): about a quarter of a million pixels, so one band stays short. */
@@ -178,6 +183,8 @@ interface Prep {
   res: Uint8ClampedArray | null;
   /** A layer with effects: its rows, and the reused row its unit (own pixels, inside effects, outline) is written into. */
   fx?: FxRows | null; urow?: Float32Array | null;
+  /** Colour fade and pattern layers: each row is drawn by the effects module. */
+  fr?: boolean;
 }
 /** A node, or a clip group: a base with the clipped nodes directly above it (`run`, possibly all off this rectangle). */
 interface Item { base: Prep; run: Item[] | null; sheet: Float32Array | null; shape: Float32Array | null; }
@@ -214,9 +221,11 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
     if (l.kind === 'adjust' || l.kind === 'fill') {
       // No pixels of their own (L3): they cover the whole rectangle, shaped only by their mask.
       if (l.kind === 'adjust' ? !l.adjust?.job : !l.fill) return null;
+      const fr = l.kind === 'fill' && l.fill?.type !== 'solid';
+      if (fr && !fxEngine) return noEngine();
       const box = { x: r.x, y: r.y, w, h }, mk = l.mask ? lazyMask(l.mask, box) : null, buf = new Uint8ClampedArray(w * 4);
-      if (l.kind === 'fill' && l.fill) { const f = l.fill.color; for (let i = 0; i < buf.length; i += 4) { buf[i] = f.r; buf[i + 1] = f.g; buf[i + 2] = f.b; buf[i + 3] = f.a; } }
-      return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf, res: l.kind === 'adjust' ? new Uint8ClampedArray(w * 4) : null };
+      if (l.kind === 'fill' && l.fill && !fr) { const f = l.fill.color; for (let i = 0; i < buf.length; i += 4) { buf[i] = f.r; buf[i + 1] = f.g; buf[i + 2] = f.b; buf[i + 3] = f.a; } }
+      return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf, res: l.kind === 'adjust' ? new Uint8ClampedArray(w * 4) : null, fr };
     }
     if (l.kind && l.kind !== 'pixel') return null;
     const fx = fxFor(l, r);
@@ -283,6 +292,12 @@ export function blendSpan(acc: Float32Array, ai: number, src: Uint8ClampedArray 
   }
 }
 const clearSpan = (s: Float32Array, c: Ctx, x0: number, x1: number): void => { s.fill(0, (x0 - c.rx) * 4, (x1 - c.rx) * 4); };
+/** A colour layer's row: fixed for solid colour, drawn per row for fades and patterns. */
+const fillBuf = (p: Prep, y: number, x0: number, x1: number, c: Ctx): Uint8ClampedArray => {
+  const b = p.buf as Uint8ClampedArray;
+  if (p.fr) (fxEngine as LayerFxEngine).fillRow(p.l, y, x0, x1, b, (x0 - c.rx) * 4);
+  return b;
+};
 function drawItems(list: Item[], from: number, to: number, acc: Float32Array, y: number, lo: number, hi: number, c: Ctx): void {
   for (let i = from; i < to; i++) drawItem(list[i], acc, y, lo, hi, c);
 }
@@ -305,11 +320,11 @@ function drawNode(p: Prep, acc: Float32Array, y: number, x0: number, x1: number,
       const ai = (x0 - c.rx) * 4, u = p.urow as Float32Array;
       p.fx.behind(acc, ai, y, x0, x1, l.opacity, c.mix);
       p.fx.unit(y, x0, x1, u);
-      blendSpan(acc, ai, u, 0, l.opacity, 1, x1 - x0, x0, y, l.blendMode, null, c.mix);
+      blendSpan(acc, ai, u, 0, l.opacity, 1, x1 - x0, x0, y, l.blendMode, p.fx.weights ? p.fx.weights(acc, ai, u, x1 - x0) : null, c.mix);
       return;
     }
     if (p.mk) p.mk(y, x0, x1, p.mrow as Float32Array);
-    if (l.kind === 'fill') blendSpan(acc, (x0 - c.rx) * 4, p.buf as Uint8ClampedArray, (x0 - c.rx) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
+    if (l.kind === 'fill') blendSpan(acc, (x0 - c.rx) * 4, fillBuf(p, y, x0, x1, c), (x0 - c.rx) * 4, l.opacity / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
     else blendSpan(acc, (x0 - c.rx) * 4, l.data, ((y - l.y) * l.width + (x0 - l.x)) * 4, (l.fillOpacity === undefined ? l.opacity : l.opacity * l.fillOpacity) / 255, 255, x1 - x0, x0, y, l.blendMode, p.mrow, c.mix);
     return;
   }
@@ -384,7 +399,7 @@ function startClip(it: Item, y: number, x0: number, x1: number, c: Ctx): void {
     drawItems(kids, 0, kids.length, f, y, x0, x1, c);
     src = f; si = (x0 - c.rx) * 4; div = 1;
   } else if (b.fx) { (b.fx).unit(y, x0, x1, b.urow as Float32Array); src = b.urow as Float32Array; si = 0; div = 1; }
-  else if (b.l.kind === 'fill') { src = b.buf as Uint8ClampedArray; si = (x0 - c.rx) * 4; div = 255; }
+  else if (b.l.kind === 'fill') { src = fillBuf(b, y, x0, x1, c); si = (x0 - c.rx) * 4; div = 255; }
   else { const l = b.l; src = l.data; si = ((y - l.y) * l.width + (x0 - l.x)) * 4; div = 255; }
   if (b.mk) b.mk(y, x0, x1, mr as Float32Array);
   for (let x = x0, j = 0; x < x1; x++, j++, si += 4) {

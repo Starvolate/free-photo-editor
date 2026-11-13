@@ -34,7 +34,7 @@ import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS,
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
-import { addFolder, addNode, hasLayerFx, hasPixels, layerFxReach, layerFxReady, layerPixelsChanged, skipMissingLayerFx, bandRows, createAdjustLayer, createFillLayer, SLICE_PX, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
+import { addFolder, addNode, needsLayerFx, hasPixels, layerFxReach, layerFxReady, layerPixelsChanged, skipMissingLayerFx, bandRows, createAdjustLayer, createFillLayer, SLICE_PX, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
 // The screen may draw a layer without its effects for the moment the effects module takes to load (design 6).
 skipMissingLayerFx(true);
 import { TK_TOOLS } from './commands';
@@ -1280,12 +1280,13 @@ export class Editor {
     return !!r && r.status === 'ready' && !!hd && hd.enabled(this);
   }
   async run(id: string): Promise<boolean> {
-    if (this.session?.applying) return false;
     const r = BY_ID.get(id);
     if (!r) return false;
+    // A refused command always says why: a person who clicks and sees nothing thinks the editor is broken.
+    if (this.session?.applying) { this.toast(`${this.session.label} is still being applied. Wait a moment, or press Cancel.`); return false; }
     if (r.status !== 'ready') { this.toast(`${r.plain} (${r.pro}) is planned for a later version.`); return false; }
     const hd = HANDLERS[id];
-    if (!hd) return false;
+    if (!hd) { this.toast(`${r.plain} is not available right now.`); return false; }
     if (!hd.enabled(this)) { this.toast(this.doc ? `${r.plain} is not available right now.` : 'Open or create a picture first.'); return false; }
     this.closeMenus();
     this.closePopover();
@@ -1483,7 +1484,7 @@ export class Editor {
       this.dirty = docRect(d);
       this.pend = [];
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; this.pend = []; }
-    if (d && !layerFxReady() && d.layers.some(hasLayerFx)) void this.layerFx();
+    if (d && !layerFxReady() && d.layers.some(needsLayerFx)) void this.layerFx();
     if (d && this.dirty) {
       const r = this.dirty;
       this.dirty = null;
@@ -3805,7 +3806,7 @@ export class Editor {
       flatHash: async () => {
         const d = this.doc;
         if (!d) return '';
-        if (d.layers.some(hasLayerFx)) await this.layerFx();
+        if (d.layers.some(needsLayerFx)) await this.layerFx();
         const dg = await crypto.subtle.digest('SHA-256', compositeDoc(d, docRect(d)) as BufferSource);
         return Array.from(new Uint8Array(dg), (b) => b.toString(16).padStart(2, '0')).join('');
       },

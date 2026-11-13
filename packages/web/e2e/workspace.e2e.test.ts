@@ -162,30 +162,35 @@ const sig = (p: Page): Promise<string> => p.evaluate(() => {
   const w = window as unknown as Win;
   return JSON.stringify([w.fpe.state(), document.querySelector('[data-testid="toast"]')?.textContent ?? '', w.__n]);
 });
-async function prepared(p: Page, id: string): Promise<void> {
+/**
+ * A fresh page set up for one row. Each set-up step must really run: run() comes back true and the state changes. A step
+ * that is refused or changes nothing is not retried: the row fails with that step's id and the message the person saw.
+ * Returns '' when every step ran.
+ */
+async function prepared(p: Page, id: string): Promise<string> {
   await p.reload();
   await p.waitForFunction(() => !!(window as unknown as Win).fpe);
-  if (id === 'image.trim') {
-    await p.evaluate(async () => {
-      const f = (window as unknown as Win).fpe;
-      f.newDocument(200, 100, null);
-      f.select(20, 20, 50, 40);
-      await f.run('edit.fill');
-    });
-  } else {
-    await p.evaluate(async ([pre, s]) => {
-      const f = (window as unknown as Win).fpe;
-      f.openSample();
-      f.select(s[0], s[1], s[2], s[3]);
-      for (const x of pre) {
-        if (x !== 'apply') { await f.run(x); continue; }
-        for (let i = 0; i < 100 && !document.querySelector('[data-testid="adj-apply"]'); i++) await new Promise((r) => setTimeout(r, 50));
+  const miss = await p.evaluate(async ([trim, pre, s]) => {
+    const f = (window as unknown as Win).fpe, said = (): string => document.querySelector('[data-testid="toast"]')?.textContent?.trim() || 'no message';
+    const wait = async (done: () => boolean): Promise<boolean> => { for (let i = 0; i < 100 && !done(); i++) await new Promise((r) => setTimeout(r, 50)); return done(); };
+    if (trim) { f.newDocument(200, 100, null); f.select(20, 20, 50, 40); } else { f.openSample(); f.select(s[0], s[1], s[2], s[3]); }
+    for (const x of pre) {
+      if (x === 'apply') {
+        await wait(() => !!document.querySelector('[data-testid="adj-apply"]'));
         (document.querySelector('[data-testid="adj-apply"]') as HTMLElement | null)?.click();
-        for (let i = 0; i < 100 && !f.state().lastFilter; i++) await new Promise((r) => setTimeout(r, 50));
+        if (!(await wait(() => !!f.state().lastFilter))) return `apply: no filter was applied (${said()})`;
+        continue;
       }
-    }, [PREP[id] ?? [], SEL] as const);
-  }
+      const t = document.querySelector('[data-testid="toast"]');
+      if (t) t.textContent = '';
+      const before = JSON.stringify(f.state());
+      if (!(await f.run(x))) return `${x} was refused: ${said()}`;
+      if (!(await wait(() => JSON.stringify(f.state()) !== before))) return `${x} changed nothing: ${said()}`;
+    }
+    return '';
+  }, [id === 'image.trim', id === 'image.trim' ? ['edit.fill'] : PREP[id] ?? [], SEL] as const);
   await p.evaluate(() => { const t = document.querySelector('[data-testid="toast"]'); if (t) t.textContent = ''; });
+  return miss;
 }
 function rowsVisible(p: Page): Promise<{ rows: number; layers: number; visible: number }> {
   return p.evaluate(() => {
@@ -221,7 +226,8 @@ suite('W1 workspace (headless Chrome)', () => {
     const bad: string[] = [], aiSeen: string[] = [], fetched: string[] = [];
     p.on('request', (r) => { if (/huggingface\.co|\.hf\.co\/|cdn\.jsdelivr\.net/.test(r.url())) fetched.push(r.url()); });
     for (const c of ready) {
-      await prepared(p, c.id);
+      const miss = await prepared(p, c.id);
+      if (miss) { bad.push(`${c.id}: set-up step ${miss}`); continue; }
       const before = await sig(p), ok = await run(p, c.id);
       await p.waitForTimeout(60);
       if (!ok) bad.push(`${c.id}: not available`);
@@ -236,7 +242,7 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(bad).toEqual([]);
     expect(aiSeen.length, 'AI commands checked').toBeGreaterThanOrEqual(3);
     expect(fetched, 'nothing downloaded from the AI hosts').toEqual([]);
-    await prepared(p, 'none');
+    expect(await prepared(p, 'none')).toBe('');
     const accepted: string[] = [];
     for (const c of planned) if (await run(p, c.id)) accepted.push(c.id);
     expect(accepted).toEqual([]);

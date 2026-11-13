@@ -165,6 +165,8 @@ export function renderAdjustProps(el: HTMLElement, host: MaskPropsHost): void {
 export function renderFillProps(el: HTMLElement, host: MaskPropsHost): void {
   const l = host.layer(), f = l?.fill;
   if (!l || !f) return;
+  // A colour fade or pattern layer: its settings live with the effects engine (fxprops.ts), loaded on first use.
+  if (f.type !== 'solid') { void import('./fxprops').then((m) => m.renderFillLayerProps(el, host)); return; }
   const id = `fpe-${host.uid}-fill`, inp = h('input', { id, type: 'color', value: toHex(f.color), 'data-testid': 'fill-color' }) as HTMLInputElement;
   let start: FillLayer | null = null;
   inp.addEventListener('input', () => {

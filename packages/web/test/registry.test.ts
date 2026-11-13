@@ -165,7 +165,9 @@ describe('the Task ribbon', () => {
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
       // Batch shapes-text (pathops).
-      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']);
+      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
+      // Automate and batch (automate.ts).
+      'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

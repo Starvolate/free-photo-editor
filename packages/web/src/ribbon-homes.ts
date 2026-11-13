@@ -142,7 +142,9 @@ export const ALWAYS: { group: string; ids: string[] }[] = [
   { group: 'App bar', ids: words('help.search edit.undo edit.redo file.export') },
   { group: 'Picture tabs', ids: words('file.new file.close') },
   { group: 'Your tools', ids: words('tool.move tool.select-rect tool.brush tool.eraser tool.crop tool.type') },
-  { group: 'Layers card', ids: words('panel.layers layer.new layer.mask-add layer.duplicate layer.delete layer.hide layer.lock') },
+  // The Layers card has no Mask button yet (it comes with the Layers card work), so Add a mask is promised at its tab home,
+  // Effects & masks › Hide parts (2 clicks), not here. Put layer.mask-add back on this line when the card shows the button.
+  { group: 'Layers card', ids: words('panel.layers layer.new layer.duplicate layer.delete layer.hide layer.lock') },
   { group: 'History', ids: words('panel.history edit.history-back edit.history-forward') },
   { group: 'Properties', ids: words('panel.properties') },
   { group: 'Zoom', ids: words('view.zoom-out view.zoom-in view.fit') },

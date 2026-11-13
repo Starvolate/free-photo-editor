@@ -47,16 +47,32 @@
 .fpe-rpill .fpe-icon{width:12px;height:12px;color:var(--muted)}
 .fpe-rpill:hover,.fpe-rpill[aria-expanded=true]{background:var(--hover)}
 .fpe-rpill:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-/* When a tab does not fit (ribbon.ts fit()), step 1 tightens spacing; step 2 narrows buttons, wraps tile words onto three
-   lines over a shorter preview and leaves the pro name to the hover card, so nothing is cut off at the right edge. */
-.fpe-rbody[data-fit="1"] .fpe-rgroup,.fpe-rbody[data-fit="2"] .fpe-rgroup{padding:0 5px}
-.fpe-rbody[data-fit="1"] .fpe-rmore,.fpe-rbody[data-fit="2"] .fpe-rmore{width:26px}
+/* The editor's `.fpe button{font:inherit}` outranks a single class, so the ribbon's own sizes need the higher rank below:
+   without it every ribbon button drew at 13 px on 18 px lines, labels wrapped onto extra lines and pushed the group
+   captions out of the bottom of the ribbon. */
+.fpe :is(.fpe-rbig,.fpe-rtile){font-size:12px;line-height:14px}
+.fpe :is(.fpe-rsmall,.fpe-rpill){font-size:12.5px}
+.fpe .fpe-rmore{font-size:12px}
+/* When a tab does not fit its width or its height (ribbon.ts fit()), each step keeps the one before it: 1 tightens spacing;
+   2 narrows buttons, shortens tile previews and leaves the pro name to the hover card; 3 packs small buttons and gaps;
+   4 lets a long small-button label take two lines. Nothing is cut off, and the ribbon keeps one height on every tab. */
+.fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rgroup{padding:0 5px}
+.fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rmore{width:26px}
 .fpe-rbody[data-fit="1"] .fpe-rbig{max-width:104px}
-.fpe-rbody[data-fit="2"] .fpe-rbig{max-width:92px}
-.fpe-rbody[data-fit="2"] .fpe-rbig:not(.fpe-rgroupbtn) .fpe-pro{display:none}
-.fpe-rbody[data-fit="2"] .fpe-rtile{width:72px;min-width:72px}
-.fpe-rbody[data-fit="2"] .fpe-rtile .fpe-rico{height:30px}
-.fpe-rbody[data-fit="2"] .fpe-rtile>.fpe-tag{top:18px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig{max-width:92px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig:not(.fpe-rgroupbtn) .fpe-pro{display:none}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile{width:72px;min-width:72px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile .fpe-rico{height:30px}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile>.fpe-tag{top:18px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]){padding-left:4px;padding-right:4px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rgroup{padding:0 3px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-ritems{gap:2px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rmore{width:22px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rbig{max-width:84px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rsmall{gap:4px;padding:0 4px 0 3px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rsmall .fpe-tag{padding:0 4px}
+.fpe-rbody[data-fit="4"] .fpe-rsmall{max-width:150px;white-space:normal;line-height:13px;text-align:left}
+.fpe-rbody[data-fit="4"] .fpe-rsmall>:is(.fpe-icon,.fpe-tag){flex:none}
 /* The History card (layout A): the last steps under the Properties card, with step back and forward in its head. */
 .fpe[data-ribbon] .fpe-group[data-group=props] .fpe-gbody{max-height:140px}
 .fpe[data-ribbon] .fpe-group[data-group=history] .fpe-gbody{max-height:96px}

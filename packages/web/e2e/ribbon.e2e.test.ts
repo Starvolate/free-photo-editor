@@ -191,19 +191,23 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     await rest(p);
     const ID = /^[a-z]+\.[a-z0-9.-]+$/;
     const lines = (sel: string): Promise<string[]> => p.$$eval(sel, (els) => els.flatMap((e) => (e as HTMLElement).innerText.split('\n')).map((x) => x.trim()).filter(Boolean));
-    const raw: string[] = [], bad: string[] = [], log: string[] = [];
+    const raw: string[] = [], bad: string[] = [], log: string[] = [], heights = new Set<number>();
     for (const t of TABS) {
       await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
       raw.push(...(await lines('.fpe-top, .fpe-rtabs, [data-testid="ribbon-body"]')).filter((x) => ID.test(x)).map((x) => `${t.plain}: ${x}`));
       const m = await p.evaluate(() => {
-        const b = document.querySelector<HTMLElement>('[data-testid="ribbon-body"]')!, rb = b.getBoundingClientRect();
-        return { over: b.scrollWidth - b.clientWidth, fit: b.dataset.fit ?? '',
-          cut: [...b.querySelectorAll<HTMLElement>('.fpe-rcap')].filter((c) => c.getBoundingClientRect().bottom > rb.bottom + 1).map((c) => 'caption below the ribbon: ' + c.textContent),
+        // The visible box of the ribbon body: its top plus its client height, so a horizontal scroll bar does not count as room.
+        const b = document.querySelector<HTMLElement>('[data-testid="ribbon-body"]')!, rb = b.getBoundingClientRect(), floor = rb.top + b.clientTop + b.clientHeight;
+        return { over: b.scrollWidth - b.clientWidth, fit: b.dataset.fit ?? '', height: Math.round(document.querySelector<HTMLElement>('.fpe-ribbon')!.getBoundingClientRect().height),
+          cut: [...b.querySelectorAll<HTMLElement>('.fpe-rcap')].filter((c) => c.getBoundingClientRect().bottom > floor + 0.5).map((c) => 'caption below the ribbon: ' + c.textContent),
           clipped: [...b.querySelectorAll<HTMLElement>('.fpe-rlabel, .fpe-plain')].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1).map((e) => 'word cut: ' + e.textContent) };
       });
-      log.push(`${t.plain}: fit ${m.fit}, ${m.over > 1 ? m.over + ' px too wide' : 'fits'}${m.cut.length + m.clipped.length ? ', ' + [...m.cut, ...m.clipped].join('; ') : ''}`);
-      // Filters & blur and the first-run tab must fit whole; the others are logged for R3.
-      if (t.plain === 'Filters & blur' || 'rtab-' + slug(t.plain) === FIRST) bad.push(...[...(m.over > 1 ? [`${m.over} px too wide`] : []), ...m.cut, ...m.clipped].map((x) => `${t.plain}: ${x}`));
+      heights.add(m.height);
+      log.push(`${t.plain}: fit ${m.fit}, ribbon ${m.height} px tall, ${m.over > 1 ? m.over + ' px too wide' : 'fits'}${m.cut.length + m.clipped.length ? ', ' + [...m.cut, ...m.clipped].join('; ') : ''}`);
+      // Every group caption is inside the ribbon on every tab. Filters & blur and the first-run tab must also fit their width
+      // with no word cut; the other tabs' width is logged for R3.
+      bad.push(...m.cut.map((x) => `${t.plain}: ${x}`));
+      if (t.plain === 'Filters & blur' || 'rtab-' + slug(t.plain) === FIRST) bad.push(...[...(m.over > 1 ? [`${m.over} px too wide`] : []), ...m.clipped].map((x) => `${t.plain}: ${x}`));
       if (t.plain === 'Effects & masks') await p.screenshot({ path: join(OUT, 'r2-effects-1440.png') });
       for (const more of await p.$$eval('[data-testid="ribbon-body"] [data-testid^="rmore-"]', (els) => els.map((e) => e.getAttribute('data-testid') ?? ''))) {
         await p.click(`[data-testid="${more}"]`);
@@ -221,6 +225,7 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     console.log('R2 ribbon at 1440 x 900, per tab:\n' + log.join('\n'));
     expect(raw, 'ids shown as labels').toEqual([]);
     expect(bad).toEqual([]);
+    expect([...heights], 'the ribbon keeps one height on every tab').toHaveLength(1);
   }, 120_000);
 
   it('the hover card shows the plain name, the pro name, the help line and the ribbon home', async () => {

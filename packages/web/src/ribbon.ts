@@ -190,11 +190,15 @@ export function mountRibbon(host: RibbonHost): Ribbon {
       h('div', { class: 'fpe-ritems' }, h('div', { class: 'fpe-rfamrows' }, ...rows)),
       h('div', { class: 'fpe-rcap', 'data-help-title': FAMILIES, 'data-help': 'Each opens its own list. Pros call this the Filter menu.' }, FAMILIES));
   };
-  /** Tightens the ribbon a step at a time (spacing, then narrower buttons) until the open tab fits without scrolling. */
+  /**
+   * Tightens the ribbon a step at a time (ribbon.css: spacing, narrower buttons, packed small buttons, two-line small
+   * labels) until the open tab fits its width without scrolling and its height with every group caption showing. The
+   * ribbon's height never changes between tabs; only what is inside it tightens.
+   */
   const fit = (): void => {
     body.dataset.fit = '0';
-    for (const lvl of ['1', '2']) {
-      if (!body.clientWidth || body.scrollWidth <= body.clientWidth + 1) return;
+    for (const lvl of ['1', '2', '3', '4']) {
+      if (!body.clientWidth || (body.scrollWidth <= body.clientWidth + 1 && body.scrollHeight <= body.clientHeight + 1)) return;
       body.dataset.fit = lvl;
     }
   };

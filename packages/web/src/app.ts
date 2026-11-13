@@ -1113,7 +1113,8 @@ export class Editor {
       const title = r?.plain ?? el.dataset.helpTitle ?? el.getAttribute('aria-label') ?? '';
       this.tipEl.replaceChildren(...[h('span', { class: 'fpe-tip-head' }, h('strong', {}, title), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, r.pro) : null,
         r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), h('span', { class: 'fpe-tip-help' }, help),
-        r && r.kind === 'command' ? h('span', { class: 'fpe-tip-place' }, 'In ' + this.placeOf(r)) : null,
+        // Where to find it again: every command, and a tool too when it is hovered on the ribbon (its home is a ribbon group).
+        r && (r.kind === 'command' || el.closest('.fpe-ribbon, .fpe-rlist')) ? h('span', { class: 'fpe-tip-place' }, 'In ' + this.placeOf(r)) : null,
         el.getAttribute('aria-disabled') === 'true' && r?.status === 'ready' ? h('span', { class: 'fpe-tip-place' }, this.doc ? 'Not available right now.' : 'Open or create a picture first.') : null].filter((x): x is HTMLElement => !!x));
       this.tipEl.hidden = false;
       const rr = root.getBoundingClientRect(), er = el.getBoundingClientRect(), tw = this.tipEl.offsetWidth, th = this.tipEl.offsetHeight;

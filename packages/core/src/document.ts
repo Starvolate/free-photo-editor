@@ -38,6 +38,37 @@ export interface Layer {
   adjust?: AdjustLayer;
   /** Colour layers (kind 'fill'): what fills the canvas. A value object. */
   fill?: FillLayer;
+  /** Layer effects (design 2.7): shadows, glows, outlines and overlays drawn live from the layer's shape. A value object. */
+  fx?: LayerEffects;
+  /** 0..1: how solid the layer's own pixels are; its effects stay (Fill). Absent = 1. */
+  fillOpacity?: number;
+}
+/** What every layer effect has: switched on, how it mixes, and how strong it is (0..1). */
+export interface FxBase { on: boolean; blend: BlendMode; opacity: number; psd?: unknown; }
+/** A drop shadow or an inner shadow: angle in degrees (where the light comes from), distance, spread (%; choke for inner) and size in px. */
+export interface FxShadow extends FxBase { color: RGBA; angle: number; distance: number; spread: number; size: number; }
+/** An outer or inner glow: spread (%) and size in px; an inner glow shines from the edge or the centre. */
+export interface FxGlow extends FxBase { color: RGBA; spread: number; size: number; from?: 'edge' | 'centre'; }
+export interface FxColor extends FxBase { color: RGBA; }
+/** One colour stop of a gradient overlay: `at` from 0 to 1. */
+export interface FxStop { at: number; color: RGBA; }
+export interface FxGradient extends FxBase { stops: FxStop[]; shape: 'linear' | 'radial'; angle: number; scale: number; reverse: boolean; }
+export interface FxStroke extends FxBase { size: number; where: 'inside' | 'centre' | 'outside'; color: RGBA; }
+export interface FxSatin extends FxBase { color: RGBA; angle: number; distance: number; size: number; invert: boolean; }
+export interface FxPattern extends FxBase { pattern: string; scale: number; }
+/** The layer's effects. The kinds that allow several copies are lists; the others are one each. A value object. */
+export interface LayerEffects {
+  on: boolean;
+  dropShadow: FxShadow[]; innerShadow: FxShadow[]; colorOverlay: FxColor[]; gradientOverlay: FxGradient[]; stroke: FxStroke[];
+  outerGlow?: FxGlow; innerGlow?: FxGlow; satin?: FxSatin; patternOverlay?: FxPattern; bevel?: unknown;
+}
+/** True when the layer has at least one effect switched on (and its effects as a whole are on). */
+export function hasLayerFx(l: { fx?: LayerEffects }): boolean {
+  const f = l.fx;
+  if (!f || !f.on) return false;
+  const on = (e: { on: boolean } | undefined): boolean => !!e && e.on;
+  return f.dropShadow.some(on) || f.innerShadow.some(on) || f.colorOverlay.some(on) || f.gradientOverlay.some(on) || f.stroke.some(on)
+    || on(f.outerGlow) || on(f.innerGlow);
 }
 /**
  * An editable light and colour layer (design 2.5): `from` is the Image › Adjustments dialog's id (it picks the controls and

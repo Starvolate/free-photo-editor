@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 276 Ready, 399 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 285 Ready, 390 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-all Planned, which never join the menu bar: search lists them with their "Planned" tag, and the Task ribbon gives each one a home.
+259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 276 | 25 | 121 | 130 | 0 |
+| Ready today | 285 | 25 | 124 | 136 | 0 |
 
 ## The Task ribbon
 
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (10 Ready, 12 Planned)
+## Panels (Window menu and the dock) (11 Ready, 11 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -506,7 +506,7 @@ Groups: Screen mode · Screen mode.
 | panel.navigator | Navigator | Navigator | A small view of the whole picture; drag the box to move around. | overview, minimap | Window | View sheet | Ready | W1 |  |
 | panel.info | Info | Info | Position and colour under the pointer, and the picture's size. | coordinates, rgb values, pixel colour | Window | View sheet | Ready | W1 | F8 |
 | panel.channels | Colour channels | Channels | See the red, green, blue and see-through channels one by one. | channels | Window | View sheet | Planned | 2 |  |
-| panel.paths | Paths | Paths | Outlines you drew with the pen. | paths | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
+| panel.paths | Outlines | Paths | Outlines you drew with the pen: pick, rename, delete, or turn one into a selection. | paths, outlines, saved path, work path | Window | Shapes & text › Draw outlines · More list | Ready | 6 |  |
 | panel.character | Text style | Character | Font, size and spacing of text. | font size | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | Window | Paint & draw › Brush settings · small button | Planned | 4 |  |
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · small button | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (40 Ready, 25 Planned)
+## Tools (46 Ready, 19 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -570,16 +570,16 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.dodge | Lighten by painting | Dodge | Paint to lighten just where you want. | lighten part, brighten eyes | Tools › Light | Retouch & remove › Touch up by painting · small button | Ready | W3 | O |
 | tool.burn | Darken by painting | Burn | Paint to darken just where you want. | darken part | Tools › Light | Retouch & remove › Touch up by painting · small button | Ready | W3 |  |
 | tool.sponge | Colour strength by painting | Sponge | Paint to make colours stronger or weaker. | saturate part | Tools › Light | Retouch & remove › Touch up by painting · small button | Ready | W3 |  |
-| tool.pen | Draw curves | Pen | Click and drag to draw exact curves. | bezier, outline | Tools › Pen | Shapes & text › Draw outlines · big button | Planned | 6 | P |
+| tool.pen | Draw curves | Pen | Click for corners, drag for smooth curves; click the first point to close the outline. | bezier, outline, curve, draw path, trace | Tools › Pen | Shapes & text › Draw outlines · big button | Ready | 6 | P |
 | tool.pen-free | Draw outlines freely | Freeform pen | Draw an outline freely like a pencil. | freeform | Tools › Pen | Shapes & text › Draw outlines · small button | Planned | 6 |  |
-| tool.anchor-add | Add a point | Add anchor point | Add a point to an outline. | add point | Tools › Pen | Shapes & text › Draw outlines · More list | Planned | 6 |  |
-| tool.anchor-delete | Remove a point | Delete anchor point | Remove a point from an outline. | remove point | Tools › Pen | Shapes & text › Draw outlines · More list | Planned | 6 |  |
-| tool.anchor-convert | Change a corner | Convert point | Switch a point between sharp and smooth. | corner | Tools › Pen | Shapes & text › Draw outlines · More list | Planned | 6 |  |
+| tool.anchor-add | Add a point | Add anchor point | Press on an outline's line to add a point there without changing its shape. | add point | Tools › Pen | Shapes & text › Draw outlines · More list | Ready | 6 |  |
+| tool.anchor-delete | Remove a point | Delete anchor point | Press a point of an outline to remove it. | remove point | Tools › Pen | Shapes & text › Draw outlines · More list | Ready | 6 |  |
+| tool.anchor-convert | Change a corner | Convert point | Switch a point between sharp and smooth, or drag a handle to move it alone. | corner, smooth point, sharp point | Tools › Pen | Shapes & text › Draw outlines · More list | Ready | 6 |  |
 | tool.type | Text | Horizontal type | Click and type words on the picture. | text, words, caption | Tools › Text | Shapes & text › Text · big button | Ready | W3 | T |
 | tool.type-vertical | Up-down text | Vertical type | Type words from top to bottom. | vertical text | Tools › Text | Shapes & text › Text · More list | Planned | 6 |  |
 | tool.type-mask | Text-shaped selection | Type mask | Type words to select their shape. | text selection | Tools › Text | Shapes & text › Text · More list | Planned | 6 |  |
-| tool.path-select | Pick a whole outline | Path selection | Click an outline to move it. | select path | Tools › Path select | Shapes & text › Draw outlines · small button | Planned | 6 | A |
-| tool.direct-select | Pick outline points | Direct selection | Click points of an outline to move them. | edit points | Tools › Path select | Shapes & text › Draw outlines · small button | Planned | 6 |  |
+| tool.path-select | Pick a whole outline | Path selection | Press an outline to pick it, then drag to move all of it. | select path, move outline | Tools › Path select | Shapes & text › Draw outlines · small button | Ready | 6 | A |
+| tool.direct-select | Pick outline points | Direct selection | Drag one point or handle of an outline to reshape it. | edit points, move point, reshape outline | Tools › Path select | Shapes & text › Draw outlines · small button | Ready | 6 |  |
 | tool.rect | Rectangle | Rectangle | Drag to draw a rectangle. | box, square shape | Tools › Shapes | Shapes & text › Shapes · small button | Ready | W3 | U |
 | tool.rounded-rect | Rounded rectangle | Rounded rectangle | Drag to draw a box with round corners; set how round in the options bar. | rounded box, button shape, pill | Tools › Shapes | Shapes & text › Shapes · small button | Ready | W3 |  |
 | tool.ellipse | Circle or oval | Ellipse | Drag to draw an oval; hold Shift for a circle. | circle shape | Tools › Shapes | Shapes & text › Shapes · small button | Ready | W3 |  |
@@ -592,9 +592,9 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (261 Planned), by home
+## New functions from the feature census (259 Planned, 2 Ready), by home
 
-Not in the menu bar. Search finds them by plain name, pro name or wish words and shows them as Planned.
+Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
 ### Effects & masks (18)
 
@@ -628,8 +628,8 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words and
 | select.depth | U016 | Select by distance from camera | Depth range mask | Select near, middle or far parts using the picture's estimated depth. | depth mask, select by distance, near and far, background by depth | Select & cut out › Select with AI · More list | Planned | B10 |
 | select.foreground | U017 | Cut out the subject by painting rough marks | Foreground Select | Paint rough in/out strokes and it separates a subject with matting. | foreground select, rough cut out, scribble to cut out, matting | Select & cut out › Draw or paint · More list | Planned | B10 |
 | select.luminance | U018 | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | Select & cut out › By colour or light · small button | Planned | B10 |
-| select.from-path | U019 | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | Select & cut out › Perfect and keep · More list | Planned | B4 |
-| select.to-path | U020 | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | Select & cut out › Perfect and keep · More list | Planned | B4 |
+| select.from-path | U019 | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | Select & cut out › Perfect and keep · More list | Ready | B4 |
+| select.to-path | U020 | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | Select & cut out › Perfect and keep · More list | Ready | B4 |
 | select.from-alpha | U021 | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's opacity or mask, combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | Select & cut out › Perfect and keep · More list | Planned | B10 |
 | select.remove-holes | U103 | Fill holes in a selection | Remove Holes | Closes small unselected gaps inside a selection. | fill holes in selection, close gaps in selection, solid selection | Select & cut out › Change it · More list | Planned | T3 |
 | select.distort | U104 | Roughen the selection edge | Distort selection | Makes a selection edge irregular and hand-torn. | rough edge, torn edge, distort selection, irregular selection | Select & cut out › Change it · More list | Planned | T3 |

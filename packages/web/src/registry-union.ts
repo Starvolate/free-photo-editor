@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * The functions the feature census found in other editors and none of our map's rows does (U001 to U261), all
- * Planned. They never join today's menu bar: search loads this file the first time someone types, and lists them with
+ * The functions the feature census found in other editors and none of our map's rows does (U001 to U261), Planned
+ * until their wave builds them. They never join today's menu bar: search loads this file the first time someone types, and lists them with
  * their "Planned" tag; the ribbon (ribbon-homes.ts) gives each one its home.
  *
  * Row format: id | plain name | pro name | one plain line of help | wish words | phase | home (tab > group, or a sheet) | census number
+ * [| R once built: the row is then Ready, and keeps its number and home]
  */
 import { addRows, type Row } from './registry';
 
@@ -28,8 +29,8 @@ select.people | Select people and body parts | Select People (hair, skin, eyes, 
 select.depth | Select by distance from camera | Depth range mask | Select near, middle or far parts using the picture's estimated depth. | depth mask, select by distance, near and far, background by depth | B10 | Select & cut out > Select with AI | U016
 select.foreground | Cut out the subject by painting rough marks | Foreground Select | Paint rough in/out strokes and it separates a subject with matting. | foreground select, rough cut out, scribble to cut out, matting | B10 | Select & cut out > Draw or paint | U017
 select.luminance | Select by brightness | Luminance range | Select the light, middle or dark parts, with a soft falloff you can tune. | luminosity mask, luminance range, select bright parts, select dark parts | B10 | Select & cut out > By colour or light | U018
-select.from-path | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | B4 | Select & cut out > Perfect and keep | U019
-select.to-path | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | B4 | Select & cut out > Perfect and keep | U020
+select.from-path | Selection from a path | Selection From Paths | Turns a drawn outline into a selection. | path to selection, outline to selection, load path | B4 | Select & cut out > Perfect and keep | U019 | R
+select.to-path | Selection to a path | To Path | Turns a selection into an editable outline. | selection to path, make path, make outline | B4 | Select & cut out > Perfect and keep | U020 | R
 select.from-alpha | Selection from a layer's see-through part (add, subtract, intersect) | Alpha to Selection (and add/subtract/intersect) | Builds a selection from a layer's opacity or mask, combined with the current one. | alpha to selection, select layer pixels, select opaque area, layer transparency | B10 | Select & cut out > Perfect and keep | U021
 retouch.distractions | Remove distracting people or wires in one click | Distraction removal (Remove people, Wires and cables) | Auto-find tourists, wires and cables and clear them. | remove people, remove wires, remove power lines, remove tourists, clean up background | B11 | Retouch & remove > Remove | U022
 retouch.fill-from-photo | Fill using a second photo | Multi-image Content-Aware Fill | Fill a hole with pixels borrowed from another photo of the same scene. | fill from another photo, multi image fill, borrow from second photo | B11 | Retouch & remove > Remove | U023
@@ -300,9 +301,10 @@ export const NEW_PHASES: Record<string, string> = {
 export const CENSUS = new Map<string, string>();
 
 export const NEW_ROWS: Row[] = SRC.trim().split('\n').map((line) => {
-  const [id, plain, pro, help, wish, phase, place, u] = line.split(' | ');
+  const [id, plain, pro, help, wish, phase, place, u, built] = line.split(' | ');
   CENSUS.set(id, u);
-  return { id, plain, pro, help, wish, place, status: 'planned', phase, key: '', kind: 'command', sep: false };
+  // A ninth column "R" marks a census row that has been built (it keeps its census number, home and wave).
+  return { id, plain, pro, help, wish, place, status: built === 'R' ? 'ready' : 'planned', phase, key: '', kind: 'command', sep: false };
 });
 
 addRows(NEW_ROWS);

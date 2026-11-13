@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** The document model: a size, layers from bottom (index 0) to top, the active layer and a selection. */
+import type { VectorPath } from './path';
 import type { BlendMode } from './blend';
 import { compositeRect } from './composite';
 import { WHITE, type RGBA } from './color';
@@ -61,6 +62,8 @@ export interface Doc {
   width: number; height: number; layers: Layer[]; activeId: string; selection: Selection | null;
   /** Print resolution in dots (pixels) per inch; 72 when not set (dpi.ts). It never changes the pixels. */
   dpi?: number;
+  /** Outlines drawn with the pen (path.ts), kept beside the selection; plain data, so autosave keeps them. */
+  paths?: VectorPath[];
 }
 export interface LayerGeom { x: number; y: number; width: number; height: number; data: Uint8ClampedArray; }
 

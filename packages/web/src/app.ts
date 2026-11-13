@@ -922,8 +922,8 @@ export class Editor {
       this.infoBody = h('dl', { class: 'fpe-info', 'data-testid': 'info' });
       b.append(this.infoBody);
     }
-    if (pid === 'character' || pid === 'paragraph') {
-      b.append(h('p', { class: 'fpe-note' }, 'Getting the text settings ready…'));
+    if (pid === 'character' || pid === 'paragraph' || pid === 'paths') {
+      b.append(h('p', { class: 'fpe-note' }, pid === 'paths' ? 'Getting the outlines ready…' : 'Getting the text settings ready…'));
       void this.toolkit().then((tk) => tk.fillPanel(pid, b));
     }
     this.bodies.set(pid, b);

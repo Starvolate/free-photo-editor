@@ -19,6 +19,7 @@ import {
 import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
+import { PEN_TOOLS, createPenKit } from './pen';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
 
@@ -1218,10 +1219,21 @@ export function createToolKit(host: ToolHost): ToolKit {
     }
   }
 
+  // The pen and its outline tools (pen.ts) ride along in this file's chunk.
+  const pen = createPenKit(host, setSel), penOn = (): boolean => PEN_TOOLS.has(host.tool());
   return {
     claims: (t) => TK_TOOLS.has(t) || !!xf || (!!qm && (t === 'brush' || t === 'pencil' || t === 'eraser')),
-    start, move, end, cancel, options, decorate, overlay, cmd, fillPanel,
+    start: (p, i) => (penOn() ? pen.start(p, i) : start(p, i)),
+    move: (p, i) => (penOn() ? pen.move(p, i) : move(p, i)),
+    end: (p, i) => (penOn() ? pen.end(p, i) : end(p, i)),
+    cancel: () => { pen.cancel(); cancel(); },
+    options: (bar, t) => (PEN_TOOLS.has(t) ? pen.options(bar, t) : options(bar, t)),
+    overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); },
+    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : cmd(id)),
+    fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),
+    decorate,
     key(e) {
+      if (pen.key(e)) return true;
       const k = e.key, mod = e.ctrlKey || e.metaKey;
       if (te && (k === 'Escape' || (k === 'Enter' && mod))) { commitText(); return true; }
       if (xf && (k === 'Enter' || k === 'Escape')) { endXf(k === 'Enter'); return true; }
@@ -1234,6 +1246,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       return false;
     },
     toolChanged(prev, next) {
+      pen.toolChanged(prev, next);
       if (prev === 'type' && te) commitText();
       if (prev === 'lasso-poly') poly = null;
       if (prev === 'remove' && rm && !rm.busy) rm = null;
@@ -1245,10 +1258,10 @@ export function createToolKit(host: ToolHost): ToolKit {
       const d = doc(), sel = d?.selection, l = d ? activeLayer(d) : undefined;
       return { quickMask: !!qm, transform: xf ? `${xf.mode}:${xf.target}` : null, polygon: poly?.pts.length ?? 0, editingText: !!te, source: !!src,
         savedSel: !!(d && saved.get(d)), shaped: !!sel?.alpha, selected: sel && d ? countSelected(maskFromSelection(sel, d.width, d.height)) : 0,
-        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [] };
+        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [], paths: pen.state() };
     },
     cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : t === 'remove' ? S.rm : null; },
-    refresh() { for (const [pid, b] of panels) fillPanel(pid, b); },
+    refresh() { for (const [pid, b] of panels) fillPanel(pid, b); pen.refresh(); },
     activity() {
       if (xf) {
         const [plain, pro, help] = XF_NAMES[xf.mode] ?? XF_NAMES.free;

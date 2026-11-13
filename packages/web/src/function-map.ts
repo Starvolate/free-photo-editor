@@ -35,7 +35,7 @@ export function functionMapMarkdown(): string {
     'pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.', '',
     `**${c.total} functions: ${c.ready} Ready, ${c.planned} Planned** (${c.tools} tools, ${c.panels} panels, ${c.menus} menus and submenus).`,
     `${mapRows.length} are today's menu, tool and panel rows; ${NEW_ROWS.length} are new functions from the feature census (U001 to U${NEW_ROWS.length}),`,
-    'all Planned, which never join the menu bar: search lists them with their "Planned" tag, and the Task ribbon gives each one a home.', '',
+    `${NEW_ROWS.filter((r) => r.status !== 'ready').length} of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.`, '',
     '## Reach on the Task ribbon', '',
     'Counted from the resting screen (a photo open, nothing else opened): what never leaves the screen is 1 click; a tab and',
     'its command, or an app-bar sheet and its item, is 2; a More list, a family sheet or a group shrunk to its button is 3.',
@@ -83,8 +83,9 @@ export function functionMapMarkdown(): string {
     if (subs.length) out.push('Groups: ' + subs.map((m) => `${m.plain} · ${m.pro}`).join('; ') + '.', '');
     table(rows, false);
   }
-  out.push(`## New functions from the feature census (${NEW_ROWS.length} Planned), by home`, '',
-    'Not in the menu bar. Search finds them by plain name, pro name or wish words and shows them as Planned.', '');
+  const built = NEW_ROWS.filter((r) => r.status === 'ready').length;
+  out.push(`## New functions from the feature census (${NEW_ROWS.length - built} Planned, ${built} Ready), by home`, '',
+    'Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.', '');
   for (const where of [...TABS.map((t) => t.plain), ...SHEETS.map((s) => s.plain)]) {
     const rows = NEW_ROWS.filter((r) => home.get(r.id)?.tab === where);
     if (!rows.length) continue;

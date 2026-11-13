@@ -154,9 +154,12 @@ describe('the Task ribbon', () => {
     const inMenus = new Set([...MENU_ITEMS.values()].flat().flatMap((e) => (e.type === 'item' ? [e.row.id] : [])));
     const h = homes();
     expect(NEW_ROWS.length).toBe(261);
+    // Built so far (wave 4): a selection from an outline and an outline from the selection.
+    const BUILT = new Set(['select.from-path', 'select.to-path']);
+    expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);
-      expect([r.status, r.key, r.kind], r.id).toEqual(['planned', '', 'command']);
+      expect([r.status, r.key, r.kind], r.id).toEqual([BUILT.has(r.id) ? 'ready' : 'planned', '', 'command']);
       expect(r.wish.split(',').length, r.id).toBeGreaterThanOrEqual(2);
       expect(NEW_PHASES[r.phase], r.id).toBeTruthy();
       const home = h.get(r.id)!;

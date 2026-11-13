@@ -37,7 +37,8 @@ export function plainDoc(d: Doc, withContent = true): Doc {
   };
   const s = d.selection;
   return { width: d.width, height: d.height, ...(d.dpi ? { dpi: d.dpi } : {}), activeId: d.activeId, layers: d.layers.map(layer),
-    selection: s ? { x: s.x, y: s.y, w: s.w, h: s.h, ...(s.alpha ? { alpha: s.alpha } : {}) } : null };
+    selection: s ? { x: s.x, y: s.y, w: s.w, h: s.h, ...(s.alpha ? { alpha: s.alpha } : {}) } : null,
+    ...(d.paths?.length ? { paths: d.paths } : {}) };
 }
 /** "photo.jpg and 2 more" */
 export function namesText(list: { name: string }[]): string {

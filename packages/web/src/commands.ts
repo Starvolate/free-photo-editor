@@ -12,7 +12,8 @@ import type { Editor } from './app';
 export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom'
   | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'object-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
   | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
-  | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove';
+  | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove'
+  | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -243,6 +244,9 @@ export const W3_TOOLS: Record<string, ToolId> = {
   'tool.red-eye': 'red-eye', 'tool.dodge': 'dodge', 'tool.burn': 'burn', 'tool.sponge': 'sponge', 'tool.blur': 'blur', 'tool.sharpen': 'sharpen',
   'tool.smudge': 'smudge', 'tool.type': 'type', 'tool.rect': 'rect', 'tool.rounded-rect': 'rounded-rect', 'tool.ellipse': 'ellipse',
   'tool.polygon': 'polygon', 'tool.line': 'line',
+  // Wave 4: the pen and its outline tools (pen.ts, inside the tool kit's chunk).
+  'tool.pen': 'pen', 'tool.path-select': 'path-select', 'tool.direct-select': 'direct-select', 'tool.anchor-add': 'anchor-add',
+  'tool.anchor-delete': 'anchor-delete', 'tool.anchor-convert': 'anchor-convert',
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
@@ -372,6 +376,10 @@ for (const id of ['select.color-range', 'select.grow', 'select.similar', 'select
   'edit.rotate', 'edit.skew', 'edit.distort', 'edit.perspective', 'layer.align-left', 'layer.align-hcenter', 'layer.align-right', 'layer.align-top',
   'layer.align-vcenter', 'layer.align-bottom', 'layer.distribute-h', 'layer.distribute-v', 'layer.rasterize', 'type.fonts', 'type.rasterize']) HANDLERS[id] = w3(id);
 for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.contract', 'select.feather', 'select.transform', 'edit.stroke']) HANDLERS[id] = w3(id, hasSel);
+// Wave 4: outlines (pen.ts). The Paths panel sits in the Layers card, so it is not one of the dock's own tabs.
+HANDLERS['select.from-path'] = w3('select.from-path', (e) => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1)));
+HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
+HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 /** W11 on-device AI: ai.ts, loaded on first use. */
 const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);

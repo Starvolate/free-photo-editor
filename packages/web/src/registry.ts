@@ -417,7 +417,7 @@ panel.swatches | Swatches | Swatches | Ready-made colours to pick with one tap. 
 panel.navigator | Navigator | Navigator | A small view of the whole picture; drag the box to move around. | overview, minimap | R | W1
 panel.info | Info | Info | Position and colour under the pointer, and the picture's size. | coordinates, rgb values, pixel colour | R | W1 | F8
 panel.channels | Colour channels | Channels | See the red, green, blue and see-through channels one by one. | channels | P | 2
-panel.paths | Paths | Paths | Outlines you drew with the pen. | paths | P | 6
+panel.paths | Outlines | Paths | Outlines you drew with the pen: pick, rename, delete, or turn one into a selection. | paths, outlines, saved path, work path | R | 6
 panel.character | Text style | Character | Font, size and spacing of text. | font size | R | W3
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
@@ -503,18 +503,18 @@ tool.dodge | Lighten by painting | Dodge | Paint to lighten just where you want.
 tool.burn | Darken by painting | Burn | Paint to darken just where you want. | darken part | R | W3
 tool.sponge | Colour strength by painting | Sponge | Paint to make colours stronger or weaker. | saturate part | R | W3
 @Tools > Pen = Pen | Pen | Draw exact outlines and curves.
-tool.pen | Draw curves | Pen | Click and drag to draw exact curves. | bezier, outline | P | 6 | P
+tool.pen | Draw curves | Pen | Click for corners, drag for smooth curves; click the first point to close the outline. | bezier, outline, curve, draw path, trace | R | 6 | P
 tool.pen-free | Draw outlines freely | Freeform pen | Draw an outline freely like a pencil. | freeform | P | 6
-tool.anchor-add | Add a point | Add anchor point | Add a point to an outline. | add point | P | 6
-tool.anchor-delete | Remove a point | Delete anchor point | Remove a point from an outline. | remove point | P | 6
-tool.anchor-convert | Change a corner | Convert point | Switch a point between sharp and smooth. | corner | P | 6
+tool.anchor-add | Add a point | Add anchor point | Press on an outline's line to add a point there without changing its shape. | add point | R | 6
+tool.anchor-delete | Remove a point | Delete anchor point | Press a point of an outline to remove it. | remove point | R | 6
+tool.anchor-convert | Change a corner | Convert point | Switch a point between sharp and smooth, or drag a handle to move it alone. | corner, smooth point, sharp point | R | 6
 @Tools > Text = Text | Type | Add words to the picture.
 tool.type | Text | Horizontal type | Click and type words on the picture. | text, words, caption | R | W3 | T
 tool.type-vertical | Up-down text | Vertical type | Type words from top to bottom. | vertical text | P | 6
 tool.type-mask | Text-shaped selection | Type mask | Type words to select their shape. | text selection | P | 6
 @Tools > Path select = Pick outlines | Path selection | Select and move outlines.
-tool.path-select | Pick a whole outline | Path selection | Click an outline to move it. | select path | P | 6 | A
-tool.direct-select | Pick outline points | Direct selection | Click points of an outline to move them. | edit points | P | 6
+tool.path-select | Pick a whole outline | Path selection | Press an outline to pick it, then drag to move all of it. | select path, move outline | R | 6 | A
+tool.direct-select | Pick outline points | Direct selection | Drag one point or handle of an outline to reshape it. | edit points, move point, reshape outline | R | 6
 @Tools > Shapes = Shapes | Shape | Draw rectangles, circles, lines and more.
 tool.rect | Rectangle | Rectangle | Drag to draw a rectangle. | box, square shape | R | W3 | U
 tool.rounded-rect | Rounded rectangle | Rounded rectangle | Drag to draw a box with round corners; set how round in the options bar. | rounded box, button shape, pill | R | W3

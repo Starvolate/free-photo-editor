@@ -209,10 +209,11 @@ function toneEqualizer(im: Planes, zones: number[]): void {
 function dehaze(im: Planes, amount: number): void {
   const { w, h } = im, n = w * h, rad = Math.max(2, Math.round(Math.min(w, h) / 60)), D = new Float32Array(n);
   for (let i = 0; i < n; i++) D[i] = Math.min(im.r[i], im.g[i], im.b[i]);
-  const dark = extremePlane(D, w, h, rad, false), order = Array.from(dark.keys()).sort((a, b) => dark[b] - dark[a]).slice(0, Math.max(1, Math.round(n * 0.001)));
-  const A = [0, 0, 0];
-  for (const i of order) { A[0] += im.r[i]; A[1] += im.g[i]; A[2] += im.b[i]; }
-  for (let c = 0; c < 3; c++) A[c] = Math.max(0.05, A[c] / order.length);
+  // The haze colour: the average of the haziest 0.1% (the top of the dark channel), found from a histogram, not a sort.
+  const dark = extremePlane(D, w, h, rad, false), top = quantile(dark, 0.999), A = [0, 0, 0];
+  let cnt = 0;
+  for (let i = 0; i < n; i++) if (dark[i] >= top) { A[0] += im.r[i]; A[1] += im.g[i]; A[2] += im.b[i]; cnt++; }
+  for (let c = 0; c < 3; c++) A[c] = Math.max(0.05, A[c] / Math.max(1, cnt));
   const cs = chans(im);
   if (amount < 0) {
     const k = (-amount / 100) * 0.6;

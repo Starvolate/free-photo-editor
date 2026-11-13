@@ -2,9 +2,10 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * The Task ribbon on desktop (R2) in a real headless Chrome at 1440 x 900: switching tabs by mouse and by keys, the tab
- * that opens on first run and the one remembered after a reload, a Planned item that is disabled and says so, the hover
- * card with both names and the ribbon home, and every Ready command reached with real clicks within the count its home
- * promises (`clicks()` in ribbon-homes.ts). Screenshots go to e2e/out.
+ * that opens on first run and the one remembered after a reload, Planned items kept out of the resting rows (they wait,
+ * disabled and tagged, under "Coming" in their group's More), nothing greyed before a picture is open, the start screen
+ * fitting 1440 x 900, live gallery previews, the hover card with both names and the ribbon home, and every Ready command
+ * reached with real clicks within the count its home promises (`clicks()` in ribbon-homes.ts). Screenshots go to e2e/out.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts ribbon
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -110,6 +111,10 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     expect(await bodyShown(p)).toBe(true);
     await rest(p);
     expect(await selected(p), 'opening a photo keeps the first-run tab').toEqual([FIRST]);
+    // The first photo of a first run says, in one line, what to try first, under that command.
+    await p.waitForSelector('[data-testid="rhint"]:not([hidden])');
+    expect((await p.textContent('[data-testid="rhint"]'))?.startsWith('Try this first: '), 'the one-line hint').toBe(true);
+    expect(await p.$eval('[data-testid="rhint"]', (e) => e.getBoundingClientRect().height < 40), 'one line').toBe(true);
     expect(await p.$$eval('[data-testid="ribbon-body"] [data-cmd]', (els) => els.filter((e) => e.getAttribute('data-status') === 'ready').length * 2 >= els.length),
       'at least half the first-run tab is Ready').toBe(true);
     expect(await bodyShown(p)).toBe(true);
@@ -157,34 +162,85 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
     expect(await bodyShown(p)).toBe(true);
   }, 60_000);
 
-  it('shows a Planned item disabled with its tag, and clicking it changes nothing', async () => {
+  it('keeps every Planned item out of the resting rows; it waits under "Coming" in its group\'s More, disabled with its tag', async () => {
     step = 'planned';
     const p = await open();
     await rest(p);
-    // A command still Planned with a resting ribbon home (select.subject was the example until W2 made it Ready, 13 Nov).
-    const id = 'raw.filmic';
+    const resting: string[] = [];
+    for (const t of TABS) {
+      await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
+      resting.push(...(await p.$$eval('[data-testid="ribbon-body"] [data-status="planned"], [data-testid="ribbon-body"] .fpe-tag',
+        (els) => els.map((e) => e.getAttribute('data-testid') ?? e.textContent ?? ''))).map((x) => `${t.plain}: ${x}`));
+    }
+    expect(resting, 'Planned items in a resting row').toEqual([]);
+    // A command still Planned whose group has working ones (raw.filmic sat in Develop RAW's row until 13 Nov).
+    const id = 'raw.filmic', home = homes().get(id);
     expect(BY_ID.get(id)?.status).not.toBe('ready');
-    await p.click(`[data-testid="rtab-${slug(homes().get(id)?.tab ?? '')}"]`);
-    const sel = `[data-testid="ribbon-body"] [data-testid="ri-${id}"]`;
+    expect(home?.place).toBe('more');
+    await p.click(`[data-testid="rtab-${slug(home?.tab ?? '')}"]`);
+    await p.click(`[data-testid="rmore-${slug(home?.tab ?? '')}-${slug(home?.group ?? '')}"]`);
+    const sel = `[data-testid="rlist"] [data-testid="ri-${id}"]`;
     await p.waitForSelector(sel);
     expect(await p.getAttribute(sel, 'aria-disabled')).toBe('true');
     expect(await p.getAttribute(sel, 'data-status')).toBe('planned');
     expect((await p.textContent(`${sel} .fpe-tag`))?.trim()).toBe('Planned');
-    // Every Planned item on every tab carries the tag and refuses.
-    const bad: string[] = [];
-    for (const t of TABS) {
-      await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
-      bad.push(...await p.$$eval('[data-testid="ribbon-body"] [data-status="planned"]', (els) =>
-        els.filter((e) => e.getAttribute('aria-disabled') !== 'true' || e.querySelector('.fpe-tag')?.textContent?.trim() !== 'Planned').map((e) => e.getAttribute('data-testid') ?? '')));
-    }
-    expect(bad).toEqual([]);
-    await p.click(`[data-testid="rtab-${slug(homes().get(id)?.tab ?? '')}"]`);
+    // Ready rows above the quiet "Coming" heading, Planned rows below it.
+    expect(await p.$eval('[data-testid="rlist"]', (l) => {
+      const kids = [...l.children], c = kids.findIndex((k) => k.getAttribute('data-testid') === 'rcoming');
+      return c > 0 && kids.every((k, i) => (k.getAttribute('data-status') === 'planned' ? i > c : k.getAttribute('data-status') === 'ready' ? i < c : true));
+    }), 'Ready above "Coming", Planned below').toBe(true);
     const before = JSON.stringify(await p.evaluate(() => (window as unknown as Win).fpe.state()));
     await p.$eval(sel, (el) => (el as HTMLElement).click());
     await p.waitForTimeout(300);
     expect(JSON.stringify(await p.evaluate(() => (window as unknown as Win).fpe.state()))).toBe(before);
     expect(await p.locator('[aria-modal="true"]:visible').count()).toBe(0);
   }, 60_000);
+
+  it('with no picture: nothing on the ribbon reads greyed, a click brings "Open a photo" forward, no tool chip, and the start screen fits', async () => {
+    step = 'no picture';
+    const p = await open();
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: join(OUT, 'ui-a-nopic-1440.png') });
+    expect(await p.isHidden('[data-testid="rctx"]'), 'no tool chip before a picture').toBe(true);
+    expect(await p.getAttribute('[data-testid="btn-export"]', 'aria-disabled'), 'Export reads disabled with no picture').toBe('true');
+    // The start screen: eight jobs in a 4 x 2 grid under the three buttons, all inside the stage at 1440 x 900.
+    const start = await p.$eval('[data-testid="start"]', (s) => {
+      const cards = [...s.querySelectorAll<HTMLElement>('.fpe-jobs > .fpe-job')], sr = s.getBoundingClientRect();
+      const acts = s.querySelector('.fpe-start-actions')?.getBoundingClientRect();
+      return { cards: cards.length, cols: new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left))).size, over: s.scrollHeight - s.clientHeight,
+        below: cards.filter((c) => c.getBoundingClientRect().bottom > sr.bottom + 0.5).length, under: !!acts && cards.every((c) => c.getBoundingClientRect().top >= acts.bottom) };
+    });
+    expect({ ...start, over: Math.max(0, start.over) }, 'no scrolling: over is how far the start screen would scroll').toEqual({ cards: 8, cols: 4, over: 0, below: 0, under: true });
+    const grey: string[] = [];
+    for (const t of TABS) {
+      await p.click(`[data-testid="rtab-${slug(t.plain)}"]`);
+      grey.push(...(await p.$$eval('[data-testid="ribbon-body"] [data-cmd]', (els) => {
+        const text = getComputedStyle(document.querySelector('.fpe-rtab[aria-selected="true"]') as HTMLElement).color;
+        return els.filter((e) => getComputedStyle(e).color !== text || [...e.querySelectorAll('.fpe-icon, .fpe-rico')].some((i) => getComputedStyle(i).opacity !== '1'))
+          .map((e) => e.getAttribute('data-testid') ?? '');
+      })).map((x) => `${t.plain}: ${x}`));
+    }
+    expect(grey, 'greyed on the ribbon with no picture').toEqual([]);
+    const need = await p.$eval('[data-testid="ribbon-body"] [data-cmd][aria-disabled="true"]', (e) => e.getAttribute('data-testid') ?? '');
+    // It still says aria-disabled to a screen reader (it cannot run yet), so Playwright's click would wait: click it as a person's click does.
+    await p.$eval(`[data-testid="${need}"]`, (el) => (el as HTMLElement).click());
+    expect(await p.evaluate(() => document.activeElement?.getAttribute('data-testid')), `${need} brings "Open a photo" forward`).toBe('start-open');
+    // Every job is still one click away: "See all 16 jobs" opens the full list.
+    await p.click('[data-testid="start-all"]');
+    await p.waitForSelector('[data-testid="start-modal"]');
+    expect(await p.locator('[data-testid="start-modal"] .fpe-job').count()).toBeGreaterThan(8);
+    await p.keyboard.press('Escape');
+    expect(await p.locator('[data-testid="doc-tab"]').count(), 'and opens nothing by itself').toBe(0);
+    // With a picture: the tool chip shows, Export works, and the gallery tiles preview their effect on the picture.
+    await rest(p);
+    expect(await p.isVisible('[data-testid="rctx"]')).toBe(true);
+    expect(await p.getAttribute('[data-testid="btn-export"]', 'aria-disabled')).toBeNull();
+    await p.click('[data-testid="rtab-light-colour"]');
+    await p.waitForFunction(() => document.querySelectorAll('[data-testid="ribbon-body"] .fpe-rthumb').length >= 3, null, { timeout: 20_000 });
+    await p.mouse.move(720, 600);
+    await p.waitForTimeout(200);
+    await p.screenshot({ path: join(OUT, 'ui-a-gallery-1440.png') });
+  }, 90_000);
 
   it('names every ribbon item in plain words, never an id, and fits each tab at 1440 with no word cut off', async () => {
     step = 'plain words';

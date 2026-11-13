@@ -1050,7 +1050,8 @@ export class Editor {
 
   // ---------- the start screen: "What do you want to do?" ----------
   private buildStart(modal: boolean): HTMLElement {
-    const jobs = h('div', { class: 'fpe-jobs' }, ...JOBS.map((j) => {
+    // The start screen shows the first eight jobs as a 4 x 2 grid that fits 1440 x 900; the sheet shows them all.
+    const jobs = h('div', { class: 'fpe-jobs' }, ...(modal ? JOBS : JOBS.slice(0, 8)).map((j) => {
       const r = BY_ID.get(j.cmd), planned = !r || r.status !== 'ready';
       const b = h('button', { type: 'button', class: 'fpe-job', 'data-tipcmd': j.cmd, 'aria-disabled': planned ? 'true' : null, 'data-testid': 'job-' + slug(j.title) },
         icon(j.icon, 'fpe-icon fpe-job-icon'), h('span', { class: 'fpe-job-title' }, j.title), h('span', { class: 'fpe-job-pro' }, j.ratio ? 'Crop 1:1' : r?.pro ?? ''),
@@ -1067,7 +1068,9 @@ export class Editor {
         : 'Pick a job and the editor opens the right tool, then shows you where it lives. Or open a photo, drop one here, or paste one.'),
       modal ? null : h('div', { class: 'fpe-start-actions' }, btn('file.open', 'open', 'Open a photo', true, 'start-open'),
         btn('file.sample', 'image', 'Try a sample photo', false, 'start-sample'), btn('file.new', 'file-plus', 'New blank picture', false, 'start-new')),
-      jobs, modal ? null : h('p', { class: 'fpe-fine' }, 'Your pictures stay on this device. Nothing is uploaded.'));
+      jobs, modal ? null : h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-start-all', 'data-testid': 'start-all', onclick: () => this.openModal('start') },
+        `See all ${JOBS.length} jobs`),
+      modal ? null : h('p', { class: 'fpe-fine' }, 'Your pictures stay on this device. Nothing is uploaded.'));
   }
   showStart(): void { if (this.doc) this.openModal('start'); else this.startEl.querySelector<HTMLElement>('.fpe-job')?.focus(); }
   private async runJob(j: Job): Promise<void> {
@@ -1262,7 +1265,8 @@ export class Editor {
   private loadRibbon(): void {
     if (this.ribbon) { this.ribbon.setActive(true); return; }
     this.ribbonLoad ??= import('./ribbon').then((m) => {
-      this.ribbon = m.mountRibbon({ root: this.root, appBar: this.topEl, tabRow: this.tabRow, ribbon: this.ribbonEl, options: this.optionsBar, docTabs: this.tabsEl,
+      let sample: Doc | null = null;
+      this.ribbon = m.mountRibbon({ picture: () => this.doc ?? (sample ??= makeSample(0.15)), root: this.root, appBar: this.topEl, tabRow: this.tabRow, ribbon: this.ribbonEl, options: this.optionsBar, docTabs: this.tabsEl,
         toolId: () => Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? null, run: (id) => this.run(id), enabled: (id) => this.isEnabled(id),
         sync: () => this.syncChrome(), keyText, toast: (msg) => this.toast(msg) });
       this.ribbon.setActive(this.layout === 'desktop');

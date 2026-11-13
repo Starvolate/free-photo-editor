@@ -405,21 +405,22 @@ export interface Job {
   hint?: string;
 }
 export const JOBS: Job[] = [
+  // The first eight are the start screen's 4 x 2 grid (the most asked-for jobs); the "What do you want to do?" sheet shows all.
   { title: 'Make it brighter or darker', cmd: 'image.adj-brightness', icon: 'sun' },
   { title: 'Fix the light in one click', cmd: 'image.auto-tone', icon: 'sparkles' },
+  { title: 'Remove the background', cmd: 'image.remove-bg', icon: 'scissors' },
+  { title: 'Remove an object', cmd: 'tool.remove', icon: 'eraser', hint: 'Try it: paint over the sun and let go. It disappears into the sky.' },
+  { title: 'Blur the background', cmd: 'filter.blur-iris', icon: 'focus' },
+  { title: 'Square crop for Instagram', cmd: 'tool.crop', icon: 'square', ratio: 1, help: 'Opens the crop tool with a centred square, ready to apply.' },
+  // A small picture (256 x 171): twice as big takes seconds, and the sharper result shows at once.
+  { title: 'Make it bigger', cmd: 'image.upscale-2x', icon: 'fit', sample: 256 / 960 },
+  { title: 'Make it smaller for the web', cmd: 'image.size', icon: 'image-down' },
   { title: 'Make the colours pop', cmd: 'image.adj-vibrance', icon: 'palette' },
   { title: 'Crop the picture', cmd: 'tool.crop', icon: 'crop' },
-  { title: 'Square crop for Instagram', cmd: 'tool.crop', icon: 'square', ratio: 1, help: 'Opens the crop tool with a centred square, ready to apply.' },
-  { title: 'Make it smaller for the web', cmd: 'image.size', icon: 'image-down' },
   { title: 'Black and white', cmd: 'image.adj-bw', icon: 'contrast' },
   { title: 'Soften or blur', cmd: 'filter.blur-gaussian', icon: 'droplet' },
   { title: 'Draw or paint', cmd: 'tool.brush', icon: 'brush' },
   { title: 'Combine two photos', cmd: 'file.open-layer', icon: 'image-plus' },
-  { title: 'Remove the background', cmd: 'image.remove-bg', icon: 'scissors' },
-  { title: 'Remove an object', cmd: 'tool.remove', icon: 'eraser', hint: 'Try it: paint over the sun and let go. It disappears into the sky.' },
-  // A small picture (256 x 171): twice as big takes seconds, and the sharper result shows at once.
-  { title: 'Make it bigger', cmd: 'image.upscale-2x', icon: 'fit', sample: 256 / 960 },
   { title: 'Remove a spot', cmd: 'tool.spot-heal', icon: 'bandage' },
   { title: 'Add text', cmd: 'tool.type', icon: 'type' },
-  { title: 'Blur the background', cmd: 'filter.blur-iris', icon: 'focus' },
 ];

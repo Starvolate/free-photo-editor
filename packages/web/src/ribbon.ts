@@ -7,7 +7,9 @@
  * `clicks()` promises are the same data. app.ts loads this file lazily the first time the layout is desktop, so the
  * first-screen budget holds; it keeps today's menu bar for narrower screens.
  */
-import { CONTEXTUAL, SHEETS, TABS, firstTab, homes, homeText, type Group, type Tab } from './ribbon-homes';
+import { flatten, resizeBitmap, runJob, type Bitmap, type Doc, type JobSpec } from '@free-photoeditor/core';
+import { ADJ } from './commands';
+import { CONTEXTUAL, SHEETS, TABS, firstTab, homes, homeText, restOf, type Group, type Rest, type Tab } from './ribbon-homes';
 // The new Planned rows must be in BY_ID before any label is drawn. A bare `import './registry-union'` is dropped by the
 // build (package.json declares only CSS as having side effects), which left raw ids such as "layer.smart-filters" on
 // screen; importing a name keeps the module, and the line below registers any row still missing.
@@ -30,6 +32,8 @@ export interface RibbonHost {
   sync(): void;
   keyText(k: string): string;
   toast(msg: string): void;
+  /** The open picture, or a small sample when none is open: the gallery tiles preview their effect on it. */
+  picture(): Doc;
 }
 export interface Ribbon {
   setActive(on: boolean): void;
@@ -85,6 +89,27 @@ function notWhole(b: HTMLElement, room: number): boolean {
   }
   return false;
 }
+/** Gallery previews are drawn at this size (twice the tile's 64 x 40 box, for sharp screens). */
+const TW = 128, TH = 80;
+type Src = { key: number; w: number; h: number; bmp: Bitmap };
+/**
+ * A preview of one command on a small copy of the picture, from its own settings (commands.ts ADJ); a setting that rests
+ * at zero is pushed a third of its way so the change shows. An adjustment layer previews as its image adjustment.
+ * Null when the command has no settings to preview with (its icon stays).
+ */
+async function preview(id: string, s: Src): Promise<ImageData | null> {
+  const def = ADJ[id] ?? ADJ[id.replace(/^layer\.adj-/, 'image.adj-')];
+  if (!def || def.colors) return null;
+  const params: Record<string, number> = {};
+  for (const c of def.controls) params[c.key] = (!c.type || c.type === 'range') && c.value === 0 && (c.max ?? 0) > 0 ? Math.round((c.max ?? 0) / 3) : c.value;
+  const spec = { op: def.op, kind: def.kind, params } as JobSpec;
+  const out = def.op === 'fx' ? (await import('@free-photoeditor/core/fx')).runEffect(spec, s.bmp) : runJob(spec, s.bmp);
+  return new ImageData(new Uint8ClampedArray(out), s.w, s.h);
+}
+const idle = (f: () => void): void => {
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+  if (w.requestIdleCallback) w.requestIdleCallback(f, { timeout: 1000 }); else setTimeout(f, 80);
+};
 const readTab = (): string | null => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const writeTab = (t: string): void => { try { localStorage.setItem(KEY, t); } catch { /* private window: the tab is simply not remembered */ } };
 
@@ -99,13 +124,26 @@ export function mountRibbon(host: RibbonHost): Ribbon {
   const ready = (id: string): boolean => BY_ID.get(id)?.status === 'ready';
   const names = (plain: string, pro: string, cls = 'fpe-names'): HTMLElement =>
     h('span', { class: cls }, h('span', { class: 'fpe-plain' }, plain), pro && pro !== plain ? h('span', { class: 'fpe-pro' }, pro) : null);
+  const hasDoc = (): boolean => root.hasAttribute('data-has-doc');
+  /**
+   * With no picture open, a command that needs one looks like any other; clicking it brings the start screen's "Open a
+   * photo" choice forward (focused, with a short line), never nothing at all.
+   */
+  const askForPhoto = (id: string): void => {
+    const open = root.querySelector<HTMLElement>('[data-testid="start-open"]');
+    open?.focus({ preventScroll: true });
+    host.toast(`Open a photo first, or try the sample photo. Then ${plainOf(id)} is ready to use.`);
+  };
+  const press = (id: string, b: HTMLElement, planned: boolean): void => {
+    if (b.getAttribute('aria-disabled') !== 'true') { closeList(); void host.run(id); } else if (!planned && !hasDoc()) { closeList(); askForPhoto(id); }
+  };
 
   // ---------- the app bar: File, View, Help and Export sheets; the contextual chip; the document tabs ----------
   const sheetBtn = (plain: string, ids: string[], label = plain): HTMLButtonElement => {
     const s = SHEETS.find((x) => x.plain === plain);
     const b = h('button', { type: 'button', class: 'fpe-btn fpe-rsheet', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-testid': 'rsheet-' + slug(plain),
       'data-help-title': `${plain} · ${s?.pro ?? plain}`, 'data-help': `${ids.length} commands, two clicks away.` }, label ? h('span', {}, label) : null, icon('chev-down'));
-    b.addEventListener('click', () => (openList === b ? closeList() : showList(s?.plain ?? plain, s?.pro ?? '', ids, b, 'sheet')));
+    b.addEventListener('click', () => (openList === b ? closeList() : showList(s?.plain ?? plain, s?.pro ?? '', ids.filter(ready), b, 'sheet', ids.filter((x) => !ready(x)))));
     return b;
   };
   const fileBtn = sheetBtn('File', SHEETS.find((s) => s.plain === 'File')?.ids ?? []);
@@ -171,29 +209,39 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     const b = kind === 'small'
       ? h('button', attrs, icon(iconFor(id, tab)), h('span', { class: 'fpe-rlabel' }, plain), planned ? tag() : null)
       : h('button', attrs, h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, short), planned ? tag() : null);
-    b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') !== 'true') void host.run(id); });
+    b.addEventListener('click', () => press(id, b, planned));
     return b;
   };
+  /** A group at rest (ribbon-homes.ts restOf): its Ready commands, then one "More" at its end; with nothing Ready, one "Coming soon" tile. */
   const groupEl = (t: Tab, g: Group): HTMLElement => {
-    const items = h('div', { class: 'fpe-ritems' });
-    for (const id of g.big) items.append(cmd(id, 'big', t.plain));
-    if (g.show === 'gallery' && g.shown.length) items.append(h('div', { class: 'fpe-rgal' }, ...g.shown.map((id) => cmd(id, 'tile', t.plain))));
-    else if (g.shown.length) items.append(h('div', { class: 'fpe-rsmalls' }, ...g.shown.map((id) => cmd(id, 'small', t.plain))));
-    if (g.more.length) items.append(moreBtn(t, g));
+    const items = h('div', { class: 'fpe-ritems' }), r = restOf(g, ready);
+    for (const id of r.big) items.append(cmd(id, 'big', t.plain));
+    if (g.show === 'gallery' && r.shown.length) items.append(h('div', { class: 'fpe-rgal' }, ...r.shown.map((id) => cmd(id, 'tile', t.plain))));
+    else if (r.shown.length) items.append(h('div', { class: 'fpe-rsmalls' }, ...r.shown.map((id) => cmd(id, 'small', t.plain))));
+    if (r.more.length || r.coming.length) items.append(moreBtn(t, g, r));
     return h('div', { class: 'fpe-rgroup', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + slug(t.plain) + '-' + slug(g.plain) },
       items, h('div', { class: 'fpe-rcap', 'data-help-title': g.plain, 'data-help': `Pros call this ${g.pro}.` }, g.plain));
   };
-  /** A group's More list opener: "+n" beside its buttons, a whole-group button ("4 commands"), or a family's named button. */
-  const moreBtn = (t: Tab, g: Group): HTMLButtonElement => {
-    const gid = slug(t.plain) + '-' + slug(g.plain), kind = g.show === 'family' ? 'family' : g.show === 'button' ? 'button' : 'more';
-    const help = `${g.more.length} ${kind === 'family' ? 'kinds' : 'more'}: ${g.more.slice(0, 4).map(plainOf).join(', ')}${g.more.length > 4 ? '…' : ''}`;
-    const m = h('button', { type: 'button', class: kind === 'family' ? 'fpe-rpill' : kind === 'button' ? 'fpe-rbig fpe-rgroupbtn' : 'fpe-rmore', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
-      'data-testid': 'rmore-' + gid, 'data-help-title': `${g.plain} · ${g.pro}`, 'data-help': help, 'aria-label': `More in ${g.plain}: ${g.more.length}` },
-    ...(kind === 'family' ? [icon(iconFor(g.more[0], t.plain)), h('span', { class: 'fpe-rlabel' }, g.plain), icon('chev-down')]
-      : kind === 'button' ? [h('span', { class: 'fpe-rico' }, icon(iconFor(g.more[0], t.plain))), h('span', { class: 'fpe-names fpe-rlabel' },
-        h('span', { class: 'fpe-plain' }, `${g.more.length} commands`, icon('chev-down')), h('span', { class: 'fpe-pro' }, g.pro))]
-        : [icon('chev-down'), h('span', { class: 'fpe-rlabel' }, `+${g.more.length}`)]));
-    m.addEventListener('click', () => (openList === m ? closeList() : showList(g.plain, g.pro, g.more, m, 'more')));
+  /**
+   * A group's More list opener: one "More" at the end of its buttons, a whole-group button ("4 commands"), a family's
+   * named button, or, when nothing in the group works yet, one quiet "Coming soon" tile. The list holds the Ready
+   * commands first and the Planned ones under "Coming".
+   */
+  const moreBtn = (t: Tab, g: Group, r: Rest): HTMLButtonElement => {
+    const gid = slug(t.plain) + '-' + slug(g.plain), all = [...r.more, ...r.coming];
+    const kind = g.show === 'family' ? 'family' : !r.big.length && !r.shown.length && !r.more.length ? 'soon' : g.show === 'button' ? 'button' : 'more';
+    const help = kind === 'soon' ? `Planned: ${all.slice(0, 4).map(plainOf).join(', ')}${all.length > 4 ? '…' : ''}`
+      : `${all.length} ${kind === 'family' ? 'kinds' : 'more'}: ${all.slice(0, 4).map(plainOf).join(', ')}${all.length > 4 ? '…' : ''}`;
+    const cls = { family: 'fpe-rpill', soon: 'fpe-rsoon', button: 'fpe-rbig fpe-rgroupbtn', more: 'fpe-rmore' }[kind];
+    const m = h('button', { type: 'button', class: cls, 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-testid': 'rmore-' + gid,
+      'data-help-title': `${g.plain} · ${g.pro}`, 'data-help': help,
+      'aria-label': kind === 'soon' ? `${g.plain}: coming soon, ${all.length} planned` : `More in ${g.plain}: ${all.length}` },
+    ...(kind === 'family' ? [icon(iconFor(all[0], t.plain)), h('span', { class: 'fpe-rlabel' }, g.plain), icon('chev-down')]
+      : kind === 'soon' ? [h('span', { class: 'fpe-rlabel' }, 'Coming soon'), h('span', { class: 'fpe-rsoon-n' }, `${all.length} planned`)]
+        : kind === 'button' ? [h('span', { class: 'fpe-rico' }, icon(iconFor(all[0], t.plain))), h('span', { class: 'fpe-names fpe-rlabel' },
+          h('span', { class: 'fpe-plain' }, `${r.more.length} commands`, icon('chev-down')), h('span', { class: 'fpe-pro' }, g.pro))]
+          : [icon('chev-down'), h('span', { class: 'fpe-rlabel' }, 'More')]));
+    m.addEventListener('click', () => (openList === m ? closeList() : showList(g.plain, g.pro, r.more, m, 'more', r.coming)));
     return m;
   };
   /** The effect families (Blur, Sharpen, …) as one group of named buttons in three rows, so none repeats its caption. */
@@ -202,7 +250,7 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     for (let r = 0, i = 0; r < 3 && i < gs.length; r++) {
       const n = Math.floor(gs.length / 3) + (r < gs.length % 3 ? 1 : 0);
       rows.push(h('div', { class: 'fpe-rfamrow' }, ...gs.slice(i, i + n).map((g) =>
-        h('div', { class: 'fpe-rfamily', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + slug(t.plain) + '-' + slug(g.plain) }, moreBtn(t, g)))));
+        h('div', { class: 'fpe-rfamily', role: 'group', 'aria-label': g.plain, 'data-testid': 'rgroup-' + slug(t.plain) + '-' + slug(g.plain) }, moreBtn(t, g, restOf(g, ready))))));
       i += n;
     }
     return h('div', { class: 'fpe-rgroup fpe-rfams', role: 'group', 'aria-label': FAMILIES },
@@ -264,19 +312,85 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     body.scrollLeft = 0;
     fit();
     host.sync();
+    thumbs();
+  }
+
+  // ---------- live gallery previews: drawn lazily, when the browser is idle, and kept per picture ----------
+  const keys = new WeakMap<object, number>(), made = new Map<string, ImageData | null>();
+  let seq = 0, src: Src | null = null, drawing = false;
+  /** A small copy of the open picture (or the sample), made once per picture. */
+  const source = (): Src => {
+    const d = host.picture();
+    let k = keys.get(d);
+    if (k === undefined) { k = ++seq; keys.set(d, k); }
+    if (src?.key !== k) {
+      const f = flatten(d), sc = Math.max(TW / f.width, TH / f.height), w = Math.max(TW, Math.ceil(f.width * sc)), hh = Math.max(TH, Math.ceil(f.height * sc));
+      src = { key: k, w, h: hh, bmp: { width: w, height: hh, data: resizeBitmap(f, w, hh) } as Bitmap };
+      made.clear();
+    }
+    return src;
+  };
+  /** Draws the next tile on the open tab whose preview is missing or of another picture; one per idle moment. */
+  const drawNext = async (): Promise<boolean> => {
+    const s = source();
+    const tile = [...body.querySelectorAll<HTMLElement>('.fpe-rtile[data-cmd]')].find((x) => x.dataset.thumb !== String(s.key));
+    if (!tile) return false;
+    tile.dataset.thumb = String(s.key);
+    const id = tile.dataset.cmd as string, ck = s.key + ' ' + id;
+    if (!made.has(ck)) made.set(ck, await preview(id, s).catch(() => null));
+    const img = made.get(ck), box = tile.querySelector<HTMLElement>('.fpe-rico');
+    if (img && box && tile.isConnected) {
+      const c = document.createElement('canvas');
+      c.width = TW; c.height = TH; c.className = 'fpe-rthumb'; c.setAttribute('aria-hidden', 'true');
+      c.getContext('2d')?.putImageData(img, -Math.round((s.w - TW) / 2), -Math.round((s.h - TH) / 2));
+      box.replaceChildren(c);
+    }
+    return true;
+  };
+  function thumbs(): void {
+    if (drawing || body.hidden || !body.querySelector('.fpe-rtile[data-cmd]')) return;
+    drawing = true;
+    idle(() => void drawNext().catch(() => false).then((again) => { drawing = false; if (again) thumbs(); }));
+  }
+
+  // ---------- the first photo of a first run: one line on what to try first ----------
+  const coach = h('div', { class: 'fpe-rcoach', role: 'status', 'data-testid': 'rhint', hidden: true });
+  let hadDoc = hasDoc();
+  const endCoach = (): void => {
+    coach.hidden = true;
+    root.querySelector('[data-coach]')?.removeAttribute('data-coach');
+    document.removeEventListener('pointerdown', endCoach, true);
+    document.removeEventListener('keydown', endCoach, true);
+  };
+  function coachFirst(): void {
+    if (readTab() !== null || view !== 'tab' || !hasDoc()) return;
+    const b = body.querySelector<HTMLElement>('[data-cmd][data-status="ready"]:not([aria-disabled="true"])');
+    if (!b) return;
+    const r = BY_ID.get(b.dataset.cmd as string);
+    coach.textContent = `Try this first: ${plainOf(b.dataset.cmd as string)}${r?.help ? ' · ' + r.help : ''}`;
+    root.append(coach);
+    coach.hidden = false;
+    b.setAttribute('data-coach', '');
+    const rr = root.getBoundingClientRect(), br = b.getBoundingClientRect();
+    coach.style.top = br.bottom - rr.top + 8 + 'px';
+    coach.style.left = Math.min(Math.max(8, br.left - rr.left), Math.max(8, rr.width - coach.offsetWidth - 8)) + 'px';
+    document.addEventListener('pointerdown', endCoach, true);
+    document.addEventListener('keydown', endCoach, true);
+    setTimeout(endCoach, 15000);
   }
 
   // ---------- the contextual tab: the tool in use ----------
   const ctxFor = (id: string | null) => (id ? CONTEXTUAL.find((c) => c.when.split(' ').includes(id)) : undefined);
   function labelChip(): void {
     const id = host.toolId(), r = id ? BY_ID.get(id) : undefined, c = ctxFor(id);
-    if (!r) { chip.hidden = true; return; }
+    // The tool chip shows only with a picture open: before that there is nothing to set.
+    if (!r || !hasDoc()) { chip.hidden = true; return; }
     const plain = c?.plain ?? `${r.plain} options`, pro = c?.pro ?? r.pro;
     chip.replaceChildren(icon(iconFor(r.id)), h('span', { class: 'fpe-rlabel' }, plain), h('span', { class: 'fpe-pro' }, pro));
     chip.dataset.helpTitle = `${plain} · ${pro}`;
     chip.dataset.help = `The settings of ${r.plain.toLowerCase()}, shown in the ribbon.`;
     chip.hidden = false;
-    const extra = c?.ids.filter((x) => BY_ID.has(x)) ?? [];
+    const extra = c?.ids.filter((x) => BY_ID.has(x) && ready(x)) ?? [];
     ctxMore.replaceChildren();
     if (extra.length) {
       ctxMore.append(h('div', { class: 'fpe-ritems' }, h('div', { class: 'fpe-rsmalls' }, ...extra.map((x) => cmd(x, 'small', '')))),
@@ -310,19 +424,21 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', onKey, true);
   }
-  function showList(plain: string, pro: string, ids: string[], at: HTMLElement, kind: 'more' | 'sheet'): void {
+  function showList(plain: string, pro: string, ids: string[], at: HTMLElement, kind: 'more' | 'sheet', coming: string[] = []): void {
     closeList();
-    const rows = ids.map((id) => {
+    const rows = [...ids, ...coming].map((id) => {
       const r = BY_ID.get(id), planned = !ready(id), off = planned || !host.enabled(id);
       const b = h('button', { type: 'button', role: 'menuitem', class: 'fpe-rrow', 'data-cmd': id, 'data-testid': 'ri-' + id, 'data-status': planned ? 'planned' : 'ready',
         'aria-disabled': off ? 'true' : null },
       icon(iconFor(id)), h('span', { class: 'fpe-names fpe-rline' }, h('span', { class: 'fpe-plain' }, plainOf(id)), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, ' · ' + r.pro) : null),
       planned ? tag() : null, r?.key ? h('kbd', {}, host.keyText(r.key)) : null);
-      b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') === 'true') return; closeList(); void host.run(id); });
+      b.addEventListener('click', () => press(id, b, planned));
       return b;
     });
+    // Planned commands wait under a quiet "Coming" heading, after every working one; search still finds them.
+    const head = coming.length ? h('div', { class: 'fpe-rcoming', role: 'presentation', 'data-testid': 'rcoming' }, 'Coming') : null;
     const list = h('div', { class: 'fpe-pop fpe-rlist' + (kind === 'sheet' ? ' fpe-rsheetlist' : ''), role: 'menu', 'aria-label': plain, 'data-testid': 'rlist' },
-      h('div', { class: 'fpe-rlisthead' }, names(plain, pro)), ...rows);
+      h('div', { class: 'fpe-rlisthead' }, names(plain, pro)), ...rows.slice(0, ids.length), head, ...rows.slice(ids.length));
     list.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       e.preventDefault();
@@ -370,7 +486,16 @@ export function mountRibbon(host: RibbonHost): Ribbon {
       }
     },
     toolChanged() { if (active) showCtx(); else labelChip(); },
-    optionsChanged(activity) { if (!active) return; labelChip(); if (activity && view !== 'ctx') showCtx(); },
+    optionsChanged(activity) {
+      const has = hasDoc(), opened = has && !hadDoc;
+      hadDoc = has;
+      if (!active) return;
+      labelChip();
+      if (!has && view === 'ctx') showTab(current);
+      else if (activity && view !== 'ctx') showCtx();
+      if (opened) { thumbs(); requestAnimationFrame(coachFirst); }
+      if (!has) endCoach();
+    },
     place(id) { const p = home.get(id); return p ? homeText(p) : null; },
     reveal(id) {
       const p = home.get(id);

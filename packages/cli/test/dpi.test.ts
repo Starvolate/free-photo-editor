@@ -72,7 +72,7 @@ describe('print resolution on the command line', () => {
     expect(EXIFTOOL, 'exiftool must be on the CI runner').toBe(true);
     const dir = folder(), files = ['x1-300.png', 'x1-500.jpg', 'x1-300.webp', 'x1-300.psd'];
     for (const f of files) await cli(dir, 'export', 'a.png', '--quality', '1', '--dpi', f.includes('500') ? '500' : '300', '-o', f);
-    const ex = (f: string): string => spawnSync('exiftool', ['-G1', '-s', '-XResolution', '-YResolution', '-ResolutionUnit', '-PixelsPerUnitX', '-PixelsPerUnitY',
+    const ex = (f: string): string => spawnSync('exiftool', ['-a', '-G1', '-s', '-XResolution', '-YResolution', '-ResolutionUnit', '-PixelsPerUnitX', '-PixelsPerUnitY',
       '-PixelUnits', path.join(dir, f)], { encoding: 'utf8' }).stdout;
     const got = Object.fromEntries(files.map((f) => [f, ex(f)]));
     console.log(files.map((f) => `exiftool ${f}:\n${got[f]}`).join(''));

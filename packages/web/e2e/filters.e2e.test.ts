@@ -113,7 +113,7 @@ suite('W2 filters (headless Chrome)', () => {
     const original = await sum(p), bad: string[] = [];
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
       .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id)).map((c) => c.id);
-    expect(ids.length).toBe(55);
+    expect(ids.length).toBe(63);
     for (const id of ids) {
       const n = await step(p);
       await dialog(p, id);

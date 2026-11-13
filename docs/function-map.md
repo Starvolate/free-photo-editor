@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 309 Ready, 366 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 338 Ready, 337 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+258 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 193 | 457 | 0 |
-| Ready today | 309 | 25 | 143 | 141 | 0 |
+| All functions | 675 | 25 | 196 | 454 | 0 |
+| Ready today | 338 | 25 | 159 | 154 | 0 |
 
 ## The Task ribbon
 
@@ -28,7 +28,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
-| Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 13 |
+| Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 2 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
@@ -37,7 +37,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
-| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 8 |
+| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
 | Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (30 Ready, 11 Planned)
+## File (34 Ready, 7 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -112,8 +112,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | File | File sheet | Ready | 1 | Ctrl+O |
 | file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | File | File sheet | Ready | 1 | Ctrl+Shift+O |
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
-| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Planned | 7 |  |
-| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Planned | 8 |  |
+| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
+| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
 | file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
@@ -141,8 +141,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression. | bmp, bitmap, windows picture | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | File › Export as | Export sheet | Ready | 7 |  |
-| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Planned | 7 |  |
-| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Planned | 8 |  |
+| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Ready | 7 |  |
+| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Ready | 8 |  |
 | file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | File | File sheet | Planned | 7 |  |
 | file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
 | file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
@@ -197,17 +197,17 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Help sheet | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Help sheet | Planned | 11 |  |
 
-## Image (36 Ready, 13 Planned)
+## Image (39 Ready, 10 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
 | image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-indexed | A few colours only | Indexed colour | Limit the picture to a small palette, like a GIF. | palette, gif colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. | print colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. | lab | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. | 16 bit, high bit depth | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | Image › Mode | Light & colour › Colour type · small button | Ready | 13 |  |
+| image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. Not built yet: pictures keep 8 bits per colour, as the browser draws them. | 16 bit, high bit depth | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
 | image.adj-brightness | Brightness and contrast | Brightness/Contrast | Make the picture lighter or darker, and punchier or flatter. | brighter, darker, lighter, too dark, too bright, contrast, dull, dim | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | 1 |  |
 | image.adj-levels | Light and dark balance | Levels | Set the darkest point, the brightest point and the middle tones. | tones, black point, white point, washed out, histogram | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 | Ctrl+L |
 | image.adj-curves | Tone curve | Curves | Shape the darks, middles and lights separately. | tone curve, s curve, contrast curve | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 | Ctrl+M |
@@ -227,7 +227,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.adj-shadows | Lift shadows, calm highlights | Shadows/Highlights | Brighten dark areas and tame bright ones, judged by their surroundings. | backlit, dark face, recover shadows, bright sky | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 |  |
 | image.adj-desaturate | Remove colour | Desaturate | Make the picture grey in one step. | grey, colourless | Image › Adjustments | Light & colour › Light and colour · More list | Ready | W1 | Ctrl+Shift+U |
 | image.adj-match | Match another photo's colour | Match colour | Copy the colour mood of another picture. | match colours | Image › Adjustments | Light & colour › Light and colour · More list | Planned | 5 |  |
-| image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | Image › Adjustments | Light & colour › Light and colour · More list | Planned | 5 |  |
+| image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | Image › Adjustments | Light & colour › Light and colour · More list | Ready | 5 |  |
 | image.adj-equalize | Even out the tones | Equalize | Spread the tones evenly from dark to light. | flat, even, histogram | Image › Adjustments | Light & colour › Light and colour · More list | Ready | W1 |  |
 | image.auto-tone | Fix the light automatically | Auto tone | Stretch each colour so the darkest part is black and the lightest white. | auto fix, one click, enhance, improve | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+L |
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+Alt+L |
@@ -249,7 +249,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | Image | File sheet | Ready | W1 |  |
 | image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
-| image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · More list | Planned | 5 |  |
+| image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · small button | Ready | 5 |  |
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
@@ -347,7 +347,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Shapes & text › Text · More list | Planned | 6 |  |
 
-## Select (17 Ready, 2 Planned)
+## Select (18 Ready, 1 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -359,7 +359,7 @@ Groups: Change the selection · Modify.
 | select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | Select | Select & cut out › Change it · More list | Ready | W1 | Ctrl+Shift+I |
 | select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | Select | Select & cut out › Select with AI · big button | Ready | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Select & cut out › By colour or light · small button | Ready | W3 |  |
-| select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · More list | Planned | 11 |  |
+| select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Select & cut out › Perfect and keep · More list | Planned | 2 |  |
 | select.border | Edge band | Border | Select a band along the selection edge. | border selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
 | select.smooth | Round off | Smooth | Round off sharp corners of the selection. | smooth selection | Select › Modify | Select & cut out › Change it · More list | Ready | W3 |  |
@@ -373,7 +373,7 @@ Groups: Change the selection · Modify.
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 
-## Filter (56 Ready, 13 Planned)
+## Filter (64 Ready, 5 Planned)
 
 Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; Grain · Noise; Blocks and dots · Pixelate; Make patterns · Render; Sharpen · Sharpen; Graphic effects · Stylize; More effects · Other.
 
@@ -381,7 +381,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 |---|---|---|---|---|---|---|---|---|---|
 | filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | Filter | Filters & blur › Again · big button | Ready | W1 | Ctrl+Alt+F |
 | filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | Filter | Filters & blur › Artistic · family sheet | Planned | W2 |  |
-| filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Planned | W2 |  |
+| filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Ready | W2 |  |
 | filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | Filter | Develop RAW › Develop · More list | Planned | 5 |  |
 | filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | Filter | Crop & resize › Bend and push · More list | Planned | 5 |  |
 | filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | Filter | Retouch & remove › Repair · More list | Planned | 5 |  |
@@ -397,7 +397,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.blur-path | Blur along a path | Path blur | Blur along a line you draw. | path blur | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Planned | W2 |  |
-| filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Planned | W2 |  |
+| filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.displace | Push by a map | Displace | Push pixels around by a pattern of light and dark, such as soft clouds. | displacement, warp, distort | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.polar | Wrap into a circle | Polar coordinates | Wrap the picture into a circle or unwrap it. | tiny planet | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
@@ -407,8 +407,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.wave | Waves | Wave | Bend the picture in waves. | wavy | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
-| filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | Filter › Distort | Filters & blur › Bend and twist · family sheet | Planned | W2 |  |
-| filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | Filter › Distort | Filters & blur › Bend and twist · family sheet | Planned | W2 |  |
+| filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
+| filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
 | filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
 | filter.dust | Remove dust and scratches | Dust and scratches | Hide small dust spots and scratches. | dust, scratches, old photo | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
@@ -424,8 +424,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
-| filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Filters & blur › Patterns and light · family sheet | Planned | W2 |  |
-| filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Filters & blur › Patterns and light · family sheet | Planned | W2 |  |
+| filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
+| filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | W1 |  |
 | filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | W1 |  |
 | filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | 1 |  |
@@ -446,10 +446,10 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 | filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 | filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
-| filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Filters & blur › More effects · family sheet | Planned | W2 |  |
-| filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Filters & blur › More effects · family sheet | Planned | W2 |  |
+| filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
+| filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 
-## View (11 Ready, 7 Planned)
+## View (17 Ready, 1 Planned)
 
 Groups: Screen mode · Screen mode.
 
@@ -460,18 +460,18 @@ Groups: Screen mode · Screen mode.
 | view.fit | Fit on screen | Fit on screen | Show the whole picture as large as fits. | whole picture, fit | View | View sheet | Ready | 1 | Ctrl+0 |
 | view.actual | Actual pixels | 100% | One picture pixel per screen pixel. | real size, 100 | View | View sheet | Ready | 1 | Ctrl+1 |
 | view.zoom-200 | Double size | 200% | Two screen pixels per picture pixel. | 200 | View | View sheet | Ready | W1 |  |
-| view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | View | View sheet | Planned | 8 |  |
+| view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | View | View sheet | Ready | 8 |  |
 | view.screen-standard | Normal workspace | Standard screen mode | Show the menus, tools and panels. | normal view | View › Screen mode | View sheet | Ready | W1 |  |
 | view.screen-focus | Picture only | Full screen mode | Hide the tools and panels to see just the picture. Press F or Esc to come back. | full screen, distraction free | View › Screen mode | View sheet | Ready | W1 |  |
 | view.screen-cycle | Switch screen mode | Cycle screen mode | Switch between the normal workspace and picture only. | toggle full screen | View › Screen mode | View sheet | Ready | W1 | F |
 | view.rulers | Rulers | Rulers | Show measuring rulers along the edges of the picture. | measure, ruler | View | View sheet | Ready | W1 | Ctrl+R |
 | view.grid | Grid | Grid | Show a grid over the picture to line things up. | grid, align, straight lines | View | View sheet | Ready | W1 | Ctrl+' |
 | view.extras | Selection outline | Extras | Show or hide the moving dashes around a selection. | marching ants | View | View sheet | Ready | W1 | Ctrl+H |
-| view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed far in. | pixel grid | View | View sheet | Planned | W2 |  |
-| view.guide-new | Add a guide line | New guide | Add a straight line to line things up against. | guide | View | View sheet | Planned | 13 |  |
-| view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | View | View sheet | Planned | 13 |  |
-| view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | View | View sheet | Planned | 13 |  |
-| view.snap | Snap to guides | Snap | Make moved things jump to guides and edges. | snap | View | View sheet | Planned | 13 |  |
+| view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed in to 800% or more. | pixel grid | View | View sheet | Ready | W2 |  |
+| view.guide-new | Add a guide line | New guide | Add a straight line to line things up against: down the middle first, then across. Drag it with Move, or off the picture to remove it. | guide | View | View sheet | Ready | 13 |  |
+| view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | View | View sheet | Ready | 13 |  |
+| view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | View | View sheet | Ready | 13 |  |
+| view.snap | Snap to guides | Snap | Make guides, oval selections, measures, shapes and colour fades jump to guide lines and the picture's edges and middle. | snap | View | View sheet | Ready | 13 |  |
 | view.slices-clear | Remove slices | Clear slices | Remove the web slices. | slices | View | View sheet | Planned | 13 |  |
 
 ## Window (2 Ready, 0 Planned)
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · More list | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (46 Ready, 19 Planned)
+## Tools (52 Ready, 13 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -529,9 +529,9 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.move | Move | Move tool | Drag to move the active layer. Arrow keys nudge it by one pixel. | move, drag, position | Tools › Move | Crop & resize › Move and reshape a layer · big button | Ready | 1 | V |
 | tool.artboard | Artboards | Artboard tool | Design several canvases side by side. | artboard | Tools › Move | Crop & resize › Size · More list | Planned | 13 |  |
 | tool.select-rect | Select a box | Rectangular marquee | Drag to select a rectangle; hold Shift for a square. | select area, rectangle, box | Tools › Select box | Select & cut out › Draw or paint · big button | Ready | 1 | M |
-| tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval or a circle. | circle selection | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
-| tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
-| tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | Tools › Select box | Select & cut out › Draw or paint · More list | Planned | 2 |  |
+| tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval; hold Shift while dragging for a circle. | circle selection | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
+| tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
+| tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
 | tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | Tools › Lasso | Select & cut out › Draw or paint · small button | Ready | W3 | L |
 | tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Ready | W3 |  |
 | tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Planned | 2 |  |
@@ -542,9 +542,9 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | Tools › Crop | Crop & resize › Crop · More list | Planned | 3 |  |
 | tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | Tools › Crop | Automate & batch › Sheets and layouts · More list | Planned | 13 |  |
 | tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | Tools › Measure | Paint & draw › Colour · small button | Ready | 1 | I |
-| tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | Tools › Measure | Paint & draw › Colour · More list | Planned | 13 |  |
-| tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | Tools › Measure | View sheet | Planned | 13 |  |
-| tool.note | Sticky note | Note | Pin a written note on the picture. | comment | Tools › Measure | View sheet | Planned | 13 |  |
+| tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | Tools › Measure | Paint & draw › Colour · More list | Ready | 13 |  |
+| tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | Tools › Measure | View sheet | Ready | 13 |  |
+| tool.note | Sticky note | Note | Pin a written note on the picture. Notes stay while the picture is open; they are not saved into exported files. | comment | Tools › Measure | View sheet | Ready | 13 |  |
 | tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 | J |
 | tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | Tools › Retouch | Retouch & remove › Remove · big button | Ready | 11 |  |
 | tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | Tools › Retouch | Retouch & remove › Repair · small button | Ready | W3 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (259 Planned, 2 Ready), by home
+## New functions from the feature census (258 Planned, 3 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -929,5 +929,5 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | view.task-sets | U257 | Reusable task layouts | Task Sets | Saved sets of tools for a job. | task layout, workspace layout, saved workspace | View sheet | Planned | T3 |
 | view.slideshow | U258 | Slideshow | Slideshow view | Play a collection full-screen. | slideshow, full screen photos, present photos | View sheet | Planned | T3 |
 | view.focus-peaking | U259 | Show where focus is sharp | Focus peaking | Highlight the sharpest edges. | focus peaking, what is sharp, in focus check | View sheet | Planned | T3 |
-| view.composition-guides | U260 | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | View sheet | Planned | T3 |
+| view.composition-guides | U260 | Composition guides | Guides and overlays | Draw thirds, golden ratio and other guides on the photo. | rule of thirds, golden ratio, composition grid, crop overlay | View sheet | Ready | T3 |
 | view.colour-check | U261 | Colour-check the screen | Colour assessment | Switch to a neutral surround to judge colours fairly. | colour check, screen calibration, colour assessment, grey surround | View sheet | Planned | T3 |

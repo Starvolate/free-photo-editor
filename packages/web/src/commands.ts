@@ -13,7 +13,8 @@ export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' 
   | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'object-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
   | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
   | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove'
-  | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert';
+  | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert'
+  | 'select-ellipse' | 'select-row' | 'select-column' | 'ruler' | 'color-sampler' | 'note';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -247,6 +248,9 @@ export const W3_TOOLS: Record<string, ToolId> = {
   // Wave 4: the pen and its outline tools (pen.ts, inside the tool kit's chunk).
   'tool.pen': 'pen', 'tool.path-select': 'path-select', 'tool.direct-select': 'direct-select', 'tool.anchor-add': 'anchor-add',
   'tool.anchor-delete': 'anchor-delete', 'tool.anchor-convert': 'anchor-convert',
+  // Batch view-tools (viewkit.ts, inside the tool kit's chunk).
+  'tool.select-ellipse': 'select-ellipse', 'tool.select-row': 'select-row', 'tool.select-column': 'select-column', 'tool.ruler': 'ruler',
+  'tool.color-sampler': 'color-sampler', 'tool.note': 'note',
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
@@ -381,6 +385,16 @@ HANDLERS['select.from-path'] = w3('select.from-path', (e) => !!e.doc?.paths?.som
 HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
+// Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
+const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
+const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>
+  H(async (e) => (await e.toolkit()).cmd(id), enabled, (e) => { const f = vf(e); return !!f && on(f); });
+for (const id of ['view.guide-new', 'view.print-size', 'select.focus']) HANDLERS[id] = w3(id);
+HANDLERS['view.guide-clear'] = w3('view.guide-clear', (e) => !!vf(e)?.guides);
+HANDLERS['view.pixel-grid'] = vt('view.pixel-grid', always, (f) => f.pixelGrid);
+HANDLERS['view.guide-lock'] = vt('view.guide-lock', always, (f) => f.lock);
+HANDLERS['view.snap'] = vt('view.snap', always, (f) => f.snap);
+HANDLERS['view.composition-guides'] = vt('view.composition-guides', hasDoc, (f) => f.comp > 0);
 /** W11 on-device AI: ai.ts, loaded on first use. */
 const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);
 // Select the main subject and Remove the background follow model check round 4's rule (u2netp, then MobileSAM).
@@ -388,6 +402,10 @@ for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'imag
 HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
+// The batch filters (13 Nov 2026): their dialogs live in adj-more.ts, loaded on first use so the first screen stays small.
+export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocean-ripple filter.lens-flare filter.lighting filter.color-to-alpha filter.dither '
+  + 'image.adj-replace image.reduce-colors image.mode-indexed').split(' ');
+for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));
@@ -397,6 +415,8 @@ const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasP
 for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
   ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
+// File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
+for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

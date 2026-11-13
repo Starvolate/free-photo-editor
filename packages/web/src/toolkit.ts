@@ -20,6 +20,7 @@ import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
 import { PEN_TOOLS, createPenKit } from './pen';
+import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
 
@@ -78,6 +79,8 @@ export interface ToolKit {
   overlay(ctx: CanvasRenderingContext2D): void;
   key(e: KeyboardEvent): boolean;
   cmd(id: string): unknown;
+  /** Guides, snapping, the pixel grid and composition guides (viewkit.ts), cheap enough for menu ticks. */
+  viewFlags(): { guides: number; lock: boolean; snap: boolean; pixelGrid: boolean; comp: number };
   toolChanged(prev: ToolId, next: ToolId): void;
   abort(): void;
   state(): Record<string, unknown>;
@@ -139,6 +142,8 @@ const FONT_CANDIDATES = ['system-ui', 'Arial', 'Helvetica', 'Verdana', 'Tahoma',
 const GENERIC = new Set(['system-ui', 'serif', 'sans-serif', 'monospace', 'cursive']);
 
 const now = (): number => performance.now();
+/** Drag tools whose points jump to guides and the picture's edges and middle while Snap is on. */
+const SNAPS = new Set<ToolId>(['rect', 'rounded-rect', 'ellipse', 'polygon', 'line', 'gradient']);
 const unit = (a: Pt, b: Pt): Pt => { const d = Math.hypot(b.x - a.x, b.y - a.y) || 1; return { x: (b.x - a.x) / d, y: (b.y - a.y) / d }; };
 const centroid = (q: Quad): Pt => ({ x: (q[0].x + q[1].x + q[2].x + q[3].x) / 4, y: (q[0].y + q[1].y + q[2].y + q[3].y) / 4 });
 const inQuad = (q: Quad, p: Pt): boolean => {
@@ -1077,6 +1082,9 @@ export function createToolKit(host: ToolHost): ToolKit {
     };
     const d = doc(), al = d ? activeLayer(d) : undefined;
     switch (t) {
+      case 'select-ellipse': bar.append(modes(), sl('Soft edge', 'Feather new selections by this many pixels.', 0, 100, S.feather, ' px', (v) => { S.feather = v; }, 'w3-feather'),
+        hint('Drag to select an oval; hold Shift while dragging for a circle. Shift or Alt at the start adds or takes away.')); break;
+      case 'select-row': case 'select-column': bar.append(modes(), hint(t === 'select-row' ? 'Click to select that one-pixel row right across the picture.' : 'Click to select that one-pixel column right down the picture.')); break;
       case 'object-select': bar.append(modes(), hint('Tap a thing, or drag a box round it. Shift adds, Alt takes away.')); break;
       case 'lasso': bar.append(modes(), sl('Soft edge', 'Feather new selections by this many pixels.', 0, 100, S.feather, ' px', (v) => { S.feather = v; }, 'w3-feather'), hint('Drag around what you want. Shift adds, Alt takes away.')); break;
       case 'lasso-poly':
@@ -1221,15 +1229,19 @@ export function createToolKit(host: ToolHost): ToolKit {
 
   // The pen and its outline tools (pen.ts) ride along in this file's chunk.
   const pen = createPenKit(host, setSel), penOn = (): boolean => PEN_TOOLS.has(host.tool());
+  // Batch view-tools (viewkit.ts): oval, row and column selections, Measure, colour markers, notes, guides and snapping.
+  const view = createViewKit(host, applyMask, (i) => modeOf(i)), viewOn = (): boolean => VIEW_TOOLS.has(host.tool()) || view.busy();
+  const snapped = (p: Pt): Pt => (SNAPS.has(host.tool()) ? view.snap(p) : p);
   return {
-    claims: (t) => TK_TOOLS.has(t) || !!xf || (!!qm && (t === 'brush' || t === 'pencil' || t === 'eraser')),
-    start: (p, i) => (penOn() ? pen.start(p, i) : start(p, i)),
-    move: (p, i) => (penOn() ? pen.move(p, i) : move(p, i)),
-    end: (p, i) => (penOn() ? pen.end(p, i) : end(p, i)),
-    cancel: () => { pen.cancel(); cancel(); },
-    options: (bar, t) => (PEN_TOOLS.has(t) ? pen.options(bar, t) : options(bar, t)),
-    overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); },
-    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : cmd(id)),
+    claims: (t) => TK_TOOLS.has(t) || view.claims(t) || !!xf || (!!qm && (t === 'brush' || t === 'pencil' || t === 'eraser')),
+    start: (p, i) => (penOn() ? pen.start(p, i) : !xf && view.claims(host.tool()) ? view.start(p, i) : start(snapped(p), i)),
+    move: (p, i) => (penOn() ? pen.move(p, i) : viewOn() ? view.move(p, i) : move(snapped(p), i)),
+    end: (p, i) => (penOn() ? pen.end(p, i) : viewOn() ? view.end(p, i) : end(snapped(p), i)),
+    cancel: () => { pen.cancel(); view.cancel(); cancel(); },
+    options: (bar, t) => (PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
+    overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); },
+    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
+    viewFlags: () => view.flags(),
     fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),
     decorate,
     key(e) {
@@ -1247,6 +1259,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     },
     toolChanged(prev, next) {
       pen.toolChanged(prev, next);
+      view.cancel();
       if (prev === 'type' && te) commitText();
       if (prev === 'lasso-poly') poly = null;
       if (prev === 'remove' && rm && !rm.busy) rm = null;
@@ -1258,7 +1271,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       const d = doc(), sel = d?.selection, l = d ? activeLayer(d) : undefined;
       return { quickMask: !!qm, transform: xf ? `${xf.mode}:${xf.target}` : null, polygon: poly?.pts.length ?? 0, editingText: !!te, source: !!src,
         savedSel: !!(d && saved.get(d)), shaped: !!sel?.alpha, selected: sel && d ? countSelected(maskFromSelection(sel, d.width, d.height)) : 0,
-        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [], paths: pen.state() };
+        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [], paths: pen.state(), view: view.state() };
     },
     cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : t === 'remove' ? S.rm : null; },
     refresh() { for (const [pid, b] of panels) fillPanel(pid, b); pen.refresh(); },

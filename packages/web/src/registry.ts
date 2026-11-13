@@ -17,8 +17,8 @@ file.new | New picture | New | Start an empty picture of any size. | blank, empt
 file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | R | 1 | Ctrl+O
 file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | R | 1 | Ctrl+Shift+O
 file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | R | W1
-file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | P | 7
-file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | P | 8
+file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | R | 7
+file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | R | 8
 file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | P | 8
 --
 file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | R | 8
@@ -51,8 +51,8 @@ file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression
 file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | R | 7
 file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | R | 7
 @File
-file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | P | 7
-file.print | Print | Print | Print the picture on paper. | printer, paper | P | 8
+file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | R | 7
+file.print | Print | Print | Print the picture on paper. | printer, paper | R | 8
 file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | P | 7
 @File > Automate = Do many at once | Automate | Repeat a job on many pictures.
 file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | P | 13
@@ -115,10 +115,10 @@ edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphic
 @Image = Image | Image | Size, turning and colour of the whole picture.
 @Image > Mode = Colour type | Mode | How the colours are stored.
 image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | P | 13
-image.mode-indexed | A few colours only | Indexed colour | Limit the picture to a small palette, like a GIF. | palette, gif colours | P | 13
-image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. | print colours | P | 13
-image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. | lab | P | 13
-image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. | 16 bit, high bit depth | P | 13
+image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | R | 13
+image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | P | 13
+image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | P | 13
+image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. Not built yet: pictures keep 8 bits per colour, as the browser draws them. | 16 bit, high bit depth | P | 13
 @Image > Adjustments = Light and colour | Adjustments | Fix brightness, contrast and colour, one tool at a time.
 image.adj-brightness | Brightness and contrast | Brightness/Contrast | Make the picture lighter or darker, and punchier or flatter. | brighter, darker, lighter, too dark, too bright, contrast, dull, dim | R | 1
 image.adj-levels | Light and dark balance | Levels | Set the darkest point, the brightest point and the middle tones. | tones, black point, white point, washed out, histogram | R | W1 | Ctrl+L
@@ -142,7 +142,7 @@ image.adj-selective-color | Change one colour family | Selective colour | Adjust
 image.adj-shadows | Lift shadows, calm highlights | Shadows/Highlights | Brighten dark areas and tame bright ones, judged by their surroundings. | backlit, dark face, recover shadows, bright sky | R | W1
 image.adj-desaturate | Remove colour | Desaturate | Make the picture grey in one step. | grey, colourless | R | W1 | Ctrl+Shift+U
 image.adj-match | Match another photo's colour | Match colour | Copy the colour mood of another picture. | match colours | P | 5
-image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | P | 5
+image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | R | 5
 image.adj-equalize | Even out the tones | Equalize | Spread the tones evenly from dark to light. | flat, even, histogram | R | W1
 @Image
 image.auto-tone | Fix the light automatically | Auto tone | Stretch each colour so the darkest part is black and the lightest white. | auto fix, one click, enhance, improve | R | W1 | Ctrl+Shift+L
@@ -171,7 +171,7 @@ image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so ever
 --
 image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | R | W1
 image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | P | 13
-image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | P | 5
+image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | R | 5
 image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | P | 6
 image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | P | 13
 
@@ -284,7 +284,7 @@ select.inverse | Swap selected and not selected | Inverse | Select everything ex
 --
 select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | R | 11
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
-select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | P | 11
+select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | R | 11
 --
 select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
@@ -306,7 +306,7 @@ select.load | Load a saved selection | Load selection | Bring back a saved selec
 filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | R | W1 | Ctrl+Alt+F
 --
 filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
-filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | P | W2
+filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
 filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | P | 5
 filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | P | 5
@@ -324,7 +324,7 @@ filter.blur-field | Gradual blur | Field blur | Blur that changes smoothly acros
 filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | R | W2
 filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | R | W2
 filter.blur-path | Blur along a path | Path blur | Blur along a line you draw. | path blur | P | W2
-filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | P | W2
+filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | R | W2
 @Filter > Distort = Bend and twist | Distort | Bend, wave and twist the picture.
 filter.displace | Push by a map | Displace | Push pixels around by a pattern of light and dark, such as soft clouds. | displacement, warp, distort | R | W2
 filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | R | W2
@@ -335,8 +335,8 @@ filter.spherize | Bulge | Spherize | Bulge the picture like a ball. | bulge, fis
 filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | R | W2
 filter.wave | Waves | Wave | Bend the picture in waves. | wavy | R | W2
 filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | R | W2
-filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | P | W2
-filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | P | W2
+filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | R | W2
+filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | R | W2
 @Filter > Noise = Grain | Noise | Add or remove grain and specks.
 filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | R | W2
 filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | R | W2
@@ -355,8 +355,8 @@ filter.pointillize | Painted dots | Pointillize | Paint the picture with coloure
 filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | R | W2
 filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | R | W2
 filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | R | W2
-filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | P | W2
-filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | P | W2
+filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | R | W2
+filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | R | W2
 @Filter > Sharpen = Sharpen | Sharpen | Make edges crisper.
 filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | R | W1
 filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | R | W1
@@ -380,8 +380,8 @@ filter.maximum | Grow light areas | Maximum | Spread the light areas outwards. |
 filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | R | W2
 filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | R | W2
 filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | R | W2
-filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | P | W2
-filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | P | W2
+filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | R | W2
+filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | R | W2
 
 @View = View | View | Zoom, rulers, grid and screen modes.
 view.zoom-in | Zoom in | Zoom in | Look closer. | bigger view, magnify | R | 1 | Ctrl+=
@@ -389,7 +389,7 @@ view.zoom-out | Zoom out | Zoom out | See more of the picture. | smaller view | 
 view.fit | Fit on screen | Fit on screen | Show the whole picture as large as fits. | whole picture, fit | R | 1 | Ctrl+0
 view.actual | Actual pixels | 100% | One picture pixel per screen pixel. | real size, 100 | R | 1 | Ctrl+1
 view.zoom-200 | Double size | 200% | Two screen pixels per picture pixel. | 200 | R | W1
-view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | P | 8
+view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | R | 8
 --
 @View > Screen mode = Screen mode | Screen mode | How much of the workspace shows.
 view.screen-standard | Normal workspace | Standard screen mode | Show the menus, tools and panels. | normal view | R | W1
@@ -399,12 +399,12 @@ view.screen-cycle | Switch screen mode | Cycle screen mode | Switch between the 
 view.rulers | Rulers | Rulers | Show measuring rulers along the edges of the picture. | measure, ruler | R | W1 | Ctrl+R
 view.grid | Grid | Grid | Show a grid over the picture to line things up. | grid, align, straight lines | R | W1 | Ctrl+'
 view.extras | Selection outline | Extras | Show or hide the moving dashes around a selection. | marching ants | R | W1 | Ctrl+H
-view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed far in. | pixel grid | P | W2
+view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed in to 800% or more. | pixel grid | R | W2
 --
-view.guide-new | Add a guide line | New guide | Add a straight line to line things up against. | guide | P | 13
-view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | P | 13
-view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | P | 13
-view.snap | Snap to guides | Snap | Make moved things jump to guides and edges. | snap | P | 13
+view.guide-new | Add a guide line | New guide | Add a straight line to line things up against: down the middle first, then across. Drag it with Move, or off the picture to remove it. | guide | R | 13
+view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | R | 13
+view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | R | 13
+view.snap | Snap to guides | Snap | Make guides, oval selections, measures, shapes and colour fades jump to guide lines and the picture's edges and middle. | snap | R | 13
 view.slices-clear | Remove slices | Clear slices | Remove the web slices. | slices | P | 13
 
 @Window = Window | Window | Show, hide and arrange panels.
@@ -449,9 +449,9 @@ tool.move | Move | Move tool | Drag to move the active layer. Arrow keys nudge i
 tool.artboard | Artboards | Artboard tool | Design several canvases side by side. | artboard | P | 13
 @Tools > Select box = Select a box | Marquee | Select rectangles and ovals.
 tool.select-rect | Select a box | Rectangular marquee | Drag to select a rectangle; hold Shift for a square. | select area, rectangle, box | R | 1 | M
-tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval or a circle. | circle selection | P | 2
-tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | P | 2
-tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | P | 2
+tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval; hold Shift while dragging for a circle. | circle selection | R | 2
+tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | R | 2
+tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | R | 2
 @Tools > Lasso = Draw a selection | Lasso | Draw around the part you want.
 tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | R | W3 | L
 tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
@@ -466,9 +466,9 @@ tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted 
 tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | P | 13
 @Tools > Measure = Pick and measure | Eyedropper | Pick colours and measure.
 tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | R | 1 | I
-tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | P | 13
-tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | P | 13
-tool.note | Sticky note | Note | Pin a written note on the picture. | comment | P | 13
+tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | R | 13
+tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | R | 13
+tool.note | Sticky note | Note | Pin a written note on the picture. Notes stay while the picture is open; they are not saved into exported files. | comment | R | 13
 @Tools > Retouch = Fix spots | Healing | Remove spots and blemishes.
 tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | R | W3 | J
 tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | R | 11

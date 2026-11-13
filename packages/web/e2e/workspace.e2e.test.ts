@@ -46,6 +46,8 @@ const PREP: Record<string, string[]> = {
   'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
   // An outline from the box over the sun, then nothing selected, so the selection made from the outline is a visible change.
   'select.from-path': ['select.to-path', 'select.none'],
+  // A guide line first, so removing the guides is a visible change.
+  'view.guide-clear': ['view.guide-new'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

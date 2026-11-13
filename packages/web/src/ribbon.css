@@ -3,13 +3,16 @@
 /* The Task ribbon (desktop, 1024 px and wider), loaded with ribbon.ts. Calm surfaces, system fonts, 12 px text or larger, */
 /* no trend effects and no coloured edge strips: a selected item is a filled shape, groups are split by a hairline divider. */
 .fpe[data-ribbon] .fpe-top{gap:8px;padding:0 10px;background:var(--bg);border-bottom:0}
-.fpe-rapp{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0}
+/* The app bar's left row: File, step back, step forward and the picture tabs with +, all 32 px tall on one centre line, 8 px apart. */
+.fpe-rapp{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
+.fpe-rapp>*{align-self:center}
+.fpe-rapp .fpe-icon-btn,.fpe-rapp .fpe-tab-new{width:32px;height:32px;border-radius:8px}
 .fpe-rapp-right{display:flex;align-items:center;gap:2px;flex:none}
-.fpe-rsheet{height:34px;padding:0 10px;gap:4px;border-radius:10px;color:var(--text);font:inherit;font-size:13px;font-weight:600}
+.fpe-rsheet{height:32px;padding:0 10px;gap:4px;border-radius:10px;color:var(--text);font:inherit;font-size:13px;font-weight:600}
 .fpe-rsheet .fpe-icon{width:14px;height:14px;color:var(--muted)}
 .fpe-rsheet:hover,.fpe-rsheet[aria-expanded=true]{background:var(--hover)}
 .fpe-rexport-more{width:30px;padding:0;margin-left:-4px}
-.fpe-rapp .fpe-tabs{flex:0 1 auto;min-width:0;height:34px;align-items:center;margin-left:6px;overflow-x:auto;scrollbar-width:none;background:none;border:0}
+.fpe-rapp .fpe-tabs{flex:0 1 auto;min-width:0;height:32px;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none;background:none;border:0}
 .fpe-rctx{height:32px;padding:0 12px;gap:7px;border-radius:10px;background:var(--panel-2);color:var(--text);font:inherit;font-size:13px}
 .fpe-rctx .fpe-icon{width:16px;height:16px}
 .fpe-rctx[aria-pressed=true]{background:var(--sel);color:var(--accent)}
@@ -18,32 +21,34 @@
 .fpe-rtab{height:32px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;flex:none;transition:background .3s cubic-bezier(.2,.8,.2,1),color .2s}
 .fpe-rtab:hover{color:var(--text)}
 .fpe-rtab[aria-selected=true]{background:var(--panel-2);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
-.fpe-rtab:focus-visible,.fpe-rsheet:focus-visible,:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rrow):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fpe-rtab:focus-visible,.fpe-rsheet:focus-visible,:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rsoon,.fpe-rrow):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fpe-ribbon{margin:0 8px 8px;min-width:0;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 rgba(255,255,255,.035) inset,0 8px 24px rgba(0,0,0,.3);overflow:hidden}
-.fpe-rbody,.fpe-rctxbody{display:flex;align-items:stretch;width:100%;padding:8px 6px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+/* One grid: 8 px between everything; every group's items are 80 px tall (big buttons, tiles and More fill it, small buttons
+   are three 26 px rows), so all captions sit on one baseline under one hairline-split row. */
+.fpe-rbody,.fpe-rctxbody{display:flex;align-items:stretch;width:100%;padding:8px 8px 4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .fpe-rbody:not([hidden]){animation:fpe-rin .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes fpe-rin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.fpe-rbody:not([hidden]){animation:none}.fpe-rtab{transition:none}}
 .fpe-rgroup{position:relative;display:flex;flex-direction:column;flex:none;padding:0 8px}
-.fpe-rgroup+.fpe-rgroup::before{content:"";position:absolute;left:0;top:6px;bottom:20px;width:1px;background:var(--line)}
-.fpe-ritems{display:flex;align-items:flex-start;gap:4px;flex:1}
-.fpe-rcap{height:22px;line-height:20px;font-size:12px;color:var(--dim);text-align:center;white-space:nowrap}
+.fpe-rgroup+.fpe-rgroup::before{content:"";position:absolute;left:0;top:0;bottom:24px;width:1px;background:var(--line)}
+.fpe-ritems{display:flex;align-items:stretch;gap:8px;flex:1;min-height:0}
+.fpe-rcap{height:20px;margin-top:4px;line-height:20px;font-size:12px;color:var(--dim);text-align:center;white-space:nowrap}
 /* Labels wrap at spaces, never inside a word and never cut short. A button takes the width its words need; when a label
    would stick out of its button or push the group caption below the ribbon, ribbon.ts fit() widens that button. */
-.fpe-rbig,.fpe-rtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;max-width:116px;padding:4px 2px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:12px;line-height:14px;text-align:center;overflow-wrap:normal;cursor:pointer;flex:none}
+.fpe-rbig,.fpe-rtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;max-width:116px;padding:4px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:12px;line-height:14px;text-align:center;overflow-wrap:normal;cursor:pointer;flex:none}
 .fpe-rtile{min-width:68px;max-width:88px;gap:4px}
 .fpe-rbig .fpe-names{flex-direction:column;align-items:center;row-gap:0;max-width:100%}
 .fpe-rbig .fpe-pro{max-width:100%;white-space:normal}
 .fpe-rgroupbtn .fpe-plain{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 .fpe-rgroupbtn .fpe-plain .fpe-icon{width:12px;height:12px;color:var(--muted)}
 .fpe-rico{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--hover);flex:none}
-.fpe-rgal{display:flex;align-items:flex-start;gap:4px}
-.fpe-rtile .fpe-rico{width:64px;height:40px;border-radius:8px;border:1px solid var(--line);background:linear-gradient(135deg,var(--panel-2),var(--stage))}
+.fpe-rgal{display:flex;align-items:stretch;gap:8px}
+.fpe-rtile .fpe-rico{width:64px;height:40px;overflow:hidden;border-radius:8px;border:1px solid var(--line);background:linear-gradient(135deg,var(--panel-2),var(--stage))}
 .fpe-rbig>.fpe-tag,.fpe-rtile>.fpe-tag{position:absolute;top:24px;left:50%;transform:translateX(-50%);height:16px;padding:0 5px;background:var(--panel)}
 .fpe-rtile>.fpe-tag{top:28px}
 /* Effect families: one group of named buttons in three rows; each opens its own list. */
-.fpe-rfamrows{display:flex;flex-direction:column;gap:2px}
-.fpe-rfamrow{display:flex;gap:4px}
+.fpe-rfamrows{display:flex;flex-direction:column;gap:1px}
+.fpe-rfamrow{display:flex;gap:8px}
 .fpe-rpill{display:flex;align-items:center;gap:3px;height:26px;padding:0 6px 0 9px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--text);font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer;flex:none}
 .fpe-rpill .fpe-icon{width:12px;height:12px;color:var(--muted)}
 .fpe-rpill:hover,.fpe-rpill[aria-expanded=true]{background:var(--hover)}
@@ -59,7 +64,7 @@
    4 lets a long small-button label take two lines. At every step a big button or tile whose label would stick out or
    push its caption down is widened (fit() in ribbon.ts). Nothing is cut off, and the ribbon keeps one height on every tab. */
 .fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rgroup{padding:0 5px}
-.fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rmore{width:26px}
+.fpe-rbody:is([data-fit="1"],[data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rmore{width:40px}
 .fpe-rbody[data-fit="1"] .fpe-rbig{max-width:104px}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig{max-width:92px}
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rbig:not(.fpe-rgroupbtn) .fpe-pro{display:none}
@@ -68,8 +73,8 @@
 .fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile>.fpe-tag{top:18px}
 .fpe-rbody:is([data-fit="3"],[data-fit="4"]){padding-left:4px;padding-right:4px}
 .fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rgroup{padding:0 3px}
-.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-ritems{gap:2px}
-.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rmore{width:22px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-ritems{gap:4px}
+.fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rmore{width:36px}
 .fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rbig{max-width:84px}
 .fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rsmall{gap:4px;padding:0 4px 0 3px}
 .fpe-rbody:is([data-fit="3"],[data-fit="4"]) .fpe-rsmall .fpe-tag{padding:0 4px}
@@ -80,16 +85,29 @@
 .fpe[data-ribbon] .fpe-group[data-group=history] .fpe-gbody{max-height:96px}
 .fpe[data-ribbon] .fpe-hist-item{height:24px}
 .fpe[data-ribbon] .fpe-hist-mark{width:24px;height:24px}
-.fpe-rsmalls{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,27px);gap:1px 2px}
-.fpe-rsmall{display:flex;align-items:center;gap:7px;height:27px;padding:0 8px 0 6px;border:0;border-radius:7px;background:none;color:var(--text);font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.fpe-rsmalls{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,26px);gap:1px 8px;align-content:start}
+.fpe-rsmall{display:flex;align-items:center;gap:8px;height:26px;padding:0 8px 0 6px;border:0;border-radius:7px;background:none;color:var(--text);font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer}
 .fpe-rsmall .fpe-icon{width:16px;height:16px;color:var(--muted)}
 .fpe-rsmall .fpe-tag{height:16px;padding:0 5px}
-.fpe-rmore{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:32px;height:78px;border:1px solid var(--line);border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;flex:none}
+.fpe-rmore{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:44px;align-self:stretch;padding:0;border:1px solid var(--line);border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;flex:none}
 .fpe-rmore .fpe-icon{width:14px;height:14px}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rrow):not([aria-disabled=true]):hover,.fpe-rmore[aria-expanded=true],.fpe-rgroupbtn[aria-expanded=true]{background:var(--hover)}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true]{cursor:default;color:var(--dim)}
 :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true] :is(.fpe-rico,.fpe-icon){opacity:.5}
-.fpe-rbody [data-pulse],.fpe-rapp-right [data-pulse]{background:var(--sel);color:var(--accent)}
+.fpe-rbody [data-pulse],.fpe-rapp-right [data-pulse],.fpe-rbody [data-coach]{background:var(--sel);color:var(--accent)}
+/* No picture open: a command that needs one looks like any other (ribbon.ts sends its click to "Open a photo"). */
+.fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true]{color:var(--text);cursor:pointer}
+.fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true] :is(.fpe-rico,.fpe-icon){opacity:1}
+.fpe:not([data-has-doc]) :is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[data-status=ready][aria-disabled=true]:hover{background:var(--hover)}
+/* A group with nothing working yet: one quiet tile instead of a row of greyed buttons; it opens the group's "Coming" list. */
+.fpe-rsoon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:88px;align-self:stretch;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--muted);font:inherit;line-height:14px;text-align:center;cursor:pointer;flex:none}
+.fpe .fpe-rsoon{font-size:12px}
+.fpe-rsoon-n{font-size:12px;color:var(--muted)}
+.fpe-rsoon:hover,.fpe-rsoon[aria-expanded=true]{background:var(--hover)}
+.fpe-rthumb{display:block;width:100%;height:100%}
+.fpe-rcoming{margin-top:6px;padding:10px 10px 4px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.fpe-rcoach{position:absolute;z-index:40;max-width:min(560px,calc(100% - 16px));padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);color:var(--text);font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none}
+.fpe-rcoach[hidden]{display:none}
 .fpe-rctxbody{align-items:center;padding-bottom:6px}
 .fpe-rctxbody .fpe-options{display:flex;flex:none;height:48px;padding:0 8px;overflow:visible;background:none;border:0}
 .fpe-rctxmore{align-self:stretch;justify-content:flex-end}

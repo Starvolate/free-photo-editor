@@ -266,7 +266,7 @@ export const W3_TOOLS: Record<string, ToolId> = {
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));
-export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'info', 'character', 'paragraph'] as const;
+export const DOCK_PANELS = ['layers', 'history', 'properties', 'adjustments', 'color', 'swatches', 'navigator', 'histogram', 'info', 'character', 'paragraph'] as const;
 export type PanelId = (typeof DOCK_PANELS)[number];
 
 export const HANDLERS: Record<string, Handler> = {

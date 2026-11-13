@@ -98,7 +98,19 @@ export function tone(src: Bitmap, kind: ToneKind, p: ToneParams = {}): Uint8Clam
   const copyA = (i: number): void => { out[i + 3] = s[i + 3]; };
   switch (kind) {
     case 'levels': { const l = levelsLut(v('inB', 0), v('gamma', 1), v('inW', 255), v('outB', 0), v('outW', 255)); return lut3(s, out, l, l, l); }
-    case 'curves': { const l = curveLut([v('p0', 0), v('p1', 64), v('p2', 128), v('p3', 192), v('p4', 255)]); return lut3(s, out, l, l, l); }
+    case 'curves': {
+      const l = curveLut([v('p0', 0), v('p1', 64), v('p2', 128), v('p3', 192), v('p4', 255)]);
+      // Red, green and blue each have an optional curve of their own (r0..r4, g0..g4, b0..b4), applied after the one for
+      // all colours; points never set mean no change, so older layers draw exactly as before.
+      const ch = (c: string): Uint8ClampedArray => {
+        const ys = [v(c + '0', 0), v(c + '1', 64), v(c + '2', 128), v(c + '3', 192), v(c + '4', 255)];
+        if (ys[0] === 0 && ys[1] === 64 && ys[2] === 128 && ys[3] === 192 && ys[4] === 255) return l;
+        const t = curveLut(ys), o = new Uint8ClampedArray(256);
+        for (let i = 0; i < 256; i++) o[i] = t[l[i]];
+        return o;
+      };
+      return lut3(s, out, ch('r'), ch('g'), ch('b'));
+    }
     case 'exposure': {
       const k = Math.pow(2, v('ev', 0)), off = v('offset', 0), g = clamp(v('gamma', 1), 0.1, 10), l = new Uint8ClampedArray(256);
       for (let i = 0; i < 256; i++) l[i] = 255 * Math.pow(Math.pow(Math.max(0, Math.pow(i / 255, 2.2) * k + off), 1 / g), 1 / 2.2);

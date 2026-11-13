@@ -528,7 +528,7 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.waitForTimeout(250);
     expect(await overRulers(p), 'tip and toast clear of the rulers').toEqual([]);
     expect(await run(p, 'layer.adj-curves')).toBe(true);
-    await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)', { state: 'visible' });
+    await p.waitForSelector('[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row, .fpe-curve)', { state: 'visible' });
     await p.waitForTimeout(300);
     // A slider is an .fpe-field (controls.ts), a list an .fpe-row: both are controls.
     // Fully in view: inside the window, not cut by any card or scroll box around it, and no word cut short.
@@ -549,7 +549,7 @@ suite('W1 workspace (headless Chrome)', () => {
       return out;
     }, [sel, k] as const);
     const acts = ['layer-add', 'layer-mask-add', 'layer-duplicate', 'layer-delete'].map((t) => `[data-testid="${t}"] .fpe-btn-text`).join(', ');
-    const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)';
+    const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row, .fpe-curve)';
     expect(await fully(acts, 4), 'New, Mask, Copy and Delete in full').toEqual([]);
     expect(await fully(props, 4), 'the first four controls in full').toEqual([]);
     expect(await clipped(p), '1440: nothing in a dock card is cut').toEqual([]);
@@ -564,6 +564,21 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await p.textContent('[data-testid="status-layer"]')).toBe('Tone curve layer · pros call it Curves');
     expect(await p.textContent('[data-testid="status-space"]')).toBe('sRGB · 8 bits a channel');
     expect(await p.textContent('[data-testid="learn-text"]')).toContain('Pros call it a Curves layer.');
+    // The Tone curve graph (UI-D fix 3): dragging the middle point up raises the same Middle tones value the Simple sliders show.
+    const mid = await (await p.$('[data-testid="curve-pt-2"]'))?.boundingBox();
+    expect(mid, 'the middle point shows').toBeTruthy();
+    if (mid) {
+      await p.mouse.move(mid.x + mid.width / 2, mid.y + mid.height / 2);
+      await p.mouse.down();
+      await p.mouse.move(mid.x + mid.width / 2, mid.y + mid.height / 2 - 24, { steps: 4 });
+      await p.mouse.up();
+    }
+    await p.click('[data-testid="curve-simple"] > summary');
+    expect(Number(await p.inputValue('[data-testid="adjust-props"] [data-testid="ctl-p2"]')), 'the Middle tones slider follows the graph').toBeGreaterThan(128);
+    await p.click('[data-testid="curve-simple"] > summary');
+    await p.selectOption('[data-testid="curve-preset"]', { label: 'Gentle lift' });
+    expect(await p.textContent('[data-testid="curve-readout"]'), 'the middle point reads before and after').toContain('After 140');
+    await p.waitForTimeout(200);
     await p.screenshot({ path: join(OUT, 'ui-b-1440-adjust.png') });
     await p.screenshot({ path: join(OUT, 'ui-c-1440-adjust.png') });
     expect(await p.$$eval('[data-testid="ribbon-body"] .fpe-rgroup > .fpe-rcap', (els) => els.filter((e) => getComputedStyle(e).visibility === 'hidden' || !e.getBoundingClientRect().height).length),

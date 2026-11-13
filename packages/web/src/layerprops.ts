@@ -11,6 +11,7 @@ import {
 } from '@free-photoeditor/core';
 import { ADJ } from './commands';
 import { renderControls } from './controls';
+import { curveEditor } from './curvegraph';
 import { h } from './dom';
 import { BY_ID } from './registry';
 
@@ -118,6 +119,9 @@ export function renderFolderProps(el: HTMLElement, host: FolderPropsHost): void 
       btn('Take out of the folder', 'Ungroup layers', 'The layers inside move out, in the same order, and the folder goes.', 'folder-ungroup', () => host.run('layer.ungroup'))));
 }
 
+/** Whether a Tone curve layer's five Simple sliders are open; kept here so a redraw of the panel keeps it. */
+let curveSimpleOpen = false;
+
 /**
  * An editable light and colour layer (W6 S3, design 6): the exact controls of its Image › Adjustments dialog, drawn by the
  * one shared renderer. Moving a control shows live on the canvas; letting go adds one undo step. Clip and Reset sit below.
@@ -131,7 +135,7 @@ export function renderAdjustProps(el: HTMLElement, host: MaskPropsHost): void {
     el.replaceChildren(head, h('p', { class: 'fpe-note' }, 'This layer came from a file with settings this editor cannot show yet. It is kept as it is and saved back unchanged.'));
     return;
   }
-  const params: Record<string, number | undefined> = { ...job.params };
+  const params: Record<string, number | undefined> = { ...job.params }, curves = a.from === 'image.adj-curves';
   let start: AdjustLayer | null = null;
   const input = (): void => {
     const t = host.layer();
@@ -150,13 +154,35 @@ export function renderAdjustProps(el: HTMLElement, host: MaskPropsHost): void {
     const cb = h('input', { id: clipId, type: 'checkbox', checked: !!host.layer()?.clip, 'data-testid': 'adjust-clip' }) as HTMLInputElement;
     cb.addEventListener('change', () => host.run('layer.clip'));
     const reset = h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'adjust-reset', 'data-help-title': 'Back to the start · Reset',
-      'data-help': 'Puts every setting of this layer back where it started.', onclick: () => { for (const c of def.controls) params[c.key] = c.value; input(); commit(); draw(); } }, 'Back to the start');
-    el.replaceChildren(head,
-      h('p', { class: 'fpe-note' }, `${row?.help ? row.help + ' ' : ''}As a layer it changes everything below and keeps their pixels: change it at any time, or hide it to compare.`),
-      ...renderControls(def.controls, params, `fpe-${host.uid}-adj-`, { input, commit, rerender: draw }),
-      h('div', { class: 'fpe-check', 'data-help-title': 'Affects only the layer below · Clip', 'data-help': 'Changes only the layer directly below it instead of everything below.' },
-        cb, h('label', { for: clipId }, 'Affects only the layer below ', h('small', { class: 'fpe-pro' }, 'Clip'))),
-      h('div', { class: 'fpe-mask-actions' }, reset));
+      'data-help': 'Puts every setting of this layer back where it started.', onclick: () => {
+        for (const c of def.controls) params[c.key] = c.value;
+        if (curves) for (const k of Object.keys(params)) if (/^[rgb][0-4]$/.test(k)) delete params[k];
+        input(); commit(); draw();
+      } }, 'Back to the start');
+    const note = h('p', { class: 'fpe-note' }, `${row?.help ? row.help + ' ' : ''}As a layer it changes everything below and keeps their pixels: change it at any time, or hide it to compare.`);
+    const clip = h('div', { class: 'fpe-check', 'data-help-title': 'Affects only the layer below · Clip', 'data-help': 'Changes only the layer directly below it instead of everything below.' },
+      cb, h('label', { for: clipId }, 'Affects only the layer below ', h('small', { class: 'fpe-pro' }, 'Clip')));
+    const acts = h('div', { class: 'fpe-mask-actions' }, reset);
+    if (curves) {
+      // A Tone curve layer (UI-D, a-deep): the graph first; its five sliders are the same all-colours points, behind Simple.
+      const syncSliders = (): void => {
+        for (const c of def.controls) {
+          const s = el.querySelector<HTMLInputElement>(`[data-testid="ctl-${c.key}"]`), v = params[c.key];
+          if (!s || v == null) continue;
+          s.value = String(v);
+          const o = s.closest('.fpe-field')?.querySelector('output');
+          if (o) o.textContent = String(v);
+        }
+      };
+      const ed = curveEditor(params, { doc: host.doc, input: () => { input(); syncSliders(); }, commit }, name, row?.pro ?? 'Curves');
+      const simple = h('details', { class: 'fpe-curve-simple', 'data-testid': 'curve-simple', open: curveSimpleOpen },
+        h('summary', { 'data-help-title': 'Simple · five sliders', 'data-help': 'The same curve as five sliders, darkest to lightest, for all colours together.' }, 'Simple: five sliders'),
+        ...renderControls(def.controls, params, `fpe-${host.uid}-adj-`, { input: () => { input(); ed.sync(); }, commit, rerender: draw }));
+      simple.addEventListener('toggle', () => { curveSimpleOpen = simple.open; });
+      el.replaceChildren(...ed.parts, simple, note, clip, acts);
+      return;
+    }
+    el.replaceChildren(head, note, ...renderControls(def.controls, params, `fpe-${host.uid}-adj-`, { input, commit, rerender: draw }), clip, acts);
   };
   draw();
 }

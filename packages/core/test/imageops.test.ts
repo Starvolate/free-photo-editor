@@ -18,6 +18,16 @@ describe('tone', () => {
     const lv = levelsLut(0, 1, 255, 0, 255), cv = curveLut([0, 64, 128, 192, 255]);
     for (let t = 0; t < 256; t++) { expect(lv[t]).toBe(t); expect(Math.abs(cv[t] - t)).toBeLessThanOrEqual(1); }
   });
+  it('gives red, green and blue their own curve after the one for all colours', () => {
+    const one = (px: number[], p: Record<string, number>): number[] => Array.from(tone({ width: 1, height: 1, data: new Uint8ClampedArray(px) }, 'curves', p));
+    // A curve passes exactly through its points: red's middle point takes 128 to 200 and leaves green and blue alone.
+    expect(one([128, 128, 128, 255], { r2: 200 })).toEqual([200, 128, 128, 255]);
+    expect(one([128, 128, 128, 255], { b2: 60 })).toEqual([128, 128, 60, 255]);
+    // All colours first (Shadows takes 64 to 128), then red's own curve (128 to 200).
+    expect(one([64, 64, 64, 255], { p1: 128, r2: 200 })).toEqual([200, 128, 128, 255]);
+    // No channel points: exactly the all-colours curve, as before.
+    expect(one([10, 100, 250, 255], {})).toEqual(one([10, 100, 250, 255], { r0: 0, r1: 64, r2: 128, r3: 192, r4: 255 }));
+  });
   it('removes colour', () => {
     const out = tone({ width: 2, height: 1, data: new Uint8ClampedArray([200, 40, 10, 255, 10, 220, 90, 128]) }, 'desaturate');
     expect(out[0]).toBe(out[1]); expect(out[1]).toBe(out[2]); expect(out[4]).toBe(out[6]); expect(out[7]).toBe(128);

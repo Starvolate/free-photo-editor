@@ -2994,6 +2994,8 @@ export class Editor {
     this.scrim.setAttribute('data-on', '');
     requestAnimationFrame(() => (s.querySelector<HTMLElement>('[data-autofocus]') ?? s.querySelector<HTMLElement>('.fpe-sheet-body .fpe-btn-primary')
       ?? s.querySelector<HTMLElement>('.fpe-sheet-body button'))?.focus({ preventScroll: true }));
+    // A note shown just before the sheet opened (a command's note, then its sheet) moves off the sheet.
+    if (this.toastEl.hasAttribute('data-on')) this.placeToast();
   }
   private closeModal(restore = true): void {
     const id = this.modal;
@@ -3668,12 +3670,14 @@ export class Editor {
     const box = (el: Element | null | undefined): DOMRect | null => {
       if (!el || (el as HTMLElement).hidden) return null;
       const cs = getComputedStyle(el), b = el.getBoundingClientRect();
-      return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
+      return cs.display === 'none' || (cs.visibility === 'hidden' && (el as HTMLElement).dataset.state !== 'open') || !b.width || !b.height ? null : b;
     };
-    const dlg = box(this.dlgEl);
+    const dlg = box(this.dlgEl), sheet = [...this.sheets.values()].map(box).find((b) => !!b);
     const zoomEl = this.stage.querySelector('.fpe-zoom'), zoom = box(zoomEl);
     const avoid = [zoomEl, this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl, this.rulerH, this.rulerV, this.statusEl,
       this.root.querySelector('.fpe-rcoach'), ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
+    // An opening sheet still slides by a few pixels: keep a margin above and below it.
+    if (sheet) avoid.push(new DOMRect(sheet.x, sheet.y - 16, sheet.width, sheet.height + 32));
     const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
     if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);
     spans.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
@@ -3693,7 +3697,10 @@ export class Editor {
     }
     // No clear spot (a full panel sheet covers the picture): at the very top, over the top bar, as on phones before.
     t.style.maxWidth = Math.min(560, Math.max(140, hr.width - 32)) + 'px';
-    put(hr.left + (hr.width - t.offsetWidth) / 2, hr.top + 3);
+    // Never on an open sheet's title: below the sheet when there is room, else above it, else at the foot.
+    const th = t.offsetHeight, top = hr.top + 3;
+    put(hr.left + (hr.width - t.offsetWidth) / 2, !sheet || sheet.top >= top + th + pad || sheet.bottom <= top ? top
+      : sheet.bottom + pad + th <= hr.bottom ? sheet.bottom + pad : sheet.top - pad - th >= hr.top ? sheet.top - pad - th : hr.bottom - th - pad);
   }
   /** Lets a dialog be dragged by its title bar, so it never has to cover the part of the picture being changed. */
   private dragHead(head: HTMLElement): HTMLElement {

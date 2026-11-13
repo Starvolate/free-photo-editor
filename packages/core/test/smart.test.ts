@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** Smart layers: the kept original comes back exactly after shrinking and growing; convert and rasterize undo cleanly. */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { compositeDoc, createDocument, createLayer, flatten, resizeDocument, transformLayer, quadOfRect, type Doc, type Layer } from '../src/index';
+import { compositeDoc, createDocument, createLayer, cropDocument, flatten, resizeDocument, transformLayer, quadOfRect, type Doc, type Layer } from '../src/index';
 import { convertToSmart, installSmartHooks, rasterizeSmart, renderSmart, uprightBox } from '../src/smart';
 import { readPsdDocument, writePsdDocument } from '../src/psd';
 
@@ -83,6 +83,17 @@ describe('smart layers', () => {
     c?.undo(doc);
     expect(l.kind).toBe('smart');
     expect(rasterizeSmart(createLayer('x', 1, 1))).toBeNull();
+  });
+
+  it('Crop moves a smart layer and keeps every pixel past the new edges', () => {
+    const { doc, l } = docWith();
+    convertToSmart(l);
+    cropDocument(doc, { x: 2, y: 2, w: 4, h: 4 });
+    const s = doc.layers[0];
+    expect([s.x, s.y, s.width, s.height]).toEqual([-2, -2, 8, 8]);
+    // Document pixel (1, 0) is original pixel (3, 2) = (90, 60, 19, 255).
+    expect([...compositeDoc(doc, { x: 1, y: 0, w: 1, h: 1 })]).toEqual([90, 60, 19, 255]);
+    expect([...s.data]).toEqual([...pattern()]);
   });
 
   it('PSD keeps a smart layer as plain pixels', () => {

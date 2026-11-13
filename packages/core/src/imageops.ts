@@ -133,7 +133,7 @@ export function resizeCanvas(doc: Doc, width: number, height: number, ax = 0.5, 
   if (w === doc.width && h === doc.height) return null;
   const dx = Math.round((w - doc.width) * ax), dy = Math.round((h - doc.height) * ay), before = snapshotDoc(doc);
   const layers = doc.layers.map((l) => ({ ...l, x: l.x + dx, y: l.y + dy, ...withMask(l, (m) => shiftMask(m, dx, dy)) }));
-  if (fill && fill.a > 0 && layers.length) {
+  if (fill && fill.a > 0 && layers.length && layers[0].kind !== 'smart') {
     const b = layers[0], data = new Uint8ClampedArray(w * h * 4);
     for (let i = 0; i < data.length; i += 4) { data[i] = fill.r; data[i + 1] = fill.g; data[i + 2] = fill.b; data[i + 3] = fill.a; }
     for (let y = Math.max(0, b.y); y < Math.min(h, b.y + b.height); y++) for (let x = Math.max(0, b.x); x < Math.min(w, b.x + b.width); x++) {

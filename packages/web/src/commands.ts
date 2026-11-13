@@ -236,7 +236,7 @@ const canDelete = (e: Editor): boolean => {
   const d = e.doc, a = e.active();
   if (!d || !a) return false;
   const sub = new Set(subtreeOf(d.layers, a.id));
-  return d.layers.some((l) => !sub.has(l) && hasPixels(l));
+  return d.layers.some((l) => !sub.has(l) && (hasPixels(l) || l.kind === 'smart'));
 };
 /** Something to merge into: the sibling below, or a folder that merges into one layer. */
 const canMergeDown = (e: Editor): boolean => { const d = e.doc, a = e.active(); return !!d && !!a && (isFolder(a) || !!siblingBelow(d.layers, a.id)); };
@@ -452,6 +452,13 @@ for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-mo
 // Smart layers (smart.ts, loaded on first use): make one from a picture layer, and turn it back into pixels.
 HANDLERS['layer.smart-convert'] = H((e) => e.smart('layer.smart-convert'), (e) => { const a = e.active(); return !!a && (!a.kind || a.kind === 'pixel'); });
 HANDLERS['layer.smart-rasterize'] = H((e) => e.smart('layer.smart-rasterize'), (e) => e.active()?.kind === 'smart');
+// Quarter turns and flips redraw pixels without moving a smart layer's kept corners, so they wait (smart-layers-design.md §4):
+// the layer ones while a smart layer is active, the canvas ones while the picture has one.
+for (const id of ['edit.flip-layer-h', 'edit.flip-layer-v', 'edit.rotate-layer-cw', 'edit.rotate-layer-ccw', 'edit.rotate-layer-180',
+  'image.rotate-cw', 'image.rotate-ccw', 'image.rotate-180', 'image.flip-h', 'image.flip-v']) {
+  const h0 = HANDLERS[id], canvas = id.startsWith('image.');
+  if (h0) HANDLERS[id] = { ...h0, enabled: (e) => h0.enabled(e) && !(canvas ? e.doc?.layers.some((l) => l.kind === 'smart') : e.active()?.kind === 'smart') };
+}
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers', 'file.recent']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' || id === 'file.recent' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.

@@ -122,6 +122,8 @@ export function cropDocument(doc: Doc, area: Rect): Command | null {
   const before = snapshotDoc(doc);
   const layers = doc.layers.map((l) => {
     const ir = intersect(layerRect(l), cr), mask = l.mask ? { mask: cropMask(l.mask, cr) } : {};
+    // A smart layer keeps all its pixels past the new edges (its original is redrawn from them): it only moves.
+    if (l.kind === 'smart') return { ...l, x: l.x - cr.x, y: l.y - cr.y, ...mask };
     if (!ir) return { ...l, x: 0, y: 0, width: 1, height: 1, data: new Uint8ClampedArray(4), ...mask };
     return { ...l, x: ir.x - cr.x, y: ir.y - cr.y, width: ir.w, height: ir.h, data: readRegion(l, { x: ir.x - l.x, y: ir.y - l.y, w: ir.w, h: ir.h }), ...mask };
   });

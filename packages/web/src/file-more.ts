@@ -98,7 +98,7 @@ export function layerFiles(doc: Doc): { name: string; bmp: Bitmap }[] {
 /** The file name of every layer with pixels, with its place in the stack. */
 export function layerNames(doc: Doc): { i: number; name: string }[] {
   const pad = Math.max(2, String(doc.layers.length).length);
-  return doc.layers.flatMap((l, i) => (hasPixels(l) ? [{ i, name: `${String(i + 1).padStart(pad, '0')} ${baseName(l.name)}.png` }] : []));
+  return doc.layers.flatMap((l, i) => (hasPixels(l) || l.kind === 'smart' ? [{ i, name: `${String(i + 1).padStart(pad, '0')} ${baseName(l.name)}.png` }] : []));
 }
 /** One layer drawn alone on a see-through canvas of the picture's size. */
 function layerAlone(doc: Doc, i: number): Bitmap {

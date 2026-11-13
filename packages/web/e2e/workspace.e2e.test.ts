@@ -451,7 +451,9 @@ suite('W1 workspace (headless Chrome)', () => {
     const props = '[data-testid="panel-properties"] [data-testid="adjust-props"] :is(.fpe-field, .fpe-row)';
     expect(await fully(acts, 4), 'New, Mask, Copy and Delete in full').toEqual([]);
     expect(await fully(props, 4), 'the first four controls in full').toEqual([]);
-    expect(await p.locator('[data-testid="dock"] :text-matches("^\\+\\d+$")').count(), 'no "+n" chip on the resting dock').toBe(0);
+    // Read in the page: inside a quoted CSS selector "\\d" is a hex escape, so a :text-matches regex never ran.
+    expect(await p.$$eval('[data-testid="dock"] *', (els) => els.filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && /^\+\d+$/.test((e.textContent ?? '').trim())).length),
+      'no "+n" chip on the resting dock').toBe(0);
     // The status bar as in a-deep: size, colour space, the layer's plain and pro names, saved on this device.
     expect(await p.textContent('[data-testid="status-layer"]')).toBe('Tone curve layer · pros call it Curves');
     expect(await p.textContent('[data-testid="status-space"]')).toBe('sRGB · 8 bits a channel');

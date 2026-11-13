@@ -10,5 +10,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.31.1"
   }
 }

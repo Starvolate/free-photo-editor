@@ -451,13 +451,13 @@ export const RAW_IDS = ('raw.white-balance raw.highlights raw.black-white-points
 for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-more'); return e.openAdjust(id); });
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers', 'file.recent']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' || id === 'file.recent' ? always : hasDoc);
-// Batch crop-warp (warpkit.ts, loaded on first use): Bend, Re-angle a surface, Bend around pins and the Cage as filter dialogs
-// with handles on the picture, plus two retouch dialogs. A live free transform is applied first, so a bend starts from what is shown.
-export const WARP_IDS = 'edit.warp edit.perspective-warp edit.pin-warp edit.cage retouch.median-brush retouch.smooth-skin retouch.deblur'.split(' ');
-for (const id of WARP_IDS) HANDLERS[id] = H(async (e) => { await e.settleTransform(); await import('./warpkit'); return e.openAdjust(id); });
-// Liquify, Stretch without squashing people and the detail layers have sheets of their own (warpkit.ts runWarpMore).
-for (const id of ['filter.liquify', 'edit.smart-scale', 'retouch.frequency-separation']) HANDLERS[id] = H(async (e) => { await e.settleTransform(); return e.warpMore(id); });
-HANDLERS['image.fit-canvas'] = H((e) => e.warpMore('image.fit-canvas'));
+// Batch crop-warp (warpkit.ts runWarp, loaded on first use): Bend, Re-angle a surface, Bend around pins and the Cage as filter
+// dialogs with handles on the picture, plus three retouch dialogs (WARP_IDS); Liquify, Stretch without squashing people and the
+// detail layers on sheets of their own; Fit canvas.
+const WARP_ALL = ('edit.warp edit.perspective-warp edit.pin-warp edit.cage retouch.median-brush retouch.smooth-skin retouch.deblur'
+  + ' filter.liquify edit.smart-scale retouch.frequency-separation image.fit-canvas').split(' ');
+export const WARP_IDS = WARP_ALL.slice(0, 7);
+for (const id of WARP_ALL) HANDLERS[id] = H((e) => e.warpMore(id));
 HANDLERS['edit.transform-again'] = w3('edit.transform-again');
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
 for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits'])

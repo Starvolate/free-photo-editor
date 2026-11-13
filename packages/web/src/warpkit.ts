@@ -12,16 +12,16 @@
  * and Fit canvas, moved here so the first screen does not carry it.
  */
 import {
-  LIQUIFY_TOOLS, PLANE, cageOf, gridOf, liquifyDab, liquifyDraw, newField, pinsOf, textureLayer, type LiquifyTool,
+  LIQUIFY_TOOLS, PLANE, cageOf, fitCanvas, gridOf, layersBox, liquifyDab, liquifyDraw, newField, pinsOf, textureLayer, type LiquifyTool,
 } from '@free-photoeditor/core/warp';
 import {
-  activeLayer, createLayer, docCommand, fitCanvas, hasPixels, layersBox, snapshotDoc, type Bitmap, type Doc, type JobParams, type JobSpec, type Layer, type Rect,
+  activeLayer, createLayer, docCommand, hasPixels, snapshotDoc, type Bitmap, type Doc, type JobParams, type JobSpec, type Layer, type Rect,
 } from '@free-photoeditor/core';
 import { geomOf, layerDataCommand } from '@free-photoeditor/core/selection-more';
 import { ADJ, type AdjDef, type Ctl } from './commands';
 import { h } from './dom';
 import { HANDLES, type Guide, type Handle, type HandleSet } from './handles';
-import type { ToolHost } from './toolkit';
+import type { ToolHost, ToolKit } from './toolkit';
 
 type Pt = [number, number];
 const val = (p: JobParams, k: string, d: number): number => { const v = p[k]; return typeof v === 'number' && Number.isFinite(v) ? v : d; };
@@ -91,7 +91,7 @@ const pins: HandleSet = {
     return { guides, handles };
   },
   drag(k, x, y, p, b) { const i = key(k, 'q'), [px, py] = pctOf(b, x, y); p[`q${i}x`] = px; p[`q${i}y`] = py; },
-  add(x, y, p, b) {
+  press(x, y, p, b) {
     const n = Math.max(0, Math.round(val(p, 'n', 0)));
     if (n >= MAX_PINS) return null;
     const [px, py] = pctOf(b, x, y);
@@ -131,7 +131,7 @@ const cage: HandleSet = {
     } else c.moved[i] = [px, py];
     setCage(p, c.drawn, c.moved);
   },
-  add(x, y, p, b) {
+  press(x, y, p, b) {
     if (val(p, 'step', 0) === 1) return null;
     const c = cageOf(p);
     if (c.drawn.length >= MAX_CAGE) return null;
@@ -170,12 +170,27 @@ Object.assign(ADJ, WARP_ADJ);
 Object.assign(HANDLES, WARP_HANDLES);
 
 // ---------- part 3: sheets with their own preview or settings ----------
-/** What the part-3 sheets need beyond the tool host: the worker, and fitting the view after the canvas changes size. */
+/**
+ * What this file needs beyond the tool host: the worker, and the editor itself for its tool kit (a live free transform is
+ * applied first), its filter dialogs and fitting the view after the canvas changes size.
+ */
 export interface WarpHost extends ToolHost {
   job(spec: JobSpec, src: Bitmap): Promise<Uint8ClampedArray>;
-  fit(): void;
+  ed: { tk: ToolKit | null; toolkit(): Promise<ToolKit>; openAdjust(id: string): Promise<void>; fit(): void };
 }
 export const WARP_MORE_IDS = ['filter.liquify', 'edit.smart-scale', 'retouch.frequency-separation'];
+/**
+ * Every crop-and-warp command comes here, through app.ts warpMore, the one hook the first screen keeps. A live free
+ * transform is applied first (the Transform bar offers the bends while one is open), so a bend starts from what is shown;
+ * Fit canvas leaves it alone.
+ */
+export async function runWarp(id: string, host: WarpHost): Promise<void> {
+  if (id === 'image.fit-canvas') return fitCanvasRun(host);
+  const e = host.ed;
+  if (e.tk?.state().transform) (await e.toolkit()).cmd('edit.transform-commit');
+  if (WARP_ADJ[id]) return e.openAdjust(id);
+  runWarpMore(id, host);
+}
 const LQ = { size: 0, strength: 50 }, FS = { radius: 6 };
 const bodies = new Map<string, HTMLElement>();
 /** A sheet with Cancel and Apply (the same shape as selmore.ts's). */
@@ -319,7 +334,7 @@ function smartScale(host: WarpHost, d: Doc, l: Layer): void {
     at.l.data = data; at.l.width = tw; at.l.height = th;
     if (cover) { at.l.x = 0; at.l.y = 0; at.d.width = tw; at.d.height = th; at.d.selection = null; }
     host.push(docCommand('Stretch without squashing people', before, snapshotDoc(at.d)), true);
-    if (cover) host.fit();
+    if (cover) host.ed.fit();
     host.toast(`The layer is now ${tw} × ${th} px.${cover ? ' The canvas changed size with it.' : ''}`);
   });
 }
@@ -358,6 +373,6 @@ export function fitCanvasRun(host: WarpHost): void {
   const cmd = fitCanvas(d, r, s ? 'Fit canvas to selection' : 'Fit canvas to layers');
   if (!cmd) { host.toast('The canvas already fits.'); return; }
   host.push(cmd, true);
-  host.fit();
+  host.ed.fit();
   host.toast(`The canvas is now ${d.width} × ${d.height} px. Nothing was deleted: parts outside it are kept.`);
 }

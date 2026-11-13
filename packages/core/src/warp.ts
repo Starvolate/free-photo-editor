@@ -13,7 +13,10 @@
  *   triangle mesh so every pin lands exactly where it was dragged;
  * - the cage uses mean value coordinates (Floater, 2003) against the moved cage, read back into the drawn one.
  */
-import type { Bitmap } from './document';
+import { hasPixels, type Bitmap, type Doc } from './document';
+import { union, type Rect } from './geometry';
+import { docCommand, snapshotDoc, type Command } from './history';
+import { shiftMask } from './mask';
 import { homography, invert3, type Quad } from './transform';
 import { clamp, luma, premul, unpremul, type Box, type Fx, type P } from './fx/lib';
 
@@ -442,5 +445,33 @@ const deblur: Fx = (src, p, b) => {
   return out;
 };
 
+// Fit canvas (warpkit.ts fitCanvasRun). Kept here, not in imageops.ts, so it loads with the bends rather than on the first screen.
+/** The box round every visible pixel of every layer (hidden layers too), in picture pixels; null when all are empty. */
+export function layersBox(doc: Doc): Rect | null {
+  let u: Rect | null = null;
+  for (const l of doc.layers) {
+    if (!hasPixels(l)) continue;
+    let x0 = l.width, y0 = -1, x1 = -1, y1 = -1;
+    for (let y = 0; y < l.height; y++) for (let x = 0; x < l.width; x++) {
+      if (!l.data[(y * l.width + x) * 4 + 3]) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y0 < 0) y0 = y;
+      y1 = y;
+    }
+    if (y0 >= 0) u = union(u, { x: l.x + x0, y: l.y + y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+  }
+  return u;
+}
+/** The canvas becomes the box `r`: every layer shifts with it and keeps all its pixels, so nothing is deleted (one undo step). */
+export function fitCanvas(doc: Doc, r: Rect, label = 'Fit canvas'): Command | null {
+  const x = Math.round(r.x), y = Math.round(r.y), w = Math.max(1, Math.round(r.w)), h = Math.max(1, Math.round(r.h));
+  if (x === 0 && y === 0 && w === doc.width && h === doc.height) return null;
+  const before = snapshotDoc(doc);
+  const layers = doc.layers.map((l) => ({ ...l, x: l.x - x, y: l.y - y, ...(l.mask ? { mask: shiftMask(l.mask, -x, -y) } : {}) }));
+  const cmd = docCommand(label, before, { width: w, height: h, layers, activeId: doc.activeId, selection: null });
+  cmd.redo(doc);
+  return cmd;
+}
 export const WARPS = { 'mesh-warp': meshWarp, 'perspective-warp': perspectiveWarp, 'pin-warp': pinWarp, 'cage-warp': cageWarp, 'seam-scale': seamScale, deblur };
 export const WARP_KINDS = Object.keys(WARPS) as (keyof typeof WARPS)[];

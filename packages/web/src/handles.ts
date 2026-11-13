@@ -15,10 +15,11 @@ export interface HandleSet {
   draw(p: JobParams, b: Rect): Guides;
   /** A handle was dragged to (x, y): update the settings. */
   drag(key: string, x: number, y: number, p: JobParams, b: Rect): void;
-  /** A press away from every handle (pins, the cage): add one there and return its key, or null to ignore the press. */
-  add?(x: number, y: number, p: JobParams, b: Rect): string | null;
-  /** A press away from every handle, at (x, y): return true when it set something (the develop sheet's grey picker). */
-  press?(x: number, y: number, p: JobParams, b: Rect): boolean;
+  /**
+   * A press away from every handle, at (x, y): true when it set something (the develop sheet's grey picker), or the key of
+   * a handle it added there, ready to drag (pins, the cage); false or null to ignore the press.
+   */
+  press?(x: number, y: number, p: JobParams, b: Rect): boolean | string | null;
 }
 
 const val = (p: JobParams, k: string, d: number): number => p[k] ?? d;

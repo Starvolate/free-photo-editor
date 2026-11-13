@@ -45,8 +45,8 @@ describe('Bend and push dialogs (warpkit)', () => {
   it('places pins with a press and drags them', () => {
     const p: JobParams = {}, set = WARP_HANDLES.pins;
     expect(set.draw(p, B).handles).toEqual([]);
-    expect(set.add?.(60, 45, p, B)).toBe('q0');
-    expect(set.add?.(20, 20, p, B)).toBe('q1');
+    expect(set.press?.(60, 45, p, B)).toBe('q0');
+    expect(set.press?.(20, 20, p, B)).toBe('q1');
     set.drag('q1', 30, 20, p, B);
     expect(pinsOf(p)).toEqual({ from: [[50, 50], [10, 0]], to: [[50, 50], [20, 0]] });
   });
@@ -63,10 +63,10 @@ describe('Bend and push dialogs (warpkit)', () => {
     const p: JobParams = { n: 4 }, set = WARP_HANDLES.cage;
     [[0, 0], [100, 0], [100, 100], [0, 100]].forEach(([x, y], i) => { p[`o${i}x`] = p[`c${i}x`] = x; p[`o${i}y`] = p[`c${i}y`] = y; });
     expect(nearestEdge(cageOf(p).drawn, 50, 2)).toBe(0);
-    expect(set.add?.(60, 21, p, B)).toBe('o1');
+    expect(set.press?.(60, 21, p, B)).toBe('o1');
     expect(cageOf(p).drawn.map((q) => q.map((v) => Math.round(v)))).toEqual([[0, 0], [50, 2], [100, 0], [100, 100], [0, 100]]);
     p.step = 1;
-    expect(set.add?.(60, 45, p, B)).toBeNull();
+    expect(set.press?.(60, 45, p, B)).toBeNull();
     set.drag('c0', 20, 20, p, B);
     expect([cageOf(p).drawn[0], cageOf(p).moved[0]]).toEqual([[0, 0], [10, 0]]);
   });

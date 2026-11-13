@@ -1752,12 +1752,13 @@ export class Editor {
     if (!g) return false;
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
-    // Pins and the cage: a press away from every handle adds one there, ready to drag.
+    // A press away from every handle: the develop sheet's grey picker sets something there (true); pins and the cage add a
+    // handle there (its key), ready to drag.
     const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
-    if (!best && s && set?.add && b) { best = set.add(p.x, p.y, (s.spec.params ??= {}), b); if (best) { this.preview(); this.requestRender(); } }
+    const r = !best && s && b && set?.press?.(p.x, p.y, (s.spec.params ??= {}), b);
+    if (typeof r === 'string') best = r;
     this.hdrag = best;
-    // The develop sheet's grey picker: a press away from every handle sets something there.
-    if (!best && s && set?.press && b && set.press(p.x, p.y, (s.spec.params ??= {}), b)) { this.syncControls(); this.preview(); this.requestRender(); return true; }
+    if (r) { this.syncControls(); this.preview(); this.requestRender(); return true; }
     return !!best;
   }
   private handleMove(p: Pt): void {
@@ -2611,15 +2612,12 @@ export class Editor {
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
   }
-  /** Liquify, Stretch without squashing people, the detail layers and Fit canvas (warpkit.ts), loaded on first use. */
+  /** Every crop-and-warp command (warpkit.ts runWarp: the bends, Liquify and the other sheets, Fit canvas), loaded on first use. */
   async warpMore(id: string): Promise<void> {
     try {
-      const m = await import('./warpkit'), host = { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), fit: () => this.fit() };
-      if (id === 'image.fit-canvas') m.fitCanvasRun(host); else m.runWarpMore(id, host);
+      await (await import('./warpkit')).runWarp(id, { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), ed: this });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
-  /** Applies a live free transform first (the Transform bar offers the bends while one is open), so a bend starts from what is shown. */
-  async settleTransform(): Promise<void> { if (this.tk?.state().transform) (await this.toolkit()).cmd('edit.transform-commit'); }
   revealAllAction(): void {
     const d = this.doc;
     if (!d) return;

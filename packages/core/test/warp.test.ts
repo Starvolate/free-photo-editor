@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 import { describe, expect, it } from 'vitest';
-import { carryQuad, createDocument, fitCanvas, layersBox, quadOfRect, type Bitmap } from '../src/index';
+import { carryQuad, createDocument, quadOfRect, type Bitmap } from '../src/index';
 import { runEffect } from '../src/fx/index';
-import { gridAt, gridOf, lagrange4, meanValue, meshDraw, mls } from '../src/warp';
+import { fitCanvas, gridAt, gridOf, lagrange4, layersBox, meanValue, meshDraw, mls } from '../src/warp';
 
 /** A w × h opaque picture whose red value names the column and green the row (10 × column, 10 × row). */
 function ramp(w: number, h: number): Bitmap {

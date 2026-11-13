@@ -8,7 +8,7 @@
  * fill is a solid pixel layer clipped to a photo layer. S3 and S4 swap in the real structures.
  */
 import { describe, expect, it } from 'vitest';
-import { StrokeCache, Stroke, createFolder, createLayer, type Doc, type Layer, type LayerMask } from '../src/index';
+import { StrokeCache, Stroke, compositeRect, createFolder, createLayer, type Doc, type Layer, type LayerMask } from '../src/index';
 
 const W = 4000, H = 3000, LIMIT_MS = 150;
 function photo(name: string, seed: number, w = W, h = H, x = 0, y = 0): Layer {
@@ -53,6 +53,8 @@ describe.runIf(process.env.BENCH === '1')('the speed target', () => {
     const { doc, target } = benchDoc();
     expect(doc.layers.filter((l) => !l.kind).length).toBe(30); // plus the 2 folders
     const stroke = new Stroke(doc, target, { size: 300, hardness: 0, opacity: 1, color: { r: 20, g: 220, b: 90, a: 255 }, erase: false, spacing: 0.25 });
+    // The picture is on screen before anyone paints, so the compositor has run: draw one area first, as the app has.
+    compositeRect(doc.layers, { x: 0, y: 0, w: 512, h: 512 });
     const cache = new StrokeCache(doc.layers, target);
     const times: number[] = [];
     for (let i = 0; i < 40; i++) {
@@ -65,7 +67,7 @@ describe.runIf(process.env.BENCH === '1')('the speed target', () => {
     }
     stroke.end();
     const sorted = times.slice().sort((a, b) => a - b), median = sorted[Math.floor(sorted.length / 2)], worst = sorted[sorted.length - 1];
-    console.log(`W6 S2 speed: ${times.length} frames, median ${median.toFixed(1)} ms, worst ${worst.toFixed(1)} ms (limit ${LIMIT_MS} ms)`);
+    console.log(`W6 S2 speed: ${times.length} frames, median ${median.toFixed(1)} ms, worst ${worst.toFixed(1)} ms (limit ${LIMIT_MS} ms); frames: ${times.map((t) => t.toFixed(0)).join(' ')}`);
     expect(worst).toBeLessThan(LIMIT_MS);
   }, 600000);
 });

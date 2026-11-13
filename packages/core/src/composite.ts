@@ -97,6 +97,14 @@ interface Prep {
 interface Item { base: Prep; run: Item[] | null; sheet: Float32Array | null; shape: Float32Array | null; }
 interface Ctx { rx: number; w: number; mix: Float64Array; }
 interface Prepared { root: Item[]; c: Ctx; }
+/** The mask rows, made on first use: a resumed frame never draws the nodes below the painted one, so their masks wait. */
+function lazyMask(m: NonNullable<BlendLayer['mask']>, r: Rect): MaskRows {
+  let f: MaskRows | null | undefined;
+  return (y, x0, x1, out) => {
+    if (f === undefined) f = maskRows(m, r);
+    if (f) f(y, x0, x1, out); else out.fill(1, 0, x1 - x0);
+  };
+}
 
 /**
  * Pass 1: the tree culled to the rectangle. Hidden nodes go (a hidden base takes its clip group with it). Whether a
@@ -114,13 +122,13 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       if (!kids.length) return null;
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const k of kids) { x0 = Math.min(x0, k.base.x0); x1 = Math.max(x1, k.base.x1); y0 = Math.min(y0, k.base.y0); y1 = Math.max(y1, k.base.y1); }
-      const mk = l.mask ? maskRows(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
+      const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
       return { l, folder: true, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids, sheet: new Float32Array(w * 4) };
     }
     if (l.kind && l.kind !== 'pixel') return null; // adjustment and fill layers are drawn from S3 on
     const x0 = Math.max(r.x, l.x), x1 = Math.min(r.x + w, l.x + l.width), y0 = Math.max(r.y, l.y), y1 = Math.min(r.y + h, l.y + l.height);
     if (x0 >= x1 || y0 >= y1) return null;
-    const mk = l.mask ? maskRows(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
+    const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
     return { l, folder: false, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null };
   };
   const items = (nodes: TreeNode<BlendLayer>[]): Item[] => {
@@ -292,7 +300,7 @@ function findPath(root: Item[], t: BlendLayer): Level[] | null {
 interface TileRows { r: Rect; rows: Float32Array[]; shapes: (Float32Array | null)[]; plain: boolean; }
 
 /**
- * While a stroke paints one node, keeps per 256 px tile the rows just below it at every level of its path (the open
+ * While a stroke paints one node, keeps per 128 px tile the rows just below it at every level of its path (the open
  * sheets of isolated folders and clip groups included), so each frame redraws only the node and what is above it.
  * Exact by construction: a cached frame equals an uncached one. Make a new one for each stroke; drop it at the end.
  */
@@ -308,7 +316,7 @@ export class StrokeCache {
     return { tiles: kept, depth: this.depth, dead: this.dead };
   }
   constructor(private readonly layers: readonly BlendLayer[], private readonly target: BlendLayer,
-    private readonly background: RGBA | null = null, private readonly T = 256, private readonly cap = 256 * 1024 * 1024) {}
+    private readonly background: RGBA | null = null, private readonly T = 128, private readonly cap = 256 * 1024 * 1024) {}
   /** The picture over `r`, as compositeRect gives it. */
   composite(r: Rect): Uint8ClampedArray {
     const w = Math.max(0, r.w), h = Math.max(0, r.h), T = this.T;

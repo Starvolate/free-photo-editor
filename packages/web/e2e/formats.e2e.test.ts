@@ -149,6 +149,7 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
   it('opens a TIFF with its pages as layers, and saves TIFF with the credit', async () => {
     const i = await waitTabs(page, await open(page, 'pages.tif', 'image/tiff', TIFF3));
     expect(i.layers.map((l) => [l.name, l.visible])).toEqual([['Sky', true], ['Sea', false], ['Sand', false]]);
+    await page.waitForTimeout(800); // let the closed Export dialog finish fading, so the picture shows the layers alone
     await page.screenshot({ path: join(OUT, 'formats-tiff-pages.png') });
     const t = readTiff(new Uint8Array(await save(page, 'tiff')));
     expect(t.ifds[0].text.get(305)).toBe(CREDIT);
@@ -200,6 +201,7 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     expect(pdf).toContain(`/Producer (${CREDIT})`);
   });
   it('develops a camera RAW (DNG) file in plain steps before opening it', async () => {
+    await page.waitForSelector('[data-testid="toast"][data-on]', { state: 'detached', timeout: 15_000 }); // the last save's note has gone
     const before = await open(page, 'camera.dng', 'image/x-adobe-dng', dngFile(64, 48));
     await page.waitForSelector('[data-testid="raw-develop"]', { state: 'visible', timeout: 90_000 });
     await page.locator('[data-testid="raw-exposure"]').evaluate((el) => { (el as HTMLInputElement).value = '0.7'; el.dispatchEvent(new Event('input', { bubbles: true })); });

@@ -20,7 +20,7 @@ import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
 import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
-import { glyphCorners, warpGlyphs, type GlyphBox, type TextWarp } from '@free-photoeditor/core/textwarp';
+import { glyphCorners, hardEdges, warpGlyphs, type GlyphBox, type TextWarp } from '@free-photoeditor/core/textwarp';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
@@ -110,7 +110,7 @@ import { carryQuad, effectiveBox, hasPixels as hasPx, isFolder as isFolderNode, 
 interface Xf { target: 'layer' | 'selection'; id: string; mode: XfMode; orig: LayerGeom | null; sel0: Selection | null; base: Quad; q: Quad; raf: number;
   /** A folder: every layer inside with its starting pixels, for the preview and Esc. */
   kids?: { id: string; orig: LayerGeom }[]; }
-interface TextEdit { id: string; add: Command | null; before: Snap; content: TextContent; area: HTMLTextAreaElement; }
+interface TextEdit { id: string; add: Command | null; before: Snap; content: TextContent; area: HTMLTextAreaElement; note: HTMLElement; }
 
 const FX: Partial<Record<ToolId, EffectKind>> = {
   clone: 'clone', heal: 'heal', 'spot-heal': 'spot-heal', dodge: 'dodge', burn: 'burn', sponge: 'sponge', blur: 'blur', sharpen: 'sharpen',
@@ -180,7 +180,7 @@ function renderWarped(c: TextContent, warp: TextWarp): Placed {
   const at = warpGlyphs(gs, warp, st.size), up = st.size * 0.95, down = st.size * 0.3;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   at.forEach((s, i) => { if (s) for (const q of glyphCorners(s, gs[i].w, up, down)) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } });
-  if (!Number.isFinite(x0)) return renderText({ ...c, warp: undefined });
+  if (!Number.isFinite(x0)) return renderPlain(c);
   const pad = Math.ceil(st.size * 0.2) + 2, X = Math.floor(x0 - pad), Y = Math.floor(y0 - pad);
   const x = ctx2d(Math.min(16384, Math.ceil(x1 - x0 + 2 * pad)), Math.min(16384, Math.ceil(y1 - y0 + 2 * pad)));
   x.font = fontString(st);
@@ -196,9 +196,15 @@ function renderWarped(c: TextContent, warp: TextWarp): Placed {
   x.setTransform(1, 0, 0, 1, 0, 0);
   return { x: X, y: Y, width: x.canvas.width, height: x.canvas.height, data: x.getImageData(0, 0, x.canvas.width, x.canvas.height).data };
 }
-/** Draw a text layer's words into pixels (the browser's own fonts). */
+/** Bent, along a line or up-down: the letters are placed one by one (renderWarped). */
+const bent = (c: TextContent): boolean => !!c.warp && (!!c.warp.bend || c.warp.style === 'path' || c.warp.style === 'vertical');
+/** Draw a text layer's words into pixels (the browser's own fonts); sharp edges when its style says so. */
 export function renderText(c: TextContent): Placed {
-  if (c.warp && (c.warp.bend || c.warp.style === 'path')) return renderWarped(c, c.warp);
+  const p = c.warp && bent(c) ? renderWarped(c, c.warp) : renderPlain(c);
+  if (c.style.smooth === false) hardEdges(p.data);
+  return p;
+}
+function renderPlain(c: TextContent): Placed {
   const st = c.style, m = meas();
   m.font = fontString(st);
   const lay = layoutText(c, (s) => m.measureText(s).width), pad = Math.ceil(st.size * 0.35) + 2;
@@ -254,7 +260,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     } as Record<string, [number, number, number]>,
     range: 'midtones' as 'shadows' | 'midtones' | 'highlights', spongeMore: false, replTol: 48, bgTol: 40, aligned: true,
     redEye: { size: 24, darken: 0.6 },
-    text: { ...DEFAULT_TEXT_STYLE } as TextStyle,
+    text: { ...DEFAULT_TEXT_STYLE } as TextStyle, vertical: false,
     shape: { fill: true, stroke: false, strokeWidth: 4, radius: 24, sides: 5, star: false, arrow: true, lineWidth: 6 },
   };
   let g: Gesture | null = null, poly: { pts: Pt[]; mode: SelMode } | null = null, xf: Xf | null = null, te: TextEdit | null = null;
@@ -515,11 +521,27 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (!t || !d) return;
     const cv = host.canvas().getBoundingClientRect(), rr = host.root.getBoundingClientRect(), st = t.content.style, m = meas();
     m.font = fontString(st);
+    const l = findLayer(d, t.id);
+    if (bent(t.content) && l) {
+      // Bent words: the picture shows the bend as you type. The box under the words holds the same words in a straight,
+      // readable line, with a plain note, so the caret never floats over letters that are somewhere else.
+      const r = layerRect(l), a = scr({ x: r.x, y: r.y + r.h }), n = t.content.text.split('\n').length, bw = Math.min(320, cv.width - 8);
+      const x = Math.max(cv.left - rr.left + 4, Math.min(cv.left - rr.left + a.x, cv.right - rr.left - bw - 4));
+      const y = Math.max(cv.top - rr.top + 4, Math.min(cv.top - rr.top + a.y + 6, cv.bottom - rr.top - n * 20 - 40));
+      Object.assign(t.note.style, { display: 'block', left: x + 'px', top: y + 'px', maxWidth: bw + 'px' });
+      Object.assign(t.area.style, {
+        left: x + 'px', top: y + 26 + 'px', width: bw - 12 + 'px', height: n * 20 + 4 + 'px', font: '14px system-ui, sans-serif', lineHeight: '20px',
+        letterSpacing: '0px', textAlign: 'left', color: '#f2f3f5', background: 'rgba(24,26,31,.92)', padding: '2px 6px', outline: '1px solid rgba(120,170,255,.9)',
+      });
+      return;
+    }
+    t.note.style.display = 'none';
     const lay = layoutText(t.content, (s) => m.measureText(s).width), zz = z(), w = Math.max(lay.box.w, st.size * 3) * zz + 24;
     const anchor = scr({ x: t.content.x, y: t.content.y }), left = st.align === 'center' ? anchor.x - w / 2 : st.align === 'right' ? anchor.x - w + 12 : anchor.x - 2;
     Object.assign(t.area.style, {
       left: cv.left - rr.left + left + 'px', top: cv.top - rr.top + anchor.y + 'px', width: w + 'px', height: lay.box.h * zz + st.size * zz * 0.4 + 'px',
       font: fontString(st, st.size * zz), lineHeight: st.size * st.lineHeight * zz + 'px', letterSpacing: st.letterSpacing * zz + 'px', textAlign: st.align,
+      color: 'transparent', background: 'transparent', padding: '0', outline: '1px dashed rgba(120,170,255,.9)',
     });
   }
   function drawText(): void {
@@ -534,12 +556,15 @@ export function createToolKit(host: ToolHost): ToolKit {
     const a = t.area;
     a.value = t.content.text;
     a.addEventListener('input', () => { if (te === t) { t.content = { ...t.content, text: a.value }; drawText(); } });
-    host.root.append(a);
+    host.root.append(a, t.note);
     placeArea();
     requestAnimationFrame(() => a.focus({ preventScroll: true }));
   }
   const newArea = (): HTMLTextAreaElement => h('textarea', { class: 'fpe-textedit', 'aria-label': 'Your words', 'data-testid': 'text-edit', spellcheck: 'false',
     style: 'position:absolute;z-index:6;margin:0;padding:0;border:0;outline:1px dashed rgba(120,170,255,.9);background:transparent;color:transparent;caret-color:#78aaff;resize:none;overflow:hidden;white-space:pre' });
+  const newNote = (): HTMLElement => h('div', { 'data-testid': 'text-bent-note', role: 'note',
+    style: 'position:absolute;z-index:6;display:none;padding:2px 6px;border-radius:4px;background:rgba(24,26,31,.92);color:#f2f3f5;font:13px/20px system-ui,sans-serif' },
+  'The picture shows the bend as you type. Type here; Done keeps it.');
   function beginText(p: Pt): void {
     const d = doc();
     if (!d) return;
@@ -549,8 +574,10 @@ export function createToolKit(host: ToolHost): ToolKit {
     }
     const style: TextStyle = { ...S.text, color: host.fg() };
     const c: TextContent = { kind: 'text', text: '', x: Math.round(p.x), y: Math.round(p.y - style.size * 0.8 - (style.size * style.lineHeight - style.size) / 2), style };
+    // Add up-down text: the next words stand one under another (core textwarp.ts, 'vertical').
+    if (S.vertical) { c.warp = { style: 'vertical', bend: 0 }; S.vertical = false; }
     const layer = createLayer('Text', 1, 1, { x: c.x, y: c.y }), add = addLayer(d, layer, indexOfLayer(d, d.activeId) + 1, 'Add text');
-    te = { id: layer.id, add, before: { content: null, geom: geomOf(layer) }, content: c, area: newArea() };
+    te = { id: layer.id, add, before: { content: null, geom: geomOf(layer) }, content: c, area: newArea(), note: newNote() };
     openArea(te);
     drawText();
     host.panels();
@@ -560,7 +587,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     const d = doc(), c = currentContent(l);
     if (!d || c?.kind !== 'text') return;
     d.activeId = l.id;
-    te = { id: l.id, add: null, before: { content: l.content ?? null, geom: geomOf(l) }, content: c, area: newArea() };
+    te = { id: l.id, add: null, before: { content: l.content ?? null, geom: geomOf(l) }, content: c, area: newArea(), note: newNote() };
     openArea(te);
     host.panels();
     host.refreshOptions();
@@ -571,6 +598,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (!t) return;
     te = null;
     t.area.remove();
+    t.note.remove();
     const l = d ? findLayer(d, t.id) : undefined;
     if (!d || !l) return;
     if (!t.content.text.trim()) {
@@ -599,11 +627,15 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (!l || !d || c?.kind !== 'text') return false;
     const next: TextContent = { ...c, warp: w };
     if (!w) delete next.warp;
+    host.push(contentStep(l, next, label), true);
+    return true;
+  }
+  /** Redraw a text layer with new content and give back its undo step (not yet on the history, so steps can be joined). */
+  function contentStep(l: Layer, next: TextContent, label: string): Command {
     const old = layerRect(l), before = { content: l.content ?? null, geom: geomOf(l) }, sn = snapOf(next, renderText(next));
     applySnap(l, sn);
     host.dirty(union(old, layerRect(l)));
-    host.push(liveCommand(label, l.id, before, sn), true);
-    return true;
+    return liveCommand(label, l.id, before, sn);
   }
   function textControls(which: 'char' | 'para' | 'bar'): HTMLElement[] {
     const st = styleNow(), out: HTMLElement[] = [], u = host.uid;
@@ -1089,8 +1121,10 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'layer.distribute-h': distribute('h'); break;
       case 'layer.distribute-v': distribute('v'); break;
       case 'layer.rasterize': case 'type.rasterize': rasterize(); break;
-      case 'type.warp': case 'type.path':
-        return import('./typekit').then((m) => m.runTypeWarp(id, {
+      case 'type.warp': case 'type.path': case 'type.find': case 'type.smooth': case 'type.add-vertical': case 'type.to-shape':
+        return import('./typekit').then((m) => m.runType(id, {
+          render: renderText, change: contentStep, restyle, style: styleNow, addPath: (p, label) => pen.addPath(p, label),
+          vertical: () => { S.vertical = true; host.setTool('type'); }, commit: () => { if (te) commitText(); },
           host, layer: textLayer, set: setWarp, outline: (d) => pen.outline(d),
           warp: () => { const l = textLayer(), c = te?.content ?? (l ? currentContent(l) : null); return c?.kind === 'text' ? c.warp ?? null : null; },
         }));

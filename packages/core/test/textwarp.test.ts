@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 import { describe, expect, it } from 'vitest';
-import { glyphCorners, warpGlyphs, type GlyphBox, type GlyphSpot } from '../src/textwarp';
+import { glyphCorners, hardEdges, replaceText, warpGlyphs, type GlyphBox, type GlyphSpot } from '../src/textwarp';
 
 // Four letters 25 px wide from x 0 to 100 on a baseline at y 100: their middles are at x 12.5, 37.5, 62.5 and 87.5.
 const ROW: GlyphBox[] = [0, 25, 50, 75].map((x) => ({ x, w: 25, base: 100 }));
@@ -106,5 +106,22 @@ describe('text along a line', () => {
   it('gives the four corners of a turned letter', () => {
     const c = glyphCorners({ x: 10, y: 10, angle: Math.PI / 2, sy: 1 }, 20, 30, 10);
     expect(c.map((p) => [Math.round(p.x) + 0, Math.round(p.y) + 0])).toEqual([[40, 0], [40, 20], [0, 20], [0, 0]]);
+  });
+
+  it('stacks up-down letters one size apart, and starts each further line one line-gap to the left', () => {
+    // "AB" on the first line (baseline 20), "C" on the next (baseline 44), size 20: columns at x 10 and 10 - 24 = -14.
+    const gs: GlyphBox[] = [{ x: 0, w: 10, base: 20 }, { x: 10, w: 12, base: 20 }, { x: 0, w: 8, base: 44 }];
+    expect(warpGlyphs(gs, { style: 'vertical', bend: 0 }, 20)).toEqual([
+      { x: 10, y: 20, angle: 0, sy: 1 }, { x: 10, y: 40, angle: 0, sy: 1 }, { x: -14, y: 20, angle: 0, sy: 1 }]);
+  });
+  it('cuts letter edges at half for sharp text, keeping the colour', () => {
+    const d = new Uint8ClampedArray([9, 9, 9, 0, 9, 9, 9, 127, 9, 9, 9, 128, 9, 9, 9, 255]);
+    expect([...hardEdges(d)]).toEqual([9, 9, 9, 0, 9, 9, 9, 0, 9, 9, 9, 255, 9, 9, 9, 255]);
+  });
+  it('finds and replaces exactly, or ignoring capitals, with special characters as plain letters', () => {
+    expect(replaceText('Cat cat CAT', 'cat', 'dog')).toEqual({ text: 'Cat dog CAT', count: 1 });
+    expect(replaceText('Cat cat CAT', 'cat', 'dog', false)).toEqual({ text: 'dog dog dog', count: 3 });
+    expect(replaceText('a.b.c', '.', '$&')).toEqual({ text: 'a$&b$&c', count: 2 });
+    expect(replaceText('abc', '', 'x')).toEqual({ text: 'abc', count: 0 });
   });
 });

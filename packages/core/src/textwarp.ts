@@ -8,7 +8,7 @@
 import type { Point } from './geometry';
 import { walk } from './pathops';
 
-export type WarpStyle = 'arc' | 'arch' | 'bulge' | 'wave' | 'flag' | 'circle' | 'path';
+export type WarpStyle = 'arc' | 'arch' | 'bulge' | 'wave' | 'flag' | 'circle' | 'path' | 'vertical';
 /** How a text layer's letters are bent. */
 export interface TextWarp {
   style: WarpStyle;
@@ -31,6 +31,15 @@ export function warpGlyphs(gs: readonly GlyphBox[], warp: TextWarp, size: number
   if (!gs.length) return [];
   const x0 = Math.min(...gs.map((g) => g.x)), x1 = Math.max(...gs.map((g) => g.x + g.w)), W = Math.max(1e-9, x1 - x0), xm = (x0 + x1) / 2;
   const ref = gs[0].base, b = clampBend(warp.bend), a = Math.abs(b);
+  if (warp.style === 'vertical') {
+    // Up-down text: letters stand upright one under another, one size apart, from the first line's baseline down. Each
+    // further line is a column one line-gap to the LEFT of the one before, as vertical type runs in Japanese and Chinese.
+    let j = 0, last = NaN;
+    return gs.map((g) => {
+      if (g.base !== last) { j = 0; last = g.base; }
+      return { x: x0 + size / 2 - (g.base - ref), y: ref + size * j++, angle: 0, sy: 1 };
+    });
+  }
   if (warp.style === 'path') {
     const pts = warp.path ?? [];
     if (pts.length < 2) return gs.map((g) => ({ x: g.x + g.w / 2, y: g.base, angle: 0, sy: 1 }));
@@ -76,4 +85,24 @@ export function warpGlyphs(gs: readonly GlyphBox[], warp: TextWarp, size: number
 export function glyphCorners(s: GlyphSpot, w: number, up: number, down: number): Point[] {
   const c = Math.cos(s.angle), n = Math.sin(s.angle);
   return [[-w / 2, -up * s.sy], [w / 2, -up * s.sy], [w / 2, down * s.sy], [-w / 2, down * s.sy]].map(([px, py]) => ({ x: s.x + px * c - py * n, y: s.y + px * n + py * c }));
+}
+
+/**
+ * Sharp letter edges (anti-aliasing off): every pixel is either fully the text colour or empty, cut at half. Changes the
+ * RGBA pixels in place (straight alpha, as the canvas gives them back).
+ */
+export function hardEdges(data: Uint8ClampedArray): Uint8ClampedArray {
+  for (let i = 3; i < data.length; i += 4) data[i] = data[i] >= 128 ? 255 : 0;
+  return data;
+}
+
+/**
+ * Find and replace in one text: every place `find` occurs (exactly as typed, or ignoring capitals) becomes `put`. Special
+ * characters are plain letters here, in both boxes. Returns the new text and how many places changed.
+ */
+export function replaceText(text: string, find: string, put: string, matchCase = true): { text: string; count: number } {
+  if (!find) return { text, count: 0 };
+  let count = 0;
+  const re = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), matchCase ? 'g' : 'gi');
+  return { text: text.replace(re, () => { count++; return put; }), count };
 }

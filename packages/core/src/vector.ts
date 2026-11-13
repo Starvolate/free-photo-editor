@@ -15,6 +15,7 @@ export interface TextStyle {
   align: 'left' | 'center' | 'right';
   /** Distance between lines, as a multiple of the size. */ lineHeight: number;
   /** Extra space between letters, in pixels. */ letterSpacing: number;
+  /** false: sharp letter edges, no anti-aliasing (textwarp.ts hardEdges). Missing means smooth. */ smooth?: boolean;
 }
 export interface TextContent {
   kind: 'text'; text: string; x: number; y: number; style: TextStyle;

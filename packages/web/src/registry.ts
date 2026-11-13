@@ -266,15 +266,15 @@ layer.frames | Make animation frames | Make frames from layers | Turn each layer
 
 @Type = Type | Type | Add and style text.
 type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | R | W3
-type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | P | 6
+type.add-vertical | Add up-down text | Vertical type | Letters stand one under another, top to bottom; a new line starts a column to the left. On a picked text layer it turns those words. | vertical text | R | 6
 type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | R | W3
 type.warp | Bend text | Warp text | Arc, arch, bulge, wave or flag the words, or wrap them round a circle. They stay words you can change. | curved text, arc text, wavy text, circle text | R | 6
 type.path | Text along a line | Type on a path | Make the words follow an outline you drew: a curve, a line or a ring. | text on circle, text on a curve | R | 6
-type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | P | 6
+type.to-shape | Turn text into a shape | Convert to shape | Trace the letters into an outline you can reshape, fill or draw round. The text layer stays as it was. | outline text | R | 6
 type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | R | W3
-type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | P | 6
+type.smooth | Smooth text edges | Anti-aliasing | Choose soft letter edges that blend into the picture, or sharp ones with no blending, for pixel art. | jagged text | R | 6
 type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | P | 6
-type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | P | 6
+type.find | Find and replace text | Find and replace | Change a word in every text layer at once, as one undo step. | replace word | R | 6
 
 @Select = Select | Select | Choose the part of the picture to change.
 select.all | Select everything | Select all | Select the whole picture. | everything, whole picture | R | 1 | Ctrl+A

@@ -72,6 +72,15 @@ function trace(m: Mask, f: Frame, tol: number): Subpath[] {
   return p ? mapSubpaths(p.subpaths, (q) => ({ x: q.x / f.k + f.ox, y: q.y / f.k + f.oy })) : [];
 }
 
+/**
+ * Trace a mask into outline pieces in picture pixels (Turn text into a shape). The mask has `k` cells per picture pixel
+ * and its top-left cell sits at picture point (ox, oy); `tol` is how far (pixels) the outline may stray. Holes come back
+ * as their own pieces, so the outline fills even-odd (the middle of an O stays empty).
+ */
+export function traceAlpha(alpha: Uint8Array, w: number, h: number, ox: number, oy: number, k: number, tol = 0.5): Subpath[] {
+  return trace({ width: w, height: h, data: alpha }, { ox, oy, k, w, h }, tol);
+}
+
 /** Combine two shapes: unite them, cut b out of a, keep only their overlap, or keep only what does not overlap. */
 export function booleanSubpaths(a: readonly Subpath[], b: readonly Subpath[], op: BoolOp, tol = 0.5): Subpath[] {
   const f = frameOf([a, b], 1);

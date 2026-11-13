@@ -391,7 +391,7 @@ HANDLERS['shape.spiral-star'] = w3('shape.spiral-star');
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 // Shapes & text, type: bent text and text along a line (typekit.ts, loaded by the tool kit on first use).
-for (const id of ['type.warp', 'type.path']) HANDLERS[id] = w3(id);
+for (const id of ['type.warp', 'type.path', 'type.find', 'type.smooth', 'type.add-vertical', 'type.to-shape']) HANDLERS[id] = w3(id);
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
 const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
 const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>

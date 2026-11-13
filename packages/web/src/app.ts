@@ -975,7 +975,9 @@ export class Editor {
   /** Properties is emptied and refilled, part of it later: its card works out its fade again, so a long one scrolls with the fade and is never simply cut. */
   private refade(el: HTMLElement): void {
     const s = el.closest<HTMLElement>('.fpe-gbody');
-    if (s) requestAnimationFrame(() => this.fade(s));
+    if (!s) return;
+    this.fade(s);
+    requestAnimationFrame(() => this.fade(s));
   }
   private watchFade(el: HTMLElement): void {
     this.fadeRO ??= new ResizeObserver((es) => { for (const e of es) { const s = (e.target as HTMLElement).closest<HTMLElement>('.fpe-gbody, .fpe-layer-list'); if (s) this.fade(s); } });

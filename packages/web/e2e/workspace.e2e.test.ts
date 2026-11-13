@@ -669,7 +669,9 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await p.locator('[data-testid="history-step"]').count()).toBe(steps + 2);
     // Diagnostic for a red run (UI-D part 4; remove once green twice): the Properties body's scroll and fade state.
     console.log('UI-D props body at 1440:', await p.$eval('[data-group="props"] .fpe-gbody', (g) => { const e = g as HTMLElement, c = (e.closest('.fpe-group') as HTMLElement).getBoundingClientRect(), b = e.getBoundingClientRect(); return `sh ${e.scrollHeight} ch ${e.clientHeight} top ${e.scrollTop} fade ${e.dataset.fade ?? '-'} oy ${getComputedStyle(e).overflowY} card ${Math.round(c.top)}-${Math.round(c.bottom)} body ${Math.round(b.top)}-${Math.round(b.bottom)}`; }));
-    expect(await clipped(p), '1440, a text layer with an effect: nothing cut').toEqual([]);
+    const cut1440 = await clipped(p);
+    if (cut1440.length) console.log('UI-D props probe: after a scroll event the fade reads', await p.$eval('[data-group="props"] .fpe-gbody', (g) => { g.dispatchEvent(new Event('scroll')); return (g as HTMLElement).dataset.fade ?? '-'; }));
+    expect(cut1440, '1440, a text layer with an effect: nothing cut').toEqual([]);
     // UI-D fix 6: picking the tool that is already picked opens its options on the ribbon.
     await p.click('[data-testid="rtab-crop-resize"]');
     await p.waitForSelector('[data-testid="ribbon-ctx"]', { state: 'hidden' });

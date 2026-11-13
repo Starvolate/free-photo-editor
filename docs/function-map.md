@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 402 Ready, 273 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 404 Ready, 271 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-204 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+202 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 209 | 441 | 0 |
-| Ready today | 402 | 25 | 172 | 205 | 0 |
+| Ready today | 404 | 25 | 172 | 207 | 0 |
 
 ## The Task ribbon
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (204 Planned, 57 Ready), by home
+## New functions from the feature census (202 Planned, 59 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -729,7 +729,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | paint.assistants | U064 | Guide that your strokes snap to | Drawing assistants (ellipse, concentric ellipse, perspective ellipse, ruler, infinite ruler, parallel ruler, spline) | A placed line or curve that pulls your freehand stroke onto it. | drawing assistant, ruler, ellipse guide, snap stroke, straight line guide | Paint & draw › Brush settings · More list | Planned | B14 |
 | paint.perspective-guides | U065 | Perspective guides | Perspective, Vanishing Point, Fish Eye Point, 2 Point Perspective, Curvilinear Perspective assistants | Strokes follow lines that meet at vanishing points, including curved fish-eye views. | perspective guide, vanishing point, two point perspective, fish eye | Paint & draw › Brush settings · More list | Planned | B14 |
 | paint.wrap-around | U066 | Paint a seamless tile | Wrap Around Mode | Paint across the edges: what leaves one side comes back in on the other, so the picture tiles without seams. | seamless tile, wrap around, repeat pattern painting, tileable | Paint & draw › Brush settings · More list | Ready | B14 |
-| paint.colorize-mask | U067 | Colour line art by dabbing | Colorize Mask | Dab rough colour blobs and each closed area of the line art fills with that colour, gaps closed for you. | colour line art, flat colours, colourise comics, fill line art | Paint & draw › Fill · More list | Planned | B14 |
+| paint.colorize-mask | U067 | Colour line art by dabbing | Colorize Mask | Dab rough colour blobs and each closed area of the line art fills with that colour, gaps closed for you. | colour line art, flat colours, colourise comics, fill line art | Paint & draw › Fill · More list | Ready | B14 |
 | paint.sketch-brush | U132 | Sketchy line brush | Sketch Brush Engine | Draws thin curved lines around the stroke for a loose pencil-scribble look. | sketch brush, pencil sketch brush, scribble brush | Paint & draw › Brush kinds · More list | Planned | T3 |
 | paint.chalk-spray | U133 | Chalk, hatching and spray brushes | Chalk / Hatching / Spray Brush Engines | Chalky grain, cross-hatch lines or scattered dots as the brush stroke. | chalk, hatching, spray paint, airbrush spray | Paint & draw › Brush kinds · More list | Planned | T3 |
 | paint.shape-brush | U134 | Shape, particle and grid brushes | Shape / Particle / Grid Brush Engines | Strokes built from shapes, flying particles or a repeated grid of dabs. | shape brush, particle brush, grid brush | Paint & draw › Brush kinds · More list | Planned | T3 |
@@ -738,7 +738,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | paint.calligraphy | U137 | Calligraphy and ink pen | Calligraphy / Ink tool | Angled-nib and speed-sensitive pen strokes. | calligraphy, ink pen, lettering, brush pen | Paint & draw › Brush kinds · More list | Planned | T3 |
 | paint.lock-settings | U138 | Lock a brush setting | Locked Brush Settings | Keep one setting fixed while you switch between saved brushes. | lock brush setting, keep brush size, locked settings | Paint & draw › Brush settings · More list | Planned | T3 |
 | paint.mesh-gradient | U139 | Mesh gradients | Mesh Gradient | Colour that blends smoothly across a grid of points. | mesh gradient, freeform gradient, smooth colour blend | Paint & draw › Fill · More list | Planned | T3 |
-| paint.enclose-fill | U140 | Fill a drawn area with many options | Enclose and Fill Tool | Draw a loop; fills every region inside it that matches a chosen colour, transparency or outline rule. | fill drawn area, lasso fill, enclose and fill, fill gaps | Paint & draw › Fill · More list | Planned | T3 |
+| paint.enclose-fill | U140 | Fill a drawn area with many options | Enclose and Fill Tool | Draw a loop; fills every region inside it that matches a chosen colour, transparency or outline rule. | fill drawn area, lasso fill, enclose and fill, fill gaps | Paint & draw › Fill · More list | Ready | T3 |
 | paint.colour-tools | U141 | Colour tools: advanced, artistic, gamut mask, wide gamut, digital mixer, sliders | Colour dockers | Many colour pickers, including masks that limit the palette to harmonious colours. | colour wheel, colour sliders, gamut mask, colour mixer, palette | Paint & draw › Colour · More list | Planned | T3 |
 
 ### Shapes & text (33)

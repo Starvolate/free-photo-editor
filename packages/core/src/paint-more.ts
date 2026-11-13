@@ -9,7 +9,9 @@
  * builds up past the stroke's strength, and `end()` still makes one undo step.
  */
 import { Stroke, type BrushOptions, type StrokePoint, type Tile } from './stroke';
-import { selectionAlpha, type Doc, type Layer, type Selection } from './document';
+import { findLayer, selectionAlpha, type Doc, type Layer, type Selection } from './document';
+import { addLayer } from './ops';
+import type { Command } from './history';
 import { clamp01, union } from './geometry';
 
 /** What a dynamic setting follows: nothing, pen pressure, pen tilt, or how fast the brush moves. */
@@ -33,6 +35,9 @@ export interface RigSettings {
   /** Turn of the tip, in degrees. */ angle?: number;
   /** Distance between dabs in % of the size; 0 keeps the brush's own (12 %). */ spacing?: number;
   /** Pattern stamp: paint a saved pattern instead of the brush colour. */ pattern?: Pattern | null;
+  /** Blend paint (mixer brush): each dab picks up the colour already under it. */ mix?: boolean;
+  /** How much of the colour under the brush mixes in, 0 to 100 %. */ wet?: number;
+  /** How much fresh brush colour comes back after each dab, 0 to 100 %. */ load?: number;
 }
 /** A grey brush tip: 255 paints at full strength, 0 not at all. */
 export interface Tip { name: string; w: number; h: number; data: Uint8Array; }
@@ -41,11 +46,11 @@ export interface Pattern { name: string; w: number; h: number; data: Uint8Clampe
 export const RIG_DEFAULTS: RigSettings = {
   steady: 'off', lag: 50, string: 20, mirror: 'off', spokes: 6, wrap: false,
   dyn: false, sizeBy: 'pressure', strengthBy: 'off', minSize: 20, minStrength: 30, jitter: 0, scatter: 0,
-  tip: null, angle: 0, spacing: 0, pattern: null,
+  tip: null, angle: 0, spacing: 0, pattern: null, mix: false, wet: 50, load: 20,
 };
 /** True when any power-up is on, so the editor must make a `RigStroke` instead of a plain `Stroke`. */
 export function rigOn(s: RigSettings): boolean {
-  return s.steady !== 'off' || s.mirror !== 'off' || s.wrap || s.dyn || !!s.tip || !!s.pattern || !!s.spacing;
+  return s.steady !== 'off' || s.mirror !== 'off' || s.wrap || s.dyn || !!s.tip || !!s.pattern || !!s.spacing || !!s.mix;
 }
 /** The copies of one point: x' = a x + b y + c, y' = d x + e y + f. Index 0 is the point itself. */
 export function mirrorMaps(m: RigMirror, spokes: number, w: number, h: number): Float64Array {
@@ -94,6 +99,9 @@ export class RigStroke extends Stroke {
   private readonly pat: Pattern | null;
   /** Cosine and sine of the tip's turn. */
   private readonly cs: number; private readonly sn: number;
+  /** Blend paint: the colour the brush carries now, and the brush's own colour it reloads from. */
+  private mr: number; private mg: number; private mb: number;
+  private readonly base: { r: number; g: number; b: number };
 
   constructor(doc: Doc, layer: Layer, options: BrushOptions, settings: RigSettings, flush: (() => void) | null = null, selection: Selection | null = doc.selection) {
     super(doc, layer, options, selection);
@@ -106,6 +114,8 @@ export class RigStroke extends Stroke {
     const a = ((settings.angle ?? 0) * Math.PI) / 180;
     this.cs = Math.cos(a); this.sn = Math.sin(a);
     if (settings.spacing) this.o.spacing = Math.max(1, Math.min(300, settings.spacing)) / 100;
+    const c = this.o.color;
+    this.mr = c.r; this.mg = c.g; this.mb = c.b; this.base = { r: c.r, g: c.g, b: c.b };
   }
   /** Where the brush itself is now (after the steady hand). */
   get brushAt(): { x: number; y: number } { return { x: this.qx, y: this.qy }; }
@@ -156,6 +166,7 @@ export class RigStroke extends Stroke {
   }
   protected override dab(cx: number, cy: number, diameter: number, flow: number): void {
     const s = this.s;
+    if (s.mix) this.mixAt(cx, cy, diameter);
     if (s.jitter > 0 || s.scatter > 0) {
       const r = this.rnd, d0 = diameter;
       diameter *= 1 - (Math.min(100, s.jitter) / 100) * r();
@@ -164,6 +175,27 @@ export class RigStroke extends Stroke {
     }
     const m = this.maps;
     for (let i = 0; i < m.length; i += 6) this.put(m[i] * cx + m[i + 1] * cy + m[i + 2], m[i + 3] * cx + m[i + 4] * cy + m[i + 5], diameter, flow);
+  }
+  /**
+   * Blend paint: average the colour under the dab as it was before this stroke (the undo tile's copy where there is one),
+   * mix it into the carried colour by the wet amount (see-through paint mixes in less), paint with that, then let the
+   * load amount bring the brush's own colour back.
+   */
+  private mixAt(cx: number, cy: number, d: number): void {
+    const L = this.layer, r = Math.max(0.5, d / 2), st = Math.max(1, Math.floor(d / 6));
+    let n = 0, sa = 0, sr = 0, sg = 0, sb = 0;
+    for (let y = Math.floor(cy - r); y <= cy + r; y += st) for (let x = Math.floor(cx - r); x <= cx + r; x += st) {
+      const lx = x - L.x, ly = y - L.y;
+      if (lx < 0 || ly < 0 || lx >= L.width || ly >= L.height || (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > r * r) continue;
+      const t = this.tiles.get(((ly / TILE) | 0) * this.cols + ((lx / TILE) | 0));
+      const px = t ? t.orig : L.data, i = t ? ((ly - t.r.y) * t.r.w + (lx - t.r.x)) * 4 : (ly * L.width + lx) * 4, a = px[i + 3];
+      n++; sa += a; sr += px[i] * a; sg += px[i + 1] * a; sb += px[i + 2] * a;
+    }
+    const c = this.o.color, w = n && sa ? (Math.max(0, Math.min(100, this.s.wet ?? 50)) / 100) * (sa / (255 * n)) : 0;
+    if (w > 0) { this.mr += (sr / sa - this.mr) * w; this.mg += (sg / sa - this.mg) * w; this.mb += (sb / sa - this.mb) * w; }
+    c.r = this.mr; c.g = this.mg; c.b = this.mb;
+    const k = Math.max(0, Math.min(100, this.s.load ?? 20)) / 100, b = this.base;
+    this.mr += (b.r - this.mr) * k; this.mg += (b.g - this.mg) * k; this.mb += (b.b - this.mb) * k;
   }
   private put(x: number, y: number, d: number, f: number): void {
     if (!this.s.wrap) { this.one(x, y, d, f); return; }
@@ -313,4 +345,123 @@ export function makePreset(name: string, tool: ToolPreset['tool'], paint: { size
 export function applyPreset(p: ToolPreset, paint: { size: number; hardness: number; opacity: number }, rig: RigSettings): void {
   paint.size = p.size; paint.hardness = p.hardness; paint.opacity = p.opacity;
   Object.assign(rig, RIG_DEFAULTS, p.rig);
+}
+
+/** A layer's own pixels inside a picture rectangle (r.w x r.h RGBA), see-through where the layer does not reach. */
+export function layerIn(l: Layer, r: { x: number; y: number; w: number; h: number }): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(r.w * r.h * 4), x0 = Math.max(r.x, l.x), x1 = Math.min(r.x + r.w, l.x + l.width);
+  if (x1 > x0) for (let y = Math.max(r.y, l.y); y < Math.min(r.y + r.h, l.y + l.height); y++) {
+    const s = ((y - l.y) * l.width + (x0 - l.x)) * 4;
+    out.set(l.data.subarray(s, s + (x1 - x0) * 4), ((y - r.y) * r.w + (x0 - r.x)) * 4);
+  }
+  return out;
+}
+/** Line art: a solid pixel darker than `dark` (brightness 0 to 255). */
+const isLine = (d: Uint8ClampedArray, p: number, dark: number): boolean => d[p + 3] >= 128 && (d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000 < dark;
+
+// ---- Fill what you circle (paint.enclose-fill) ----
+/** Everything inside the loop, only the empty parts of the layer, only the colour at the loop's middle, or between the lines. */
+export type EncloseRule = 'all' | 'clear' | 'colour' | 'lines';
+/**
+ * Which pixels inside a drawn loop get filled: 255 yes, 0 no; w x h from the loop's top-left corner. `pic` is the visible
+ * picture there, `own` the layer being painted (for 'clear'). 'colour' matches the colour at the middle within `tol` %
+ * on every channel; 'lines' skips line art, solid pixels darker than `dark`.
+ */
+export function encloseAmounts(rule: EncloseRule, pic: Uint8ClampedArray, own: Uint8ClampedArray, w: number, h: number, tol = 10, dark = 128): Uint8Array {
+  const out = new Uint8Array(w * h), m = ((h >> 1) * w + (w >> 1)) * 4, t = (Math.max(0, Math.min(100, tol)) / 100) * 255;
+  for (let i = 0; i < w * h; i++) {
+    const p = i * 4;
+    const ok = rule === 'all' ? true : rule === 'clear' ? own[p + 3] < 128 : rule === 'lines' ? !isLine(pic, p, dark)
+      : Math.max(Math.abs(pic[p] - pic[m]), Math.abs(pic[p + 1] - pic[m + 1]), Math.abs(pic[p + 2] - pic[m + 2]), Math.abs(pic[p + 3] - pic[m + 3])) <= t;
+    if (ok) out[i] = 255;
+  }
+  return out;
+}
+
+// ---- Colour a line drawing (paint.colorize-mask) ----
+/** Grow a 0/1 mask by `g` pixels each way (a square): a row pass and a column pass with running counts, so any `g` costs the same. */
+export function growMask(m: Uint8Array, w: number, h: number, g: number): Uint8Array {
+  if (g <= 0) return m.slice();
+  const tmp = new Uint8Array(w * h), out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    let n = 0;
+    for (let x = 0; x < Math.min(w, g); x++) n += m[row + x];
+    for (let x = 0; x < w; x++) {
+      if (x + g < w) n += m[row + x + g];
+      if (x - g - 1 >= 0) n -= m[row + x - g - 1];
+      tmp[row + x] = n > 0 ? 1 : 0;
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let n = 0;
+    for (let y = 0; y < Math.min(h, g); y++) n += tmp[y * w + x];
+    for (let y = 0; y < h; y++) {
+      if (y + g < h) n += tmp[(y + g) * w + x];
+      if (y - g - 1 >= 0) n -= tmp[(y - g - 1) * w + x];
+      out[y * w + x] = n > 0 ? 1 : 0;
+    }
+  }
+  return out;
+}
+/**
+ * Flat colours for a line drawing. `line` and `hints` are w x h RGBA. Line art is solid pixels darker than `dark`; it is
+ * grown by `gap` px (0 to 8) only to tell the areas apart, so gaps that small do not leak. Each closed area takes the
+ * colour of the hint dabbed inside it (a hint touching the grown lines is skipped), then the colours run up to 2 x gap + 3
+ * px under the lines so no paper shows at their edges. Areas with no hint stay see-through. Null when there is no hint.
+ */
+export function colorizeFlats(line: Uint8ClampedArray, hints: Uint8ClampedArray, w: number, h: number, dark = 128, gap = 2): Uint8ClampedArray | null {
+  const n = w * h, lm = new Uint8Array(n), g = Math.max(0, Math.min(8, Math.round(gap))), cap = 2 * g + 3;
+  for (let i = 0; i < n; i++) lm[i] = isLine(line, i * 4, dark) ? 1 : 0;
+  const wall = growMask(lm, w, h, g), lab = new Int32Array(n), dist = new Uint8Array(n), q = new Int32Array(n), cols: number[] = [], seen = new Map<number, number>();
+  let qe = 0;
+  for (let i = 0; i < n; i++) {
+    const p = i * 4;
+    if (wall[i] || hints[p + 3] < 128) continue;
+    const c = (hints[p] << 16) | (hints[p + 1] << 8) | hints[p + 2];
+    let k = seen.get(c);
+    if (k === undefined) { cols.push(c); k = cols.length; seen.set(c, k); }
+    lab[i] = k; q[qe++] = i;
+  }
+  if (!qe) return null;
+  // First the open areas from every hint at once, then (open = false) into the grown lines, a few pixels at most.
+  const go = (j: number, k: number, d: number, open: boolean): void => {
+    if (!lab[j] && (open ? !wall[j] : wall[j])) { lab[j] = k; dist[j] = open ? 0 : d; q[qe++] = j; }
+  };
+  for (const open of [true, false]) {
+    for (let qs = 0; qs < qe; qs++) {
+      const i = q[qs], x = i % w, k = lab[i], d = dist[i] + 1;
+      if (!open && d > cap) continue;
+      if (x > 0) go(i - 1, k, d, open);
+      if (x < w - 1) go(i + 1, k, d, open);
+      if (i >= w) go(i - w, k, d, open);
+      if (i + w < n) go(i + w, k, d, open);
+    }
+  }
+  const out = new Uint8ClampedArray(n * 4);
+  for (let i = 0; i < n; i++) {
+    const k = lab[i];
+    if (!k) continue;
+    const c = cols[k - 1], p = i * 4;
+    out[p] = c >> 16; out[p + 1] = (c >> 8) & 255; out[p + 2] = c & 255; out[p + 3] = 255;
+  }
+  return out;
+}
+/** Mostly solid (white paper): 90 % of its pixels or more. */
+const solid = (l: Layer): boolean => { let k = 0; for (let i = 3; i < l.data.length; i += 4) if (l.data[i] >= 250) k++; return k * 4 >= l.data.length * 0.9; };
+/**
+ * Put the flat colours on a new layer just under the line art, hide the hints layer, and when the line art is solid
+ * paper in Normal blend, set it to Multiply so the colours show through: all one undo step.
+ */
+export function colorizeCommand(doc: Doc, line: Layer, hints: Layer | null, flats: Layer, label = 'Colour the line art'): Command {
+  const add = addLayer(doc, flats, doc.layers.indexOf(line), label);
+  if (line.parentId) flats.parentId = line.parentId; else delete flats.parentId;
+  const hv = hints?.visible ?? true, lb = line.blendMode, nb = lb === 'normal' && solid(line) ? 'multiply' : lb;
+  const set = (d: Doc, on: boolean): void => {
+    const hl = hints ? findLayer(d, hints.id) : undefined, ll = findLayer(d, line.id);
+    if (hl) hl.visible = on ? false : hv;
+    if (ll) ll.blendMode = on ? nb : lb;
+  };
+  set(doc, true);
+  return { label, bytes: add.bytes, undo(d) { set(d, false); add.undo(d); }, redo(d) { add.redo(d); set(d, true); } };
 }

@@ -3,7 +3,7 @@
 /** The brush power-ups (paint-more.ts), checked on real pixels with hand-worked dab positions. */
 import { describe, expect, it } from 'vitest';
 import { Stroke, createLayer, type BrushOptions, type Doc, type Layer, type StrokePoint } from '../src/index';
-import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, makePreset, mirrorMaps, patternFromPixels, rigOn, tipFromPixels, type Pattern, type RigSettings, type Tip } from '../src/paint-more';
+import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, colorizeCommand, colorizeFlats, encloseAmounts, growMask, layerIn, makePreset, mirrorMaps, patternFromPixels, rigOn, tipFromPixels, type Pattern, type RigSettings, type Tip } from '../src/paint-more';
 
 const RED = { r: 255, g: 0, b: 0, a: 255 };
 function setup(w: number, h: number): { doc: Doc; l: Layer } {
@@ -190,5 +190,111 @@ describe('brush tips, patterns and saved tools (part 2)', () => {
     applyPreset(p, live, r);
     expect(live).toEqual({ size: 24, hardness: 0.5, opacity: 0.8 });
     expect([r.steady, r.lag, r.tip?.name, r.mirror]).toEqual(['lag', 40, 'Flat', 'off']);
+  });
+});
+
+/** A w x h RGBA picture from a function of x, y. */
+function pic(w: number, h: number, f: (x: number, y: number) => number[]): Uint8ClampedArray {
+  const d = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d.set(f(x, y), (y * w + x) * 4);
+  return d;
+}
+const sum = (m: Uint8Array): number => m.reduce((a, v) => a + (v ? 1 : 0), 0);
+const at = (d: Uint8ClampedArray, w: number, x: number, y: number): number[] => [...d.subarray((y * w + x) * 4, (y * w + x) * 4 + 4)];
+
+describe('fill what you circle (enclose and fill)', () => {
+  // 6 x 6: white paper, a black line down column 2, one light grey pixel at (4, 4). The layer itself is solid in rows 0-2 only.
+  const W6 = pic(6, 6, (x, y) => (x === 2 ? [0, 0, 0, 255] : x === 4 && y === 4 ? [200, 200, 200, 255] : [255, 255, 255, 255]));
+  const own = pic(6, 6, (_x, y) => [10, 20, 30, y < 3 ? 255 : 0]);
+  it('fills everything inside the loop', () => {
+    expect(sum(encloseAmounts('all', W6, own, 6, 6))).toBe(36);
+  });
+  it('fills only the empty parts of the layer', () => {
+    const m = encloseAmounts('clear', W6, own, 6, 6);
+    expect(sum(m)).toBe(18);
+    expect([m[0], m[2 * 6 + 5], m[3 * 6], m[5 * 6 + 5]]).toEqual([0, 0, 255, 255]);
+  });
+  it('fills only the colour at the middle, within the match', () => {
+    // The middle (3, 3) is white: the 6 black and the grey (55 off, over 10 % = 25.5) stay; 40 % takes the grey too.
+    const m = encloseAmounts('colour', W6, own, 6, 6, 10);
+    expect(sum(m)).toBe(29);
+    expect([m[2], m[3], m[4 * 6 + 4]]).toEqual([0, 255, 0]);
+    expect(sum(encloseAmounts('colour', W6, own, 6, 6, 40))).toBe(30);
+  });
+  it('fills between the lines and leaves the line art alone', () => {
+    const m = encloseAmounts('lines', W6, own, 6, 6, 10, 128);
+    expect(sum(m)).toBe(30);
+    expect([m[2], m[5 * 6 + 2], m[4 * 6 + 4]]).toEqual([0, 0, 255]);
+    // A darkness setting above the grey's brightness (200) counts it as a line too.
+    expect(sum(encloseAmounts('lines', W6, own, 6, 6, 10, 201))).toBe(29);
+  });
+  it('reads a layer inside a rectangle, see-through where it does not reach', () => {
+    const l = createLayer('L', 2, 2, { x: 1, y: 1, fill: { r: 9, g: 8, b: 7, a: 255 } });
+    const d = layerIn(l, { x: 0, y: 0, w: 3, h: 3 });
+    expect([at(d, 3, 0, 0), at(d, 3, 1, 1), at(d, 3, 2, 2)]).toEqual([[0, 0, 0, 0], [9, 8, 7, 255], [9, 8, 7, 255]]);
+  });
+});
+
+describe('colour a line drawing (colorize mask)', () => {
+  // 10 x 10 line art: a border box and a wall down column 5 with a 1 px gap at row 5. Left area x 1-4, right area x 6-8.
+  const lines = pic(10, 10, (x, y) => (x === 0 || x === 9 || y === 0 || y === 9 || (x === 5 && y !== 5) ? [0, 0, 0, 255] : [0, 0, 0, 0]));
+  const RED4 = [255, 0, 0, 255], BLUE4 = [0, 0, 255, 255];
+  const hints = (both: boolean): Uint8ClampedArray => pic(10, 10, (x, y) => (x === 2 && y === 4 ? RED4 : both && x === 7 && y === 4 ? BLUE4 : [0, 0, 0, 0]));
+  it('grows a mask by whole pixels each way', () => {
+    const m = new Uint8Array(25); m[12] = 1;
+    expect(sum(growMask(m, 5, 5, 1))).toBe(9);
+    expect(sum(growMask(m, 5, 5, 2))).toBe(25);
+    expect(sum(growMask(m, 5, 5, 0))).toBe(1);
+  });
+  it('fills each closed area with its own hint, the 1 px gap closed', () => {
+    const f = colorizeFlats(lines, hints(true), 10, 10, 128, 1)!;
+    expect([at(f, 10, 3, 3), at(f, 10, 2, 7), at(f, 10, 1, 1)]).toEqual([RED4, RED4, RED4]);
+    expect([at(f, 10, 7, 7), at(f, 10, 8, 2), at(f, 10, 6, 6)]).toEqual([BLUE4, BLUE4, BLUE4]);
+    // The colour runs under the lines: the border and the wall are coloured, not see-through.
+    expect([at(f, 10, 0, 4), at(f, 10, 9, 4)]).toEqual([RED4, BLUE4]);
+    expect(at(f, 10, 5, 3)[3]).toBe(255);
+  });
+  it('leaves an area with no hint see-through, and leaks through the gap when it is not closed', () => {
+    const f = colorizeFlats(lines, hints(false), 10, 10, 128, 1)!;
+    expect([at(f, 10, 2, 4), at(f, 10, 7, 4), at(f, 10, 7, 7)]).toEqual([RED4, [0, 0, 0, 0], [0, 0, 0, 0]]);
+    const leak = colorizeFlats(lines, hints(false), 10, 10, 128, 0)!;
+    expect(at(leak, 10, 7, 4)).toEqual(RED4);
+    expect(colorizeFlats(lines, new Uint8ClampedArray(400), 10, 10, 128, 1)).toBeNull();
+  });
+  it('puts the flats under the line art, hides the hints and multiplies white paper, as one undo step', () => {
+    const line = createLayer('Lines', 4, 4, { fill: { r: 255, g: 255, b: 255, a: 255 } }), hint = createLayer('Hints', 4, 4);
+    const doc: Doc = { width: 4, height: 4, layers: [line, hint], activeId: hint.id, selection: null };
+    const cmd = colorizeCommand(doc, line, hint, createLayer('Flat colours', 4, 4));
+    const state = (): unknown[] => [doc.layers.map((l) => l.name), doc.layers.find((l) => l.name === 'Hints')!.visible, doc.layers.find((l) => l.name === 'Lines')!.blendMode];
+    expect(state()).toEqual([['Flat colours', 'Lines', 'Hints'], false, 'multiply']);
+    cmd.undo(doc);
+    expect(state()).toEqual([['Lines', 'Hints'], true, 'normal']);
+    cmd.redo(doc);
+    expect(state()).toEqual([['Flat colours', 'Lines', 'Hints'], false, 'multiply']);
+  });
+});
+
+describe('blend paint (mixer brush)', () => {
+  it('mixes the colour under the dab into the brush colour by the wet amount', () => {
+    const { doc, l } = setup(10, 10);
+    l.data.set(pic(10, 10, () => [0, 0, 255, 255]));
+    const st = new RigStroke(doc, l, brush(4), rig({ mix: true, wet: 50, load: 0 }));
+    st.add({ x: 5, y: 5 });
+    st.end();
+    // Red brush, blue paper, half wet: purple 127.5 / 0 / 127.5, solid.
+    const p = at(l.data, 10, 5, 5);
+    expect(Math.abs(p[0] - 127.5)).toBeLessThanOrEqual(0.5);
+    expect([p[1], p[3]]).toEqual([0, 255]);
+    expect(Math.abs(p[2] - 127.5)).toBeLessThanOrEqual(0.5);
+    expect(rigOn(rig({ mix: true }))).toBe(true);
+  });
+  it('paints the plain brush colour on empty paper, and dry (wet 0) never picks up colour', () => {
+    const a = paint(10, 10, brush(4), rig({ mix: true, wet: 80 }), [{ x: 5, y: 5 }]);
+    expect(at(a.l.data, 10, 5, 5)).toEqual([255, 0, 0, 255]);
+    const { doc, l } = setup(10, 10);
+    l.data.set(pic(10, 10, () => [0, 0, 255, 255]));
+    const st = new RigStroke(doc, l, brush(4), rig({ mix: true, wet: 0 }));
+    st.add({ x: 5, y: 5 }); st.end();
+    expect(at(l.data, 10, 5, 5)).toEqual([255, 0, 0, 255]);
   });
 });

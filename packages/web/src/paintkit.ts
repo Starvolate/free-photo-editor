@@ -8,10 +8,12 @@
  * Part 2 adds brush tips (built in, or made from a selection), patterns (made from a selection, to paint or fill with),
  * saved tool settings, and a thin guide on the canvas showing the symmetry lines. Tips, patterns and saved tools are
  * kept in this browser (IndexedDB, its own database), or for this visit only when the browser does not allow it.
+ * Part 3 adds Fill what you circle (a lasso loop filled by a rule), Colour a line drawing (hint dabs become flat colours
+ * on a layer under the line art) and Blend paint (a brush that mixes with the colour under it).
  */
-import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, makePreset, patternAt, patternFromPixels, rigOn, tipFromPixels,
-  type Pattern, type RigMirror, type RigSettings, type RigSource, type Tip, type ToolPreset } from '@free-photoeditor/core/paint-more';
-import { activeLayer, compositeDoc, docRect, intersect, over, paintArea, selectionAlpha, type BrushOptions, type Doc, type Layer, type Stroke } from '@free-photoeditor/core';
+import { RIG_DEFAULTS, RigStroke, applyPreset, builtInTips, colorizeCommand, colorizeFlats, encloseAmounts, layerIn, makePreset, patternAt, patternFromPixels, rigOn, tipFromPixels,
+  type EncloseRule, type Pattern, type RigMirror, type RigSettings, type RigSource, type Tip, type ToolPreset } from '@free-photoeditor/core/paint-more';
+import { activeLayer, addLayer, compositeDoc, createLayer, docRect, findLayer, intersect, over, paintArea, parseHex, selectionAlpha, type BrushOptions, type Doc, type Layer, type Stroke } from '@free-photoeditor/core';
 import { h } from './dom';
 import type { ToolHost } from './toolkit';
 
@@ -25,7 +27,7 @@ export interface PaintHost extends ToolHost {
   setGuide(f: ((ctx: CanvasRenderingContext2D) => void) | null): void;
 }
 /** The commands this module runs; commands.ts gives each its handler. */
-export const PAINT_IDS = ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'panel.brushes', 'panel.tool-presets', 'edit.define-brush', 'edit.define-pattern'];
+export const PAINT_IDS = ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics', 'panel.brushes', 'panel.tool-presets', 'edit.define-brush', 'edit.define-pattern', 'paint.enclose-fill', 'paint.colorize-mask'];
 const SECTION: Record<string, string> = { 'paint.stabilizer': 'steady', 'paint.symmetry': 'mirror', 'paint.wrap-around': 'wrap', 'paint.dynamics': 'dyn' };
 
 /** The settings, kept while the page is open. */
@@ -47,6 +49,10 @@ export function rigSummary(s: RigSettings): string[] {
   if (s.mirror !== 'off') on.push(s.mirror === 'radial' ? `Symmetry (${s.spokes} around the centre)` : `Symmetry (${MIRROR.find((m) => m[0] === s.mirror)?.[1].toLowerCase()})`);
   if (s.wrap) on.push('Seamless tile');
   if (s.dyn) on.push('Pen and speed');
+  if (s.tip) on.push(`Tip: ${s.tip.name}`);
+  if (s.pattern) on.push(`Pattern: ${s.pattern.name}`);
+  if (s.spacing) on.push(`Spacing ${s.spacing}%`);
+  if (s.mix) on.push(`Blend paint (wet ${s.wet ?? 50}%)`);
   return on;
 }
 /** Give the editor the stroke maker for the settings now (none while every extra is off). */
@@ -78,11 +84,11 @@ function guide(ctx: CanvasRenderingContext2D): void {
   ctx.stroke();
   ctx.restore();
 }
-function seg<T extends string>(label: string, help: string, opts: [T, string][], value: T, key: string, set: (v: T) => void): HTMLElement {
+function seg<T extends string>(label: string, help: string, opts: [T, string][], value: T, key: string, set: (v: T) => void, after: () => void = render): HTMLElement {
   const g = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': label });
   for (const [v, text] of opts) {
     g.append(h('button', { type: 'button', 'aria-pressed': String(v === value), 'data-testid': `pk-${key}-${v}`, 'data-help-title': `${label}: ${text}`, 'data-help': help,
-      onclick: () => { set(v); apply(); render(); } }, text));
+      onclick: () => { set(v); apply(); after(); } }, text));
   }
   return h('div', { class: 'fpe-field' }, h('span', { class: 'fpe-label' }, label), g);
 }
@@ -100,7 +106,7 @@ function render(): void {
   b.replaceChildren(
     h('p', { class: 'fpe-note', 'data-testid': 'pk-status', role: 'status', 'aria-live': 'polite' },
       on.length ? 'On now: ' + on.join(', ') + '.' : 'All off: the brush paints as usual. Turn on a helper, then paint with the brush, the pencil or the eraser.'),
-    on.length ? h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'pk-all-off', onclick: () => { Object.assign(RIG, { steady: 'off', mirror: 'off', wrap: false, dyn: false }); apply(); render(); } }, 'Turn all off') : h('span'),
+    on.length ? h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'pk-all-off', onclick: () => { Object.assign(RIG, { steady: 'off', mirror: 'off', wrap: false, dyn: false, tip: null, angle: 0, spacing: 0, pattern: null, mix: false }); apply(); render(); renderBrushes(); renderPatterns(); } }, 'Turn all off') : h('span'),
     section('steady', 'Steady hand', 'Stabiliser', 'Smooths a shaky hand or mouse. Smooth lets the brush trail behind the pointer; Pulled string only moves the brush once the pointer is a string\'s length away. The line always finishes where you let go.', [
       seg('Steady hand', 'How the brush follows the pointer.', STEADY, RIG.steady, 'steady', (v) => { RIG.steady = v; }),
       RIG.steady === 'lag' ? sl('Smoothing', 'More smoothing: steadier lines that trail further behind the pointer.', 0, 95, 'lag', '%', 'pk-lag') : null,
@@ -118,7 +124,12 @@ function render(): void {
         seg('Strength follows', 'What makes the paint lighter.', SOURCE, RIG.strengthBy, 'strength', (v) => { RIG.strengthBy = v; }),
         sl('Lightest strength', 'The strength at the lightest press, the most tilt or the fastest move, in % of the brush strength.', 0, 100, 'minStrength', '%', 'pk-min-strength'),
         sl('Size jitter', 'Each dab is up to this much smaller, at random, for a rougher line.', 0, 100, 'jitter', '%', 'pk-jitter'),
-        sl('Scatter', 'Each dab lands up to this many brush sizes off the line, at random, for spray and texture.', 0, 200, 'scatter', '%', 'pk-scatter')] : [])]));
+        sl('Scatter', 'Each dab lands up to this many brush sizes off the line, at random, for spray and texture.', 0, 200, 'scatter', '%', 'pk-scatter')] : [])]),
+    section('mix', 'Blend paint', 'Mixer brush', 'Each dab picks up the colour already under the brush and mixes it into the paint, like wet paint on a canvas.', [
+      seg('Blend paint', 'On: the brush mixes with the colours under it.', ONOFF, RIG.mix ? 'on' : 'off', 'mix', (v) => { RIG.mix = v === 'on'; }),
+      ...(RIG.mix ? [
+        hst.slider('Wet', 'How much of the colour under the brush mixes into the paint.', 0, 100, RIG.wet ?? 50, '%', (v) => { RIG.wet = v; apply(); status(); }, 'pk-wet'),
+        hst.slider('Load', 'How much fresh brush colour comes back after each dab. Low: long smears; high: mostly the brush colour.', 0, 100, RIG.load ?? 20, '%', (v) => { RIG.load = v; apply(); }, 'pk-load')] : [])]));
 }
 function status(): void {
   const el = bodies['paint-extras']?.querySelector('[data-testid="pk-status"]');
@@ -309,7 +320,7 @@ async function savePreset(): Promise<void> {
   const hst = host, t = hst?.tool();
   if (!hst || !t || !paintTool(t)) return;
   await loadAll();
-  const o = hst.paint(t), extras = [...(RIG.tip ? [RIG.tip.name + ' tip'] : []), ...(RIG.pattern ? ['pattern'] : []), ...rigSummary(RIG)];
+  const o = hst.paint(t), extras = rigSummary(RIG);
   const base = `${t[0].toUpperCase() + t.slice(1)} ${Math.round(o.size)} px${extras.length ? ', ' + extras.join(', ') : ''}`;
   const p = makePreset(presets.some((x) => x.name === base) ? uniq(base, presets) : base, t, o, RIG);
   presets.push(p);
@@ -328,13 +339,93 @@ function usePreset(p: ToolPreset): void {
   hst.toast(`Using "${p.name}".`);
 }
 
-/** Open the sheet for a command: Brush extras at its own section, Brush tips, Patterns or Saved tool settings. */
+// ---- Fill what you circle (paint.enclose-fill) ----
+const RULES: [EncloseRule, string][] = [['all', 'Everything inside'], ['clear', 'Only empty parts of this layer'], ['colour', 'Only the colour at its middle'], ['lines', 'Between the lines']];
+const EF = { rule: 'all' as EncloseRule, tol: 10, dark: 128 };
+function renderEnclose(): void {
+  const b = bodies['paint-enclose'], hst = host;
+  if (!b || !hst) return;
+  const has = !!hst.doc()?.selection;
+  b.replaceChildren(
+    h('p', { class: 'fpe-note', 'data-testid': 'pe-status', role: 'status' }, has ? 'Your loop is ready. Choose what to fill inside it, then press Fill: it takes the main colour.'
+      : 'Draw a loop around the area with the lasso (close this sheet, then drag around it), open this again and press Fill.'),
+    seg('Fill', 'Which parts inside the loop take the main colour.', RULES, EF.rule, 'pe-rule', (v) => { EF.rule = v; }, renderEnclose),
+    ...(EF.rule === 'colour' ? [hst.slider('Colour match', 'How close a colour must be to the one at the middle of the loop, in %.', 0, 100, EF.tol, '%', (v) => { EF.tol = v; }, 'pe-tol')] : []),
+    ...(EF.rule === 'lines' ? [hst.slider('Line darkness', 'Pixels darker than this count as lines and are left alone (0 is black, 255 white).', 1, 255, EF.dark, '', (v) => { EF.dark = v; }, 'pe-dark')] : []),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+      btn('Draw a loop', 'pe-lasso', () => { hst.setTool('lasso'); hst.closeSheet(); }, 'Switches to the lasso: drag around the area you want to fill.'),
+      h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'pe-fill', 'data-help-title': 'Fill', 'data-help': 'Fills inside the loop with the main colour, by the rule above. One undo step.', onclick: () => encloseFill(hst) }, 'Fill')));
+}
+function encloseFill(hst: PaintHost): void {
+  const d = hst.doc(), l = d ? activeLayer(d) : undefined, s = d?.selection, r = d && s ? intersect(s, docRect(d)) : null;
+  if (!d || !l || !hst.editable(l)) return;
+  if (!r) { hst.toast('Draw a loop with the lasso first, then press Fill.'); return; }
+  const m = encloseAmounts(EF.rule, compositeDoc(d, r), layerIn(l, r), r.w, r.h, EF.tol, EF.dark);
+  if (!m.includes(255)) { hst.toast('Nothing inside the loop matches that choice.'); return; }
+  const c = parseHex(hst.fg()) ?? { r: 0, g: 0, b: 0, a: 255 };
+  hst.push(paintArea(d, l, 'Fill what you circle', r, (x, y, px, i) => { if (m[(y - r.y) * r.w + (x - r.x)]) over(px, i, c, 1); }));
+  hst.all();
+  hst.render();
+  hst.toast('Filled inside the loop. Undo takes it back in one step.');
+}
+
+// ---- Colour a line drawing (paint.colorize-mask) ----
+const CZ = { line: '', hints: '', dark: 128, gap: 2 };
+function renderColorize(): void {
+  const b = bodies['paint-colorize'], hst = host, d = hst?.doc();
+  if (!b || !hst) return;
+  const line = d && CZ.line ? findLayer(d, CZ.line) : undefined, hints = d && CZ.hints ? findLayer(d, CZ.hints) : undefined;
+  b.replaceChildren(
+    h('p', { class: 'fpe-note', 'data-testid': 'pc-status', role: 'status' }, !line ? 'Step 1: choose the layer with your line drawing in Layers, then press the first button.'
+      : !hints ? `Line art: "${line.name}". Step 2: add a hints layer, then dab a little colour inside each area.`
+        : `Line art: "${line.name}". Dab colours on "${hints.name}", then press Fill the areas. Areas with no dab stay empty.`),
+    btn('Use the selected layer as the line art', 'pc-line', () => { const dd = hst.doc(), a = dd ? activeLayer(dd) : undefined; if (!a) return; CZ.line = a.id; CZ.hints = ''; renderColorize(); },
+      'The layer with your drawing: dark lines on white paper or on a see-through layer.'),
+    btn('Add a hints layer', 'pc-hints', () => addHints(hst), 'A new layer above the line art for colour dabs. It multiplies, so dabs show over white paper.'),
+    hst.slider('Line darkness', 'Pixels darker than this count as lines (0 is black, 255 white).', 1, 255, CZ.dark, '', (v) => { CZ.dark = v; }, 'pc-dark'),
+    hst.slider('Close gaps', 'Gaps in the lines up to this wide are closed, so colour does not leak into the next area.', 0, 8, CZ.gap, ' px', (v) => { CZ.gap = v; }, 'pc-gap'),
+    h('button', { type: 'button', class: 'fpe-btn', 'data-testid': 'pc-fill', 'data-help-title': 'Fill the areas', 'data-help': 'Each closed area takes the colour dabbed in it, on a new layer under the line art. One undo step.',
+      onclick: () => colorize(hst) }, 'Fill the areas'));
+}
+function addHints(hst: PaintHost): void {
+  const d = hst.doc(), line = d && CZ.line ? findLayer(d, CZ.line) : undefined;
+  if (!d || !line) { hst.toast('First choose the line art layer and press "Use the selected layer as the line art".'); return; }
+  const l = createLayer('Colour hints', d.width, d.height);
+  l.blendMode = 'multiply';
+  hst.push(addLayer(d, l, d.layers.indexOf(line) + 1, 'Add a hints layer'), true);
+  CZ.hints = l.id;
+  hst.setTool('brush');
+  hst.panels();
+  hst.render();
+  renderColorize();
+  hst.toast('Hints layer added above the line art. Dab a colour inside each area, then press Fill the areas.');
+}
+function colorize(hst: PaintHost): void {
+  const d = hst.doc(), line = d && CZ.line ? findLayer(d, CZ.line) : undefined, hints = d && CZ.hints ? findLayer(d, CZ.hints) : undefined;
+  if (!d || !line) { hst.toast('First choose the line art layer and press "Use the selected layer as the line art".'); return; }
+  if (!hints) { hst.toast('Add a hints layer and dab some colour inside the areas first.'); return; }
+  const r = docRect(d), f = colorizeFlats(layerIn(line, r), layerIn(hints, r), d.width, d.height, CZ.dark, CZ.gap);
+  if (!f) { hst.toast('No colour dabs found inside an area yet. Dab colour on the hints layer, away from the lines.'); return; }
+  hst.push(colorizeCommand(d, line, hints, createLayer('Flat colours', d.width, d.height, { data: f })), true);
+  hst.panels();
+  hst.render();
+  renderColorize();
+  hst.toast('Filled each area on a new layer, "Flat colours", under the line art, and hid the hints. Undo takes it all back in one step.');
+}
+
+/** Open the sheet for a command: Brush extras at its own section, Brush tips, Patterns, Saved tool settings, Fill what you circle or Colour a line drawing. */
 export function runPaintKit(id: string, hst: PaintHost): void {
   host = hst;
   if (id === 'panel.brushes') { brushTool(hst); openSheet('paint-brushes', 'Brush tips · Brushes', renderBrushes); }
   else if (id === 'edit.define-brush') void defineBrush();
   else if (id === 'edit.define-pattern') void definePattern();
   else if (id === 'panel.tool-presets') openSheet('paint-presets', 'Saved tool settings · Tool presets', renderPresets);
+  else if (id === 'paint.enclose-fill') { if (!hst.doc()?.selection) hst.setTool('lasso'); openSheet('paint-enclose', 'Fill what you circle · Enclose and fill', renderEnclose); }
+  else if (id === 'paint.colorize-mask') {
+    const d = hst.doc(), a = d ? activeLayer(d) : undefined;
+    if (!CZ.line && a) CZ.line = a.id;
+    openSheet('paint-colorize', 'Colour a line drawing · Colorize mask', renderColorize);
+  }
   else {
     brushTool(hst);
     const body = holder('paint-extras');

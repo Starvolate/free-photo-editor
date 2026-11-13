@@ -405,7 +405,7 @@ HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e
 // Shapes & text through the tool kit: star and spiral and QR codes (pathops.ts), and type (typekit.ts, loaded on first use).
 // Add text goes through the same toolkit load as Add up-down text, so the two run in click order and Add text clears a
 // pending up-down. One space-split list keeps the first screen small.
-for (const id of 'shape.spiral-star shape.qr type.add type.warp type.path type.find type.smooth type.add-vertical type.to-shape type.styles type.opentype type.in-shape'.split(' ')) HANDLERS[id] = w3(id);
+for (const id of 'shape.spiral-star shape.qr shape.comic-panels type.add type.warp type.path type.find type.smooth type.add-vertical type.to-shape type.styles type.opentype type.in-shape'.split(' ')) HANDLERS[id] = w3(id);
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
 const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
 const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>

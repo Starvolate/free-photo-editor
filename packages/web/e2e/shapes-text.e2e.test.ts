@@ -184,6 +184,37 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     await p.click('[data-testid="pathop-done"]');
   });
 
+  it('draws a page of 2 × 2 comic panels on the 960 × 640 sample, then 4 columns with Update; each is one undo step', async () => {
+    const p = await open();
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    const top = (): Promise<{ n: number; width: number }> => p.evaluate(() => {
+      const ls = (window as unknown as Win).fpe.getInfo()!.layers as { width: number }[];
+      return { n: ls.length, width: ls[ls.length - 1].width };
+    });
+    const n0 = (await top()).n;
+    await click(p, 'shape.comic-panels');
+    let s = await until(p, (x) => x.picked === 'Comic panels 1', 'comic');
+    // Gap 16, margin 24: panels 448 × 288, the first (24,24) to (472,312) and the last (488,328) to (936,616).
+    expect([s.count, s.anchors, s.closed, box(s)]).toEqual([1, 16, [true, true, true, true], [24, 24, 936, 616]]);
+    expect(s.points.slice(0, 4).map((q) => [q.x, q.y]).sort()).toEqual([[24, 24], [24, 312], [472, 24], [472, 312]]);
+    expect(s.points.slice(12).map((q) => [q.x, q.y]).sort()).toEqual([[488, 328], [488, 616], [936, 328], [936, 616]]);
+    const a = await top();
+    expect([a.n, a.width > 912]).toEqual([n0 + 1, true]);
+    await p.screenshot({ path: join(OUT, 'shapes-text-comic.png') });
+    // 4 columns: panels 216 wide, 8 boxes, the same layer redrawn.
+    await p.fill('[data-testid="pathop-panelCols"]', '4');
+    await p.click('[data-testid="pathop-update"]');
+    s = await until(p, (x) => x.anchors === 32, 'comic 4 columns');
+    expect(box(s)).toEqual([24, 24, 936, 616]);
+    expect(s.points.slice(4, 8).map((q) => [q.x, q.y]).sort()).toEqual([[256, 24], [256, 312], [472, 24], [472, 312]]);
+    expect((await top()).n).toBe(n0 + 1);
+    expect(await undo(p)).toBe(true);
+    expect((await paths(p)).anchors).toBe(16);
+    expect(await undo(p)).toBe(true);
+    expect([(await top()).n, (await paths(p)).count]).toEqual([n0, 0]);
+    await p.click('[data-testid="pathop-done"]');
+  });
+
   it('grows, mirrors, spins copies of and roughens a 100 px square outline, each undone before the next', async () => {
     const p = await open();
     await outlines(p, [300, 200, 100, 100]);

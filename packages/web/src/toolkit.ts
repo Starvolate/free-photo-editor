@@ -19,7 +19,7 @@ import {
 import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
-import { PEN_TOOLS, createPenKit } from './pen';
+import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
 
@@ -1229,7 +1229,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     cancel: () => { pen.cancel(); cancel(); },
     options: (bar, t) => (PEN_TOOLS.has(t) ? pen.options(bar, t) : options(bar, t)),
     overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); },
-    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : cmd(id)),
+    cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' || PATH_OPS.has(id) ? pen.cmd(id) : cmd(id)),
     fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),
     decorate,
     key(e) {

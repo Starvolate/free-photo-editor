@@ -46,6 +46,9 @@ const PREP: Record<string, string[]> = {
   'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
   // An outline from the box over the sun, then nothing selected, so the selection made from the outline is a visible change.
   'select.from-path': ['select.to-path', 'select.none'],
+  // Shapes & text: an outline round the box over the sun; combining adds a second from everything else (a frame with a hole).
+  'path.boolean': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.combine': ['select.to-path', 'select.inverse', 'select.to-path'],
+  'path.offset': ['select.to-path'], 'path.mirror': ['select.to-path'], 'path.rotate-copies': ['select.to-path'], 'path.roughen': ['select.to-path'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

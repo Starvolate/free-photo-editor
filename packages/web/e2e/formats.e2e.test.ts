@@ -101,10 +101,12 @@ async function open(p: Page, name: string, mimeType: string, buffer: Buffer): Pr
   await p.locator('[data-testid="file-input"]').setInputFiles({ name, mimeType, buffer });
   return n;
 }
-async function save(p: Page, format: string, multi?: { delay: number }): Promise<Buffer> {
+/** Export through the dialog; `multi` ticks "each layer as a frame or page", `delay` sets the time per frame (frames only). */
+async function save(p: Page, format: string, multi?: { delay?: number }): Promise<Buffer> {
   await p.click('[data-testid="btn-export"]');
   await p.click(`[data-testid="export-format-${format}"]`);
-  if (multi) { await p.check('[data-testid="export-multi"]'); await p.fill('[data-testid="export-delay"]', String(multi.delay)); }
+  if (multi) await p.check('[data-testid="export-multi"]');
+  if (multi?.delay) await p.fill('[data-testid="export-delay"]', String(multi.delay));
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 60_000 }), p.click('[data-testid="export-go"]')]);
   return readFile(await dl.path());
 }
@@ -149,7 +151,7 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     const webp = new Uint8Array(await save(page, 'webp', { delay: 250 }));
     expect(isAnimatedWebp(webp)).toBe(true);
     expect(webpInfo(webp).xmp).toContain(CREDIT);
-    const t = decodeTiff(new Uint8Array(await save(page, 'tiff', { delay: 250 })));
+    const t = decodeTiff(new Uint8Array(await save(page, 'tiff', {})));
     expect(t.doc.layers).toHaveLength(3);
   });
   it('opens every frame of a moving GIF as a layer', async () => {
@@ -159,6 +161,9 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
   it('saves AVIF and JPEG XL through WebAssembly, and opens the JPEG XL again', async () => {
     const avif = await save(page, 'avif');
     expect(latin(avif.subarray(4, 12))).toBe('ftypavif');
+    expect(latin(avif)).toContain(CREDIT);
+    const back = await waitTabs(page, await open(page, 'back.avif', 'image/avif', avif));
+    expect([back.width, back.height]).toEqual([20, 10]);
     const jxl = await save(page, 'jxl');
     expect(latin(jxl)).toContain(CREDIT);
     const i = await waitTabs(page, await open(page, 'back.jxl', 'image/jxl', jxl), 60_000);

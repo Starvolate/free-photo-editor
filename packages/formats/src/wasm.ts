@@ -20,9 +20,98 @@ const fromImageData = (d: ImageData | null | undefined, what: string): Bitmap =>
   return { width: d.width, height: d.height, data: d.data };
 };
 
+interface HeifBox { type: string; start: number; end: number; body: number; }
+function boxesIn(b: Uint8Array, from: number, to: number): HeifBox[] {
+  const out: HeifBox[] = [], dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  for (let p = from; p + 8 <= to; ) {
+    let size = dv.getUint32(p), body = p + 8;
+    if (size === 1) { size = Number(dv.getBigUint64(p + 8)); body = p + 16; } else if (size === 0) size = to - p;
+    if (size < 8 || p + size > to) break;
+    out.push({ type: latin1Decode(b, p + 4, p + 8), start: p, end: p + size, body });
+    p += size;
+  }
+  return out;
+}
+const rd = (b: Uint8Array, o: number, n: number): number => { let v = 0; for (let i = 0; i < n; i++) v = v * 256 + b[o + i]; return v; };
+const wr = (out: number[], n: number, v: number): void => { for (let i = n - 1; i >= 0; i--) out.push(Math.floor(v / 256 ** i) % 256); };
+interface HeifItem { id: number; method: number; dri: number; base: number; ext: { idx: number; off: number; len: number }[]; }
+function readIloc(b: Uint8Array, box: HeifBox): { v: number; off: number; len: number; base: number; idx: number; idw: number; items: HeifItem[] } {
+  const v = b[box.body], p0 = box.body + 4, off = b[p0] >> 4, len = b[p0] & 15, base = b[p0 + 1] >> 4, idx = v >= 1 ? b[p0 + 1] & 15 : 0, idw = v < 2 ? 2 : 4;
+  const items: HeifItem[] = [];
+  let q = p0 + 2 + idw;
+  for (let i = 0, n = rd(b, p0 + 2, idw); i < n && q < box.end; i++) {
+    const it: HeifItem = { id: rd(b, q, idw), method: 0, dri: 0, base: 0, ext: [] };
+    q += idw;
+    if (v >= 1) { it.method = rd(b, q, 2) & 15; q += 2; }
+    it.dri = rd(b, q, 2); q += 2;
+    it.base = rd(b, q, base); q += base;
+    for (let k = 0, ec = rd(b, q, 2); k < ec; k++) {
+      if (k === 0) q += 2;
+      const e = { idx: rd(b, q, idx), off: 0, len: 0 };
+      q += idx; e.off = rd(b, q, off); q += off; e.len = rd(b, q, len); q += len;
+      it.ext.push(e);
+    }
+    if (!it.ext.length) q += 2;
+    items.push(it);
+  }
+  return { v, off, len, base, idx, idw, items };
+}
+/** The items of a HEIF/AVIF file with their type and bytes (file-offset items only). */
+export function heifItems(b: Uint8Array): { id: number; type: string; data: Uint8Array }[] {
+  const meta = boxesIn(b, 0, b.length).find((x) => x.type === 'meta');
+  if (!meta) return [];
+  const kids = boxesIn(b, meta.body + 4, meta.end), iinf = kids.find((k) => k.type === 'iinf'), iloc = kids.find((k) => k.type === 'iloc');
+  if (!iinf || !iloc) return [];
+  const types = new Map<number, string>(), cw = b[iinf.body] === 0 ? 2 : 4;
+  for (const e of boxesIn(b, iinf.body + 4 + cw, iinf.end)) if (e.type === 'infe' && b[e.body] >= 2) { const w = b[e.body] === 2 ? 2 : 4; types.set(rd(b, e.body + 4, w), latin1Decode(b, e.body + 6 + w, e.body + 10 + w)); }
+  return readIloc(b, iloc).items.filter((it) => it.method === 0 && it.ext.length).map((it) => ({ id: it.id, type: types.get(it.id) ?? '', data: concatBytes(...it.ext.map((e) => b.subarray(it.base + e.off, it.base + e.off + e.len))) }));
+}
+/**
+ * Put the credit (an XMP item described by the primary picture) into a finished AVIF/HEIF file. The meta box grows, so
+ * every file offset after it moves by the same amount; the XMP itself goes in a new mdat box at the end. Files this
+ * can't safely rewrite come back unchanged.
+ */
+export function withHeifCredit(b: Uint8Array, credit: string = CREDIT): Uint8Array {
+  const top = boxesIn(b, 0, b.length), meta = top.find((x) => x.type === 'meta');
+  if (!meta || meta.body !== meta.start + 8 || top.some((x) => x.type === 'moov')) return b;
+  const kids = boxesIn(b, meta.body + 4, meta.end);
+  if (!kids.length || kids[kids.length - 1].end !== meta.end) return b;
+  const pitm = kids.find((k) => k.type === 'pitm'), iinf = kids.find((k) => k.type === 'iinf'), iloc = kids.find((k) => k.type === 'iloc'), iref = kids.find((k) => k.type === 'iref');
+  if (!pitm || !iinf || !iloc) return b;
+  const primary = rd(b, pitm.body + 4, b[pitm.body] === 0 ? 2 : 4), cw = b[iinf.body] === 0 ? 2 : 4;
+  let maxId = 0;
+  for (const e of boxesIn(b, iinf.body + 4 + cw, iinf.end)) if (e.type === 'infe' && b[e.body] >= 2) maxId = Math.max(maxId, rd(b, e.body + 4, b[e.body] === 2 ? 2 : 4));
+  const id = maxId + 1, L = readIloc(b, iloc), irw = iref && b[iref.body] !== 0 ? 4 : 2;
+  if (id > 0xffff || primary > 0xffff || !L.len || (!L.off && !L.base)) return b;
+  const xmp = utf8Encode(buildXmp(credit)), count: number[] = [], ref: number[] = [];
+  wr(count, cw, rd(b, iinf.body + 4, cw) + 1);
+  const newIinf = isoBox('iinf', concatBytes(b.subarray(iinf.body, iinf.body + 4), new Uint8Array(count), b.subarray(iinf.body + 4 + cw, iinf.end),
+    isoBox('infe', concatBytes(new Uint8Array([2, 0, 0, 0, id >> 8, id & 255, 0, 0]), latin1Encode('mime\0application/rdf+xml\0')))));
+  wr(ref, irw, id); wr(ref, 2, 1); wr(ref, irw, primary);
+  const newIref = isoBox('iref', concatBytes(iref ? b.subarray(iref.body, iref.end) : new Uint8Array(4), isoBox('cdsc', new Uint8Array(ref))));
+  const buildIloc = (delta: number, at: number): Uint8Array => {
+    const o: number[] = [...b.subarray(iloc.body, iloc.body + 6)];
+    wr(o, L.idw, L.items.length + 1);
+    const all = [...L.items, { id, method: 0, dri: 0, base: L.off ? 0 : at, ext: [{ idx: 0, off: L.off ? at : 0, len: xmp.length }] }];
+    for (const it of all) {
+      const shift = it.id !== id && it.method === 0 && it.dri === 0 && it.base + (it.ext[0]?.off ?? 0) >= meta.end;
+      wr(o, L.idw, it.id);
+      if (L.v >= 1) wr(o, 2, it.method);
+      wr(o, 2, it.dri);
+      wr(o, L.base, shift && L.base ? it.base + delta : it.base);
+      wr(o, 2, it.ext.length);
+      for (const e of it.ext) { wr(o, L.idx, e.idx); wr(o, L.off, shift && !L.base ? e.off + delta : e.off); wr(o, L.len, e.len); }
+    }
+    return isoBox('iloc', new Uint8Array(o));
+  };
+  const rebuild = (newIloc: Uint8Array): Uint8Array => isoBox('meta', concatBytes(b.subarray(meta.body, meta.body + 4),
+    ...kids.map((k) => (k === iinf ? newIinf : k === iloc ? newIloc : k === iref ? newIref : b.subarray(k.start, k.end))), ...(iref ? [] : [newIref])));
+  const delta = rebuild(buildIloc(0, 0)).length - (meta.end - meta.start);
+  return concatBytes(b.subarray(0, meta.start), rebuild(buildIloc(delta, b.length + delta + 8)), b.subarray(meta.end), isoBox('mdat', xmp));
+}
 export async function encodeAvif(bmp: Bitmap, quality: number): Promise<Uint8Array> {
   const { default: encode } = await import('@jsquash/avif/encode.js');
-  return new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), speed: 6 }));
+  return withHeifCredit(new Uint8Array(await encode(asImageData(bmp), quality >= 1 ? { lossless: true } : { quality: Math.round(quality * 100), speed: 6 })));
 }
 export const avifCodec: FormatCodec = {
   async decode(bytes, host) {

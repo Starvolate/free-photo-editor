@@ -291,12 +291,12 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     await expect.poll(() => page.locator('[data-testid="layer-row"]').count()).toBe(2);
   });
 
-  it('opens BMP, GIF (first frame), ICO, SVG and WebP', async () => {
+  it('opens BMP, GIF (every frame as a layer), ICO, SVG and WebP', async () => {
     const webp = Buffer.from(JSON.parse(await readFile(join(WEB, '../core/test/fixtures/webp-samples.json'), 'utf8')).lossyOpaque, 'base64');
     const wi = webpInfo(new Uint8Array(webp));
-    const cases: { name: string; type: string; bytes: Buffer; w: number; h: number; at?: [number, number]; px?: Px; tol?: number }[] = [
+    const cases: { name: string; type: string; bytes: Buffer; w: number; h: number; at?: [number, number]; px?: Px; tol?: number; layers?: number }[] = [
       { name: 'tiny.bmp', type: 'image/bmp', bytes: bmpBytes(3, 2, (x, y) => [x * 80, y * 120, 30, 255]), w: 3, h: 2, at: [2, 1], px: [160, 120, 30, 255] },
-      { name: 'two-frames.gif', type: 'image/gif', bytes: GIF_TWO_FRAMES, w: 1, h: 1, at: [0, 0], px: [5, 4, 4, 255] },
+      { name: 'two-frames.gif', type: 'image/gif', bytes: GIF_TWO_FRAMES, w: 1, h: 1, at: [0, 0], px: [5, 4, 4, 255], layers: 2 },
       { name: 'icon.ico', type: 'image/x-icon', bytes: icoBytes(pngBytes(5, 4, () => [10, 200, 60, 255]), 5, 4), w: 5, h: 4, at: [2, 2], px: [10, 200, 60, 255] },
       { name: 'shape.svg', type: 'image/svg+xml', bytes: Buffer.from(SVG), w: 1024, h: 768, at: [512, 384], px: [244, 162, 97, 255] },
       { name: 'photo.webp', type: 'image/webp', bytes: webp, w: wi.width, h: wi.height },
@@ -304,7 +304,7 @@ describe('Free Photo Editor engine through the workspace (headless Chrome)', () 
     for (const c of cases) {
       await blank(page);
       const i = await openFile(page, c.name, c.type, c.bytes, c.w, c.h);
-      expect(i.layers.length, c.name).toBe(1);
+      expect(i.layers.length, c.name).toBe(c.layers ?? 1);
       if (c.at && c.px) expect(await sample(page, c.at[0], c.at[1]), c.name).toSatisfy((v: number[] | null) => near(v, c.px as Px, c.tol ?? 2));
     }
   });

@@ -2440,6 +2440,8 @@ export class Editor {
     this.multiBox = h('input', { id: id + 'm', type: 'checkbox', 'data-testid': 'export-multi' });
     this.multiBox.addEventListener('change', () => { this.exportMulti = this.multiBox.checked; this.renderExport(); });
     this.multiText = h('label', { for: id + 'm' }, 'Make an animation: each layer is one frame');
+    this.multiBox.style.flex = 'none';
+    this.multiText.style.flex = '1 1 auto';
     this.multiRow = h('div', { class: 'fpe-row', 'data-help-title': 'Layers as frames or pages', 'data-help': 'Turn each layer into one frame of an animation, or into its own page.' }, this.multiBox, this.multiText);
     const dl = h('input', { id: id + 'd', type: 'number', min: 20, max: 10000, step: 10, value: 100, inputmode: 'numeric', 'data-testid': 'export-delay' });
     dl.addEventListener('input', () => { const v = Number(dl.value); if (v >= 10) this.exportDelay = Math.min(10000, Math.round(v)); });

@@ -19,7 +19,8 @@ import { encodeSvg } from '../src/svg';
 import { decodeTga, encodeTga, tgaSoftware } from '../src/tga';
 import { decodeTiff, encodeTiffPages, lzwDecode, lzwEncode, readTiff, writeTiff, type TiffEntry } from '../src/tiff';
 import { framesOf, riff } from '../src/util';
-import { isoBoxes, withJxlCredit } from '../src/wasm';
+import { heifItems, isoBoxes, withHeifCredit, withJxlCredit } from '../src/wasm';
+import { isoBox } from '../src/util';
 
 registerAllFormats();
 const NAME = 'Free Photo Editor by Bhawesh Tibrewal';
@@ -226,6 +227,20 @@ describe('PDF, JPEG XL and camera RAW', () => {
     expect(isoBoxes(f).map((b) => b.type)).toEqual(['JXL ', 'ftyp', 'xml ', 'jxlc']);
     expect(text(f)).toContain(CREDIT);
     expect(sniffFormat(f, 'x')?.id).toBe('jxl');
+  });
+  it('AVIF files get the credit as an XMP item, and every picture item still points at its own bytes', () => {
+    const B = (t: string, ...p: (number[] | string | Uint8Array)[]): Uint8Array => isoBox(t, new Uint8Array(Buffer.concat(p.map((x) => (typeof x === 'string' ? Buffer.from(x, 'latin1') : Buffer.from(x))))));
+    const ftyp = B('ftyp', 'avif', [0, 0, 0, 0], 'avifmif1'), payload = [9, 8, 7, 6, 5];
+    const meta = (off: number): Uint8Array => B('meta', [0, 0, 0, 0], B('hdlr', [0, 0, 0, 0, 0, 0, 0, 0], 'pict', new Uint8Array(13)), B('pitm', [0, 0, 0, 0, 0, 1]),
+      B('iloc', [0, 0, 0, 0, 0x44, 0, 0, 1, 0, 1, 0, 0, 0, 1, off >>> 24, (off >> 16) & 255, (off >> 8) & 255, off & 255, 0, 0, 0, 5]),
+      B('iinf', [0, 0, 0, 0, 0, 1], B('infe', [2, 0, 0, 0, 0, 1, 0, 0], 'av01\0')), B('iprp', B('ipco'), B('ipma', [0, 0, 0, 0, 0, 0, 0, 0])));
+    const file = new Uint8Array(Buffer.concat([ftyp, meta(ftyp.length + meta(0).length + 8), B('mdat', payload)]));
+    expect([...heifItems(file)[0].data]).toEqual(payload);
+    const out = withHeifCredit(file), items = heifItems(out);
+    expect(items.map((i) => [i.id, i.type])).toEqual([[1, 'av01'], [2, 'mime']]);
+    expect([...items[0].data]).toEqual(payload);
+    expect(Buffer.from(items[1].data).toString('utf8')).toContain(CREDIT);
+    expect(text(out)).toContain('cdsc');
   });
   it('the develop step brightens and warms in plain steps', () => {
     const img = { width: 2, height: 1, rgb: new Uint8Array([128, 128, 128, 90, 90, 90]), bits: 8, colors: 3 };

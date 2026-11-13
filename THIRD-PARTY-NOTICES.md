@@ -26,5 +26,5 @@ PNG reading and writing, moving PNG (APNG), GIF reading, moving WebP joining, Op
 develop step.
 
 Every file the editor saves carries "Free Photo Editor by Bhawesh Tibrewal" in the format's metadata where the format
-has room for it (`ADDITIONAL-TERMS.md` 7(b)). BMP has no place for text. AVIF does not carry the credit yet: its encoder
-has no metadata setting, and adding a metadata item to the finished file is planned.
+has room for it (`ADDITIONAL-TERMS.md` 7(b)). BMP has no place for text. AVIF's encoder has no metadata setting, so the
+editor adds the credit to the finished file as an XMP item.

@@ -298,6 +298,10 @@ export class Editor {
   private sampleAll = true;
   private ratio = 0;
   private stroke: Stroke | null = null;
+  /** Brush extras (paintkit.ts): makes each stroke while one is on; null (the plain stroke) while all are off. */
+  private rig: import('./paintkit').RigMaker | null = null;
+  /** The symmetry guide over the picture (paintkit.ts); null while symmetry is off, so it costs nothing then. */
+  private rigGuide: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   /** While a pixel stroke runs, the rows below the painted layer per tile, so a frame redraws only what changed (core composite.ts). */
   private strokeCache: StrokeCache | null = null;
   /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
@@ -1494,7 +1498,7 @@ export class Editor {
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
       crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
-      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
+      outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk || this.rigGuide ? (ctx) => { this.tk?.overlay(ctx); this.rigGuide?.(ctx); } : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
     this.renderInfo();
@@ -1718,7 +1722,7 @@ export class Editor {
   private strokePoint(p: Pt, i: PointerInfo): StrokePoint {
     if (i.type !== 'pen') return { x: p.x, y: p.y };
     const o = this.paintOpts(), pr = clamp(i.pressure, 0.05, 1), tilt = Math.min(1, Math.hypot(i.tiltX, i.tiltY) / 60);
-    return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt) };
+    return { x: p.x, y: p.y, size: o.size * (0.2 + 0.8 * pr) * (1 + 0.5 * tilt), flow: (0.35 + 0.65 * pr) * (1 - 0.3 * tilt), pressure: pr, tilt };
   }
   /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
   private editable(l: Layer, pixels = true, onMask = false): boolean {
@@ -1768,8 +1772,8 @@ export class Editor {
       if (!l || !this.editable(l, true, true)) return;
       if (!l.visible) { this.toast('This layer is hidden. Show it to paint on it.'); return; }
       const o = this.paintOpts(), opts = { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' };
-      if (this.onMask(l)) { this.maskSurf = openMaskSurface(d, l); this.stroke = new Stroke(this.maskSurf.doc, this.maskSurf.layer, opts); }
-      else { this.stroke = new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
+      if (this.onMask(l)) { const m = this.maskSurf = openMaskSurface(d, l); this.stroke = this.rig?.(m.doc, m.layer, opts) ?? new Stroke(m.doc, m.layer, opts); }
+      else { this.stroke = this.rig?.(d, l, opts) ?? new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       return;
@@ -1801,9 +1805,13 @@ export class Editor {
     if (!g) return false;
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
-    this.hdrag = best;
+    // A press away from every handle: the develop sheet's grey picker sets something there (true); pins and the cage add a
+    // handle there (its key), ready to drag.
     const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
-    if (!best && s && set?.press && b && set.press(p.x, p.y, (s.spec.params ??= {}), b)) { this.syncControls(); this.preview(); this.requestRender(); return true; }
+    const r = !best && s && b && set?.press?.(p.x, p.y, (s.spec.params ??= {}), b);
+    if (typeof r === 'string') best = r;
+    this.hdrag = best;
+    if (r) { this.syncControls(); this.preview(); this.requestRender(); return true; }
     return !!best;
   }
   private handleMove(p: Pt): void {
@@ -2674,6 +2682,12 @@ export class Editor {
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
   }
+  /** Every crop-and-warp command (warpkit.ts runWarp: the bends, Liquify and the other sheets, Fit canvas), loaded on first use. */
+  async warpMore(id: string): Promise<void> {
+    try {
+      await (await import('./warpkit')).runWarp(id, { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), ed: this });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   revealAllAction(): void {
     const d = this.doc;
     if (!d) return;
@@ -3465,6 +3479,11 @@ export class Editor {
       m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; },
         lastFilter: () => this.lastFilter, others: () => this.tabs.flatMap((t, i) => (i === this.cur ? [] : [{ name: t.name, doc: t.doc, push: (c: Command) => { t.history.push(c); layerPixelsChanged(); this.renderTabs(); this.saver?.touch(); } }])) });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
+  /** Brush extras (paintkit.ts), loaded on first use: steady hand, symmetry, seamless tile, pen and speed. */
+  async paintKit(id: string): Promise<void> {
+    try { (await import('./paintkit')).runPaintKit(id, { ...this.toolHost(), setRig: (f) => { this.rig = f; }, flush: () => this.flushStroke(), setGuide: (f) => { this.rigGuide = f; this.requestRender(); } }); }
+    catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {

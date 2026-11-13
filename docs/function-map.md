@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 301 Ready, 374 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 302 Ready, 373 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 301 | 25 | 130 | 146 | 0 |
+| Ready today | 302 | 25 | 131 | 146 | 0 |
 
 ## The Task ribbon
 
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (11 Ready, 11 Planned)
+## Panels (Window menu and the dock) (12 Ready, 10 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -510,7 +510,7 @@ Groups: Screen mode · Screen mode.
 | panel.character | Text style | Character | Font, size and spacing of text. | font size | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | Window | Paint & draw › Brush settings · small button | Planned | 4 |  |
-| panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · small button | Planned | W2 |  |
+| panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · small button | Ready | W2 |  |
 | panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | Window | Automate & batch › Record steps · big button | Planned | 13 |  |
 | panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | Window | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |

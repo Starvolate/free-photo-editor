@@ -421,7 +421,7 @@ panel.paths | Outlines | Paths | Outlines you drew with the pen: pick, rename, d
 panel.character | Text style | Character | Font, size and spacing of text. | font size | R | W3
 panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | R | W3
 panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | P | 4
-panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | P | W2
+panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | R | W2
 panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | P | 13
 panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | P | 3
 panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4

@@ -132,7 +132,7 @@
 .fpe-ghead{display:flex;align-items:flex-start;flex:none;min-height:32px;background:var(--panel-2)}
 .fpe-gtabs{display:flex;flex-wrap:nowrap;align-items:stretch;flex:1;min-width:0;overflow:hidden}
 .fpe-gtab[data-overflow]{display:none}
-.fpe-gmore{height:28px;margin:2px 2px 0 0;padding:0 8px;font-size:12px;color:var(--muted)}
+.fpe-gmore{flex:none;width:28px;height:28px;margin:2px 2px 0 0;padding:0;color:var(--muted)}
 .fpe-gtab{display:inline-flex;align-items:center;gap:6px;flex:none;height:32px;padding:0 9px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer}
 .fpe-gtab[aria-selected=true]{background:var(--panel);color:var(--text);font-weight:600}
 .fpe-more-head{flex:1;justify-content:flex-start}
@@ -145,6 +145,48 @@
 .fpe-pbody{display:none;padding:8px 10px}
 .fpe-pbody[data-active]{display:block}
 .fpe-pbody[data-panel=layers][data-active]{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:6px 8px;overflow-y:auto}
+/* the dock as cards (a-deep, 13 Nov 2026): two columns at 1400 px and wider, one tabbed card below that; phones keep the sheet */
+.fpe-dcol{display:contents}
+.fpe-dswitch,.fpe-learn,.fpe-dock-empty{display:none}
+.fpe:not([data-layout=phone]) .fpe-dock{gap:8px;padding:8px;overflow:hidden;background:var(--bg);border-left:0}
+.fpe:not([data-layout=phone]) .fpe-group{flex:none;min-height:0;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.fpe:not([data-layout=phone]) .fpe-ghead{align-items:center;gap:2px;min-height:40px;padding:0 4px 0 6px;background:none;border-bottom:1px solid var(--line)}
+.fpe:not([data-layout=phone]) .fpe-group[data-folded] .fpe-ghead{border-bottom:0}
+.fpe:not([data-layout=phone]) .fpe-gtabs{align-items:center;gap:2px}
+.fpe:not([data-layout=phone]) .fpe-gtab{height:28px;padding:0 8px;border-radius:6px;font-size:13px}
+.fpe:not([data-layout=phone]) .fpe-gtab[aria-selected=true]{background:var(--sel)}
+.fpe:not([data-layout=phone]) .fpe-gmore{margin:0}
+.fpe:not([data-layout=phone]) .fpe-ghead .fpe-hist-step{width:30px;height:30px;border-radius:6px}
+.fpe:not([data-layout=phone]) .fpe-gbody{flex:1 1 auto;max-height:none;overflow-y:auto}
+.fpe:not([data-layout=phone]) .fpe-pbody{padding:8px 10px}
+.fpe:not([data-layout=phone]) .fpe-nav{width:100%;height:112px}
+.fpe-tone{display:block;width:100%;height:auto;border-radius:6px}
+.fpe-tone-note{margin:6px 0 0}
+.fpe[data-wide]:not([data-layout=phone]){--dock-w:640px}
+.fpe[data-wide]:not([data-layout=phone]) .fpe-dock{flex-direction:row}
+.fpe[data-wide]:not([data-layout=phone]) .fpe-dcol{display:flex;flex-direction:column;gap:8px;flex:1 1 0;min-width:0;min-height:0}
+.fpe[data-wide]:not([data-layout=phone]) .fpe-dcol+.fpe-dcol{flex-grow:1.1}
+.fpe[data-wide] .fpe-group[data-group=props]{flex:1 1 auto}
+.fpe[data-wide] .fpe-group[data-group=history]{flex:0 1 auto;max-height:178px}
+.fpe[data-wide] .fpe-group[data-group=layers]{flex:1 1 auto;min-height:0}
+.fpe[data-wide] .fpe-group[data-group=nav] .fpe-gbody{max-height:200px}
+.fpe[data-wide][data-hints=on] .fpe-dock:not([data-empty]) .fpe-learn{display:block}
+.fpe-learn{flex:none;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.fpe-learn-head{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:13px;font-weight:600}
+.fpe-learn-head svg{width:16px;height:16px;color:var(--accent)}
+.fpe-learn-text{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.fpe-learn-text b{color:var(--text);font-weight:600}
+.fpe:not([data-wide]):not([data-layout=phone]) .fpe-dswitch{display:flex;align-items:center;gap:2px;flex:none;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.fpe-dview{flex:1 1 auto;min-width:0;height:32px;padding:0 6px;border:0;border-radius:7px;background:none;color:var(--muted);font-size:13px;white-space:nowrap;cursor:pointer}
+.fpe-dview:hover{background:var(--hover);color:var(--text)}
+.fpe-dview[aria-selected=true]{background:var(--sel);color:var(--text);font-weight:600}
+.fpe[data-layout=tablet] .fpe-dview{padding:0 4px;font-size:12px}
+.fpe:not([data-wide]):not([data-layout=phone]) .fpe-group{flex:1 1 auto}
+.fpe:not([data-wide]):not([data-layout=phone]) .fpe-group[data-single] .fpe-gtabs{visibility:hidden}
+.fpe:not([data-layout=phone]) .fpe-dock[data-empty]>:not(.fpe-dock-empty){display:none}
+.fpe:not([data-layout=phone]) .fpe-dock[data-empty] .fpe-dock-empty{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.fpe-empty-title{margin:0;font-size:14px;font-weight:600;color:var(--text)}
+.fpe-dock-empty .fpe-note{margin:0}
 .fpe-props{display:flex;flex-direction:column;gap:4px;flex:none;margin-top:6px}
 .fpe-props .fpe-row>label{flex-basis:56px}
 /* the rows come first and at least three 46 px rows stay in view */
@@ -174,6 +216,7 @@
 .fpe-layer-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;flex:none;margin-bottom:6px}
 .fpe-layer-top .fpe-row{flex:1 1 120px;min-width:0}
 .fpe-layer-top .fpe-row>label{flex-basis:auto}
+.fpe-layer-top select{min-width:132px}
 .fpe-count{margin-left:6px;color:var(--muted);font-weight:400}
 .fpe-hist{margin:0;padding:0;list-style:none}
 .fpe-hist-count{align-self:center;padding:0 4px;font-size:12px;color:var(--muted);white-space:nowrap}
@@ -324,8 +367,13 @@
 .fpe-mrow-strong .fpe-plain{font-weight:600}
 .fpe-mback{min-height:44px;color:var(--accent)}
 .fpe-status{grid-area:status;display:flex;align-items:center;gap:16px;min-width:0;padding:0 10px;overflow:hidden;white-space:nowrap;font-size:12px;color:var(--muted);background:var(--panel);border-top:1px solid var(--line)}
-.fpe-stat{flex:none}
-.fpe-stat-zoom{height:22px;padding:0 6px;border:0;border-radius:4px;background:none;cursor:pointer}
+.fpe-stat{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fpe-stat:empty{display:none}
+.fpe-stat-color{display:inline-flex;align-items:center;gap:6px}
+.fpe-stat-sw{flex:none;width:10px;height:10px;border:1px solid var(--edge);border-radius:2px}
+.fpe-stat-layer{margin-left:auto}
+.fpe:not([data-wide]) .fpe-stat-space{display:none}
+.fpe-stat-zoom{flex:none;height:22px;padding:0 6px;border:0;border-radius:4px;background:none;cursor:pointer}
 .fpe-stat-zoom:hover{background:var(--hover)}
 .fpe-stat-hint{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 @keyframes fpe-pulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px var(--accent)}}
@@ -405,8 +453,8 @@
 .fpe-ptabs-wrap[data-more~=left] .fpe-pcue-l,.fpe-ptabs-wrap[data-more~=right] .fpe-pcue-r{display:flex}
 .fpe-ptab{flex:none;height:44px;padding:0 12px;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer;white-space:nowrap}
 .fpe-ptab[aria-selected=true]{background:var(--sel);color:var(--text);font-weight:600}
-.fpe[data-layout=phone] .fpe-dock>.fpe-group,.fpe[data-layout=phone] .fpe-dock>.fpe-group[hidden]{display:contents!important}
-.fpe[data-layout=phone] .fpe-dock>.fpe-more{display:none!important}
+.fpe[data-layout=phone] .fpe-dock .fpe-group,.fpe[data-layout=phone] .fpe-dock .fpe-group[hidden]{display:contents!important}
+.fpe[data-layout=phone] .fpe-dock :is(.fpe-dswitch,.fpe-learn,.fpe-dock-empty){display:none!important}
 .fpe[data-layout=phone] .fpe-dock .fpe-ghead{display:none!important}
 .fpe[data-layout=phone] .fpe-dock .fpe-gbody{display:contents!important}
 .fpe[data-layout=phone] .fpe-dock .fpe-pbody{display:none}

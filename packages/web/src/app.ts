@@ -139,12 +139,14 @@ const GROUP_ICON: Record<string, string> = {
   'Tools > Erase': 'eraser', 'Tools > Fill': 'bucket', 'Tools > Soften': 'droplet', 'Tools > Light': 'dodge', 'Tools > Pen': 'pen', 'Tools > Text': 'type',
   'Tools > Path select': 'pointer', 'Tools > Shapes': 'shapes', 'Tools > Hand': 'hand', 'Tools > Zoom': 'zoom-in',
 };
+// The dock as cards (layout A, a-deep): column 1 Properties, History and the small Tone graph card; column 2 Layers and Learn
+// as you go. A less-used panel (QUIET) keeps no tab at rest: it opens from View or its card's "..." menu.
 const GROUPS: { id: string; panels: string[] }[] = [
-  { id: 'nav', panels: ['navigator', 'info'] }, { id: 'color', panels: ['color', 'swatches'] },
-  { id: 'props', panels: ['properties', 'adjustments', 'character', 'paragraph'] },
-  // History is its own card so it never leaves the screen (layout A): the last steps, with step back and forward in its head.
-  { id: 'history', panels: ['history'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
-const MORE_PANELS = ['brushes', 'histogram', 'actions', 'styles', 'tool-presets', 'glyphs', 'notes', 'timeline', 'layer-comps', 'vector-info'];
+  { id: 'props', panels: ['properties', 'adjustments', 'character', 'paragraph'] }, { id: 'history', panels: ['history'] },
+  { id: 'nav', panels: ['histogram', 'navigator', 'info', 'color', 'swatches'] }, { id: 'layers', panels: ['layers', 'channels', 'paths'] }];
+const QUIET = new Set(['character', 'paragraph', 'paths', 'info', 'color', 'swatches']);
+/** Below 1400 px wide the dock is one card with these three tabs; the other panels open from its "..." menu or View. */
+const VIEWS: [string, string][] = [['layers', 'Layers'], ['props', 'Properties'], ['history', 'History']];
 const SWATCHES = ['#000000', '#3a3a3a', '#7a7a7a', '#b8b8b8', '#ffffff', '#e4572e', '#f3a712', '#f9e04b', '#9bc53d', '#2e9e5b', '#17bebb', '#2d7dd2',
   '#3d348b', '#8e44ad', '#d81e5b', '#ff8fab', '#7f5539', '#b08968', '#ddb892', '#ede0d4', '#0b132b', '#1c2541', '#3a506b', '#5bc0be', '#6fffe9',
   '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#bdb2ff', '#590d22', '#a4133c', '#ff4d6d', '#ffb3c1', '#264653', '#e9c46a'];
@@ -211,7 +213,7 @@ export class Editor {
   private rulerV!: HTMLCanvasElement;
   private dock!: HTMLElement;
   private statusEl!: HTMLElement;
-  private stat: Record<'zoom' | 'size' | 'pos' | 'sel' | 'hint', HTMLElement> = {} as Record<'zoom' | 'size' | 'pos' | 'sel' | 'hint', HTMLElement>;
+  private stat: Record<'zoom' | 'size' | 'space' | 'pos' | 'color' | 'sel' | 'hint' | 'layer' | 'saved', HTMLElement> = {} as Record<'zoom' | 'size' | 'space' | 'pos' | 'color' | 'sel' | 'hint' | 'layer' | 'saved', HTMLElement>;
   private startEl!: HTMLElement;
   private restoreEl!: HTMLElement;
   private installBody!: HTMLElement;
@@ -321,10 +323,15 @@ export class Editor {
   screen: Screen = 'standard';
   flags: Record<Flag, boolean> = { rulers: true, grid: false, extras: true };
   private hidden = new Set<string>();
-  private folded = new Set<string>(['nav', 'color', 'more']);
+  private folded = new Set<string>();
+  /** Below 1400 px: the card the dock shows (layers, props, history or nav). */
+  private dview = 'layers';
+  private dswitch: HTMLElement | null = null;
+  private learnEl: HTMLElement | null = null;
+  private toneCanvas: HTMLCanvasElement | null = null;
+  private toneNote: HTMLElement | null = null;
   private groupActive = new Map<string, string>();
   private dockState: DockState = 'closed';
-  private moreBtns = new Map<string, HTMLButtonElement>();
   private ptabs!: HTMLElement;
   private ptabsWrap!: HTMLElement;
   private stageSize = { w: 0, h: 0 };
@@ -474,9 +481,9 @@ export class Editor {
     const center = h('main', { class: 'fpe-center' }, this.tabsEl, this.viewEl);
     this.dock = h('aside', { class: 'fpe-dock', 'aria-label': 'Panels', 'data-testid': 'dock', 'data-state': 'closed' });
     this.buildDock();
-    for (const k of ['zoom', 'size', 'pos', 'sel', 'hint'] as const) this.stat[k] = h('span', { class: 'fpe-stat fpe-stat-' + k, 'data-testid': 'status-' + k });
+    for (const k of ['zoom', 'size', 'space', 'pos', 'color', 'sel', 'hint', 'layer', 'saved'] as const) this.stat[k] = h('span', { class: 'fpe-stat fpe-stat-' + k, 'data-testid': 'status-' + k });
     this.stat.zoom = h('button', { type: 'button', class: 'fpe-stat fpe-stat-zoom', 'data-cmd': 'view.fit', 'data-testid': 'status-zoom', onclick: () => void this.run('view.fit') }, '100%');
-    this.statusEl = h('footer', { class: 'fpe-status', 'data-testid': 'status' }, this.stat.zoom, this.stat.size, this.stat.pos, this.stat.sel, this.stat.hint);
+    this.statusEl = h('footer', { class: 'fpe-status', 'data-testid': 'status' }, ...(['zoom', 'size', 'space', 'pos', 'color', 'sel', 'hint', 'layer', 'saved'] as const).map((k) => this.stat[k]));
     this.tabRow = h('nav', { class: 'fpe-rtabs', role: 'tablist', 'aria-label': 'Task tabs', 'data-testid': 'ribbon-tabs' });
     this.ribbonEl = h('section', { class: 'fpe-ribbon', 'aria-label': 'Ribbon', 'data-testid': 'ribbon' });
     this.shell = h('div', { class: 'fpe-shell' }, top, this.tabRow, this.ribbonEl, this.optionsBar, this.toolsBar, center, this.dock, this.statusEl);
@@ -809,6 +816,15 @@ export class Editor {
     ptabs.addEventListener('scroll', () => this.ptabsCue(), { passive: true });
     dock.append(h('div', { class: 'fpe-dock-phonehead' }, handle, h('div', { class: 'fpe-dock-phonebar' }, this.ptabsWrap,
       iconButton('close', 'Close panels', { class: 'fpe-btn fpe-icon-btn', 'data-testid': 'close-dock', onclick: () => this.setDock('closed') }))));
+    // Two columns at 1400 px and wider; below that the columns fold away (display: contents) and one tab strip picks the card.
+    const col1 = h('div', { class: 'fpe-dcol', 'data-testid': 'dock-col-1' }), col2 = h('div', { class: 'fpe-dcol', 'data-testid': 'dock-col-2' });
+    const others = h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-gmore', 'aria-haspopup': 'menu', 'aria-label': 'More panels', 'data-testid': 'dview-more',
+      'data-help-title': 'More panels', 'data-help': 'The tone graph, navigator, colours and the other panels. Pick one to show it here.' }, icon('more'));
+    others.addEventListener('click', () => this.showPopover(GROUPS.flatMap((g) => g.panels).filter((p) => p !== 'layers' && p !== 'properties' && p !== 'history' && BY_ID.has('panel.' + p))
+      .map((p) => this.panelItem(p)), others));
+    this.dswitch = h('div', { class: 'fpe-dswitch', role: 'tablist', 'aria-label': 'Panels', 'data-testid': 'dock-views' }, ...VIEWS.map(([id, label]) =>
+      h('button', { type: 'button', class: 'fpe-dview', role: 'tab', 'aria-selected': 'false', 'data-view': id, 'data-testid': 'dview-' + id,
+        onclick: () => { this.dview = id; this.applyDock(); this.renderPanels(); } }, label)), others);
     for (const g of GROUPS) {
       const tabs = h('div', { class: 'fpe-gtabs', role: 'tablist' });
       const body = h('div', { class: 'fpe-gbody' });
@@ -816,36 +832,34 @@ export class Editor {
         const r = BY_ID.get('panel.' + pid);
         if (!r) continue;
         const ok = r.status === 'ready';
-        const t = h('button', { type: 'button', class: 'fpe-gtab', role: 'tab', 'aria-selected': 'false', 'aria-disabled': ok ? null : 'true', 'data-cmd': r.id,
-          'data-tab': pid, 'data-testid': 'tab-' + pid }, h('span', {}, r.plain), ok ? null : this.tag());
+        // A planned panel never has a tab at rest; it shows as planned in the card's "..." menu and in search.
+        const t = h('button', { type: 'button', class: 'fpe-gtab', role: 'tab', 'aria-selected': 'false', 'data-cmd': r.id, 'data-tab': pid, 'data-testid': 'tab-' + pid, hidden: !ok },
+          h('span', {}, r.plain));
         if (ok) { t.addEventListener('click', () => this.activateTab(g.id, pid)); body.append(this.panelBody(pid)); }
         tabs.append(t);
       }
-      const fold = iconButton('chev-down', 'Fold or unfold this panel group', { class: 'fpe-btn fpe-icon-btn fpe-gfold', 'data-testid': 'fold-' + g.id, onclick: () => this.toggleGroup(g.id) });
-      const more = h('button', { type: 'button', class: 'fpe-btn fpe-gmore', hidden: true, 'aria-haspopup': 'menu', 'data-testid': 'gmore-' + g.id,
-        'data-help-title': 'More panels', 'data-help': 'Panels of this group that did not fit in the row. Pick one to show it here.' }, h('span', {}, '+0'));
-      more.addEventListener('click', () => this.showPopover(Array.from(tabs.querySelectorAll<HTMLElement>('[data-tab][data-overflow]'), (t) => {
-        const pid = t.dataset.tab as string, r = BY_ID.get('panel.' + pid), ok = r?.status === 'ready';
-        return { label: (r?.plain ?? pid) + (ok ? '' : ' (planned)'), cmd: 'panel.' + pid, disabled: !ok, run: () => this.activateTab(g.id, pid) };
-      }), more));
-      this.moreBtns.set(g.id, more);
+      // The card's "..." menu: every panel of the card, so one without a tab at rest is one tap away, then folding the card.
+      const names = g.panels.map((p) => BY_ID.get('panel.' + p)?.plain).filter(Boolean).join(', ');
+      const more = h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-gmore', 'aria-haspopup': 'menu', 'aria-label': 'More in this card: ' + names, 'data-testid': 'gmore-' + g.id,
+        'data-help-title': 'More in this card', 'data-help': names + '. Pick one to show it here.' }, icon('more'));
+      more.addEventListener('click', () => this.showPopover([...g.panels.filter((p) => BY_ID.has('panel.' + p)).map((p) => this.panelItem(p)),
+        { label: this.folded.has(g.id) ? 'Unfold this card' : 'Fold this card', run: () => this.toggleGroup(g.id) }], more));
       const steps = g.id === 'history' ? [this.histCount = h('span', { class: 'fpe-hist-count', 'data-testid': 'history-count' }),
         this.cmdBtn('edit.history-back', 'undo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-back' }),
         this.cmdBtn('edit.history-forward', 'redo', null, { class: 'fpe-btn fpe-icon-btn fpe-hist-step', 'data-testid': 'history-forward' })] : [];
-      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, ...steps, more, fold), body);
+      const sec = h('section', { class: 'fpe-group', 'data-group': g.id, 'data-testid': 'group-' + g.id }, h('div', { class: 'fpe-ghead' }, tabs, ...steps, more), body);
       this.groupEls.set(g.id, sec);
-      dock.append(sec);
+      (g.id === 'layers' ? col2 : col1).append(sec);
     }
-    const more = h('section', { class: 'fpe-group fpe-more', 'data-group': 'more', 'data-testid': 'group-more' },
-      h('div', { class: 'fpe-ghead' }, h('button', { type: 'button', class: 'fpe-gtab fpe-more-head', 'data-testid': 'more-panels', onclick: () => this.toggleGroup('more') },
-        h('span', {}, 'More panels'), h('span', { class: 'fpe-tag' }, `${MORE_PANELS.length} planned`)),
-      iconButton('chev-down', 'Fold or unfold', { class: 'fpe-btn fpe-icon-btn fpe-gfold', onclick: () => this.toggleGroup('more') })),
-      h('div', { class: 'fpe-gbody' }, h('ul', { class: 'fpe-more-list' }, ...MORE_PANELS.map((pid) => {
-        const r = BY_ID.get('panel.' + pid);
-        return h('li', { 'data-cmd': 'panel.' + pid, tabindex: 0, 'aria-disabled': 'true' }, this.names(r?.plain ?? pid, r?.pro ?? ''), this.tag(), h('span', { class: 'fpe-more-help' }, r?.help ?? ''));
-      }))));
-    this.groupEls.set('more', more);
-    dock.append(more);
+    this.learnEl = h('p', { class: 'fpe-learn-text', 'data-testid': 'learn-text' });
+    col2.append(h('section', { class: 'fpe-learn', 'aria-label': 'Learn as you go', 'data-testid': 'learn-card' },
+      h('h3', { class: 'fpe-learn-head' }, icon('idea'), 'Learn as you go'), this.learnEl));
+    // With no picture: one calm card instead of five empty panels.
+    dock.append(this.dswitch, col1, col2, h('div', { class: 'fpe-dock-empty', 'data-testid': 'dock-empty' },
+      h('p', { class: 'fpe-empty-title' }, 'Open a photo to see its layers'),
+      h('p', { class: 'fpe-note' }, 'Its layers, settings and steps show here, one card each.'),
+      this.cmdBtn('file.open', 'open', 'Open a photo', { 'data-testid': 'dock-open' })));
+    dock.setAttribute('data-empty', '');
     this.applyDock();
   }
   private panelBody(pid: string): HTMLElement {
@@ -920,6 +934,10 @@ export class Editor {
         this.zoomAt(z / this.view.zoom, this.stage.clientWidth / 2, this.stage.clientHeight / 2);
       });
       b.append(this.navCanvas, this.field(id, 'Zoom', 'Slide to zoom in or out around the middle of the view.', this.navZoom));
+    } else if (pid === 'histogram') {
+      this.toneCanvas = h('canvas', { class: 'fpe-tone', width: 512, height: 96, 'data-testid': 'tone-graph', 'aria-label': 'Tone graph: how many pixels are dark, middle and light' });
+      this.toneNote = h('p', { class: 'fpe-note fpe-tone-note', 'data-testid': 'tone-note' });
+      b.append(this.toneCanvas, this.toneNote);
     } else if (pid === 'info') {
       this.infoBody = h('dl', { class: 'fpe-info', 'data-testid': 'info' });
       b.append(this.infoBody);
@@ -933,6 +951,7 @@ export class Editor {
   }
   private activateTab(group: string, pid: string): void {
     this.groupActive.set(group, pid);
+    this.dview = group;
     this.folded.delete(group);
     this.hidden.delete(pid);
     this.applyDock();
@@ -943,41 +962,50 @@ export class Editor {
     this.applyDock();
   }
   private applyDock(): void {
+    const narrow = this.layout !== 'phone' && !this.root.hasAttribute('data-wide');
+    const shownOf = (id: string): string[] => (GROUPS.find((g) => g.id === id)?.panels ?? []).filter((p) => BY_ID.get('panel.' + p)?.status === 'ready' && !this.hidden.has(p));
+    if (!shownOf(this.dview).length) this.dview = ['layers', 'props', 'history', 'nav'].find((id) => shownOf(id).length) ?? 'layers';
     for (const g of GROUPS) {
       const sec = this.groupEls.get(g.id);
       if (!sec) continue;
-      const shown = g.panels.filter((p) => BY_ID.get('panel.' + p)?.status === 'ready' && !this.hidden.has(p));
+      const shown = shownOf(g.id);
       let act = this.groupActive.get(g.id);
-      if (!act || !shown.includes(act)) act = shown[0];
+      if (!act || !shown.includes(act)) act = shown.find((p) => !QUIET.has(p)) ?? shown[0];
       if (act) this.groupActive.set(g.id, act);
-      sec.hidden = !shown.length;
-      sec.toggleAttribute('data-folded', this.folded.has(g.id));
+      sec.hidden = !shown.length || (narrow && g.id !== this.dview);
+      sec.toggleAttribute('data-folded', this.folded.has(g.id) && !narrow);
+      let n = 0;
       for (const t of sec.querySelectorAll<HTMLElement>('[data-tab]')) {
         const p = t.dataset.tab as string;
-        t.hidden = this.hidden.has(p);
+        t.hidden = !shown.includes(p) || (QUIET.has(p) && p !== act);
+        if (!t.hidden) n++;
         t.setAttribute('aria-selected', String(p === act));
       }
+      sec.toggleAttribute('data-single', n < 2);
       for (const p of g.panels) this.bodies.get(p)?.toggleAttribute('data-active', p === act);
     }
-    this.groupEls.get('more')?.toggleAttribute('data-folded', this.folded.has('more'));
+    for (const b of this.dswitch?.querySelectorAll<HTMLElement>('[data-view]') ?? []) b.setAttribute('aria-selected', String(b.dataset.view === this.dview));
     this.fitTabs();
   }
   togglePanelShown(pid: string): void {
     if (this.layout === 'phone') { this.togglePhonePanel(pid); return; }
-    if (this.hidden.has(pid)) {
-      this.hidden.delete(pid);
-      const g = GROUPS.find((x) => x.panels.includes(pid));
-      if (g) { this.groupActive.set(g.id, pid); this.folded.delete(g.id); }
-    } else this.hidden.add(pid);
+    if (!this.panelShown(pid)) { this.hidden.delete(pid); this.showPanelTab(pid); return; }
+    this.hidden.add(pid);
     this.applyDock();
     this.renderPanels();
   }
+  /** On screen now: a quiet panel only while it is its card's open tab; below 1400 px only the card the dock shows. */
   panelShown(pid: string): boolean {
-    return this.layout === 'phone' ? this.dockState !== 'closed' && this.phonePanel === pid : !this.hidden.has(pid);
+    if (this.layout === 'phone') return this.dockState !== 'closed' && this.phonePanel === pid;
+    const g = GROUPS.find((x) => x.panels.includes(pid));
+    if (!g || this.hidden.has(pid)) return false;
+    const on = this.groupActive.get(g.id) === pid;
+    return this.root.hasAttribute('data-wide') ? !QUIET.has(pid) || on : this.dview === g.id && on;
   }
   resetWorkspace(): void {
     this.hidden.clear();
-    this.folded = new Set(['nav', 'color', 'more']);
+    this.folded = new Set();
+    this.dview = 'layers';
     this.groupActive.clear();
     this.setScreen('standard');
     this.flags = { rulers: true, grid: false, extras: true };
@@ -1009,25 +1037,16 @@ export class Editor {
     if (open) this.renderPanels();
     if (open && this.layout === 'phone') this.revealPtab();
   }
-  /** Desktop and tablet: each group's tabs stay one row. Tabs that do not fit go behind the group's "+n" button; the open tab always stays. */
+  /** Desktop and tablet: each card's tabs stay one row. A tab that does not fit hides; the card's "..." menu still has it, and the open tab always stays. */
   private fitTabs(): void {
     if (!this.layout || this.layout === 'phone') return;
     for (const g of GROUPS) {
-      const sec = this.groupEls.get(g.id), more = this.moreBtns.get(g.id), strip = sec?.querySelector<HTMLElement>('.fpe-gtabs');
-      if (!sec || !more || !strip) continue;
-      const tabs = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab]'));
+      const sec = this.groupEls.get(g.id), strip = sec?.querySelector<HTMLElement>('.fpe-gtabs');
+      if (!sec || !strip) continue;
+      const tabs = Array.from(strip.querySelectorAll<HTMLElement>('[data-tab]')), act = this.groupActive.get(g.id);
       for (const t of tabs) t.removeAttribute('data-overflow');
-      more.hidden = true;
-      if (sec.hidden || !strip.clientWidth || strip.scrollWidth <= strip.clientWidth + 1) continue;
-      more.hidden = false;
-      const act = this.groupActive.get(g.id);
-      for (let i = tabs.length - 1; i >= 0 && strip.scrollWidth > strip.clientWidth + 1; i--) {
-        if (tabs[i].dataset.tab !== act && !tabs[i].hidden) tabs[i].setAttribute('data-overflow', '');
-      }
-      const out = tabs.filter((t) => t.hasAttribute('data-overflow')).map((t) => BY_ID.get('panel.' + t.dataset.tab)?.plain ?? '');
-      more.hidden = !out.length;
-      more.firstElementChild?.replaceChildren('+' + out.length);
-      more.setAttribute('aria-label', `${out.length} more panel${out.length === 1 ? '' : 's'}: ${out.join(', ')}`);
+      if (sec.hidden || !strip.clientWidth) continue;
+      for (let i = tabs.length - 1; i >= 0 && strip.scrollWidth > strip.clientWidth + 1; i--) if (tabs[i].dataset.tab !== act && !tabs[i].hidden) tabs[i].setAttribute('data-overflow', '');
     }
   }
   /** Phone: marks which side of the panel tab strip has more tabs, so a fade and an arrow show at that edge. */
@@ -1245,7 +1264,11 @@ export class Editor {
   // ---------- layout, theme, view ----------
   private onRootResize(): void {
     const w = this.root.clientWidth;
-    const layout: Layout = w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'phone';
+    const layout: Layout = w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'phone', wide = layout === 'desktop' && w >= 1400;
+    if (wide !== this.root.hasAttribute('data-wide')) {
+      this.root.toggleAttribute('data-wide', wide);
+      if (layout === this.layout) { this.applyDock(); this.renderPanels(); }
+    }
     if (layout === this.layout) return;
     this.layout = layout;
     this.root.dataset.layout = layout;
@@ -1256,6 +1279,7 @@ export class Editor {
     this.toolsBar.setAttribute('aria-orientation', layout === 'phone' ? 'horizontal' : 'vertical');
     this.setDock('closed');
     this.dock.inert = layout === 'phone';
+    this.applyDock();
     this.renderOptions();
   }
   /** The Task ribbon loads the first time the screen is desktop-wide; if it cannot load (offline before it was cached), today's menu bar stays. */
@@ -1477,6 +1501,15 @@ export class Editor {
     const tip = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '', ml = d ? activeLayer(d) : undefined;
     // While the mask is the target the status line says so first, in plain words (design 6), then the tool's own line.
     s.hint.textContent = ml && this.onMask(ml) ? `Editing the mask of ${ml.name}: black hides, white shows, grey half shows. ${tip}` : tip;
+    s.space.textContent = d ? 'sRGB · 8 bits a channel' : '';
+    const c = d && p ? samplePixel(d, p.x, p.y) : null, hex = c ? toHex(c).toUpperCase() : '', key = c ? `${hex} ${c.r} ${c.g} ${c.b}` : '';
+    if (s.color.dataset.k !== key) {
+      s.color.dataset.k = key;
+      s.color.replaceChildren(...(c ? [h('i', { class: 'fpe-stat-sw', style: 'background:' + hex }), `Under the pointer ${hex} · R ${c.r} G ${c.g} B ${c.b}`] : []));
+    }
+    const n = ml ? this.layerNames(ml) : null;
+    s.layer.textContent = n ? `${n.plain} · pros call it ${n.pro}` : '';
+    s.saved.textContent = d ? (this.saver?.enabled ? 'Saved on this device' : 'Safety copies off') : '';
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -1495,21 +1528,62 @@ export class Editor {
     b.dataset.text = text;
     b.replaceChildren(...rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
   }
+  private panelItem(pid: string): PopItem {
+    const r = BY_ID.get('panel.' + pid), ok = r?.status === 'ready';
+    return { label: (r?.plain ?? pid) + (ok ? '' : ' (planned)'), cmd: 'panel.' + pid, disabled: !ok, run: () => this.showPanelTab(pid) };
+  }
+  /** A layer's plain name, the name pros use, and one plain line about it (status bar and Learn as you go), from the map. */
+  private layerNames(l: Layer): { plain: string; pro: string; pros: string; what: string } {
+    const keep = 'Change it again at any time; the pixels under it stay as they were.';
+    if (l.kind === 'adjust') {
+      const r = BY_ID.get(l.adjust?.from ?? ''), pro = r?.pro ?? 'Adjustment';
+      return { plain: (r?.plain ?? 'Light and colour') + ' layer', pro, pros: `${l.clip ? 'a clipped' : /^[AEIOU]/.test(pro) ? 'an' : 'a'} ${pro} layer`,
+        what: (l.clip ? 'is clipped to the layer below, so it changes that layer only. ' : 'changes every layer below it. ') + keep };
+    }
+    if (l.kind === 'fill') return { plain: 'Colour layer', pro: 'Fill layer', pros: 'a Fill layer', what: 'is a flat colour. ' + keep };
+    if (l.kind === 'folder') return { plain: 'Folder', pro: 'Group', pros: 'a Group', what: 'keeps layers together, so you can move, hide or fade them as one.' };
+    return { plain: 'Picture layer', pro: 'Pixel layer', pros: 'a Pixel layer', what: 'is a sheet of pixels: paint, erase or move it without touching the layers below.' };
+  }
+  private renderLearn(): void {
+    const el = this.learnEl, d = this.doc, l = d ? activeLayer(d) : undefined;
+    if (!el) return;
+    if (!l) { el.replaceChildren(); return; }
+    const n = this.layerNames(l);
+    el.replaceChildren(h('b', {}, l.name), ` ${n.what} Pros call it ${n.pros}.`);
+  }
+  /** The Tone graph card: dark to light, counted on the navigator's small copy of the picture, and one plain line about it. */
+  private drawTone(hist: Uint32Array | null): void {
+    const c = this.toneCanvas, ctx = c?.getContext('2d'), note = this.toneNote;
+    if (!c || !ctx || !note) return;
+    const W = c.width, H = c.height;
+    ctx.fillStyle = this.rulerInk.bg;
+    ctx.fillRect(0, 0, W, H);
+    let n = 0, sum = 0;
+    for (let t = 0; hist && t < 256; t++) { n += hist[t]; sum += t * hist[t]; }
+    if (!hist || !n) { note.textContent = ''; return; }
+    const max = Math.max(1, ...hist), mean = sum / n, lost = [hist[0] / n > 0.005 ? 'black' : '', hist[255] / n > 0.005 ? 'white' : ''].filter(Boolean);
+    ctx.fillStyle = this.rulerInk.ac;
+    for (let t = 0; t < 256; t++) { const bh = Math.sqrt(hist[t] / max) * (H - 4); ctx.fillRect((t * W) / 256, H - bh, W / 256 + 0.5, bh); }
+    note.textContent = `Mostly ${mean < 85 ? 'dark' : mean > 170 ? 'light' : 'middle'} tones · ${lost.length ? 'some detail lost to pure ' + lost.join(' and ') : 'nothing lost to pure black or white'}`;
+  }
   private queueNav(): void { clearTimeout(this.navTimer); this.navTimer = window.setTimeout(() => this.drawNav(), 220); }
   private drawNav(): void {
     const c = this.navCanvas, ctx = c?.getContext('2d'), d = this.doc;
     if (!c || !ctx || !c.isConnected) return;
+    // The navigator draws at twice its own size on screen, so the drawn picture and the pointer maths share one shape.
+    const cw = Math.round(c.clientWidth * 2), ch = Math.round(c.clientHeight * 2);
+    if (cw && ch && (c.width !== cw || c.height !== ch)) { c.width = cw; c.height = ch; }
     const W = c.width, H = c.height;
     ctx.fillStyle = this.rulerInk.bg;
     ctx.fillRect(0, 0, W, H);
-    if (!d) return;
+    if (!d) { this.drawTone(null); return; }
     const k = Math.min(W / d.width, H / d.height), tw = Math.max(1, Math.round(d.width * k)), th = Math.max(1, Math.round(d.height * k));
     const ox = Math.round((W - tw) / 2), oy = Math.round((H - th) / 2), img = ctx.createImageData(tw, th);
     for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
       const dx = Math.floor(x / k), dy = Math.floor(y / k), i = (y * tw + x) * 4;
       let r = ((x >> 3) + (y >> 3)) & 1 ? 232 : 204, g = r, b = r;
       for (const l of d.layers) {
-        if (!l.visible) continue;
+        if (!l.visible || (l.kind && l.kind !== 'pixel')) continue;
         const lx = dx - l.x, ly = dy - l.y;
         if (lx < 0 || ly < 0 || lx >= l.width || ly >= l.height) continue;
         const j = (ly * l.width + lx) * 4, a = (l.data[j + 3] / 255) * l.opacity;
@@ -1518,6 +1592,9 @@ export class Editor {
       img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
     }
     ctx.putImageData(img, ox, oy);
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < img.data.length; i += 4) hist[(img.data[i] * 54 + img.data[i + 1] * 183 + img.data[i + 2] * 19) >> 8]++;
+    this.drawTone(hist);
     const v = this.view;
     ctx.strokeStyle = this.rulerInk.ac;
     ctx.lineWidth = 2;
@@ -2045,6 +2122,8 @@ export class Editor {
     this.renderProps();
     this.renderColor();
     this.renderInfo();
+    this.renderLearn();
+    this.dock.toggleAttribute('data-empty', !this.doc);
     this.queueNav();
     if (this.stat.hint) this.renderStatus();
   }
@@ -3522,7 +3601,7 @@ export class Editor {
         return {
           tabs: this.tabs.length, tab: this.cur, saved: !this.doc || this.history.stateId() === this.savedId, step: e.index, steps: e.labels.length,
           fg: this.brush.color, bg: this.bgColor, theme: this.root.dataset.theme, names: this.proNames, hints: this.hints, screen: this.screen, flags: { ...this.flags },
-          hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
+          hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), panelTabs: [...this.groupActive].map((x) => x.join(':')).sort(), dockView: this.dview, dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
           adjust: this.session?.id ?? null,
           preview: this.session ? { scale: this.session.scale, done: this.session.ran && !this.session.running, applying: this.session.applying } : null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),

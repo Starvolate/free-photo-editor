@@ -29,6 +29,34 @@ function runAdjust(job: JobSpec, data: Uint8ClampedArray, width: number): Uint8C
   if ((TONE_KINDS as readonly string[]).includes(k)) return tone({ width, height: data.length / 4 / width, data }, k as ToneKind, job.params);
   return adjustBytes(data, k as AdjustKind, (job.params ?? {}) as AdjustParams);
 }
+/** One row of n 8-bit pixels through an adjustment; the result is `out` (or a new row) and only its colour is read. */
+type RowJob = (src: Uint8ClampedArray, n: number, out: Uint8ClampedArray) => Uint8ClampedArray;
+/** Kinds that map each colour channel through a table of that channel's own value (the engine's lut3 or LUT loop). */
+const TABLE_KINDS: ReadonlySet<string> = new Set(['levels', 'curves', 'exposure', 'posterize', 'brightness-contrast', 'invert']);
+const rowJobs = new WeakMap<JobSpec, RowJob>();
+/**
+ * An adjustment compiled once per settings object (a moved slider makes a new object, L4; a WeakMap, L5), so a frame never
+ * rebuilds a table per row. Table kinds read their three tables off the engine itself run over a 0-255 grey ramp, so the
+ * bytes are the dialog's; the other kinds run the engine on the row, into the reused row where the engine takes one.
+ */
+function rowJob(job: JobSpec): RowJob {
+  let f = rowJobs.get(job);
+  if (f) return f;
+  const k = job.kind ?? 'invert';
+  if (TABLE_KINDS.has(k)) {
+    const ramp = new Uint8ClampedArray(1024);
+    for (let v = 0; v < 256; v++) { ramp[v * 4] = ramp[v * 4 + 1] = ramp[v * 4 + 2] = v; ramp[v * 4 + 3] = 255; }
+    const t = runAdjust(job, ramp, 256), lr = new Uint8ClampedArray(256), lg = new Uint8ClampedArray(256), lb = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) { lr[v] = t[v * 4]; lg[v] = t[v * 4 + 1]; lb[v] = t[v * 4 + 2]; }
+    f = (src, n, out) => {
+      for (let i = 0, e = n * 4; i < e; i += 4) { out[i] = lr[src[i]]; out[i + 1] = lg[src[i + 1]]; out[i + 2] = lb[src[i + 2]]; }
+      return out;
+    };
+  } else if ((TONE_KINDS as readonly string[]).includes(k)) f = (src, n) => runAdjust(job, src.subarray(0, n * 4), n);
+  else { const ps = (job.params ?? {}) as AdjustParams; f = (src, n, out) => adjustBytes(src.subarray(0, n * 4), k as AdjustKind, ps, out); }
+  rowJobs.set(job, f);
+  return f;
+}
 
 /** True when any node is in a folder, clipped, or is not a plain pixel layer. */
 const isTree = (layers: readonly BlendLayer[]): boolean =>
@@ -107,6 +135,8 @@ interface Prep {
   sheet: Float32Array | null;
   /** Colour layers: one row of their colour; adjustment layers: the row below turned into 8-bit. */
   buf: Uint8ClampedArray | null;
+  /** Adjustment layers: the reused row the compiled adjustment writes into. */
+  res: Uint8ClampedArray | null;
 }
 /** A node, or a clip group: a base with the clipped nodes directly above it (`run`, possibly all off this rectangle). */
 interface Item { base: Prep; run: Item[] | null; sheet: Float32Array | null; shape: Float32Array | null; }
@@ -138,20 +168,20 @@ function prepare(layers: readonly BlendLayer[], r: Rect): Prepared {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const k of kids) { x0 = Math.min(x0, k.base.x0); x1 = Math.max(x1, k.base.x1); y0 = Math.min(y0, k.base.y0); y1 = Math.max(y1, k.base.y1); }
       const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
-      return { l, folder: true, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids, sheet: new Float32Array(w * 4), buf: null };
+      return { l, folder: true, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids, sheet: new Float32Array(w * 4), buf: null, res: null };
     }
     if (l.kind === 'adjust' || l.kind === 'fill') {
       // No pixels of their own (L3): they cover the whole rectangle, shaped only by their mask.
       if (l.kind === 'adjust' ? !l.adjust?.job : !l.fill) return null;
       const box = { x: r.x, y: r.y, w, h }, mk = l.mask ? lazyMask(l.mask, box) : null, buf = new Uint8ClampedArray(w * 4);
       if (l.kind === 'fill' && l.fill) { const f = l.fill.color; for (let i = 0; i < buf.length; i += 4) { buf[i] = f.r; buf[i + 1] = f.g; buf[i + 2] = f.b; buf[i + 3] = f.a; } }
-      return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf };
+      return { l, folder: false, x0: r.x, x1: r.x + w, y0: r.y, y1: r.y + h, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf, res: l.kind === 'adjust' ? new Uint8ClampedArray(w * 4) : null };
     }
     if (l.kind && l.kind !== 'pixel') return null;
     const x0 = Math.max(r.x, l.x), x1 = Math.min(r.x + w, l.x + l.width), y0 = Math.max(r.y, l.y), y1 = Math.min(r.y + h, l.y + l.height);
     if (x0 >= x1 || y0 >= y1) return null;
     const mk = l.mask ? lazyMask(l.mask, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }) : null;
-    return { l, folder: false, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf: null };
+    return { l, folder: false, x0, x1, y0, y1, mk, mrow: mk ? new Float32Array(w) : null, kids: null, sheet: null, buf: null, res: null };
   };
   const items = (nodes: TreeNode<BlendLayer>[]): Item[] => {
     const groups: { base: TreeNode<BlendLayer>; run: TreeNode<BlendLayer>[] }[] = [];
@@ -243,9 +273,9 @@ function drawNode(p: Prep, acc: Float32Array, y: number, x0: number, x1: number,
  * kinds are point operations, so any split into rows, bands or tiles gives the same bytes.
  */
 function drawAdjust(p: Prep, acc: Float32Array, y: number, x0: number, x1: number, c: Ctx): void {
-  const l = p.l, n = x1 - x0, ai = (x0 - c.rx) * 4, b = (p.buf as Uint8ClampedArray).subarray(0, n * 4);
+  const l = p.l, n = x1 - x0, ai = (x0 - c.rx) * 4, b = p.buf as Uint8ClampedArray;
   for (let i = 0; i < n * 4; i++) b[i] = acc[ai + i] * 255;
-  const res = runAdjust((l.adjust as { job: JobSpec }).job, b, n), mr = p.mrow, op = l.opacity, mode = l.blendMode;
+  const res = rowJob((l.adjust as { job: JobSpec }).job)(b, n, p.res as Uint8ClampedArray), mr = p.mrow, op = l.opacity, mode = l.blendMode;
   if (p.mk) p.mk(y, x0, x1, mr as Float32Array);
   const sep = SEPARABLE[mode], plain = mode === 'normal' || mode === 'dissolve', dissolve = mode === 'dissolve', mix = c.mix;
   for (let j = 0, i = ai, k = 0; j < n; j++, i += 4, k += 4) {

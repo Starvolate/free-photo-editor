@@ -32,6 +32,8 @@ const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png',
 };
+/** The on-device AI commands. Run here, each must open its sheet with the download question; nothing is downloaded. */
+const AI = ['select.subject', 'image.remove-bg', 'edit.smart-fill', 'image.upscale-2x', 'image.upscale-4x'];
 /** After "open the sample and select a box over the sun": what a function needs first before it can change anything. */
 const PREP: Record<string, string[]> = {
   'file.revert': ['layer.new'], 'edit.undo': ['layer.new'], 'edit.history-back': ['layer.new'],
@@ -145,15 +147,24 @@ suite('W1 workspace (headless Chrome)', () => {
     const ready = cmds.filter((c) => c.status === 'ready'), planned = cmds.filter((c) => c.status !== 'ready');
     expect(ready.length).toBeGreaterThanOrEqual(120);
     expect(planned.every((c) => !c.handler)).toBe(true);
-    const bad: string[] = [];
+    const bad: string[] = [], aiSeen: string[] = [], fetched: string[] = [];
+    p.on('request', (r) => { if (/huggingface\.co|\.hf\.co\/|cdn\.jsdelivr\.net/.test(r.url())) fetched.push(r.url()); });
     for (const c of ready) {
       await prepared(p, c.id);
       const before = await sig(p), ok = await run(p, c.id);
       await p.waitForTimeout(60);
       if (!ok) bad.push(`${c.id}: not available`);
       else if ((await sig(p)) === before) bad.push(`${c.id}: nothing changed`);
+      if (AI.includes(c.id)) {
+        // run() came back, so the command did not wait for the person; its sheet asks before any download.
+        const asked = await p.waitForSelector('[data-testid="ai-download"]', { state: 'visible', timeout: 15_000 }).then(() => true, () => false);
+        if ((await state(p)).modal !== 'ai' || !asked) bad.push(`${c.id}: the AI sheet did not open with its download question`);
+        else aiSeen.push(c.id);
+      }
     }
     expect(bad).toEqual([]);
+    expect(aiSeen.length, 'AI commands checked').toBeGreaterThanOrEqual(3);
+    expect(fetched, 'nothing downloaded from the AI hosts').toEqual([]);
     await prepared(p, 'none');
     const accepted: string[] = [];
     for (const c of planned) if (await run(p, c.id)) accepted.push(c.id);

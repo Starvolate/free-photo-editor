@@ -548,12 +548,16 @@ suite('W3 tools (headless Chrome)', () => {
         }
         return hit;
       });
-      await run(p, 'select.subject');
+      // Any Planned function, read from the function map now, so this never depends on which ones are Planned.
+      const planned = await p.evaluate(() => (window as unknown as { fpe: { commands(): { id: string; status: string }[] } }).fpe.commands()
+        .find((c) => c.status !== 'ready')?.id ?? '');
+      expect(planned).not.toBe('');
+      await run(p, planned);
       expect(await p.textContent('[data-testid="toast"]')).toContain('planned');
       expect(await clear(), `${w} px`).toEqual([]);
       await run(p, 'image.adj-brightness');
       await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
-      await run(p, 'select.subject');
+      await run(p, planned);
       expect(await clear(), `${w} px with a dialog open`).toEqual([]);
       await shot(p, `w3b-toast-${w}.png`);
       await p.click('[data-testid="dialog-head"] button');

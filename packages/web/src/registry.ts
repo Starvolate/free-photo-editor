@@ -147,7 +147,7 @@ image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch t
 image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | R | W1 | Ctrl+Shift+B
 --
 image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | R | W1 | Ctrl+Alt+I
-image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it; AI does it on this device. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | R | 11
+image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | P | 11
 @Image > Make it bigger = Make it bigger | Upscale | Twice or four times the size, with AI drawing in sharp detail on this device.
 image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | R | 11
 image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | R | 11
@@ -272,7 +272,7 @@ select.none | Select nothing | Deselect | Drop the selection, so changes apply e
 select.reselect | Bring back the last selection | Reselect | Select again what you had selected before. | previous selection | R | W1 | Ctrl+Shift+D
 select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | R | W1 | Ctrl+Shift+I
 --
-select.subject | Select the main subject | Subject | Find the person or thing in front automatically; AI does it on this device. | person, subject, auto select, select person, select object automatically | R | 11
+select.subject | Select the main subject | Subject | Find the person or thing in front automatically. Planned: it still cuts away parts of some subjects. | person, subject, auto select, select person, select object automatically | P | 11
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | P | 11
 --

@@ -345,7 +345,9 @@ for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.con
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
 /** W11 on-device AI: ai.ts, loaded on first use. */
 const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);
-for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'image.upscale-4x']) HANDLERS[id] = ai(id);
+// Select the main subject and Remove the background are Planned until a subject model passes on real photos. Their code
+// stays in ai.ts, and the browser test runs it through the automation hook (fpe.aiCmd).
+for (const id of ['image.upscale-2x', 'image.upscale-4x']) HANDLERS[id] = ai(id);
 HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));

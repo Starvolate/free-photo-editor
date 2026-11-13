@@ -68,6 +68,8 @@ export interface EditorController {
   commands(): CommandInfo[];
   /** Run a function of the map by id. False when it is Planned, unknown or not available right now. */
   run(id: string): Promise<boolean>;
+  /** Automation only: run an on-device AI command by id even while its row is Planned, so tests keep that code proven. Resolves once its sheet is open. */
+  aiCmd(id: string): Promise<void>;
   /** A fingerprint of the composited pixels of a picture rectangle, so tests can tell whether anything changed. */
   checksum(x: number, y: number, w: number, h: number): number;
   /** Everything a person could notice changing, as plain data. */
@@ -2708,7 +2710,7 @@ export class Editor {
     const link = (href: string, text: string, testid?: string): HTMLElement => h('a', { href, target: '_blank', rel: 'noopener', 'data-testid': testid }, text);
     return h('div', { class: 'fpe-about', 'data-testid': 'about' },
       h('p', { class: 'fpe-about-credit' }, h('strong', {}, 'Free Photo Editor by Bhawesh Tibrewal'), h('br'), link(AUTHOR_URL, 'bhaweshtibrewal.com', 'about-site')),
-      h('p', {}, `Version ${APP_VERSION}. A free photo editor that runs fully in your browser. Your pictures stay on this device: nothing is uploaded. The AI tools (select the subject, remove the background or an object, make it bigger) download their models once, then run right here on this device.`),
+      h('p', {}, `Version ${APP_VERSION}. A free photo editor that runs fully in your browser. Your pictures stay on this device: nothing is uploaded. The AI tools (remove an object, make it bigger) download their models once, then run right here on this device.`),
       h('p', { 'data-testid': 'about-offline' }, h('strong', {}, 'Works offline. '), 'After your first visit, the editor and every add-on you have used keep working without the internet. '
         + 'Install it from File, Install as an app, to open it like any other app. Safety copies of open pictures stay in this browser and are never uploaded.'),
       h('h3', {}, 'Licence'),
@@ -3103,6 +3105,7 @@ export class Editor {
         return { id: r.id, status: r.status, kind: r.kind, enabled: this.isEnabled(r.id), checked: hd?.checked ? hd.checked(this) : null, handler: !!hd };
       }),
       run: (id) => this.run(id),
+      aiCmd: async (id) => { if (this.doc) await (await this.ai()).cmd(id); },
       selectionAt: (x, y) => { const s = this.doc?.selection; if (!s || x < s.x || y < s.y || x >= s.x + s.w || y >= s.y + s.h) return 0; return s.alpha ? s.alpha[(y - s.y) * s.w + (x - s.x)] : 255; },
       checksum: (x, y, w, hh) => {
         const d = this.doc, r = d ? intersect({ x, y, w, h: hh }, docRect(d)) : null;

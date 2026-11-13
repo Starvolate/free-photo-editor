@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * The on-device AI commands in the editor (W11), loaded the first time one is used: Select the main subject, Remove the
- * background, Remove an object (the brush, and Edit › Fill from the surroundings) and Make it bigger (2x and 4x). Before
- * the first download a sheet says how much comes down, once; the photo itself never leaves this device.
+ * The on-device AI commands in the editor (W11), loaded the first time one is used: Remove an object (the brush, and
+ * Edit › Fill from the surroundings) and Make it bigger (2x and 4x). Select the main subject and Remove the background are
+ * Planned for now (on real photos the subject model still cuts away parts of some subjects); their code stays here and the
+ * browser test runs it through the automation hook `fpe.aiCmd`. Before the first download a sheet says how much comes
+ * down, once; the photo itself never leaves this device. No caller ever waits on the person: `cmd()` resolves as soon as
+ * the sheet is open, and closing the sheet while it waits for a yes counts as no.
  */
 import { AiClient, Cancelled, blendFill, cannotRun, contextBox, detectBackend, downloadSize, estimateSeconds, fillOnly, mb, type Backend, type ModelId, type Progress } from '@free-photoeditor/ai';
 import {
@@ -15,9 +18,9 @@ import { maxPixelsForDevice } from './io';
 import type { ToolHost } from './toolkit';
 
 export interface AiKit {
-  /** Run an AI command by its function-map id. */
+  /** Run an AI command by its function-map id. Resolves as soon as its sheet is open (or at once when it cannot start), never when the job ends. */
   cmd(id: string): Promise<void>;
-  /** The Remove tool: fill the painted mask (picture size, any value above 0) from its surroundings. */
+  /** The Remove tool: fill the painted mask (picture size, any value above 0) from its surroundings. Resolves when the job has ended (done, stopped, closed or failed), so the tool can clear its marks. */
   removeObject(mask: Mask): Promise<void>;
   busy(): boolean;
 }
@@ -30,7 +33,9 @@ const CHANGED = 'The picture changed while the AI was working, so nothing was ap
 
 export function createAiKit(host: ToolHost): AiKit {
   const client = new AiClient();
-  let backend: Backend | null = null, running = false, answer: ((go: boolean) => void) | null = null;
+  let backend: Backend | null = null, running = false, current = '', asked = 0, watched = false, answer: ((go: boolean) => void) | null = null;
+  /** `cmd()` calls still waiting for the sheet to open. */
+  const waiting = new Set<() => void>();
   const msg = h('p', { class: 'fpe-ai-msg', 'data-testid': 'ai-message' });
   const note = h('p', { class: 'fpe-note', 'data-testid': 'ai-note' });
   const bar = h('progress', { class: 'fpe-ai-bar', max: 100, 'data-testid': 'ai-progress' });
@@ -38,9 +43,24 @@ export function createAiKit(host: ToolHost): AiKit {
   const go = h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'ai-download' }, 'Download and start');
   const stop = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'ai-cancel' }, 'Cancel');
   const body = h('div', { class: 'fpe-ai', 'data-testid': 'ai-sheet' }, msg, note, bar, status, h('div', { class: 'fpe-actions' }, stop, go));
-  go.addEventListener('click', () => { const a = answer; answer = null; a?.(true); });
-  stop.addEventListener('click', () => { const a = answer; answer = null; if (a) a(false); else client.cancel(); });
   const toast = (m: string): void => host.toast(m);
+  const shown = (): boolean => body.isConnected && !body.closest('[data-state="closed"]');
+  /** Close the AI sheet only: never another sheet the person opened meanwhile. */
+  const closeSheet = (): void => { if (shown()) host.closeSheet(); };
+  /** Open (or bring back) the sheet and let every waiting `cmd()` go. Closing the sheet while it waits for a yes counts as no. */
+  function show(title: string): void {
+    host.sheet('ai', title, body);
+    const s = body.closest<HTMLElement>('[data-state]');
+    if (s && !watched) {
+      watched = true;
+      new MutationObserver(() => { if (s.dataset.state === 'closed' && answer) { const a = answer; answer = null; a(false); } })
+        .observe(s, { attributes: true, attributeFilter: ['data-state'] });
+    }
+    for (const f of waiting) f();
+    waiting.clear();
+  }
+  go.addEventListener('click', () => { const a = answer; answer = null; a?.(true); });
+  stop.addEventListener('click', () => { const a = answer; answer = null; if (a) a(false); else if (running) client.cancel(); else closeSheet(); });
   const progress = (p: Progress): void => {
     if (p.stage === 'start') { bar.removeAttribute('value'); status.textContent = 'Getting the AI ready on this device…'; return; }
     bar.value = Math.floor((p.done / Math.max(1, p.total)) * 100);
@@ -48,32 +68,38 @@ export function createAiKit(host: ToolHost): AiKit {
   };
   const working = (text: string): void => { bar.removeAttribute('value'); status.textContent = text; };
 
-  /** Open the sheet. The first time, say how much downloads and wait for a yes. False when the person says no. */
+  /** Open the sheet at once. The first time, say how much downloads and wait for a yes. False when the person says no or closes the sheet. */
   async function ask(model: ModelId, title: string, slow: string): Promise<boolean> {
     const why = cannotRun();
     if (why) { toast(why); return false; }
-    backend ??= await detectBackend();
-    const size = await downloadSize(model, backend, client.loaded.has(model));
+    const mine = ++asked;
     answer?.(false);
-    host.sheet('ai', title, body);
+    answer = null;
+    msg.textContent = 'Checking what needs to download…';
     note.textContent = slow;
     note.hidden = !slow;
     status.textContent = '';
-    if (size <= 0) { msg.textContent = 'Your photo never leaves this device.'; go.hidden = true; bar.hidden = false; return true; }
+    go.hidden = true;
+    bar.hidden = true;
+    show(title);
+    backend ??= await detectBackend();
+    const size = await downloadSize(model, backend, client.loaded.has(model));
+    if (mine !== asked || !shown()) return false;
+    if (size <= 0) { msg.textContent = 'Your photo never leaves this device.'; bar.hidden = false; return true; }
     msg.textContent = `This downloads once, about ${mb(size)} MB. Your photo never leaves this device.`;
     go.hidden = false;
-    bar.hidden = true;
     const yes = await new Promise<boolean>((resolve) => { answer = resolve; });
-    if (!yes) { host.closeSheet(); return false; }
+    if (!yes) { if (mine === asked) closeSheet(); return false; }
     go.hidden = true;
     bar.hidden = false;
     return true;
   }
-  /** Ask, download and load the model, then do the work; errors and Cancel end in plain words. */
+  /** Ask, download and load the model, then do the work; errors and Cancel end in plain words. Resolves when the job has ended. */
   async function job(model: ModelId, title: string, slow: string, work: () => Promise<void>): Promise<void> {
-    if (running) { toast('The AI is still working on the last job. Wait for it, or press Cancel.'); return; }
+    if (running) { show(current); toast('The AI is still working on the last job. Wait for it, or press Cancel.'); return; }
     if (!(await ask(model, title, slow))) return;
     running = true;
+    current = title;
     try {
       working('Getting the AI ready on this device…');
       backend = await client.prepare(model, backend ?? 'wasm', progress);
@@ -83,10 +109,11 @@ export function createAiKit(host: ToolHost): AiKit {
       else { console.warn('[ai]', e); toast(`The AI could not finish: ${errText(e)}`); }
     } finally {
       running = false;
-      host.closeSheet();
+      closeSheet();
       host.render();
     }
   }
+
   const same = (d: Doc, w: number, hh: number): boolean => host.doc() === d && d.width === w && d.height === hh;
   function select(d: Doc, next: Selection | null, label: string): void {
     const before = d.selection;
@@ -192,18 +219,27 @@ export function createAiKit(host: ToolHost): AiKit {
     });
   }
 
+  /** Where each command goes; resolves when its job has ended. */
+  async function route(id: string): Promise<void> {
+    const d = host.doc();
+    if (!d) { toast('Open a photo first.'); return; }
+    if (id === 'select.subject' || id === 'image.remove-bg') return subject(d, id === 'image.remove-bg');
+    if (id === 'image.upscale-2x' || id === 'image.upscale-4x') return bigger(d, id === 'image.upscale-2x' ? 2 : 4);
+    if (id === 'edit.smart-fill') {
+      if (!d.selection) { toast('Select what you want gone first, then choose this again.'); return; }
+      return fill(d, maskFromSelection(d.selection, d.width, d.height), TITLE['edit.smart-fill']);
+    }
+  }
+
   return {
     busy: () => running,
     async removeObject(mask) { const d = host.doc(); if (d) await fill(d, mask, TITLE['tool.remove']); },
-    async cmd(id) {
-      const d = host.doc();
-      if (!d) { toast('Open a photo first.'); return; }
-      if (id === 'select.subject' || id === 'image.remove-bg') return subject(d, id === 'image.remove-bg');
-      if (id === 'image.upscale-2x' || id === 'image.upscale-4x') return bigger(d, id === 'image.upscale-2x' ? 2 : 4);
-      if (id === 'edit.smart-fill') {
-        if (!d.selection) { toast('Select what you want gone first, then choose this again.'); return; }
-        return fill(d, maskFromSelection(d.selection, d.width, d.height), TITLE['edit.smart-fill']);
-      }
+    cmd(id) {
+      return new Promise<void>((resolve) => {
+        waiting.add(resolve);
+        route(id).catch((e: unknown) => { console.warn('[ai]', e); toast(`The AI could not finish: ${errText(e)}`); })
+          .finally(() => { waiting.delete(resolve); resolve(); });
+      });
     },
   };
 }

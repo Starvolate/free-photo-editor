@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**404 functions: 260 Ready, 144 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**404 functions: 258 Ready, 146 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -117,7 +117,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-theme | Light or dark look | Theme | Switch between the dark and the light look. | dark mode, light mode, theme | Edit › Settings | Ready | 1 |  |
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Planned | 13 |  |
 
-## Image (35 Ready, 13 Planned)
+## Image (34 Ready, 14 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
@@ -153,7 +153,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Ready | W1 | Ctrl+Shift+Alt+L |
 | image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | Image | Ready | W1 | Ctrl+Shift+B |
 | image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | Image | Ready | W1 | Ctrl+Alt+I |
-| image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it; AI does it on this device. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Ready | 11 |  |
+| image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Planned | 11 |  |
 | image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | Image › Make it bigger | Ready | 11 |  |
 | image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | Image › Make it bigger | Ready | 11 |  |
 | image.canvas-size | Canvas size | Canvas size | Add or remove space around the picture without stretching it. | border, padding, frame, extend, more space | Image | Ready | W1 | Ctrl+Alt+C |
@@ -260,7 +260,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Planned | 6 |  |
 
-## Select (17 Ready, 2 Planned)
+## Select (16 Ready, 3 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -270,7 +270,7 @@ Groups: Change the selection · Modify.
 | select.none | Select nothing | Deselect | Drop the selection, so changes apply everywhere. | deselect, clear selection, unselect | Select | Ready | 1 | Ctrl+D |
 | select.reselect | Bring back the last selection | Reselect | Select again what you had selected before. | previous selection | Select | Ready | W1 | Ctrl+Shift+D |
 | select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | Select | Ready | W1 | Ctrl+Shift+I |
-| select.subject | Select the main subject | Subject | Find the person or thing in front automatically; AI does it on this device. | person, subject, auto select, select person, select object automatically | Select | Ready | 11 |  |
+| select.subject | Select the main subject | Subject | Find the person or thing in front automatically. Planned: it still cuts away parts of some subjects. | person, subject, auto select, select person, select object automatically | Select | Planned | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Ready | W3 |  |
 | select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Planned | 11 |  |
 | select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Planned | 2 |  |

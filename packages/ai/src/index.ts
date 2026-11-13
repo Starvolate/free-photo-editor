@@ -20,7 +20,9 @@ type GpuNav = { gpu?: { requestAdapter(): Promise<unknown> } };
 export async function detectBackend(): Promise<Backend> {
   const gpu = (globalThis.navigator as unknown as GpuNav | undefined)?.gpu;
   if (!gpu) return 'wasm';
-  try { return (await gpu.requestAdapter()) ? 'webgpu' : 'wasm'; } catch { return 'wasm'; }
+  // A browser that never answers counts as no graphics chip, so an AI command never waits on it.
+  const none = new Promise<null>((resolve) => { setTimeout(() => resolve(null), 2000); });
+  try { return (await Promise.race([gpu.requestAdapter(), none])) ? 'webgpu' : 'wasm'; } catch { return 'wasm'; }
 }
 /** Why this browser can't run the AI tools, in plain words, or null when it can. */
 export function cannotRun(): string | null {

@@ -16,14 +16,17 @@ export interface BrushOptions {
   color: RGBA; erase: boolean;
   /** Distance between dabs as a fraction of the diameter. */ spacing?: number;
 }
-/** A point of the stroke. `size` and `flow` let pen pressure and tilt change each dab. */
-export interface StrokePoint { x: number; y: number; size?: number; flow?: number; }
+/**
+ * A point of the stroke. `size` and `flow` let pen pressure and tilt change each dab. `pressure` (0..1) and `tilt` (0..1)
+ * are the pen's own readings, for the brush dynamics (paint-more.ts); the plain brush ignores them.
+ */
+export interface StrokePoint { x: number; y: number; size?: number; flow?: number; pressure?: number; tilt?: number; }
 const T = 64;
 interface Tile { r: Rect; orig: Uint8ClampedArray; mask: Uint8Array; }
 
 export class Stroke {
   readonly layer: Layer;
-  private readonly o: BrushOptions;
+  protected readonly o: BrushOptions;
   private readonly clip: Rect | null;
   private readonly sel: Selection | null;
   private readonly tiles = new Map<number, Tile>();
@@ -85,7 +88,8 @@ export class Stroke {
     this.tiles.set(key, t);
     return t;
   }
-  private dab(cx: number, cy: number, diameter: number, flow: number): void {
+  /** Paint one round dab (the brush power-ups in paint-more.ts copy, mirror and wrap it). */
+  protected dab(cx: number, cy: number, diameter: number, flow: number): void {
     const c = this.clip;
     if (!c) return;
     const r = Math.max(0.5, diameter / 2);

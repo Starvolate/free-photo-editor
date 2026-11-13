@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * Batch tools in a real headless Chrome, used as a person uses them: Turn the view (rotate view), Crop and straighten
- * (perspective crop) and Trace along edges (edge-snapping lasso), each reached from the ribbon with real clicks at 1440. Screenshots go to e2e/out (tools-*.png).
+ * (perspective crop), Trace along edges (edge-snapping lasso) and Cut into web pieces (slice), each reached from the ribbon with real clicks at 1440. Screenshots go to e2e/out (tools-*.png).
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts tools-more
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -90,7 +90,7 @@ async function pick(p: Page, id: string): Promise<void> {
   await p.click(`[data-testid="ri-${id}"]`);
   await p.waitForTimeout(120);
 }
-interface MoreState { turn: number; quad: { x: number; y: number }[] | null; }
+interface MoreState { turn: number; quad: { x: number; y: number }[] | null; slices: number; }
 const more = (p: Page): Promise<MoreState> => p.evaluate(() => ((window as unknown as Win).fpe.state().w3 as { more: MoreState }).more);
 const px = (p: Page, x: number, y: number): Promise<number[] | null> => p.evaluate(([a, b]) => (window as unknown as Win).fpe.sample(a, b), [x, y] as const);
 const span = async (p: Page, W: number): Promise<number> => { const a = await at(p, 0, 0), b = await at(p, W, 0); return Math.hypot(b.x - a.x, b.y - a.y); };
@@ -208,6 +208,30 @@ suite('Batch tools (headless Chrome)', () => {
     const s = (await info(p)).selection;
     expect(s && near(s, 250, 150, 2) && Math.abs(s.x + s.w - 550) <= 2 && Math.abs(s.y + s.h - 350) <= 2, JSON.stringify(s)).toBe(true);
     await shot(p, 'tools-edge-lasso.png');
+    expect(errors).toEqual([]);
+  });
+  it('cuts the picture into two web pieces and saves them as PNGs in one ZIP, at 1440', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    await pick(p, 'tool.slice');
+    expect((await st(p)).tool).toBe('slice');
+    expect(await p.getAttribute('[data-testid="slice-save"]', 'disabled')).toBe('');
+    await drag(p, [[40, 40], [200, 120], [300, 200]]);
+    await drag(p, [[400, 300], [500, 380], [640, 460]]);
+    expect((await more(p)).slices).toBe(2);
+    expect(await p.textContent('[data-testid="slice-count"]')).toBe('2 pieces');
+    await shot(p, 'tools-slice.png');
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-testid="slice-save"]')]);
+    expect(dl.suggestedFilename()).toBe('web pieces.zip');
+    const zip = await readFile(await dl.path());
+    expect(zip.subarray(0, 2).toString('latin1')).toBe('PK');
+    // Stored, not squeezed: both names show, and the first PNG header holds the first box's size (260 × 160).
+    const text = zip.toString('latin1');
+    expect(text.includes('piece 01.png') && text.includes('piece 02.png')).toBe(true);
+    const at0 = zip.indexOf(Buffer.from([137, 80, 78, 71]));
+    expect([zip.readUInt32BE(at0 + 16), zip.readUInt32BE(at0 + 20)]).toEqual([260, 160]);
+    await p.click('[data-testid="slice-clear"]');
+    expect((await more(p)).slices).toBe(0);
     expect(errors).toEqual([]);
   });
 });

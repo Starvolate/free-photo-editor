@@ -463,7 +463,7 @@ tool.magic-wand | Select similar colour | Magic wand | Click a colour to select 
 @Tools > Crop = Crop | Crop | Cut the picture to a new shape.
 tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | R | 1 | C
 tool.crop-perspective | Crop and straighten | Perspective crop | Drag four corners onto a slanted surface: it becomes a straight rectangle, cropped, in one step. | straighten document | R | 3
-tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | P | 13
+tool.slice | Cut into web pieces | Slice | Drag boxes over the picture, then save each as its own PNG, all in one ZIP, for a web page. The boxes stay with that open picture until you clear them. | slice, slices, cut into pieces, web pieces, split image, export slices, image map | R | 13
 @Tools > Measure = Pick and measure | Eyedropper | Pick colours and measure.
 tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | R | 1 | I
 tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | R | 13

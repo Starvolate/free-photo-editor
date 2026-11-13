@@ -11,11 +11,13 @@ import { compositeDoc, docCommand, docRect, hasPixels, homography, mapPoint, pol
 import type { ToolId } from './commands';
 import { h } from './dom';
 import type { PointerInfo, Pt } from './input';
+import { download } from './io';
+import { addSlice, clearSlices, dropLastSlice, sliceBox, slicesOf, slicesZip } from './slices';
 import type { ToolHost } from './toolkit';
 
-export const MORE_TOOLS = new Set<ToolId>(['turn', 'crop-quad', 'lasso-edge']);
+export const MORE_TOOLS = new Set<ToolId>(['turn', 'crop-quad', 'lasso-edge', 'slice']);
 /** The tools whose options bar this kit draws (Trace along edges uses the selection bar in toolkit.ts). */
-export const MORE_BAR = new Set<ToolId>(['turn', 'crop-quad']);
+export const MORE_BAR = new Set<ToolId>(['turn', 'crop-quad', 'slice']);
 
 // ---------- Trace along edges (edge-snapping lasso): the maths ----------
 /** The brightness of every pixel (0..255), see-through counted as dark. Taken once per outline, not per point. */
@@ -262,9 +264,21 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
     if (b.x !== last.x || b.y !== last.y) pts.push(...edgePath(L, W, H, last, b).slice(1));
   };
 
+  // Cut into web pieces: the boxes live with the open picture (slices.ts) until cleared.
+  let cut: { a: Pt; b: Pt } | null = null;
+  const savePieces = async (): Promise<void> => {
+    const d = doc();
+    if (!d) return;
+    const { bytes, count } = await slicesZip(d);
+    if (!count) { host.toast('Drag a box over each part you want as its own piece first.'); return; }
+    const file = 'web pieces.zip';
+    download(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/zip' }), file, host.root);
+    host.toast(`Saved ${count} piece${count === 1 ? '' : 's'} as PNG pictures in ${file}.`);
+  };
+
   return {
     claims: (t) => MORE_TOOLS.has(t),
-    busy: () => !!turnDrag || !!grab || !!trace,
+    busy: () => !!turnDrag || !!grab || !!trace || !!cut,
     start(p, i) {
       const t = host.tool();
       if (t === 'lasso-edge') {
@@ -275,6 +289,7 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
         host.render();
         return;
       }
+      if (t === 'slice') { cut = { a: p, b: p }; return; }
       if (t === 'turn') { turnDrag = { a0: angleOf(p), t0: host.turn() }; return; }
       if (t === 'crop-quad') {
         const q = ensureQuad();
@@ -292,6 +307,7 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
         host.render();
         return;
       }
+      if (cut) { cut.b = p; host.render(); return; }
       if (turnDrag) { setTurn(dragTurn(turnDrag.t0, turnDrag.a0, angleOf(p), i.shift)); return; }
       const d = doc();
       if (!grab || !quad || !d) return;
@@ -315,10 +331,20 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
         host.render();
         return;
       }
+      if (cut) {
+        const d = doc(), c = cut, z = host.view().zoom;
+        cut = null;
+        const r = d && Math.abs(p.x - c.a.x) * z >= 4 && Math.abs(p.y - c.a.y) * z >= 4 ? sliceBox(c.a, p, d.width, d.height) : null;
+        if (d && r) addSlice(d, r);
+        else host.toast('Drag a box over the part you want as one piece.');
+        host.refreshOptions();
+        host.render();
+        return;
+      }
       if (turnDrag) { this.move(p, i); turnDrag = null; host.refreshOptions(); return; }
       if (grab) { this.move(p, i); grab = null; host.refreshOptions(); }
     },
-    cancel() { turnDrag = null; grab = null; trace = null; },
+    cancel() { turnDrag = null; grab = null; trace = null; cut = null; },
     options(bar, t) {
       if (t === 'turn') {
         readout = h('span', { class: 'fpe-hint', 'data-testid': 'turn-readout', 'aria-live': 'polite' });
@@ -329,6 +355,16 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
           btn('Turn right 15°', 'turn-right', step(15), 'Turn the view 15 degrees to the right. The picture itself does not change.'),
           btn('Straight again', 'turn-reset', resetTurn, 'Put the view back level. Esc does the same while this tool is on.'),
           hint('Drag round the middle to turn the view, Shift for 15° steps. Only the view turns, never the pixels.'));
+        return;
+      }
+      if (t === 'slice') {
+        const d = doc(), n = d ? slicesOf(d).length : 0, off = (b: HTMLElement): HTMLElement => { if (!n) b.setAttribute('disabled', ''); return b; };
+        bar.append(
+          h('span', { class: 'fpe-hint', 'data-testid': 'slice-count' }, n ? `${n} piece${n === 1 ? '' : 's'}` : 'No pieces yet'),
+          off(btn('Save the pieces', 'slice-save', () => void savePieces(), 'Save every piece as its own PNG picture, all in one ZIP file.', true)),
+          off(btn('Remove the last piece', 'slice-undo', () => { const dd = doc(); if (dd) dropLastSlice(dd); host.refreshOptions(); host.render(); }, 'Take away the piece you drew last.')),
+          off(btn('Clear the pieces', 'slice-clear', () => { const dd = doc(); if (dd) clearSlices(dd); host.refreshOptions(); host.render(); }, 'Remove every piece from this picture. The picture itself does not change.')),
+          hint('Drag a box over each part you want as its own picture for a web page. The boxes stay with this open picture until you clear them.'));
         return;
       }
       if (t === 'crop-quad') {
@@ -355,6 +391,25 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
         ctx.lineDashOffset = 5;
         ctx.strokeStyle = '#fff';
         ctx.stroke();
+        ctx.restore();
+        return;
+      }
+      if (host.tool() === 'slice') {
+        const d = doc(), list = d ? slicesOf(d).map((r, k) => ({ r, k: k + 1 })) : [];
+        if (cut) list.push({ r: { x: Math.min(cut.a.x, cut.b.x), y: Math.min(cut.a.y, cut.b.y), w: Math.abs(cut.b.x - cut.a.x), h: Math.abs(cut.b.y - cut.a.y) }, k: 0 });
+        ctx.save();
+        ctx.font = '600 12px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        for (const { r, k } of list) {
+          const a = scr(r), w = r.w * host.view().zoom, hh = r.h * host.view().zoom;
+          ctx.setLineDash(k ? [] : [5, 5]);
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeRect(a.x, a.y, w, hh);
+          ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.strokeRect(a.x, a.y, w, hh);
+          if (!k) continue;
+          const label = String(k), tw = ctx.measureText(label).width + 12;
+          ctx.fillStyle = 'rgba(20,22,28,.85)'; ctx.fillRect(a.x + 4, a.y + 4, tw, 20);
+          ctx.fillStyle = '#fff'; ctx.fillText(label, a.x + 10, a.y + 14);
+        }
         ctx.restore();
         return;
       }
@@ -401,7 +456,7 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
       return false;
     },
     toolChanged(prev, next) {
-      turnDrag = null; grab = null; trace = null;
+      turnDrag = null; grab = null; trace = null; cut = null;
       if (prev === 'crop-quad' && next !== 'crop-quad') quad = null;
       if (next === 'crop-quad') { ensureQuad(); host.render(); }
     },
@@ -409,6 +464,6 @@ export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode
       const r = host.canvas().getBoundingClientRect(), s = scr({ x, y }), c = centre(), t = turnPoint(s.x, s.y, c.x, c.y, host.turn());
       return { x: r.left + t.x, y: r.top + t.y };
     },
-    state: () => ({ turn: turnDegrees(host.turn()), quad: quad ? quad.map((c) => ({ x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10 })) : null }),
+    state: () => ({ slices: (() => { const d = doc(); return d ? slicesOf(d).length : 0; })(), turn: turnDegrees(host.turn()), quad: quad ? quad.map((c) => ({ x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10 })) : null }),
   };
 }

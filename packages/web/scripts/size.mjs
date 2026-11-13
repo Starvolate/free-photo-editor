@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 // The size gate. The first screen (the entry, everything it imports up front, its CSS, and the files it fetches by URL
-// such as the filter worker), brotli-compressed, must fit the budget. Every add-on loaded later (each file format, PSD)
+// such as the filter worker), brotli-compressed, must fit the budget: 130 KB (R2), and CI fails above it. Every add-on loaded later (each file format, PSD)
 // is listed on its own with its size, and is not counted, because nobody downloads it until they use it.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants } from 'node:zlib';
 
-const BUDGET = 600 * 1000;
+const BUDGET = 130 * 1000;
 const CEILING = 1000 * 1000;
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const manifest = JSON.parse(readFileSync(join(dist, '.vite/manifest.json'), 'utf8'));

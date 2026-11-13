@@ -588,6 +588,8 @@ export const BY_ID = new Map(ROWS.map((r) => [r.id, r] as const));
 export const row = (id: string): Row | undefined => BY_ID.get(id);
 export const TOOL_GROUPS = [...MENU_INFO.values()].filter((m) => m.path.startsWith('Tools > ') && m.path !== 'Tools > Colours');
 export const PANELS = ROWS.filter((r) => r.kind === 'panel');
+/** The always-on tools of the Task ribbon's left column (ribbon-homes.ts ALWAYS 'Your tools'; registry.test.ts checks they match). */
+export const KEEP_TOOLS = ['tool.move', 'tool.select-rect', 'tool.brush', 'tool.eraser', 'tool.crop', 'tool.type'];
 /** "Image > Adjustments" as people read it. */
 export const placeText = (p: string): string => p.replace(/ > /g, ' › ');
 

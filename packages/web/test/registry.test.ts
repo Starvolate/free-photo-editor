@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS } from '../src/commands';
 import { ICON_NAMES } from '../src/icons';
-import { BY_ID, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, counts, search } from '../src/registry';
+import { BY_ID, KEEP_TOOLS, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, counts, search } from '../src/registry';
+import { iconFor } from '../src/ribbon';
 // Loading the new Planned functions adds them to ROWS, as search does on first use, so every check below covers all of them.
 import { NEW_PHASES, NEW_ROWS } from '../src/registry-union';
 import { functionMapMarkdown } from '../src/function-map';
@@ -90,6 +91,12 @@ describe('the function map', () => {
 });
 
 describe('the Task ribbon', () => {
+  it('keeps exactly the always-on tools in the left column, and draws every ribbon command with an icon the editor has', () => {
+    expect(KEEP_TOOLS).toEqual(ALWAYS.find((a) => a.group === 'Your tools')?.ids);
+    const bad = spots().map((s) => [s.id, iconFor(s.id, s.tab)]).filter(([, ic]) => !ICON_NAMES.includes(ic));
+    expect(bad).toEqual([]);
+    for (const t of TABS) expect(ICON_NAMES).toContain(iconFor('', t.plain));
+  });
   const ids = (): string[] => ROWS.map((r) => r.id);
   it('gives every function exactly one home', () => {
     const count = new Map<string, number>();

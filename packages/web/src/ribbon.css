@@ -1,0 +1,60 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 Bhawesh Tibrewal */
+/* The Task ribbon (desktop, 1024 px and wider), loaded with ribbon.ts. Calm surfaces, system fonts, 12 px text or larger, */
+/* no trend effects and no coloured edge strips: a selected item is a filled shape, groups are split by a hairline divider. */
+.fpe[data-ribbon] .fpe-top{gap:8px;padding:0 10px;background:var(--bg);border-bottom:0}
+.fpe-rapp{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0}
+.fpe-rapp-right{display:flex;align-items:center;gap:2px;flex:none}
+.fpe-rsheet{height:34px;padding:0 10px;gap:4px;border-radius:10px;color:var(--text);font:inherit;font-size:13px;font-weight:600}
+.fpe-rsheet .fpe-icon{width:14px;height:14px;color:var(--muted)}
+.fpe-rsheet:hover,.fpe-rsheet[aria-expanded=true]{background:var(--hover)}
+.fpe-rexport-more{width:30px;padding:0;margin-left:-4px}
+.fpe-rapp .fpe-tabs{flex:0 1 auto;min-width:0;height:34px;align-items:center;margin-left:6px;overflow-x:auto;scrollbar-width:none;background:none;border:0}
+.fpe-rctx{height:32px;padding:0 12px;gap:7px;border-radius:10px;background:var(--panel-2);color:var(--text);font:inherit;font-size:13px}
+.fpe-rctx .fpe-icon{width:16px;height:16px}
+.fpe-rctx[aria-pressed=true]{background:var(--sel);color:var(--accent)}
+.fpe-rctx[aria-pressed=true] .fpe-pro{color:inherit}
+.fpe-rtabs{align-items:center;gap:2px;padding:0 10px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;background:var(--bg)}
+.fpe-rtab{height:32px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;flex:none;transition:background .3s cubic-bezier(.2,.8,.2,1),color .2s}
+.fpe-rtab:hover{color:var(--text)}
+.fpe-rtab[aria-selected=true]{background:var(--panel-2);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.fpe-rtab:focus-visible,.fpe-rsheet:focus-visible,:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rrow):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fpe-ribbon{margin:0 8px 8px;min-width:0;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 rgba(255,255,255,.035) inset,0 8px 24px rgba(0,0,0,.3);overflow:hidden}
+.fpe-rbody,.fpe-rctxbody{display:flex;align-items:stretch;width:100%;padding:8px 6px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.fpe-rbody:not([hidden]){animation:fpe-rin .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes fpe-rin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fpe-rbody:not([hidden]){animation:none}.fpe-rtab{transition:none}}
+.fpe-rgroup{position:relative;display:flex;flex-direction:column;flex:none;padding:0 8px}
+.fpe-rgroup+.fpe-rgroup::before{content:"";position:absolute;left:0;top:6px;bottom:20px;width:1px;background:var(--line)}
+.fpe-ritems{display:flex;align-items:flex-start;gap:4px;flex:1}
+.fpe-rcap{height:22px;line-height:20px;font-size:12px;color:var(--dim);text-align:center;white-space:nowrap}
+.fpe-rbig,.fpe-rtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;width:76px;padding:4px 2px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:12px;line-height:14px;text-align:center;cursor:pointer;flex:none}
+.fpe-rtile{width:72px}
+.fpe-rbig .fpe-names{flex-direction:column;align-items:center;row-gap:1px;max-width:100%}
+.fpe-rbig .fpe-names>span,.fpe-rtile .fpe-rlabel{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.fpe-rbig .fpe-pro{-webkit-line-clamp:1!important}
+.fpe-rico{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--hover);flex:none}
+.fpe-rtile .fpe-rico{width:64px;height:40px;border-radius:8px;border:1px solid var(--line);background:linear-gradient(135deg,var(--panel-2),var(--stage))}
+.fpe-rbig>.fpe-tag,.fpe-rtile>.fpe-tag{position:absolute;top:28px;left:50%;transform:translateX(-50%);height:16px;padding:0 5px;background:var(--panel)}
+.fpe-rsmalls{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,27px);gap:1px 2px}
+.fpe-rsmall{display:flex;align-items:center;gap:7px;height:27px;padding:0 8px 0 6px;border:0;border-radius:7px;background:none;color:var(--text);font:inherit;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.fpe-rsmall .fpe-icon{width:16px;height:16px;color:var(--muted)}
+.fpe-rsmall .fpe-tag{height:16px;padding:0 5px}
+.fpe-rmore{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:32px;height:78px;border:1px solid var(--line);border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;flex:none}
+.fpe-rmore .fpe-icon{width:14px;height:14px}
+.fpe-rgroupbtn .fpe-rlabel{white-space:nowrap}
+:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rrow):not([aria-disabled=true]):hover,.fpe-rmore[aria-expanded=true],.fpe-rgroupbtn[aria-expanded=true]{background:var(--hover)}
+:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true]{cursor:default;color:var(--dim)}
+:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rrow)[aria-disabled=true] :is(.fpe-rico,.fpe-icon){opacity:.5}
+.fpe-rbody [data-pulse],.fpe-rapp-right [data-pulse]{background:var(--sel);color:var(--accent)}
+.fpe-rctxbody{align-items:center;padding-bottom:6px}
+.fpe-rctxbody .fpe-options{display:flex;flex:none;height:48px;padding:0 8px;overflow:visible;background:none;border:0}
+.fpe-rctxmore{align-self:stretch;justify-content:flex-end}
+.fpe-rctxmore:empty{display:none}
+.fpe-rlist{min-width:300px;max-width:min(440px,calc(100% - 16px));padding:6px;border-radius:12px}
+.fpe-rsheetlist{min-width:340px}
+.fpe-rlisthead{padding:4px 10px 6px;font-size:13px;font-weight:600}
+.fpe-rrow{display:flex;align-items:center;gap:9px;min-height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--text);font:inherit;font-size:13px;text-align:left;cursor:pointer;flex:none}
+.fpe-rrow .fpe-icon{width:16px;height:16px;color:var(--muted)}
+.fpe-rrow .fpe-rline{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fpe-rrow kbd{font:12px system-ui,sans-serif;color:var(--muted)}

@@ -28,13 +28,14 @@ import { JobRunner, JobStopped } from './jobs';
 import { NOTICES } from './notices';
 import { AppShell, type AppOptions } from './offline';
 import { Autosave, namesText, type OpenPicture, type SavedPicture } from './autosave';
-import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
+import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
+import type { Ribbon } from './ribbon';
 
 type Layout = 'phone' | 'tablet' | 'desktop';
 type Answer = 'primary' | 'secondary' | 'cancel';
@@ -190,6 +191,12 @@ export class Editor {
   private uid = ++counter;
   private shell!: HTMLElement;
   private menubar!: HTMLElement;
+  /** The Task ribbon (desktop only): its tab row and body are always in the shell; ribbon.ts fills them when it loads. */
+  private ribbon: Ribbon | null = null;
+  private ribbonLoad: Promise<void> | null = null;
+  private tabRow!: HTMLElement;
+  private ribbonEl!: HTMLElement;
+  private topEl!: HTMLElement;
   private optionsBar!: HTMLElement;
   private toolsBar!: HTMLElement;
   private tabsEl!: HTMLElement;
@@ -425,7 +432,7 @@ export class Editor {
     const exp = h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary fpe-export-btn', 'data-cmd': 'file.export', 'data-testid': 'btn-export', 'aria-label': 'Export' },
       icon('download'), h('span', { class: 'fpe-btn-text' }, 'Export'));
     exp.addEventListener('click', () => void this.run('file.export'));
-    const top = h('header', { class: 'fpe-top' },
+    const top = this.topEl = h('header', { class: 'fpe-top' },
       iconButton('menu', 'Menu: every command', { class: 'fpe-btn fpe-icon-btn fpe-menu-btn', 'data-testid': 'btn-menu', onclick: () => this.openModal('menu') }),
       h('a', { class: 'fpe-brand', href: AUTHOR_URL, target: '_blank', rel: 'noopener', 'data-testid': 'brand', title: 'Free Photo Editor by Bhawesh Tibrewal: bhaweshtibrewal.com' },
         h('span', { class: 'fpe-brand-name' }, APP_NAME), h('span', { class: 'fpe-brand-by' }, 'by ' + AUTHOR)),
@@ -452,7 +459,9 @@ export class Editor {
     for (const k of ['zoom', 'size', 'pos', 'sel', 'hint'] as const) this.stat[k] = h('span', { class: 'fpe-stat fpe-stat-' + k, 'data-testid': 'status-' + k });
     this.stat.zoom = h('button', { type: 'button', class: 'fpe-stat fpe-stat-zoom', 'data-cmd': 'view.fit', 'data-testid': 'status-zoom', onclick: () => void this.run('view.fit') }, '100%');
     this.statusEl = h('footer', { class: 'fpe-status', 'data-testid': 'status' }, this.stat.zoom, this.stat.size, this.stat.pos, this.stat.sel, this.stat.hint);
-    this.shell = h('div', { class: 'fpe-shell' }, top, this.optionsBar, this.toolsBar, center, this.dock, this.statusEl);
+    this.tabRow = h('nav', { class: 'fpe-rtabs', role: 'tablist', 'aria-label': 'Task tabs', 'data-testid': 'ribbon-tabs' });
+    this.ribbonEl = h('section', { class: 'fpe-ribbon', 'aria-label': 'Ribbon', 'data-testid': 'ribbon' });
+    this.shell = h('div', { class: 'fpe-shell' }, top, this.tabRow, this.ribbonEl, this.optionsBar, this.toolsBar, center, this.dock, this.statusEl);
     this.makeSheet('export', 'Export', this.buildExport());
     this.makeSheet('open-options', 'Open', this.optionsBody = h('div', { class: 'fpe-stack' }));
     this.makeSheet('new', 'New picture', this.buildNew());
@@ -681,8 +690,10 @@ export class Editor {
       if (!first) continue;
       const ready = first.status === 'ready';
       const b = h('button', { type: 'button', class: 'fpe-tool', 'data-group': g.path, 'data-cmd': first.id, 'aria-pressed': 'false',
-        'aria-label': `${first.plain} (${first.pro})${ready ? '' : ', planned'}`, 'aria-disabled': ready ? null : 'true', 'data-testid': 'tool-' + slug(g.path.slice(8)) },
-        icon(GROUP_ICON[g.path] ?? 'square'), rows.length > 1 ? h('span', { class: 'fpe-tool-more', 'aria-hidden': 'true' }) : null);
+        'aria-label': `${first.plain} (${first.pro})${ready ? '' : ', planned'}`, 'aria-disabled': ready ? null : 'true', 'data-testid': 'tool-' + slug(g.path.slice(8)),
+        'data-keep': rows.some((r) => KEEP_TOOLS.includes(r.id)) ? '' : null },
+        icon(GROUP_ICON[g.path] ?? 'square'), h('span', { class: 'fpe-tool-name', 'aria-hidden': 'true' }, g.path.slice(8).split(' ')[0]),
+        rows.length > 1 ? h('span', { class: 'fpe-tool-more', 'aria-hidden': 'true' }) : null);
       this.groupBtns.set(g.path, b);
       this.groupCur.set(g.path, first.id);
       this.longPress(b, () => this.flyout(g.path, b));
@@ -1034,10 +1045,15 @@ export class Editor {
   highlight(id: string): void {
     const r = BY_ID.get(id);
     if (!r) return;
-    const el = r.kind === 'tool' ? this.groupBtns.get(r.place) ?? null
-      : this.layout === 'phone' ? this.root.querySelector<HTMLElement>('[data-testid="btn-menu"]') : this.menubar.querySelector<HTMLElement>(`[data-menu="${r.place.split(' > ')[0]}"]`);
+    const onRibbon = this.layout === 'desktop' && this.ribbon ? this.ribbon.reveal(id) : null;
+    const el = onRibbon ?? (r.kind === 'tool' ? this.groupBtns.get(r.place) ?? null
+      : this.layout === 'phone' ? this.root.querySelector<HTMLElement>('[data-testid="btn-menu"]') : this.menubar.querySelector<HTMLElement>(`[data-menu="${r.place.split(' > ')[0]}"]`));
     if (el) { el.setAttribute('data-pulse', ''); window.setTimeout(() => el.removeAttribute('data-pulse'), 2600); }
-    if (r.kind === 'command') this.toast(`Find it again in ${placeText(r.place)} › ${r.plain}`, 4000);
+    if (r.kind === 'command') this.toast(`Find it again in ${this.placeOf(r)} › ${r.plain}`, 4000);
+  }
+  /** Where a command lives on this screen: its ribbon home on desktop, its menu path elsewhere. */
+  private placeOf(r: Row): string {
+    return (this.layout === 'desktop' && this.ribbon?.place(r.id)) || placeText(r.place);
   }
 
   // ---------- search that understands wishes ----------
@@ -1091,7 +1107,7 @@ export class Editor {
       const title = r?.plain ?? el.dataset.helpTitle ?? el.getAttribute('aria-label') ?? '';
       this.tipEl.replaceChildren(...[h('span', { class: 'fpe-tip-head' }, h('strong', {}, title), r && r.pro !== r.plain ? h('span', { class: 'fpe-pro' }, r.pro) : null,
         r?.key ? h('kbd', {}, keyText(r.key)) : null, r && r.status !== 'ready' ? this.tag() : null), h('span', { class: 'fpe-tip-help' }, help),
-        r && r.kind === 'command' ? h('span', { class: 'fpe-tip-place' }, 'In ' + placeText(r.place)) : null,
+        r && r.kind === 'command' ? h('span', { class: 'fpe-tip-place' }, 'In ' + this.placeOf(r)) : null,
         el.getAttribute('aria-disabled') === 'true' && r?.status === 'ready' ? h('span', { class: 'fpe-tip-place' }, this.doc ? 'Not available right now.' : 'Open or create a picture first.') : null].filter((x): x is HTMLElement => !!x));
       this.tipEl.hidden = false;
       const rr = root.getBoundingClientRect(), er = el.getBoundingClientRect(), tw = this.tipEl.offsetWidth, th = this.tipEl.offsetHeight;
@@ -1182,12 +1198,24 @@ export class Editor {
     if (layout === this.layout) return;
     this.layout = layout;
     this.root.dataset.layout = layout;
+    this.root.toggleAttribute('data-ribbon', layout === 'desktop');
+    if (layout === 'desktop') this.loadRibbon(); else this.ribbon?.setActive(false);
     this.closeMenus();
     this.closePopover();
     this.toolsBar.setAttribute('aria-orientation', layout === 'phone' ? 'horizontal' : 'vertical');
     this.setDock('closed');
     this.dock.inert = layout === 'phone';
     this.renderOptions();
+  }
+  /** The Task ribbon loads the first time the screen is desktop-wide; if it cannot load (offline before it was cached), today's menu bar stays. */
+  private loadRibbon(): void {
+    if (this.ribbon) { this.ribbon.setActive(true); return; }
+    this.ribbonLoad ??= import('./ribbon').then((m) => {
+      this.ribbon = m.mountRibbon({ root: this.root, appBar: this.topEl, tabRow: this.tabRow, ribbon: this.ribbonEl, options: this.optionsBar, docTabs: this.tabsEl,
+        toolId: () => Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? null, run: (id) => this.run(id), enabled: (id) => this.isEnabled(id),
+        sync: () => this.syncChrome(), keyText, toast: (msg) => this.toast(msg) });
+      this.ribbon.setActive(this.layout === 'desktop');
+    }, () => { this.ribbonLoad = null; if (!this.ribbon) this.root.removeAttribute('data-ribbon'); });
   }
   private onStageResize(): void {
     const W = this.stage.clientWidth, H = this.stage.clientHeight, was = this.stageSize, v = this.view;
@@ -1475,7 +1503,7 @@ export class Editor {
     const prevTool = this.tool;
     this.tool = t;
     this.root.dataset.tool = t;
-    if (prevTool !== t) this.tk?.toolChanged(prevTool, t);
+    if (prevTool !== t) { this.tk?.toolChanged(prevTool, t); this.ribbonTool = true; }
     if (TK_TOOLS.has(t) && !this.tk) void this.toolkit();
     const id = Object.keys(TOOLS).find((k) => TOOLS[k] === t);
     const r = id ? BY_ID.get(id) : undefined;
@@ -1485,9 +1513,12 @@ export class Editor {
       if (b) { b.dataset.cmd = id; b.setAttribute('aria-label', `${r.plain} (${r.pro})`); }
     }
     this.renderOptions();
+    if (this.ribbonTool) { this.ribbonTool = false; this.ribbon?.toolChanged(); }
     this.syncChrome();
     this.requestRender();
   }
+  /** Set when the tool changes, so the ribbon opens the new tool's options once they are built. */
+  private ribbonTool = false;
   private clampPt(p: Pt): Pt {
     const d = this.doc as Doc;
     return { x: clamp(Math.round(p.x), 0, d.width), y: clamp(Math.round(p.y), 0, d.height) };
@@ -1783,6 +1814,7 @@ export class Editor {
         hint('Tap the picture to pick a colour to paint with.'), seg);
     }
     this.tk?.decorate(o, t);
+    this.ribbon?.optionsChanged(!!act);
     this.syncChrome();
     this.cueOptions();
   }
@@ -3283,7 +3315,7 @@ export class Editor {
       return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
     };
     const dlg = box(this.dlgEl);
-    const avoid = [this.stage.querySelector('.fpe-zoom'), this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'),
+    const avoid = [this.stage.querySelector('.fpe-zoom'), this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl,
       ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
     const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
     if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);

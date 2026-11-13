@@ -284,7 +284,7 @@ select.inverse | Swap selected and not selected | Inverse | Select everything ex
 --
 select.subject | Select the main subject | Subject | Find the person or thing in front and select all of it, with AI on this device. | person, subject, auto select, select person, select object automatically | R | 11
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
-select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | P | 11
+select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | R | 11
 --
 select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | P | 2
 @Select > Modify = Change the selection | Modify | Grow, shrink or soften the selection.
@@ -389,7 +389,7 @@ view.zoom-out | Zoom out | Zoom out | See more of the picture. | smaller view | 
 view.fit | Fit on screen | Fit on screen | Show the whole picture as large as fits. | whole picture, fit | R | 1 | Ctrl+0
 view.actual | Actual pixels | 100% | One picture pixel per screen pixel. | real size, 100 | R | 1 | Ctrl+1
 view.zoom-200 | Double size | 200% | Two screen pixels per picture pixel. | 200 | R | W1
-view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | P | 8
+view.print-size | Print size | Print size | Show the picture at the size it would print. | print preview | R | 8
 --
 @View > Screen mode = Screen mode | Screen mode | How much of the workspace shows.
 view.screen-standard | Normal workspace | Standard screen mode | Show the menus, tools and panels. | normal view | R | W1
@@ -399,12 +399,12 @@ view.screen-cycle | Switch screen mode | Cycle screen mode | Switch between the 
 view.rulers | Rulers | Rulers | Show measuring rulers along the edges of the picture. | measure, ruler | R | W1 | Ctrl+R
 view.grid | Grid | Grid | Show a grid over the picture to line things up. | grid, align, straight lines | R | W1 | Ctrl+'
 view.extras | Selection outline | Extras | Show or hide the moving dashes around a selection. | marching ants | R | W1 | Ctrl+H
-view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed far in. | pixel grid | P | W2
+view.pixel-grid | Pixel grid | Pixel grid | Show the edge of each pixel when zoomed in to 800% or more. | pixel grid | R | W2
 --
-view.guide-new | Add a guide line | New guide | Add a straight line to line things up against. | guide | P | 13
-view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | P | 13
-view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | P | 13
-view.snap | Snap to guides | Snap | Make moved things jump to guides and edges. | snap | P | 13
+view.guide-new | Add a guide line | New guide | Add a straight line to line things up against: down the middle first, then across. Drag it with Move, or off the picture to remove it. | guide | R | 13
+view.guide-clear | Remove guide lines | Clear guides | Remove all guide lines. | clear guides | R | 13
+view.guide-lock | Lock guide lines | Lock guides | Stop guide lines from moving. | lock guides | R | 13
+view.snap | Snap to guides | Snap | Make guides, oval selections, measures, shapes and colour fades jump to guide lines and the picture's edges and middle. | snap | R | 13
 view.slices-clear | Remove slices | Clear slices | Remove the web slices. | slices | P | 13
 
 @Window = Window | Window | Show, hide and arrange panels.
@@ -449,9 +449,9 @@ tool.move | Move | Move tool | Drag to move the active layer. Arrow keys nudge i
 tool.artboard | Artboards | Artboard tool | Design several canvases side by side. | artboard | P | 13
 @Tools > Select box = Select a box | Marquee | Select rectangles and ovals.
 tool.select-rect | Select a box | Rectangular marquee | Drag to select a rectangle; hold Shift for a square. | select area, rectangle, box | R | 1 | M
-tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval or a circle. | circle selection | P | 2
-tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | P | 2
-tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | P | 2
+tool.select-ellipse | Select an oval | Elliptical marquee | Drag to select an oval; hold Shift while dragging for a circle. | circle selection | R | 2
+tool.select-row | Select one row | Single row marquee | Select a line of pixels one pixel tall. | row | R | 2
+tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | R | 2
 @Tools > Lasso = Draw a selection | Lasso | Draw around the part you want.
 tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | R | W3 | L
 tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
@@ -466,9 +466,9 @@ tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted 
 tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | P | 13
 @Tools > Measure = Pick and measure | Eyedropper | Pick colours and measure.
 tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | R | 1 | I
-tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | P | 13
-tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | P | 13
-tool.note | Sticky note | Note | Pin a written note on the picture. | comment | P | 13
+tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | R | 13
+tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | R | 13
+tool.note | Sticky note | Note | Pin a written note on the picture. Notes stay while the picture is open; they are not saved into exported files. | comment | R | 13
 @Tools > Retouch = Fix spots | Healing | Remove spots and blemishes.
 tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | R | W3 | J
 tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | R | 11

@@ -12,7 +12,7 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, fitCanvas, layersBox, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
@@ -1747,6 +1747,9 @@ export class Editor {
     if (!g) return false;
     let best: string | null = null, bd = 24 / this.view.zoom;
     for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
+    // Pins and the cage: a press away from every handle adds one there, ready to drag.
+    const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
+    if (!best && s && set?.add && b) { best = set.add(p.x, p.y, (s.spec.params ??= {}), b); if (best) { this.preview(); this.requestRender(); } }
     this.hdrag = best;
     return !!best;
   }
@@ -2601,6 +2604,20 @@ export class Editor {
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
   }
+  /** Fit the canvas to the selection, or round every layer's visible pixels; the layers keep all their pixels (one undo step). */
+  fitCanvasAction(): void {
+    const d = this.doc;
+    if (!d) return;
+    const s = d.selection, r = s ? { x: s.x, y: s.y, w: s.w, h: s.h } : layersBox(d);
+    if (!r) { this.toast('Nothing to fit: every layer is empty.'); return; }
+    const cmd = fitCanvas(d, r, s ? 'Fit canvas to selection' : 'Fit canvas to layers');
+    if (!cmd) { this.toast('The canvas already fits.'); return; }
+    this.pushCmd(cmd, true);
+    this.fit();
+    this.toast(`The canvas is now ${d.width} × ${d.height} px. Nothing was deleted: parts outside it are kept.`);
+  }
+  /** Applies a live free transform first (the Transform bar offers the bends while one is open), so a bend starts from what is shown. */
+  async settleTransform(): Promise<void> { if (this.tk?.state().transform) (await this.toolkit()).cmd('edit.transform-commit'); }
   revealAllAction(): void {
     const d = this.doc;
     if (!d) return;

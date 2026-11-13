@@ -43,6 +43,9 @@ const CASES: Record<FxKind, P> = {
   'spin-blur': { angle: 90, size: 100 }, 'lens-fix': { distort: 40, vignette: 40 }, glass: { distort: 10, smooth: 1 }, 'ocean-ripple': { size: 2, amount: 14 },
   'lens-flare': { bright: 150 }, lighting: { bumps: 50 }, 'color-to-alpha': { which: 0 }, dither: { tones: 2 }, 'replace-color': { fuzz: 120, hue: 120, light: 30 },
   'reduce-colors': { count: 4 }, indexed: { palette: 3 },
+  'mesh-warp': { g5x: 45, g5y: 40, g6x: 60, g6y: 25 }, 'perspective-warp': { b0x: 10, b0y: 10, b2x: 85, b2y: 90 },
+  'pin-warp': { n: 2, p0x: 20, p0y: 50, p1x: 80, p1y: 50, q1x: 70, q1y: 30 },
+  'cage-warp': { n: 4, o0x: 20, o0y: 20, o1x: 80, o1y: 20, o2x: 80, o2y: 80, o3x: 20, o3y: 80, c0x: 30, c0y: 10 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
@@ -69,7 +72,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(62);
+    expect(FX_KINDS.length).toBe(66);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

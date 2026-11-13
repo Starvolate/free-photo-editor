@@ -11,12 +11,14 @@ import { BLURS } from './blurs';
 import { innerBox, type Fx, type P } from './lib';
 import { LOOKS } from './looks';
 import { MORE } from './more';
+import { WARPS } from '../warp';
 import type { FxKind } from './meta';
 
 export { FX_KINDS, fxReach, type FxKind } from './meta';
 export type { Box } from './lib';
 
-const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE };
+const FX: Record<FxKind, Fx> = { ...BLURS, ...LOOKS, ...MORE,
+  ...WARPS };
 
 /** Runs one effect on a bitmap and returns new pixels of the same size. Pixels outside the edited box are kept. */
 export function runEffect(spec: { kind?: string; params?: P }, src: Bitmap): Uint8ClampedArray {

@@ -28,8 +28,10 @@ describe('W2 filter dialogs', () => {
   it('makes every filter of the card Ready, with a dialog', () => {
     for (const id of CARD) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(ADJ[id], id).toBeTruthy(); }
     expect(BY_ID.get('filter.liquify')?.status).toBe('planned');
-    expect(new Set(fxIds.map((id) => ADJ[id].kind))).toEqual(new Set(FX_KINDS));
-    expect(fxIds.length).toBe(FX_KINDS.length);
+    // The bends (core/warp.ts) have their own dialogs in warpkit.ts, loaded on first use and tested in warpkit.test.ts.
+    const kinds = FX_KINDS.filter((k) => !k.endsWith('-warp'));
+    expect(new Set(fxIds.map((id) => ADJ[id].kind))).toEqual(new Set(kinds));
+    expect(fxIds.length).toBe(kinds.length);
   });
   it('labels every setting in plain words with one help line', () => {
     for (const id of fxIds) for (const c of ADJ[id].controls) {

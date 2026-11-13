@@ -23,7 +23,7 @@ export interface Ctl {
   fills?: ReadonlyArray<Record<string, number>>;
 }
 /** `colors` passes the main and second colours to the filter; `handles` names its on-picture handles (handles.ts). */
-export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field'; }
+export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: string; }
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step, unit, group });
@@ -417,6 +417,12 @@ for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-sha
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
+// Batch crop-warp (warpkit.ts, loaded on first use): Bend, Re-angle a surface, Bend around pins and the Cage as filter dialogs
+// with handles on the picture, plus two retouch dialogs. A live free transform is applied first, so a bend starts from what is shown.
+export const WARP_IDS = 'edit.warp edit.perspective-warp edit.pin-warp edit.cage retouch.median-brush retouch.smooth-skin'.split(' ');
+for (const id of WARP_IDS) HANDLERS[id] = H(async (e) => { await e.settleTransform(); await import('./warpkit'); return e.openAdjust(id); });
+HANDLERS['image.fit-canvas'] = H((e) => e.fitCanvasAction());
+HANDLERS['edit.transform-again'] = w3('edit.transform-again');
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

@@ -566,6 +566,9 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await p.textContent('[data-testid="learn-text"]')).toContain('Pros call it a Curves layer.');
     await p.screenshot({ path: join(OUT, 'ui-b-1440-adjust.png') });
     await p.screenshot({ path: join(OUT, 'ui-c-1440-adjust.png') });
+    expect(await p.$$eval('[data-testid="ribbon-body"] .fpe-rgroup > .fpe-rcap', (els) => els.filter((e) => getComputedStyle(e).visibility === 'hidden' || !e.getBoundingClientRect().height).length),
+      '1440: every group name shows').toBe(0);
+    await p.screenshot({ path: join(OUT, 'ui-d-1440-adjust.png') });
     // Below 1400 px the dock is one card with three tabs; nothing in it is cramped.
     await p.setViewportSize({ width: 1280, height: 800 });
     await p.waitForSelector('[data-testid="dock-views"]', { state: 'visible' });

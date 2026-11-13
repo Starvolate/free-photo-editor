@@ -407,17 +407,16 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     const b = body.querySelector<HTMLElement>('[data-cmd][data-status="ready"]:not([aria-disabled="true"])');
     if (!b) return;
     const r = BY_ID.get(b.dataset.cmd as string);
-    // One quiet line in the ribbon's own caption row (the captions step aside while it shows), so it covers nothing.
-    const cap = body.querySelector<HTMLElement>('.fpe-rcap');
-    if (!cap) return;
+    // One quiet line in the status bar, where the tool's own line goes (it steps aside while this shows), so it covers
+    // nothing and every group name keeps its row, as in a-deep. The command it names is marked in the ribbon.
+    const hint = root.querySelector<HTMLElement>('[data-testid="status-hint"]');
+    if (!hint) return;
     coach.replaceChildren(icon('idea'), h('span', { class: 'fpe-rcoach-text' }, `Try this first: ${plainOf(b.dataset.cmd as string)}${r?.help ? ' · ' + r.help : ''}`),
       h('button', { type: 'button', class: 'fpe-rcoach-x', 'aria-label': 'Hide this tip', 'data-testid': 'rhint-close', onclick: endCoach }, icon('close')));
-    root.append(coach);
+    hint.before(coach);
     coach.hidden = false;
     b.setAttribute('data-coach', '');
     root.setAttribute('data-coaching', '');
-    const rr = root.getBoundingClientRect(), cr = cap.getBoundingClientRect(), wr = body.getBoundingClientRect();
-    Object.assign(coach.style, { top: cr.top - rr.top + 'px', height: cr.height + 'px', left: wr.left - rr.left + 8 + 'px', width: wr.width - 16 + 'px' });
     document.addEventListener('pointerdown', endCoach, true);
     document.addEventListener('keydown', endCoach, true);
     setTimeout(endCoach, 15000);

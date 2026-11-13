@@ -123,13 +123,13 @@
 .fpe-rsoon:hover,.fpe-rsoon[aria-expanded=true]{background:var(--hover)}
 .fpe-rthumb{display:block;width:100%;height:100%}
 .fpe-rcoming{margin-top:6px;padding:10px 10px 4px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
-.fpe-rcoach{position:absolute;z-index:40;display:flex;align-items:center;gap:6px;min-width:0;padding:0 2px 0 4px;font-size:12px;color:var(--muted)}
+.fpe-rcoach{display:flex;flex:1 1 auto;align-items:center;gap:6px;min-width:0;font-size:12px;color:var(--text)}
 .fpe-rcoach>svg{flex:none;width:14px;height:14px;color:var(--accent)}
 .fpe-rcoach-text{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fpe-rcoach-x{display:inline-flex;align-items:center;justify-content:center;flex:none;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:none;color:var(--muted);cursor:pointer}
 .fpe-rcoach-x:hover{background:var(--hover);color:var(--text)}
 .fpe-rcoach-x svg{width:12px;height:12px}
-.fpe[data-coaching] .fpe-rcap{visibility:hidden}
+.fpe[data-coaching] .fpe-stat-hint{display:none}
 .fpe-rnone{margin:auto;padding:0 16px;font-size:13px;color:var(--muted)}
 .fpe-rcoach[hidden]{display:none}
 .fpe-rctxbody{align-items:center;padding-bottom:6px}

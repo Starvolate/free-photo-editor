@@ -1,0 +1,18 @@
+{
+  "name": "free-photo-editor-mcp",
+  "version": "0.1.0",
+  "description": "Free Photo Editor by Bhawesh Tibrewal as a local MCP server: Claude and other AI agents edit, convert and export pictures on your own computer.",
+  "license": "AGPL-3.0-only",
+  "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
+  "homepage": "https://github.com/Starvolate/free-photo-editor/tree/main/packages/mcp#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/Starvolate/free-photo-editor.git", "directory": "packages/mcp" },
+  "bugs": "https://github.com/Starvolate/free-photo-editor/issues",
+  "keywords": ["mcp", "mcp-server", "model context protocol", "claude", "ai agents", "photo editor", "image editor", "image editing mcp", "photoshop alternative", "free"],
+  "type": "module",
+  "bin": { "free-photo-editor-mcp": "dist/server.js" },
+  "files": ["dist", "README.md", "LICENSE", "ADDITIONAL-TERMS.md"],
+  "engines": { "node": ">=20.9.0" },
+  "scripts": { "build": "vite build", "prepack": "cp ../../LICENSE ../../ADDITIONAL-TERMS.md . && vite build" },
+  "dependencies": { "@modelcontextprotocol/sdk": "1.32.2", "ag-psd": "34.2.0", "sharp": "0.35.5", "zod": "4.6.7" },
+  "devDependencies": { "@free-photoeditor/core": "0.1.0" }
+}

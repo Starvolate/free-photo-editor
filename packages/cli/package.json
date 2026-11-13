@@ -1,0 +1,18 @@
+{
+  "name": "free-photo-editor",
+  "version": "0.1.0",
+  "description": "Free Photo Editor by Bhawesh Tibrewal, on the command line: edit, convert and export pictures on your own computer, for people and AI agents.",
+  "license": "AGPL-3.0-only",
+  "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
+  "homepage": "https://github.com/Starvolate/free-photo-editor/tree/main/packages/cli#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/Starvolate/free-photo-editor.git", "directory": "packages/cli" },
+  "bugs": "https://github.com/Starvolate/free-photo-editor/issues",
+  "keywords": ["free photo editor", "image editor", "photo editor cli", "image cli", "ai agents", "photoshop alternative", "psd", "image converter", "webp", "batch"],
+  "type": "module",
+  "bin": { "free-photo-editor": "dist/cli.js", "fpe": "dist/cli.js" },
+  "files": ["dist", "README.md", "LICENSE", "ADDITIONAL-TERMS.md"],
+  "engines": { "node": ">=20.9.0" },
+  "scripts": { "build": "vite build", "prepack": "cp ../../LICENSE ../../ADDITIONAL-TERMS.md . && vite build" },
+  "dependencies": { "ag-psd": "34.2.0", "sharp": "0.35.5" },
+  "devDependencies": { "@free-photoeditor/core": "0.1.0" }
+}

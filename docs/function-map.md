@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 454 Ready, 221 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 455 Ready, 220 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-162 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+161 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 233 | 417 | 0 |
-| Ready today | 454 | 25 | 197 | 232 | 0 |
+| Ready today | 455 | 25 | 197 | 233 | 0 |
 
 ## The Task ribbon
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (162 Planned, 99 Ready), by home
+## New functions from the feature census (161 Planned, 100 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -814,7 +814,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | layer.select-by-state | U184 | Select layers by state | Select hidden / locked / unlocked layers | Lists every hidden, shown, locked or unlocked layer at once; show or unlock them all in one step, or click one to work on it. | select hidden layers, select locked layers, select layers by state | Arrange layers › Find and versions · small button | Ready | T3 |
 | layer.metadata | U185 | Edit layer metadata | Edit Metadata | Write notes and tags on the active layer; Find layers searches them. | layer metadata, layer notes, layer info | Arrange layers › Find and versions · More list | Ready | T3 |
 | layer.video | U186 | Edit video on a timeline | Video Timeline (clips, keyframes, transitions, audio, render video) | A timeline for clips, keyframed effects and audio. | video editing, video timeline, clips, transitions, audio | Arrange layers › Animate · More list | Planned | T3 |
-| layer.keyframes | U187 | Animate with keyframes on layers | Keyframes | Animate layer properties over time. | keyframe, animate position, animate opacity, motion, timeline layer keyframes | Arrange layers › Animate · More list | Planned | T3 |
+| layer.keyframes | U187 | Make in-between frames | Tween (keyframes) | Adds three frames between the picked frame and the next (or the one before, if last): a copy of the first slides to the second's place and fades to its opacity. | keyframe, tween, in-between frames, inbetween, animate position, animate opacity, motion, timeline layer keyframes | Arrange layers › Animate · More list | Ready | T3 |
 | layer.onion-skin | U188 | See neighbour frames | Onion Skin | Shows the frame before in faint red and the next in faint green, to draw the one between. | onion skin, see previous frame, animation ghost | Arrange layers › Animate · More list | Ready | T3 |
 | layer.storyboard | U189 | Storyboard | Storyboard | Plan shots as a board of panels. | storyboard, shot list, comic planning, storyboard docker | Arrange layers › Animate · More list | Planned | T3 |
 | layer.import-frames | U190 | Import animation frames | Image sequence | Pick several pictures: each becomes one frame at the end, in name order. | import frames, image sequence, animation frames from files, import animation frames | Arrange layers › Animate · More list | Ready | T3 |

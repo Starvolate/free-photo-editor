@@ -9,7 +9,7 @@ import { createDocument, createLayer, type Doc } from '@free-photoeditor/core';
 import { decodeGif, encodeApng, encodeGif, decodeApng } from '@free-photoeditor/formats/anim';
 import { framesOf } from '@free-photoeditor/formats/util';
 import { describe, expect, it } from 'vitest';
-import { addFrames, byName, cannotFrame, clampDelay, frameName, framesDoc, makeFrames, moveFrame, neighbours, setDelay, setLoop, showOnly, tint, withDelay } from '../src/animate';
+import { addFrames, byName, cannotFrame, cannotTween, clampDelay, frameName, framesDoc, makeFrames, moveFrame, neighbours, setDelay, setLoop, showOnly, tint, tweenFrames, tweenPair, withDelay } from '../src/animate';
 
 const RED = { r: 255, g: 0, b: 0, a: 255 }, GREEN = { r: 0, g: 255, b: 0, a: 255 }, BLUE = { r: 0, g: 0, b: 255, a: 255 };
 function doc(names = ['Sky', 'Sun (250 ms)', 'Moon']): Doc {
@@ -151,5 +151,58 @@ describe('onion skin and import frames', () => {
     expect(d?.activeId).toBe(d?.layers[0].id);
     expect(d && neighbours(d).next?.name).toBe('f2 (100 ms)');
     expect(framesDoc([])).toBeNull();
+  });
+});
+
+describe('in-between frames (keyframes, tween)', () => {
+  it('slides a copy of the picked frame to the next frame\'s place and fades it to its opacity, in three steps, as one undo step', () => {
+    // Frame 1 at (0, 0), fully there; frame 2 at (40, 20) at 0.2. Step k of 3 sits at k / 4 of the way:
+    // x 10, 20, 30; y 5, 10, 15; opacity 1 - 0.8 * k / 4 = 0.8, 0.6, 0.4.
+    const a = createLayer('Ball (250 ms)', 2, 1, { fill: RED }), b = createLayer('Ball 2', 2, 1, { fill: GREEN, x: 40, y: 20 }), top = createLayer('Sky', 2, 1, { fill: BLUE });
+    b.opacity = 0.2;
+    const d: Doc = { width: 64, height: 32, layers: [a, b, top], activeId: a.id, selection: null };
+    expect(tweenPair(d)).toEqual([0, 1]);
+    expect(cannotTween(d)).toBeNull();
+    const c = tweenFrames(d);
+    expect(c?.label).toBe('Make in-between frames');
+    expect(names(d)).toEqual(['Ball (250 ms)', 'Ball in-between 1 (250 ms)', 'Ball in-between 2 (250 ms)', 'Ball in-between 3 (250 ms)', 'Ball 2', 'Sky']);
+    const mid = d.layers.slice(1, 4);
+    expect(mid.map((l) => [l.x, l.y, l.opacity, l.width, l.height])).toEqual([[10, 5, 0.8, 2, 1], [20, 10, 0.6, 2, 1], [30, 15, 0.4, 2, 1]]);
+    expect(mid.map((l) => l.visible)).toEqual([false, false, false]);
+    // Each is frame 1's red pixels, in its own copy, so painting one frame leaves the others alone.
+    for (const l of mid) { expect(Array.from(l.data)).toEqual([255, 0, 0, 255, 255, 0, 0, 255]); expect(l.data).not.toBe(a.data); }
+    expect(d.activeId).toBe(a.id);
+    // The export reads them as frames 2 to 4, each with frame 1's time.
+    expect(framesOf(d, true, 100).map((f) => [f.name, f.delay])).toEqual([['Ball', 250], ['Ball in-between 1', 250], ['Ball in-between 2', 250], ['Ball in-between 3', 250], ['Ball 2', 100], ['Sky', 100]]);
+    c?.undo(d);
+    expect(names(d)).toEqual(['Ball (250 ms)', 'Ball 2', 'Sky']);
+    expect(d.activeId).toBe(a.id);
+    c?.redo(d);
+    expect(d.layers).toHaveLength(6);
+    expect(d.layers[2].y).toBe(10);
+    expect(d.activeId).toBe(a.id);
+  });
+  it('goes from the frame before when the picked frame is last, rounds to whole pixels, and refuses in plain words', () => {
+    // Frame 1 at x 0, frame 2 (picked, last) at x 10, one step: t = 1/2, x = 5; three steps: 2.5, 5, 7.5 round to 3, 5, 8.
+    const d = doc(['Sky', 'Sun']);
+    d.layers[1].x = 10;
+    d.activeId = d.layers[1].id;
+    expect(tweenPair(d)).toEqual([0, 1]);
+    expect(tweenFrames(d, 1) && d.layers.map((l) => l.x)).toEqual([0, 5, 10]);
+    const e = doc(['Sky', 'Sun']);
+    e.layers[1].x = 10;
+    tweenFrames(e);
+    expect(e.layers.map((l) => l.x)).toEqual([0, 3, 5, 8, 10]);
+    expect(e.layers.map((l) => l.name)).toEqual(['Sky', 'Sky in-between 1 (100 ms)', 'Sky in-between 2 (100 ms)', 'Sky in-between 3 (100 ms)', 'Sun']);
+    // Same place and opacity: nothing would move, so it says why and changes nothing.
+    const same = doc(['Sky', 'Sun']);
+    expect(cannotTween(same)).toMatch(/same place with the same opacity/);
+    expect(tweenFrames(same)).toBeNull();
+    expect(same.layers).toHaveLength(2);
+    expect(cannotTween(doc(['Only']))).toMatch(/second layer/);
+    const masked = doc(['Sky', 'Sun']);
+    masked.layers[1].x = 4;
+    masked.layers[0].mask = {} as NonNullable<Doc['layers'][number]['mask']>;
+    expect(cannotTween(masked)).toMatch(/mask on frame 1/);
   });
 });

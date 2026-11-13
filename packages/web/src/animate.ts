@@ -95,6 +95,49 @@ export function framesDoc(pics: FramePic[], delay = DEFAULT_DELAY): Doc | null {
   addFrames(d, rest, delay);
   return d;
 }
+/** How many in-between frames Make in-between frames adds. */
+export const TWEENS = 3;
+/** The two frames to go between: the picked frame and the next, or the one before and the picked frame when it is the last. */
+export function tweenPair(d: Doc): [number, number] | null {
+  const i = d.layers.findIndex((l) => l.id === d.activeId);
+  if (i < 0 || d.layers.length < 2) return null;
+  return i + 1 < d.layers.length ? [i, i + 1] : [i - 1, i];
+}
+/** Why in-between frames can't be made, in plain words, or null. */
+export function cannotTween(d: Doc): string | null {
+  const why = cannotFrame(d), p = tweenPair(d);
+  if (why) return why;
+  if (!p) return 'Pick a frame in the timeline first.';
+  const a = d.layers[p[0]], b = d.layers[p[1]];
+  if (a.mask) return `Apply or delete the mask on frame ${p[0] + 1} first: in-between frames copy its pixels only.`;
+  if (a.x === b.x && a.y === b.y && a.opacity === b.opacity) {
+    return `Frames ${p[0] + 1} and ${p[1] + 1} are in the same place with the same opacity, so every in-between would look the same. Move one of them or change its opacity first.`;
+  }
+  return null;
+}
+/**
+ * Make in-between frames (keyframes, tween): `n` new frames between the two of `tweenPair`. Each is a copy of the earlier
+ * frame's pixels, placed a step further towards the later frame's place and opacity (step k of n sits at k / (n + 1) of
+ * the way), with the earlier frame's time. They are new layers, hidden like every frame not being looked at, so the
+ * export's one-layer-per-frame model holds. One undo step; the picked frame stays picked.
+ */
+export function tweenFrames(d: Doc, n = TWEENS): Command | null {
+  const p = cannotTween(d) ? null : tweenPair(d);
+  if (!p) return null;
+  const a = d.layers[p[0]], b = d.layers[p[1]], keep = d.activeId, ms = delayOf(a.name, DEFAULT_DELAY), steps = Math.max(1, Math.min(30, Math.round(n) || 1));
+  const adds: Command[] = [];
+  for (let k = 1; k <= steps; k++) {
+    const t = k / (steps + 1), at = (u: number, v: number): number => u + (v - u) * t;
+    const l = createLayer(withDelay(`${frameName(a.name)} in-between ${k}`, ms), a.width, a.height, { data: new Uint8ClampedArray(a.data), x: Math.round(at(a.x, b.x)), y: Math.round(at(a.y, b.y)) });
+    l.opacity = Math.round(at(a.opacity, b.opacity) * 1000) / 1000;
+    l.blendMode = a.blendMode;
+    l.visible = false;
+    adds.push(addLayer(d, l, p[0] + k, 'Make in-between frames'));
+  }
+  const last = d.activeId;
+  d.activeId = keep;
+  return combineCommands('Make in-between frames', [...adds, { label: 'Keep the picked frame', bytes: 0, undo: (x) => { x.activeId = last; }, redo: (x) => { x.activeId = keep; } }]);
+}
 async function readFrames(files: File[]): Promise<{ pics: FramePic[]; skipped: string[] }> {
   const pics: FramePic[] = [], skipped: string[] = [];
   for (const f of byName(files)) {
@@ -276,6 +319,14 @@ export function animKit(host: AnimHost): AnimKit {
       if (id === 'panel.timeline') { if (panel) close(); else open(); return; }
       if (id === 'layer.onion-skin') { toggleOnion(); return; }
       if (id === 'layer.import-frames') { pickFiles(); return; }
+      if (id === 'layer.keyframes' && d) {
+        const why = cannotTween(d), p = tweenPair(d);
+        if (why || !p) { host.toast(why ?? 'Pick a frame in the timeline first.'); return; }
+        push(tweenFrames(d));
+        open();
+        host.toast(`${TWEENS} in-between frames made between frame ${p[0] + 1} and the next one, now frame ${p[1] + 1 + TWEENS}. Press Play in the timeline to see the move.`);
+        return;
+      }
       if (id !== 'layer.frames' || !d) return;
       const why = cannotFrame(d);
       if (why) { host.toast(why); return; }

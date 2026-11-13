@@ -483,6 +483,7 @@ HANDLERS['layer.frames'] = H((e) => e.animate('layer.frames'), (e) => layers(e) 
 HANDLERS['panel.timeline'] = H((e) => e.animate('panel.timeline'), hasDoc, (e) => !!e.anim?.state().timeline);
 HANDLERS['layer.onion-skin'] = H((e) => e.animate('layer.onion-skin'), (e) => layers(e) > 1, (e) => !!e.anim?.state().onion);
 HANDLERS['layer.import-frames'] = H((e) => e.animate('layer.import-frames'), () => true);
+HANDLERS['layer.keyframes'] = H((e) => e.animate('layer.keyframes'), (e) => layers(e) > 1);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

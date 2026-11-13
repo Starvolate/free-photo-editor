@@ -170,7 +170,7 @@ image.trim | Cut away empty edges | Trim | Remove see-through or same-colour edg
 image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | R | W1
 --
 image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | R | W1
-image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | P | 13
+image.apply | Blend a layer into itself | Apply image | Not built: blending one colour channel into a layer needs separate channels, which the editor does not have yet. | apply image | P | 13
 image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | R | 5
 image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | P | 6
 image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | P | 13

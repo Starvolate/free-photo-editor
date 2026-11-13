@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 394 Ready, 281 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 398 Ready, 277 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-208 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+204 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 208 | 442 | 0 |
-| Ready today | 394 | 25 | 171 | 198 | 0 |
+| All functions | 675 | 25 | 209 | 441 | 0 |
+| Ready today | 398 | 25 | 172 | 201 | 0 |
 
 ## The Task ribbon
 
@@ -32,7 +32,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
-| Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
+| Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 12 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 4 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (208 Planned, 53 Ready), by home
+## New functions from the feature census (204 Planned, 57 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -719,16 +719,16 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| paint.dynamics | U005 | Brush responds to the pen | Brush dynamics | Pen pressure, speed, tilt and direction change the brush's size, opacity, colour and angle. | pen pressure, tilt, tablet, stylus, pressure size, brush dynamics | Paint & draw › Brush settings · More list | Planned | B5 |
+| paint.dynamics | U005 | Brush responds to the pen | Brush dynamics | Pen pressure, pen tilt or brush speed change the size and strength of each dab, with size jitter and scatter for rougher lines. | pen pressure, tilt, tablet, stylus, pressure size, brush dynamics | Paint & draw › Brush settings · small button | Ready | B5 |
 | paint.mypaint | U058 | Natural paint (MyPaint) | MyPaint Brush Engine | Loads MyPaint-style natural media brushes. | natural media, mypaint, watercolour, charcoal, oil brush | Paint & draw › Brush kinds · More list | Planned | B14 |
 | paint.bristle | U059 | Bristle paint | Bristle Brush Engine | Paints with many separate hairs that spread, shear, run out of ink and soak up colour like a real brush. | bristle brush, real paint, hairy brush, oil paint brush | Paint & draw › Brush kinds · More list | Planned | B14 |
 | paint.filter-brush | U060 | Effect brush | Filter Brush Engine | Paints any filter (blur, colour change) only where you brush. | effect brush, paint a filter, blur brush, filter brush | Paint & draw › Brush kinds · More list | Planned | B14 |
-| paint.stabilizer | U061 | Steady shaky lines | Stroke smoothing (stabiliser) | Stabilise the brush stroke while painting. | smooth lines, steady hand, stabilizer, lazy mouse, shaky lines | Paint & draw › Brush settings · More list | Planned | B5 |
+| paint.stabilizer | U061 | Steady shaky lines | Stroke smoothing (stabiliser) | Smooths a shaky hand: the brush trails the pointer, or follows it on a pulled string, and finishes where you let go. | smooth lines, steady hand, stabilizer, lazy mouse, shaky lines | Paint & draw › Brush settings · More list | Ready | B5 |
 | paint.libraries | U062 | Custom brush, pattern, gradient and palette libraries | Brushes, Patterns, Gradients, Palettes dialogs | Manage and edit saved brushes, patterns, gradients and colour lists. | brush library, pattern library, gradient library, palettes, import brushes | Paint & draw › Brush settings · More list | Planned | B14 |
-| paint.symmetry | U063 | Symmetry painting | Paint Symmetry (mirror, radial, spiral, mandala) | Paint once and mirror the strokes. | symmetry, mirror painting, mandala, radial symmetry, kaleidoscope drawing | Paint & draw › Brush settings · More list | Planned | B14 |
+| paint.symmetry | U063 | Symmetry painting | Paint Symmetry (mirror, radial) | Paint once and the stroke is mirrored left and right, top and bottom, both, or repeated up to 24 times around the centre. | symmetry, mirror painting, mandala, radial symmetry, kaleidoscope drawing | Paint & draw › Brush settings · More list | Ready | B14 |
 | paint.assistants | U064 | Guide that your strokes snap to | Drawing assistants (ellipse, concentric ellipse, perspective ellipse, ruler, infinite ruler, parallel ruler, spline) | A placed line or curve that pulls your freehand stroke onto it. | drawing assistant, ruler, ellipse guide, snap stroke, straight line guide | Paint & draw › Brush settings · More list | Planned | B14 |
 | paint.perspective-guides | U065 | Perspective guides | Perspective, Vanishing Point, Fish Eye Point, 2 Point Perspective, Curvilinear Perspective assistants | Strokes follow lines that meet at vanishing points, including curved fish-eye views. | perspective guide, vanishing point, two point perspective, fish eye | Paint & draw › Brush settings · More list | Planned | B14 |
-| paint.wrap-around | U066 | Paint a seamless tile | Wrap Around Mode | Paint across the edges so the picture tiles without seams, seeing the repeats live. | seamless tile, wrap around, repeat pattern painting, tileable | Paint & draw › Brush settings · More list | Planned | B14 |
+| paint.wrap-around | U066 | Paint a seamless tile | Wrap Around Mode | Paint across the edges: what leaves one side comes back in on the other, so the picture tiles without seams. | seamless tile, wrap around, repeat pattern painting, tileable | Paint & draw › Brush settings · More list | Ready | B14 |
 | paint.colorize-mask | U067 | Colour line art by dabbing | Colorize Mask | Dab rough colour blobs and each closed area of the line art fills with that colour, gaps closed for you. | colour line art, flat colours, colourise comics, fill line art | Paint & draw › Fill · More list | Planned | B14 |
 | paint.sketch-brush | U132 | Sketchy line brush | Sketch Brush Engine | Draws thin curved lines around the stroke for a loose pencil-scribble look. | sketch brush, pencil sketch brush, scribble brush | Paint & draw › Brush kinds · More list | Planned | T3 |
 | paint.chalk-spray | U133 | Chalk, hatching and spray brushes | Chalk / Hatching / Spray Brush Engines | Chalky grain, cross-hatch lines or scattered dots as the brush stroke. | chalk, hatching, spray paint, airbrush spray | Paint & draw › Brush kinds · More list | Planned | T3 |

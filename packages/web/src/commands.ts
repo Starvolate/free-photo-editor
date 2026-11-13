@@ -451,6 +451,8 @@ for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p s
   const [id, k] = w.split(':');
   HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
 }
+// Batch paint (paintkit.ts, loaded on first use): the Brush extras sheet, opened at each command's own section.
+for (const id of ['paint.stabilizer', 'paint.symmetry', 'paint.wrap-around', 'paint.dynamics']) HANDLERS[id] = H((e) => e.paintKit(id), always);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

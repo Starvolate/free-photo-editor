@@ -42,6 +42,7 @@ const PREP: Record<string, string[]> = {
   'filter.last': ['filter.sharpen', 'apply'], 'layer.front': ['layer.backward'], 'layer.forward': ['layer.backward'], 'view.fit': ['view.zoom-in'],
   'view.screen-standard': ['view.screen-focus'], 'window.reset': ['panel.info'], 'tool.brush': ['tool.move'],
   'layer.mask-apply': ['layer.mask-from-sel'], 'layer.mask-delete': ['layer.mask-add'], 'layer.mask-toggle': ['layer.mask-add'], 'layer.mask-link': ['layer.mask-add'],
+  'layer.clip': ['layer.new'], 'layer.ungroup': ['layer.group'],
 };
 const SEL: [number, number, number, number] = [850, 100, 100, 100];
 

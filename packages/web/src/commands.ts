@@ -6,6 +6,7 @@
  * Also holds the adjustment dialogs' controls, in plain words. Pure data and small functions: no DOM.
  */
 import { COLOR_FAMILIES, GRADIENT_MAPS, PHOTO_FILTERS, SOURCE_URL, type JobOp } from '@free-photoeditor/core';
+import { arrangePlan, hasPixels, isFolder, siblingBelow, subtreeOf, type Arrange } from '@free-photoeditor/core';
 import type { Editor } from './app';
 
 export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom'
@@ -212,8 +213,19 @@ const always = (): boolean => true;
 const hasDoc = (e: Editor): boolean => !!e.doc;
 const hasSel = (e: Editor): boolean => !!e.doc?.selection;
 const layers = (e: Editor): number => e.doc?.layers.length ?? 0;
-const notTop = (e: Editor): boolean => !!e.doc && e.activeIndex() < layers(e) - 1;
-const notBottom = (e: Editor): boolean => !!e.doc && e.activeIndex() > 0;
+/** Arranging works among siblings (folders, design 2.4): exactly when the core has somewhere to put the node. */
+const canArrange = (k: Arrange) => (e: Editor): boolean => !!e.doc && !!arrangePlan(e.doc.layers, e.doc.activeId, k);
+/** Delete takes the whole subtree, and at least one layer with pixels must stay. */
+const canDelete = (e: Editor): boolean => {
+  const d = e.doc, a = e.active();
+  if (!d || !a) return false;
+  const sub = new Set(subtreeOf(d.layers, a.id));
+  return d.layers.some((l) => !sub.has(l) && hasPixels(l));
+};
+/** Something to merge into: the sibling below, or a folder that merges into one layer. */
+const canMergeDown = (e: Editor): boolean => { const d = e.doc, a = e.active(); return !!d && !!a && (isFolder(a) || !!siblingBelow(d.layers, a.id)); };
+const inFolder = (e: Editor): boolean => { const a = e.active(); return !!a && (isFolder(a) || !!a.parentId); };
+const canClip = (e: Editor): boolean => { const d = e.doc, a = e.active(); return !!d && !!a && (!!a.clip || !!siblingBelow(d.layers, a.id)); };
 const masked = (e: Editor): boolean => !!e.active()?.mask;
 const unmasked = (e: Editor): boolean => !!e.active() && !e.active()?.mask;
 const H = (run: Handler['run'], enabled: Handler['enabled'] = hasDoc, checked?: Handler['checked']): Handler => ({ run, enabled, checked });
@@ -289,7 +301,7 @@ export const HANDLERS: Record<string, Handler> = {
   'edit.pref-pro-names': H((e) => e.setNames(!e.proNames, true), always, (e) => e.proNames),
   'edit.pref-hints': H((e) => e.setHints(!e.hints, true), always, (e) => e.hints),
   'edit.pref-theme': H((e) => e.toggleTheme(), always, (e) => e.root.dataset.theme === 'light'),
-  'image.size': H((e) => e.openModal('size')),
+  'image.size': H((e) => e.openSize()),
   'image.resolution': H((e) => e.openSize('dpi')),
   'image.canvas-size': H((e) => e.openModal('canvas')),
   'image.rotate-cw': H((e) => e.turnCanvas('cw')),
@@ -305,16 +317,20 @@ export const HANDLERS: Record<string, Handler> = {
   'layer.new-copy': H((e) => e.layerVia(false)),
   'layer.new-cut': H((e) => e.layerVia(true), hasSel),
   'layer.duplicate': H((e) => e.duplicateLayerAction()),
-  'layer.delete': H((e) => e.deleteLayerAction(), (e) => layers(e) > 1),
+  'layer.delete': H((e) => e.deleteLayerAction(), canDelete),
   'layer.rename': H((e) => e.openModal('rename')),
-  'layer.front': H((e) => e.arrange('front'), notTop),
-  'layer.forward': H((e) => e.arrange('forward'), notTop),
-  'layer.backward': H((e) => e.arrange('backward'), notBottom),
-  'layer.back': H((e) => e.arrange('back'), notBottom),
+  'layer.front': H((e) => e.arrange('front'), canArrange('front')),
+  'layer.forward': H((e) => e.arrange('forward'), canArrange('forward')),
+  'layer.backward': H((e) => e.arrange('backward'), canArrange('backward')),
+  'layer.back': H((e) => e.arrange('back'), canArrange('back')),
   'layer.lock': H((e) => e.toggleLock(), hasDoc, (e) => !!e.active()?.locked),
   'layer.hide': H((e) => e.toggleHidden(), hasDoc, (e) => e.active()?.visible === false),
-  'layer.merge-down': H((e) => e.mergeDownAction(), notBottom),
-  'layer.merge-visible': H((e) => e.mergeVisibleAction(), (e) => (e.doc?.layers.filter((l) => l.visible).length ?? 0) > 1),
+  'layer.merge-down': H((e) => e.mergeDownAction(), canMergeDown),
+  'layer.new-group': H((e) => e.folderAction('new')),
+  'layer.group': H((e) => e.folderAction('group'), (e) => !!e.active()),
+  'layer.ungroup': H((e) => e.folderAction('ungroup'), inFolder),
+  'layer.clip': H((e) => e.clipAction(), canClip, (e) => !!e.active()?.clip),
+  'layer.merge-visible': H((e) => e.mergeVisibleAction(), (e) => (e.doc?.layers.filter((l) => l.visible && hasPixels(l)).length ?? 0) > 1),
   'layer.flatten': H((e) => e.flattenAction(), (e) => layers(e) > 1),
   'layer.mask-add': H((e) => e.maskAction('reveal'), unmasked),
   'layer.mask-hide-all': H((e) => e.maskAction('hide'), unmasked),

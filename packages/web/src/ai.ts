@@ -16,6 +16,7 @@ import {
   resizeBitmap, resizeMask, selectionFromMask, snapshotDoc, writeRegion, type Command, type Doc, type Mask, type Rect, type Selection,
 } from '@free-photoeditor/core';
 import { errText, h } from './dom';
+import { placeCutout } from './cutout-place';
 import { maxPixelsForDevice } from './io';
 import { keepFiles } from './offline';
 import type { ToolHost } from './toolkit';
@@ -173,9 +174,7 @@ export function createAiKit(host: ToolHost): AiKit {
       const lm = makeMask(after, 'selection');
       if (!lm) { toast('No clear subject was found. Try Select an object instead.'); return; }
       layer.mask = lm;
-      for (const l of after.layers) l.visible = false;
-      after.layers.push(layer);
-      after.activeId = layer.id;
+      placeCutout(after, layer);
       const cmd = docCommand(title, before, after);
       cmd.redo(d);
       host.forgetHole();

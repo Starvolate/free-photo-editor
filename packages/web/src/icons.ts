@@ -22,6 +22,9 @@ const ICONS: Record<string, unknown> = {
 // W8 (offline and install): the install, reload, Share and Add to Home Screen marks.
 import { MonitorDown, RefreshCw, Share, SquarePlus } from 'lucide';
 import { Link, Unlink } from 'lucide';
+// W6 S2: folder rows (a closed folder) and the clipped-layer arrow.
+import { CornerDownRight, Folder } from 'lucide';
+Object.assign(ICONS, { folder: Folder, clip: CornerDownRight });
 Object.assign(ICONS, { install: MonitorDown, refresh: RefreshCw, share: Share, 'add-square': SquarePlus });
 /** Every icon name the sprite holds (tests check that the interface only asks for these). */
 export const ICON_NAMES: readonly string[] = Object.keys(ICONS);

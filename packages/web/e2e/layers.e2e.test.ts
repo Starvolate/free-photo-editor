@@ -21,7 +21,10 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 interface MaskInfo { x: number; y: number; w: number; h: number; outside: number; enabled: boolean; linked: boolean; density: number; feather: number; sum: number; }
-interface LayerState { id: string; x: number; y: number; w: number; h: number; mask: MaskInfo | null; }
+interface LayerState {
+  id: string; x: number; y: number; w: number; h: number; mask: MaskInfo | null;
+  name: string; kind: string; parentId: string | null; clip: boolean; open: boolean; passThrough: boolean; opacity: number; blendMode: string;
+}
 interface State { maskTarget: boolean; layers: LayerState[]; modal: string | null; w3: unknown; }
 interface Fpe {
   run(id: string): Promise<boolean>; aiCmd(id: string): Promise<void>; state(): State; flatHash(): Promise<string>;
@@ -348,6 +351,163 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     await q.screenshot({ path: join(OUT, 'w6-s1-phone-390-layer-actions.png') });
     await q.tap('[data-testid="layer-action-mask-toggle"]');
     expect(top(await state(q)).mask?.enabled).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  /** Click a row's name (desktop), found by a test on the layer. */
+  async function pick(q: Page, test: (l: LayerState) => boolean): Promise<LayerState> {
+    const l = (await state(q)).layers.find(test);
+    if (!l) throw new Error('no such layer');
+    await q.click(`[data-testid="layer-row"][data-id="${l.id}"] [data-testid="layer-select"]`);
+    return l;
+  }
+  const rowIds = (q: Page): Promise<string[]> => q.$$eval('[data-testid="layer-row"]', (r) => r.map((e) => (e as HTMLElement).dataset.id ?? ''));
+  /** A grey picture with a black Screen layer in a folder: pass through shows grey there, a Normal folder shows black. */
+  async function folderDoc(q: Page, blend = true): Promise<void> {
+    await q.evaluate(() => (window as unknown as Win).fpe.newDocument(120, 80, '#808080'));
+    expect(await run(q, 'layer.new')).toBe(true);
+    expect(await run(q, 'tool.default-colors')).toBe(true);
+    await fillBlack(q);
+    if (blend) await q.selectOption('[data-testid="layer-blend"]', 'screen');
+    expect(await run(q, 'layer.group')).toBe(true);
+  }
+
+  it('folders: put in, pass through against Normal, close and open, clip, arrange out and in, undo and redo each, and Restore after a reload', async () => {
+    const q = await open(1440, 900);
+    await folderDoc(q);
+    let s = await state(q);
+    const f = s.layers.find((l) => l.kind === 'folder'), kid = s.layers.find((l) => l.blendMode === 'screen');
+    if (!f || !kid) throw new Error('no folder');
+    expect(kid.parentId).toBe(f.id);
+    expect(f.passThrough).toBe(true);
+    // Rows: the folder, then its layer one step in, then the background.
+    expect(await rowIds(q)).toEqual([f.id, kid.id, s.layers[0].id]);
+    expect(await q.getAttribute(`[data-id="${kid.id}"]`, 'data-depth')).toBe('1');
+    expect(await q.getAttribute(`[data-id="${f.id}"] [data-testid="layer-select"]`, 'aria-label')).toContain('Folder Folder');
+    // Pass through: the Screen layer mixes with the grey below and black changes nothing. Normal: the folder is one picture first.
+    const grey = await px(q, 60, 40), passHash = await hash(q);
+    expect(grey.slice(0, 3)).toEqual([128, 128, 128]);
+    await pick(q, (l) => l.id === f.id);
+    await q.waitForSelector('[data-testid="folder-mix"]');
+    expect(await q.textContent('[data-testid="folder-props"]')).toContain('How it mixes');
+    await q.selectOption('[data-testid="layer-blend"]', 'normal');
+    expect((await px(q, 60, 40)).slice(0, 3)).toEqual([0, 0, 0]);
+    const normalHash = await hash(q);
+    expect(normalHash).not.toBe(passHash);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(await hash(q)).toBe(passHash);
+    expect(await run(q, 'edit.redo')).toBe(true);
+    expect(await hash(q)).toBe(normalHash);
+    await q.waitForSelector('[data-testid="folder-mix"]');
+    await q.selectOption('[data-testid="folder-mix"]', 'pass');
+    expect(top(await state(q)).passThrough).toBe(true);
+    expect(await hash(q)).toBe(passHash);
+    // The folder's opacity is one undo step.
+    await q.fill('[data-testid="folder-opacity"]', '50');
+    expect(top(await state(q)).opacity).toBe(0.5);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect(top(await state(q)).opacity).toBe(1);
+    // Close and open: a view choice, the picture is the same.
+    await q.click(`[data-id="${f.id}"] [data-testid="folder-arrow"]`);
+    expect(await rowIds(q)).toEqual([f.id, s.layers[0].id]);
+    expect(await q.getAttribute(`[data-id="${f.id}"] [data-testid="folder-arrow"]`, 'aria-expanded')).toBe('false');
+    expect(await hash(q)).toBe(passHash);
+    await q.click(`[data-id="${f.id}"] [data-testid="folder-arrow"]`);
+    expect(await rowIds(q)).toHaveLength(3);
+    // A new layer over the folder's layer joins the folder; clipped, it shows only where that layer has pixels.
+    await pick(q, (l) => l.id === kid.id);
+    expect(await run(q, 'layer.new')).toBe(true);
+    await select(q, 10, 10, 100, 60);
+    expect(await run(q, 'edit.fill')).toBe(true);
+    expect(await run(q, 'select.none')).toBe(true);
+    s = await state(q);
+    const cl = s.layers.find((l) => l.id !== kid.id && l.parentId === f.id && l.blendMode === 'normal');
+    if (!cl) throw new Error('the new layer is not in the folder');
+    expect((await px(q, 15, 15)).slice(0, 3)).toEqual([0, 0, 0]);
+    expect(await run(q, 'layer.clip')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.clip).toBe(true);
+    expect((await px(q, 15, 15)).slice(0, 3)).toEqual([128, 128, 128]);
+    expect(await q.locator(`[data-id="${cl.id}"] [data-testid="clip-arrow"]`).count()).toBe(1);
+    expect(await q.getAttribute(`[data-id="${kid.id}"] [data-testid="layer-select"]`, 'aria-label')).toContain('1 layer clipped to it');
+    const clipHash = await hash(q);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.clip).toBe(false);
+    expect(await run(q, 'edit.redo')).toBe(true);
+    expect(await hash(q)).toBe(clipHash);
+    await thumbs(q);
+    await q.screenshot({ path: join(OUT, 'w6-s2-clipped-1440.png') });
+    await pick(q, (l) => l.id === f.id);
+    await q.waitForSelector('[data-testid="folder-mix"]');
+    await thumbs(q);
+    await q.screenshot({ path: join(OUT, 'w6-s2-folder-open-1440.png') });
+    // Arrange: up from the top of the folder leaves it; down again goes back in. Each is one undo step.
+    await pick(q, (l) => l.id === cl.id);
+    expect(await run(q, 'layer.forward')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.parentId).toBeNull();
+    expect(await run(q, 'layer.backward')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.parentId).toBe(f.id);
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.parentId).toBeNull();
+    expect(await run(q, 'edit.undo')).toBe(true);
+    expect((await state(q)).layers.find((l) => l.id === cl.id)?.parentId).toBe(f.id);
+    expect(await hash(q)).toBe(clipHash);
+    // Restore after a reload brings the folder back closed, with its clipped layer and its pass through.
+    await q.click(`[data-id="${f.id}"] [data-testid="folder-arrow"]`);
+    const shape = (x: State) => x.layers.map((l) => ({ id: l.id, kind: l.kind, parentId: l.parentId, clip: l.clip, open: l.open, passThrough: l.passThrough, blendMode: l.blendMode }));
+    const want = shape(await state(q));
+    await q.evaluate(() => (window as unknown as Win).fpe.saveNow());
+    await q.reload();
+    await q.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await q.waitForSelector('[data-testid="restore"]:not([hidden])', { timeout: 15_000 });
+    await q.click('[data-testid="restore-yes"]');
+    await q.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Brought back'), null, { timeout: 15_000 });
+    expect(shape(await state(q))).toEqual(want);
+    expect(await hash(q)).toBe(clipHash);
+    expect(await rowIds(q)).toEqual([f.id, s.layers[0].id]);
+    expect(errors).toEqual([]);
+  });
+
+  it('on a phone a long press on a layer inside a folder offers Take out of the folder, and it works', async () => {
+    const q = await open(390, 844, true);
+    await folderDoc(q, false);
+    await q.tap('[data-testid="btn-layers"]');
+    await q.waitForSelector('[data-testid="dock"][data-state="half"]');
+    // Press only once the row has stopped moving (the same box at two looks 120 ms apart), a thumb at its centre lands on it,
+    // the thumbnails are drawn and the tap that opened the sheet is well over (the S1 phone test pressed only after a shot).
+    const inner = '[data-testid="layer-row"][data-depth="1"] [data-testid="layer-select"]';
+    await q.waitForFunction((s) => {
+      const el = document.querySelector(s), w = window as unknown as { lastBox?: string };
+      if (!el) return false;
+      const r = el.getBoundingClientRect(), k = `${r.x},${r.y},${r.width},${r.height}`, still = w.lastBox === k;
+      w.lastBox = k;
+      return still && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('[data-testid="layer-select"]') === el;
+    }, inner, { polling: 120, timeout: 10_000 });
+    await thumbs(q);
+    await q.waitForTimeout(400);
+    const name = await q.locator(inner).boundingBox();
+    if (!name) throw new Error('no row inside the folder');
+    const x = name.x + name.width / 2, y = name.y + name.height / 2;
+    const cdp = await q.context().newCDPSession(q);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await q.waitForTimeout(700);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    // If the sheet does not open, keep a picture of the screen for the next look.
+    await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]', { timeout: 8_000 })
+      .catch(async (e: unknown) => { await q.screenshot({ path: join(OUT, 'w6-s2-phone-390-no-sheet.png') }); throw e; });
+    // The lift that ends the press must not reach the sheet now under the finger: before the fix it ran "Add a mask" and
+    // closed the sheet (CI 43409787484). So the sheet stays open and the pressed layer gains no mask.
+    await q.waitForTimeout(300);
+    expect(await q.getAttribute('[data-testid="sheet-layer-actions"]', 'data-state')).toBe('open');
+    expect((await state(q)).layers.some((l) => !!l.mask)).toBe(false);
+    const out = q.locator('[data-testid="layer-action-ungroup"]');
+    expect(await out.getAttribute('aria-disabled')).toBeNull();
+    expect(await q.locator('[data-testid="layer-action-group"]').getAttribute('aria-disabled')).toBeNull();
+    expect(await q.textContent('[data-testid="sheet-layer-actions"]')).toContain('Clip to the layer below');
+    await q.waitForTimeout(250);
+    await thumbs(q);
+    await q.screenshot({ path: join(OUT, 'w6-s2-phone-390-layer-actions.png') });
+    await out.tap();
+    expect((await state(q)).layers.some((l) => l.kind === 'folder')).toBe(false);
     expect(errors).toEqual([]);
   });
 });

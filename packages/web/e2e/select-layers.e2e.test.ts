@@ -142,12 +142,13 @@ suite('Select and layers batch (headless Chrome)', () => {
     await clickHome(p, 'select.refine');
     const cv = p.locator('[data-testid="sm-refine"] [data-testid="sm-refine-preview"]');
     await cv.waitFor({ state: 'visible' });
-    // The preview is drawn: the picture inside the box is brighter than the dimmed rest.
-    const lit = await cv.evaluate((c: HTMLCanvasElement) => {
-      const x = c.getContext('2d')!, w = c.width, hh = c.height, mean = (a: Uint8ClampedArray) => { let t = 0; for (let i = 0; i < a.length; i += 4) t += a[i] + a[i + 1] + a[i + 2]; return t / (a.length / 4); };
-      return [mean(x.getImageData(Math.round(w * 0.45), Math.round(hh * 0.45), 4, 4).data), mean(x.getImageData(2, 2, 4, 4).data)];
-    });
-    expect(lit[0]).toBeGreaterThan(lit[1]);
+    // The preview is drawn and follows its Show control: far outside the box, 'On white' is pure white and 'Dim the rest'
+    // keeps a quarter of the picture at most.
+    const corner = () => cv.evaluate((c: HTMLCanvasElement) => { const d = c.getContext('2d')!.getImageData(2, 2, 1, 1).data; return d[0] + d[1] + d[2]; });
+    await p.locator('[data-testid="sm-refine"] [data-testid="sm-rf-view-white"]').click();
+    await expect.poll(corner).toBe(765);
+    await p.locator('[data-testid="sm-refine"] [data-testid="sm-rf-view-dim"]').click();
+    await expect.poll(corner).toBeLessThanOrEqual(192);
     await p.waitForTimeout(300);
     await p.screenshot({ path: join(OUT, 'refine-edge-1440.png') });
     await apply(p, 'refine');

@@ -55,12 +55,26 @@ export interface FxStop { at: number; color: RGBA; }
 export interface FxGradient extends FxBase { stops: FxStop[]; shape: 'linear' | 'radial'; angle: number; scale: number; reverse: boolean; }
 export interface FxStroke extends FxBase { size: number; where: 'inside' | 'centre' | 'outside'; color: RGBA; }
 export interface FxSatin extends FxBase { color: RGBA; angle: number; distance: number; size: number; invert: boolean; }
-export interface FxPattern extends FxBase { pattern: string; scale: number; }
+/** A pattern made from part of a picture ("use the selection as a pattern"): straight RGBA, tiled from the document's corner. */
+export interface PatternImage { width: number; height: number; data: Uint8ClampedArray; }
+/** A pattern overlay: a built-in pattern id (`fpe:checks` …) or a picture of its own, scale 1 = actual size. */
+export interface FxPattern extends FxBase { pattern: string; scale: number; image?: PatternImage; }
+/** One side of a raised edge's light: the highlight or the shade. */
+export interface FxTone { color: RGBA; blend: BlendMode; opacity: number; }
+/** Raised edge (bevel and emboss): a height map from the shape, `size` px wide, lit from `angle` and `altitude` (degrees). */
+export interface FxBevel { on: boolean; style: 'inner' | 'outer' | 'emboss' | 'pillow'; method: 'smooth' | 'chisel'; depth: number;
+  up: boolean; size: number; soften: number; angle: number; altitude: number; light: FxTone; dark: FxTone; psd?: unknown; }
+/** Blur the layer's result (its pixels with the effects drawn on them) by `size` px; the pixels themselves stay untouched. */
+export interface FxBlur { on: boolean; size: number; }
+/** Blend by brightness (Blend If): split ranges [dark starts, dark full, light full, light ends], 0..255, for this layer and what is below. */
+export interface FxBlendIf { on: boolean; self: [number, number, number, number]; under: [number, number, number, number]; }
 /** The layer's effects. The kinds that allow several copies are lists; the others are one each. A value object. */
 export interface LayerEffects {
   on: boolean;
   dropShadow: FxShadow[]; innerShadow: FxShadow[]; colorOverlay: FxColor[]; gradientOverlay: FxGradient[]; stroke: FxStroke[];
-  outerGlow?: FxGlow; innerGlow?: FxGlow; satin?: FxSatin; patternOverlay?: FxPattern; bevel?: unknown;
+  outerGlow?: FxGlow; innerGlow?: FxGlow; satin?: FxSatin; patternOverlay?: FxPattern; bevel?: FxBevel; blur?: FxBlur;
+  /** Blend by brightness lives with the effects (as in a layer style), so "Show the effects" and saved looks carry it too. */
+  blendIf?: FxBlendIf;
 }
 /** True when the layer has at least one effect switched on (and its effects as a whole are on). */
 export function hasLayerFx(l: { fx?: LayerEffects }): boolean {
@@ -68,15 +82,21 @@ export function hasLayerFx(l: { fx?: LayerEffects }): boolean {
   if (!f || !f.on) return false;
   const on = (e: { on: boolean } | undefined): boolean => !!e && e.on;
   return f.dropShadow.some(on) || f.innerShadow.some(on) || f.colorOverlay.some(on) || f.gradientOverlay.some(on) || f.stroke.some(on)
-    || on(f.outerGlow) || on(f.innerGlow);
+    || on(f.outerGlow) || on(f.innerGlow) || on(f.satin) || on(f.patternOverlay) || on(f.bevel) || on(f.blur) || on(f.blendIf);
 }
+/** True when drawing the layer needs the lazy effects module: effects, or a colour fade or pattern layer. */
+export const needsLayerFx = (l: { fx?: LayerEffects; kind?: LayerKind; fill?: FillLayer }): boolean =>
+  hasLayerFx(l) || (l.kind === 'fill' && !!l.fill && l.fill.type !== 'solid');
 /**
  * An editable light and colour layer (design 2.5): `from` is the Image › Adjustments dialog's id (it picks the controls and
  * the name), `job` the same numbers-only settings the dialog runs; null = kept from a file but not drawn here.
  */
 export interface AdjustLayer { from: string; job: JobSpec | null; psd?: unknown; }
-/** A colour layer (design 2.6). Solid now; the colour fade and the pattern join it in the next part. */
-export type FillLayer = { type: 'solid'; color: RGBA };
+/** A colour layer (design 2.6): solid, a colour fade laid over `box` (the canvas when it was made), or a pattern. `color` is
+ * the swatch Layers shows (the fade's first stop, the pattern's main colour). Fades and patterns are drawn by the lazy module. */
+export type FillLayer = { type: 'solid'; color: RGBA }
+  | { type: 'gradient'; color: RGBA; stops: FxStop[]; shape: 'linear' | 'radial'; angle: number; scale: number; reverse: boolean; box: { x: number; y: number; w: number; h: number } }
+  | { type: 'pattern'; color: RGBA; pattern: string; scale: number; image?: PatternImage };
 /** Pixel layers paint; folders hold other nodes (adjustment and fill layers come in later slices). */
 export type LayerKind = 'pixel' | 'folder' | 'adjust' | 'fill';
 /** True for nodes with pixels of their own to paint on: plain pixel, text and shape layers. */

@@ -156,7 +156,11 @@ describe('the Task ribbon', () => {
     expect(NEW_ROWS.length).toBe(261);
     // Built so far (wave 4): a selection from an outline and an outline from the selection.
     const BUILT = new Set(['select.from-path', 'select.to-path', 'view.composition-guides', 'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
-      'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias']);
+      'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
+      // The Develop RAW sheet (raw-more.ts), 13 Nov 2026.
+      ...('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading raw.contrast-levels '
+        + 'raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping raw.scopes raw.snapshots '
+        + 'raw.presets raw.negative').split(' ')]);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

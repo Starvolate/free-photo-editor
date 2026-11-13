@@ -23,7 +23,19 @@ export interface Ctl {
   fills?: ReadonlyArray<Record<string, number>>;
 }
 /** `colors` passes the main and second colours to the filter; `handles` names its on-picture handles (handles.ts). */
-export interface AdjDef { op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field'; }
+/** What a dialog that draws its own controls (the develop sheet, raw-more.ts) gets from the editor. */
+export interface SheetApi {
+  id: string; params: Record<string, number | undefined>; idBase: string;
+  /** A setting moved: preview it. */ input(): void;
+  /** Draw the dialog again (after a tab change or a recalled look). */ rerender(): void;
+  /** The edited area as it looks now (the live preview), or as it was before. */ result(): { width: number; height: number; data: Uint8ClampedArray };
+  /** Called each time a new preview lands. */ onResult(f: () => void): void;
+}
+export interface AdjDef {
+  op: JobOp; kind?: string; controls: Ctl[]; instant?: boolean; colors?: boolean; handles?: 'iris' | 'tilt' | 'field' | 'spot';
+  /** Draws the controls itself instead of the plain list. */ sheet?: (api: SheetApi) => Node[];
+  /** Settings that only change what the preview shows (the clipping warning): Apply runs again with them off. */ viewOnly?: readonly string[];
+}
 
 const R = (key: string, label: string, help: string, min: number, max: number, value: number, step = 1, unit = '', group?: string): Ctl =>
   ({ key, label, help, min, max, value, step, unit, group });
@@ -419,6 +431,11 @@ const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasP
 for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
   ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
+// Photo developing (raw-more.ts, loaded on first use): one develop sheet; each command opens it at its own section.
+export const RAW_IDS = ('raw.white-balance raw.highlights raw.black-white-points raw.clarity raw.dehaze raw.vignette raw.colour-mixer raw.colour-grading '
+  + 'raw.contrast-levels raw.tone-equalizer raw.base-curve raw.hot-pixels raw.capture-sharpen raw.denoise-profiled raw.defish raw.upright raw.clipping '
+  + 'raw.scopes raw.snapshots raw.presets raw.negative').split(' ');
+for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-more'); return e.openAdjust(id); });
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.

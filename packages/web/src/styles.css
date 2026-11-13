@@ -153,7 +153,8 @@
 .fpe-layer:last-child{border-bottom:0}
 .fpe-indent{flex:none;width:calc(var(--depth,0) * var(--step,16px))}
 .fpe-twist{flex:none;display:grid;place-items:center;width:24px}
-.fpe-twist .fpe-layer-arrow{width:24px}
+.fpe:not([data-layout=phone]) .fpe-twist .fpe-layer-arrow{width:24px}
+.fpe[data-layout=phone] .fpe-twist{width:44px}
 .fpe-clip-arrow{display:grid;flex:none;place-items:center;width:16px;color:var(--muted)}
 .fpe-clip-arrow svg{width:14px;height:14px}
 .fpe-layer-folder{display:grid;place-items:center;color:var(--muted)}

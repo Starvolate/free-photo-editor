@@ -48,13 +48,13 @@ export const MODELS: Record<ModelId, ModelDef> = {
     sha256: '1940a93ee08283a0a7286183186357b1688fe9fa8ede74604b424586aaddf112',
   },
   segment: {
-    id: 'segment', name: 'SlimSAM-77 (quantized)', does: 'selects the thing you tap', licence: 'Apache-2.0', authors: 'Zigeng Chen and co-authors (SlimSAM), from Meta AI\'s Segment Anything',
-    source: 'https://github.com/czg1225/SlimSAM', converted: 'ONNX copy on Hugging Face: Xenova/slimsam-77-uniform', layout: 'sam',
-    url: HF('Xenova/slimsam-77-uniform', '5850ab45f587c112167512ffef949107115e26a0', 'onnx/vision_encoder_quantized.onnx'), bytes: 8_882_165, transfer: 8_882_165,
-    sha256: 'cce23c7b2e5d4f330932738fb67ba518e04b0d99ccdd1cccd22a7da4e01f2971',
+    id: 'segment', name: 'MobileSAM', does: 'selects the thing you tap', licence: 'Apache-2.0', authors: 'Chaoning Zhang and co-authors (MobileSAM), from Meta AI\'s Segment Anything',
+    source: 'https://github.com/ChaoningZhang/MobileSAM', converted: 'ONNX copy on Hugging Face: Acly/MobileSAM', layout: 'sam-onnx',
+    url: HF('Acly/MobileSAM', '0d3b403339b4674a82493d5e97964dd78089ddc8', 'mobile_sam_image_encoder.onnx'), bytes: 28_157_093, transfer: 28_157_093,
+    sha256: '580f5fb648ea1062c0aabc26217aed56921985f03f0cbbd852bba81d760cc749',
     decoder: {
-      url: HF('Xenova/slimsam-77-uniform', '5850ab45f587c112167512ffef949107115e26a0', 'onnx/prompt_encoder_mask_decoder_quantized.onnx'), bytes: 4_903_810, transfer: 4_903_810,
-      sha256: 'cb90b279f549d2cab7fd6e20c38522438c65d84bdcca3d2a764cff7d857fdce2',
+      url: HF('Acly/MobileSAM', '0d3b403339b4674a82493d5e97964dd78089ddc8', 'sam_mask_decoder_multi.onnx'), bytes: 16_496_559, transfer: 16_496_559,
+      sha256: '8976b90a87ba50a6a72217a5ff994f7d25ce16f2229fcc1ed259e1294c622ffe',
     },
   },
 };

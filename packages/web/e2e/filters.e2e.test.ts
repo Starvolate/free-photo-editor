@@ -111,9 +111,11 @@ suite('W2 filters (headless Chrome)', () => {
     const p = await open(1440, 900);
     await prepare(p);
     const original = await sum(p), bad: string[] = [];
+    // The census rows (registry-union.ts) join the list when the ribbon loads; wait for them before counting.
+    await p.waitForFunction(() => (window as unknown as Win).fpe.commands().some((c) => c.id === 'filter.kaleidoscope'));
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
       .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id)).map((c) => c.id);
-    expect(ids.length).toBe(63);
+    expect(ids.length).toBe(75);
     for (const id of ids) {
       const n = await step(p);
       await dialog(p, id);

@@ -50,6 +50,8 @@ export interface ToolHost {
   rememberSel(s: Selection | null): void;
   showPanel(pid: string): void;
   paint(t: 'brush' | 'pencil' | 'eraser'): { size: number; hardness: number; opacity: number };
+  /** Zoom out or pan so a picture rectangle, plus a margin of screen pixels, sits in the picture area. */
+  fitBox(r: { x: number; y: number; w: number; h: number }, margin: number): void;
 }
 export interface ToolKit {
   claims(t: ToolId): boolean;
@@ -68,6 +70,8 @@ export interface ToolKit {
   cursorSize(t: ToolId): number | null;
   fillPanel(pid: string, body: HTMLElement): void;
   refresh(): void;
+  /** What is going on instead of the tool (a transform, painting a selection), for the options bar and the status line. */
+  activity(): { plain: string; pro: string; help: string } | null;
 }
 
 type XfMode = 'free' | 'skew' | 'distort' | 'perspective';
@@ -77,7 +81,7 @@ type Gesture =
   | { k: 'quick'; pts: Pt[]; mode: SelMode; base: Mask | null; before: Selection | null; src: Pixels; at: number }
   | { k: 'drag'; t: ToolId; a: Pt; b: Pt; shift: boolean }
   | { k: 'patch'; a: Pt; b: Pt }
-  | { k: 'fx'; s: EffectStroke; t: ToolId }
+  | { k: 'fx'; s: EffectStroke; t: ToolId; off?: Pt; l?: Layer; warned?: boolean }
   | { k: 'press'; p: Pt; i: PointerInfo; t: ToolId; timer: number }
   | { k: 'qm'; last: Pt; erase: boolean; size: number; hard: number }
   | { k: 'xf'; hd: string; p0: Pt; q0: Quad };
@@ -103,6 +107,13 @@ const GRADS: [string, (fg: RGBA, bg: RGBA) => RGBA[]][] = [
 ];
 const GRAD_KINDS: [GradientKind, string, string][] = [['linear', 'Straight', 'Linear'], ['radial', 'Round', 'Radial'], ['angle', 'Sweep', 'Angle'],
   ['reflected', 'Mirrored', 'Reflected'], ['diamond', 'Diamond', 'Diamond']];
+const XF_NAMES: Record<string, [string, string, string]> = {
+  free: ['Resize and turn', 'Free transform', 'Drag a corner or an edge to resize, outside the box to turn.'],
+  skew: ['Slant', 'Skew', 'Drag an edge to slant it sideways.'],
+  distort: ['Pull corners', 'Distort', 'Drag any corner anywhere.'],
+  perspective: ['Fix the angle', 'Perspective', 'Drag a corner to widen or narrow that side, like a photo taken at an angle.'],
+};
+const OFF_PICTURE = 'Nothing is copied here: the source is outside the picture. Alt-click (or press and hold) a new source inside the picture, or paint nearer to it.';
 const FONT_CANDIDATES = ['system-ui', 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Segoe UI', 'Roboto', 'Georgia', 'Times New Roman',
   'Palatino', 'Garamond', 'Courier New', 'Menlo', 'Consolas', 'Impact', 'Comic Sans MS', 'serif', 'sans-serif', 'monospace', 'cursive'];
 const GENERIC = new Set(['system-ui', 'serif', 'sans-serif', 'monospace', 'cursive']);
@@ -179,7 +190,7 @@ function selCommand(label: string, before: Selection | null, after: Selection | 
 
 export function createToolKit(host: ToolHost): ToolKit {
   const S = {
-    mode: 'new' as SelMode, tolerance: 32, contiguous: true, allLayers: false, feather: 0, qs: 24,
+    mode: 'new' as SelMode, tolerance: 32, contiguous: true, allLayers: true, eraseAll: false, feather: 0, qs: 24,
     grad: { kind: 'linear' as GradientKind, preset: 0, opacity: 1, reverse: false }, bucketOpacity: 1,
     fx: {
       clone: [40, 0.6, 1], heal: [40, 0.6, 1], 'spot-heal': [30, 0.7, 1], dodge: [60, 0.2, 0.5], burn: [60, 0.2, 0.5], sponge: [60, 0.2, 0.6],
@@ -200,6 +211,13 @@ export function createToolKit(host: ToolHost): ToolKit {
   const scr = (p: Pt): Pt => { const v = host.view(); return { x: v.panX + p.x * v.zoom, y: v.panY + p.y * v.zoom }; };
   const fgc = (): RGBA => parseHex(host.fg()) ?? BLACK;
   const fxo = (t: ToolId): [number, number, number] => S.fx[t] ?? [40, 0.5, 1];
+  const xfHandles = (x: Xf): Pt[] => [...x.q, ...x.q.map((a, k) => { const b = x.q[(k + 1) % 4]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; })];
+  /** Clone and heal copy from point + offset: true when that source falls outside the layer or the picture (nothing to copy). */
+  const srcOut = (d: Doc, l: Layer, p: Pt, off: Pt): boolean => {
+    const x = p.x + off.x, y = p.y + off.y, r = layerRect(l);
+    return x < Math.max(0, r.x) || y < Math.max(0, r.y) || x >= Math.min(d.width, r.x + r.w) || y >= Math.min(d.height, r.y + r.h);
+  };
+  const inLayer = (l: Layer, p: Pt): boolean => { const r = layerRect(l); return p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h; };
   const modeOf = (i: PointerInfo, fallback = S.mode): SelMode => (i.shift && i.alt ? 'intersect' : i.shift ? 'add' : i.alt ? 'subtract' : fallback);
   const pixelsFor = (d: Doc, all: boolean): Pixels => {
     const l = activeLayer(d);
@@ -290,6 +308,8 @@ export function createToolKit(host: ToolHost): ToolKit {
       if (l.locked) return;
       xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
     }
+    const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys);
+    host.fitBox({ x: bx, y: by, w: Math.max(...xs) - bx, h: Math.max(...ys) - by }, host.layout() === 'phone' ? 44 : 36);
     host.toast('Drag the handles to resize, outside the box to turn. Enter applies, Esc cancels.');
     host.refreshOptions();
     host.render();
@@ -561,9 +581,10 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (!l) return;
     if (t === 'bucket') {
       const cmd = bucketFill(d, l, p.x, p.y, { color: fgc(), tolerance: S.tolerance, contiguous: S.contiguous, allLayers: S.allLayers, opacity: S.bucketOpacity });
-      if (cmd) host.push(cmd, true); else host.toast('Nothing to fill there.');
+      if (cmd) host.push(cmd, true);
+      else host.toast(inLayer(l, p) ? 'Nothing to fill there.' : `That spot is outside the layer “${l.name}”. Pick the layer to fill in Layers, then click again.`);
     } else if (t === 'magic-eraser') {
-      const cmd = magicErase(d, l, p.x, p.y, S.tolerance, S.contiguous, S.allLayers);
+      const cmd = magicErase(d, l, p.x, p.y, S.tolerance, S.contiguous, S.eraseAll);
       if (cmd) host.push(cmd, true); else host.toast('Nothing to erase there.');
     } else if (t === 'red-eye') {
       const cmd = redEye(d, l, p.x, p.y, S.redEye);
@@ -605,7 +626,9 @@ export function createToolKit(host: ToolHost): ToolKit {
     const [size, hardness, strength] = fxo(t);
     const s = new EffectStroke(d, l, { kind, size, hardness, strength, offset, range: S.range, more: S.spongeMore, color: fgc(),
       tolerance: kind === 'bg-erase' ? S.bgTol : S.replTol, source });
-    g = { k: 'fx', s, t };
+    const warned = !!offset && srcOut(d, l, p, offset);
+    g = { k: 'fx', s, t, off: offset, l, warned };
+    if (warned) host.toast(OFF_PICTURE);
     s.add(sp(p, i, size));
     flush();
   }
@@ -690,7 +713,12 @@ export function createToolKit(host: ToolHost): ToolKit {
       startFx(q.t, q.p, q.i);
     }
     const f = g;
-    if (f?.k === 'fx') { f.s.add(sp(p, i, fxo(f.t)[0])); flush(); }
+    if (f?.k === 'fx') {
+      const dd = doc();
+      if (!f.warned && f.off && f.l && dd && srcOut(dd, f.l, p, f.off)) { f.warned = true; host.toast(OFF_PICTURE); }
+      f.s.add(sp(p, i, fxo(f.t)[0]));
+      flush();
+    }
   }
   function end(p: Pt, i: PointerInfo): void {
     const q = g, d = doc();
@@ -888,11 +916,12 @@ export function createToolKit(host: ToolHost): ToolKit {
       ['New', 'w3-mode-new', S.mode === 'new', () => { S.mode = 'new'; }, 'Replace the selection.'], ['Add', 'w3-mode-add', S.mode === 'add', () => { S.mode = 'add'; }, 'Add to it (or hold Shift).'],
       ['Take away', 'w3-mode-subtract', S.mode === 'subtract', () => { S.mode = 'subtract'; }, 'Take away from it (or hold Alt).'],
       ['Overlap', 'w3-mode-intersect', S.mode === 'intersect', () => { S.mode = 'intersect'; }, 'Keep only where they overlap (or hold Shift and Alt).']]);
-    const colourOpts = (): HTMLElement[] => [
+    const colourOpts = (key: 'allLayers' | 'eraseAll' = 'allLayers'): HTMLElement[] => [
       sl('Closeness', 'How different a colour may be and still count (tolerance).', 0, 255, S.tolerance, '', (v) => { S.tolerance = v; }, 'w3-tolerance'),
       seg('Area', [['Touching only', 'w3-contig-on', S.contiguous, () => { S.contiguous = true; }, 'Only the area connected to where you click (contiguous).'],
         ['Everywhere', 'w3-contig-off', !S.contiguous, () => { S.contiguous = false; }, 'Every matching pixel in the picture.']]),
-      seg('Look at', [['This layer', 'w3-all-off', !S.allLayers, () => { S.allLayers = false; }], ['All layers', 'w3-all-on', S.allLayers, () => { S.allLayers = true; }, 'Judge colours by what you see (sample all layers).']])];
+      seg('Look at', [['What you see', 'w3-all-on', S[key], () => { S[key] = true; }, 'Judge colours by the picture as you see it, every shown layer together (sample all layers).'],
+        ['This layer only', 'w3-all-off', !S[key], () => { S[key] = false; }, 'Judge colours by the active layer alone.']])];
     const fxSliders = (tt: ToolId, strengthLabel = 'Strength', strengthHelp = 'How strong each stroke is.'): HTMLElement[] => {
       const o = fxo(tt);
       return [sl('Size', 'How wide the brush is, in pixels. Keys [ and ] change it too.', 1, 500, o[0], ' px', (v) => { o[0] = v; host.render(); }, 'w3-size'),
@@ -908,7 +937,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         break;
       case 'wand': bar.append(modes(), ...colourOpts()); break;
       case 'quick-select': bar.append(sl('Size', 'How wide the selecting brush is.', 2, 300, S.qs, ' px', (v) => { S.qs = v; host.render(); }, 'w3-size'),
-        hint('Paint over the area; the selection grows to its edges. Alt takes away.')); break;
+        colourOpts()[2], hint('Paint over the area; the selection grows to its edges. Alt takes away.')); break;
       case 'gradient': {
         const pre = h('select', { 'data-testid': 'w3-grad-preset', 'aria-label': 'Colours' }, ...GRADS.map(([n], k) => h('option', { value: String(k) }, n)));
         pre.value = String(S.grad.preset);
@@ -921,7 +950,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         break;
       }
       case 'bucket': bar.append(...colourOpts(), sl('Strength', 'How solid the fill is.', 1, 100, S.bucketOpacity * 100, '%', (v) => { S.bucketOpacity = v / 100; }, 'w3-strength')); break;
-      case 'magic-eraser': bar.append(...colourOpts(), hint('Click a colour to make that area see-through.')); break;
+      case 'magic-eraser': bar.append(...colourOpts('eraseAll'), hint('Click a colour to make that area see-through.')); break;
       case 'red-eye': bar.append(sl('Pupil size', 'How far round the click to look for red.', 4, 200, S.redEye.size, ' px', (v) => { S.redEye.size = v; }, 'w3-pupil'),
         sl('Darken', 'How dark the pupil becomes.', 1, 100, S.redEye.darken * 100, '%', (v) => { S.redEye.darken = v / 100; }, 'w3-darken'), hint('Click the red part of each eye.')); break;
       case 'clone': case 'heal':
@@ -940,7 +969,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'color-replace': bar.append(...fxSliders(t), sl('Closeness', 'How different a colour may be and still change.', 1, 255, S.replTol, '', (v) => { S.replTol = v; }, 'w3-tolerance'),
         hint('Paints your main colour over the colour under the first touch, keeping the detail.')); break;
       case 'bg-eraser': bar.append(...fxSliders(t), sl('Closeness', 'How different a colour may be and still be erased.', 1, 255, S.bgTol, '', (v) => { S.bgTol = v; }, 'w3-tolerance')); break;
-      case 'history-brush': bar.append(...fxSliders(t), hint('Paints back how this layer looked when the picture was opened.')); break;
+      case 'history-brush': bar.append(...fxSliders(t), hint('Paints back how this layer looked when the picture was opened. Picking another History step comes later.')); break;
       case 'blur': case 'sharpen': case 'smudge': bar.append(...fxSliders(t)); break;
       case 'type':
         bar.append(...textControls('bar'));
@@ -974,7 +1003,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         ['distort', 'Pull corners', 'Distort'], ['perspective', 'Fix the angle', 'Perspective']] as const).map(([m, plain, pro]) =>
         h('button', { type: 'button', 'aria-pressed': String(x.mode === m), 'data-testid': 'xf-mode-' + m, 'data-help-title': `${plain} · ${pro}`, 'data-help': 'How the handles change the shape.',
           onclick: () => { x.mode = m; host.refreshOptions(); } }, plain)));
-      bar.replaceChildren(seg, h('span', { class: 'fpe-hint', 'data-testid': 'xf-readout' }, `Width ${Math.round(sx * 100)}% · turned ${Math.round(ang)}°`),
+      bar.replaceChildren(...Array.from(bar.querySelectorAll(':scope > .fpe-opt-tool')), seg, h('span', { class: 'fpe-hint', 'data-testid': 'xf-readout' }, `Width ${Math.round(sx * 100)}% · turned ${Math.round(ang)}°`),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'xf-cancel', onclick: () => endXf(false) }, 'Cancel'),
         h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'xf-apply', onclick: () => endXf(true) }, 'Apply'));
       return;
@@ -1065,9 +1094,17 @@ export function createToolKit(host: ToolHost): ToolKit {
       const d = doc(), sel = d?.selection, l = d ? activeLayer(d) : undefined;
       return { quickMask: !!qm, transform: xf ? `${xf.mode}:${xf.target}` : null, polygon: poly?.pts.length ?? 0, editingText: !!te, source: !!src,
         savedSel: !!(d && saved.get(d)), shaped: !!sel?.alpha, selected: sel && d ? countSelected(maskFromSelection(sel, d.width, d.height)) : 0,
-        content: l?.content?.kind ?? null, mode: S.mode };
+        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [] };
     },
     cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : null; },
     refresh() { for (const [pid, b] of panels) fillPanel(pid, b); },
+    activity() {
+      if (xf) {
+        const [plain, pro, help] = XF_NAMES[xf.mode] ?? XF_NAMES.free;
+        return { plain: xf.target === 'selection' ? plain + ' the selection' : plain, pro, help: help + ' Enter applies, Esc cancels.' };
+      }
+      if (qm) return { plain: 'Painting a selection', pro: 'Quick mask', help: 'The brush adds to the selection and the eraser takes it away; press Done to finish.' };
+      return null;
+    },
   };
 }

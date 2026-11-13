@@ -451,4 +451,231 @@ suite('W3 tools (headless Chrome)', () => {
     await shot(p, 'w3-phone-390.png');
     expect(errors).toEqual([]);
   }, 120_000);
+
+  // ---------- W3b: the fix round (item numbers from card-w3b-merge-fix.md) ----------
+  it('frames free transform so every handle can be grabbed, and names the mode in the options bar and status line', async () => {
+    for (const [w, hgt, touch] of [[1440, 900, false], [390, 844, true]] as const) {
+      const p = await open(w, hgt, touch);
+      await sample(p);
+      for (let k = 0; k < 4; k++) await run(p, 'view.zoom-in');
+      await run(p, 'edit.free-transform');
+      await p.waitForTimeout(250);
+      const r = await p.evaluate(() => {
+        const hs = ((window as unknown as Win).fpe.state().w3 as { handles: { x: number; y: number }[] }).handles;
+        const cv = (document.querySelector('.fpe-stage > canvas') as HTMLElement).getBoundingClientRect();
+        const st = (document.querySelector('.fpe-stage') as HTMLElement).getBoundingClientRect();
+        const shown = (s: string): DOMRect | null => {
+          const el = document.querySelector<HTMLElement>(s);
+          if (!el || el.hidden || el.closest('[data-state="closed"]')) return null;
+          const cs = getComputedStyle(el), b = el.getBoundingClientRect();
+          return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
+        };
+        const keep = ['.fpe-zoom', '[data-testid="dock"]', '[data-testid="tools"]', '[data-testid="options"]'].map(shown).filter((b): b is DOMRect => !!b);
+        const bad: string[] = [];
+        for (const hd of hs) {
+          const x = cv.left + hd.x, y = cv.top + hd.y, where = `${Math.round(x)},${Math.round(y)}`;
+          if (x < st.left + 8 || x > st.right - 8 || y < st.top + 8 || y > st.bottom - 8) bad.push('outside the picture area at ' + where);
+          for (const b of keep) if (x > b.left - 8 && x < b.right + 8 && y > b.top - 8 && y < b.bottom + 8) bad.push('under a bar or the zoom buttons at ' + where);
+        }
+        return { n: hs.length, bad, tool: document.querySelector('[data-testid="opt-tool"]')?.textContent ?? '', status: document.querySelector('.fpe-status')?.textContent ?? '' };
+      });
+      expect(r.n).toBe(8);
+      expect(r.bad, `${w} px`).toEqual([]);
+      expect(r.tool).toContain('Resize and turn');
+      expect(r.tool).not.toContain('brush');
+      if (!touch) { expect(r.status).toContain('Resize and turn'); expect(r.status).not.toContain('Paint brush'); }
+      await shot(p, `w3b-transform-handles-${w}.png`);
+      await p.click('[data-testid="xf-mode-skew"]');
+      expect(await p.textContent('[data-testid="opt-tool"]')).toContain('Slant');
+      await p.click('[data-testid="xf-cancel"]');
+      expect((await w3(p)).transform).toBe(null);
+    }
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  it('samples what you see with the magic wand on the sample photo, and warns when the clone source runs off the picture', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    expect((await info(p)).active).not.toBe(0);
+    await run(p, 'tool.magic-wand');
+    expect(await p.getAttribute('[data-testid="w3-all-on"]', 'aria-pressed')).toBe('true');
+    await click(p, 5, 320);
+    const seen = (await w3(p)).selected;
+    expect(Math.abs(seen - 50176)).toBeLessThan(1200);
+    await shot(p, 'w3b-wand-sample.png');
+    await p.click('[data-testid="w3-all-off"]');
+    await click(p, 5, 320);
+    expect((await w3(p)).selected).toBeGreaterThan(seen * 3);
+    await p.click('[data-testid="w3-all-on"]');
+    await run(p, 'select.none');
+    for (const id of ['tool.quick-select', 'tool.bucket']) {
+      await run(p, id);
+      expect(await p.getAttribute('[data-testid="w3-all-on"]', 'aria-pressed'), id).toBe('true');
+    }
+    await run(p, 'tool.magic-eraser');
+    expect(await p.getAttribute('[data-testid="w3-all-off"]', 'aria-pressed')).toBe('true');
+    await useBackground(p);
+    await run(p, 'tool.clone');
+    const src = await at(p, 20, 300);
+    await p.keyboard.down('Alt');
+    await p.mouse.click(src.x, src.y);
+    await p.keyboard.up('Alt');
+    await p.waitForTimeout(100);
+    expect((await w3(p)).source).toBe(true);
+    await drag(p, [[100, 300], [40, 300]]);
+    expect(await p.textContent('[data-testid="toast"]')).toContain('outside the picture');
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  it('keeps every toast off the zoom buttons, dialogs, panels and bars', async () => {
+    for (const [w, hgt, touch] of [[1440, 900, false], [390, 844, true]] as const) {
+      const p = await open(w, hgt, touch);
+      await sample(p);
+      const clear = (): Promise<string[]> => p.evaluate(() => {
+        const t = (document.querySelector('[data-testid="toast"]') as HTMLElement).getBoundingClientRect(), hit: string[] = [];
+        for (const s of ['.fpe-zoom', '[data-testid="adjust-dialog"]', '[data-testid="dock"]', '[data-testid="tools"]', '[data-testid="options"]', '.fpe-top']) {
+          const el = document.querySelector<HTMLElement>(s);
+          if (!el || el.hidden || el.closest('[data-state="closed"]')) continue;
+          const cs = getComputedStyle(el), b = el.getBoundingClientRect();
+          if (cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height) continue;
+          if (b.left < t.right && b.right > t.left && b.top < t.bottom && b.bottom > t.top) hit.push(s);
+        }
+        return hit;
+      });
+      await run(p, 'edit.history-brush-step');
+      expect(await p.textContent('[data-testid="toast"]')).toContain('planned');
+      expect(await clear(), `${w} px`).toEqual([]);
+      await run(p, 'image.adj-brightness');
+      await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
+      await run(p, 'edit.history-brush-step');
+      expect(await clear(), `${w} px with a dialog open`).toEqual([]);
+      await shot(p, `w3b-toast-${w}.png`);
+      await p.click('[data-testid="dialog-head"] button');
+    }
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  it('moves a dialog by its title bar, off the part of the picture being changed', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    await run(p, 'filter.blur-iris');
+    await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
+    const box = (): Promise<{ x: number; y: number; w: number }> => p.$eval('[data-testid="adjust-dialog"]', (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width }; });
+    const a = await box();
+    const hb = await p.$eval('[data-testid="dialog-head"] h2', (e) => { const b = e.getBoundingClientRect(); return { x: b.left + 20, y: b.top + b.height / 2 }; });
+    await p.mouse.move(hb.x, hb.y);
+    await p.mouse.down();
+    await p.mouse.move(hb.x - 560, hb.y + 40, { steps: 8 });
+    await p.mouse.up();
+    const b = await box();
+    expect(Math.abs(b.x - (a.x - 560))).toBeLessThan(4);
+    expect(b.y).toBeGreaterThanOrEqual(a.y);
+    expect(Math.abs(b.w - a.w)).toBeLessThan(2);
+    await shot(p, 'w3b-dialog-moved.png');
+    await p.click('[data-testid="dialog-head"] button');
+    expect(await p.isHidden('[data-testid="adjust-dialog"]')).toBe(true);
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  it('proves slant, pull corners, fix the angle, every align and distribute, the background eraser and smoothing a selection', async () => {
+    const p = await open(1440, 900);
+    await sample(p);
+    const i0 = await info(p), sun0 = i0.layers[1];
+    for (const m of ['skew', 'distort', 'perspective'] as const) {
+      await run(p, 'edit.free-transform');
+      await p.click(`[data-testid="xf-mode-${m}"]`);
+      expect((await w3(p)).transform).toBe(`${m}:layer`);
+      const hs = await p.evaluate(() => ((window as unknown as Win).fpe.state().w3 as { handles: { x: number; y: number }[] }).handles);
+      const cv = await p.$eval('.fpe-stage > canvas', (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top }; });
+      await p.mouse.move(cv.x + hs[1].x, cv.y + hs[1].y);
+      await p.mouse.down();
+      await p.mouse.move(cv.x + hs[1].x + 60, cv.y + hs[1].y + 30, { steps: 6 });
+      await p.mouse.up();
+      await p.click('[data-testid="xf-apply"]');
+      await p.waitForTimeout(150);
+      const s = (await info(p)).layers[1];
+      expect(s.width !== sun0.width || s.height !== sun0.height, m).toBe(true);
+      await run(p, 'edit.undo');
+      expect((await info(p)).layers[1].width, m).toBe(sun0.width);
+    }
+    const W = i0.width, H = i0.height;
+    for (const [id, key, want] of [['layer.align-left', 'x', 0], ['layer.align-hcenter', 'x', (W - sun0.width) / 2], ['layer.align-right', 'x', W - sun0.width],
+      ['layer.align-top', 'y', 0], ['layer.align-vcenter', 'y', (H - sun0.height) / 2], ['layer.align-bottom', 'y', H - sun0.height]] as const) {
+      await run(p, id);
+      expect(Math.abs((await info(p)).layers[1][key] - want), id).toBeLessThanOrEqual(1);
+    }
+    await run(p, 'tool.rect');
+    await drag(p, [[100, 420], [160, 470]]);
+    await drag(p, [[330, 520], [370, 600]]);
+    expect((await info(p)).layers.length).toBeGreaterThanOrEqual(4);
+    for (const [id, key, size] of [['layer.distribute-h', 'x', 'width'], ['layer.distribute-v', 'y', 'height']] as const) {
+      await run(p, id);
+      const cs = (await info(p)).layers.slice(1).map((l) => l[key] + l[size] / 2).sort((a, b) => a - b);
+      const gaps = cs.slice(1).map((c, k) => c - cs[k]);
+      expect(Math.max(...gaps) - Math.min(...gaps), id).toBeLessThanOrEqual(2);
+    }
+    await useBackground(p);
+    await run(p, 'tool.bg-eraser');
+    expect((await px(p, 6, 200, true))[3]).toBeGreaterThan(200);
+    await drag(p, [[6, 170], [6, 230]]);
+    expect((await px(p, 6, 200, true))[3]).toBeLessThan(60);
+    await run(p, 'edit.undo');
+    expect((await px(p, 6, 200, true))[3]).toBeGreaterThan(200);
+    await p.evaluate(() => (window as unknown as Win).fpe.select(100, 100, 100, 100));
+    expect(await run(p, 'select.smooth')).toBe(true);
+    await p.waitForSelector('[data-testid="w3-amount"]');
+    await setRange(p, 'w3-amount', 20);
+    await p.click('[data-testid="sheet-w3-amount"] [data-testid="w3-apply"]');
+    await p.waitForTimeout(120);
+    const sm = (await w3(p)).selected;
+    expect(sm).toBeLessThan(10000);
+    expect(sm).toBeGreaterThan(8500);
+    expect(errors).toEqual([]);
+  }, 120_000);
+
+  for (const [w, hgt, touch] of [[1440, 900, false], [390, 844, true]] as const) {
+    it(`keeps every word in each W3 options bar whole and 12 px or larger at ${w} px`, async () => {
+      const p = await open(w, hgt, touch);
+      await sample(p);
+      const bad: string[] = [];
+      for (const id of ['tool.lasso', 'tool.lasso-poly', 'tool.magic-wand', 'tool.quick-select', 'tool.gradient', 'tool.bucket', 'tool.magic-eraser', 'tool.bg-eraser',
+        'tool.color-replace', 'tool.history-brush', 'tool.clone', 'tool.heal', 'tool.spot-heal', 'tool.patch', 'tool.red-eye', 'tool.dodge', 'tool.burn', 'tool.sponge',
+        'tool.blur', 'tool.sharpen', 'tool.smudge', 'tool.type', 'tool.rect', 'tool.rounded-rect', 'tool.ellipse', 'tool.polygon', 'tool.line']) {
+        await run(p, id);
+        await p.waitForTimeout(40);
+        bad.push(...(await p.evaluate((tool) => {
+          const bar = document.querySelector('[data-testid="options"]') as HTMLElement, b = bar.getBoundingClientRect(), out: string[] = [];
+          for (const el of Array.from(bar.querySelectorAll<HTMLElement>('button, label, span, output, select, input'))) {
+            const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+            if (!r.width || !r.height || cs.display === 'none' || cs.visibility === 'hidden') continue;
+            const name = `${tool} ${el.getAttribute('data-testid') ?? el.className} "${(el.textContent ?? '').trim().slice(0, 24)}"`;
+            const text = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim());
+            if (text && parseFloat(cs.fontSize) < 12) out.push('smaller than 12 px: ' + name);
+            if (text && el.scrollWidth > el.clientWidth + 1) out.push('cut: ' + name);
+            if (r.top < b.top - 1 || r.bottom > b.bottom + 1) out.push('clipped at the top or bottom: ' + name);
+          }
+          if (bar.scrollWidth > bar.clientWidth + 1 && !bar.dataset.more) out.push(tool + ': the bar scrolls without an edge cue');
+          return out;
+        }, id)));
+      }
+      expect(bad).toEqual([]);
+      if (touch) {
+        await run(p, 'tool.type');
+        await click(p, 300, 420);
+        await p.keyboard.type('Hello');
+        await p.click('[data-testid="text-done"]');
+        await p.waitForTimeout(150);
+        await p.locator('[data-testid="w3-rasterize"]').scrollIntoViewIfNeeded();
+        await p.waitForTimeout(100);
+        const ok = await p.evaluate(() => {
+          const el = document.querySelector('[data-testid="w3-rasterize"]') as HTMLElement, r = el.getBoundingClientRect();
+          const bar = document.querySelector('[data-testid="options"]') as HTMLElement, b = bar.getBoundingClientRect();
+          return { inView: r.left >= -1 && r.right <= innerWidth + 1, inBar: r.top >= b.top - 1 && r.bottom <= b.bottom + 1, whole: el.scrollWidth <= el.clientWidth + 1, cue: !!bar.dataset.more };
+        });
+        expect(ok).toEqual({ inView: true, inBar: true, whole: true, cue: true });
+        await shot(p, 'w3b-phone-text-bar.png');
+      }
+      expect(errors).toEqual([]);
+    }, 180_000);
+  }
 });

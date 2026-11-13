@@ -383,3 +383,11 @@
 .fpe-kernel input{width:100%;min-width:0;min-height:32px;padding:4px 2px;text-align:center;font:inherit;color:var(--text);background:var(--input);border:1px solid var(--line);border-radius:6px}
 .fpe-actions .fpe-before{margin-right:auto}
 .fpe-before[aria-pressed=true]{background:var(--accent-bg);border-color:var(--accent)}
+/* W3b: the options bar keeps every control whole and scrolls sideways when too long, with a soft fade on the side that has more */
+.fpe-options>:not(.fpe-spacer){flex-shrink:0}
+.fpe-options[data-more=right]{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.fpe-options[data-more=left]{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(270deg,#000 calc(100% - 44px),transparent)}
+.fpe-options[data-more=both]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent)}
+/* W3b: a dialog moves by its title bar */
+.fpe-dlg-head{touch-action:none;cursor:move;user-select:none}
+.fpe-dlg-head button{cursor:pointer}

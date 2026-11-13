@@ -375,6 +375,7 @@ export class Editor {
       (this.busyEl = h('div', { class: 'fpe-busy', role: 'status', hidden: true }, h('span', { class: 'fpe-spinner', 'aria-hidden': 'true' }), 'Working…')),
       search, this.undoBtn, this.redoBtn, exp);
     this.optionsBar = h('div', { class: 'fpe-options', role: 'toolbar', 'aria-label': 'Tool options', 'data-testid': 'options' });
+    this.optionsBar.addEventListener('scroll', () => this.cueOptions(), { passive: true });
     this.toolsBar = h('div', { class: 'fpe-tools', role: 'toolbar', 'aria-label': 'Tools', 'data-testid': 'tools' });
     this.buildTools();
     this.tabsEl = h('div', { class: 'fpe-tabs', role: 'tablist', 'aria-label': 'Open pictures', 'data-testid': 'doc-tabs' });
@@ -1208,6 +1209,17 @@ export class Editor {
     this.queueNav();
   }
 
+  /** Keeps a picture rectangle, plus a margin of screen pixels round it, inside the picture area and clear of the zoom buttons. */
+  fitBox(r: { x: number; y: number; w: number; h: number }, m: number): void {
+    const v = this.view, zb = this.stage.querySelector('.fpe-zoom')?.getBoundingClientRect().height ?? 0;
+    const W = this.stage.clientWidth, H = this.stage.clientHeight - (zb ? zb + 10 : 0);
+    const x0 = v.panX + r.x * v.zoom, y0 = v.panY + r.y * v.zoom, x1 = x0 + r.w * v.zoom, y1 = y0 + r.h * v.zoom;
+    if (x0 >= m && y0 >= m && x1 <= W - m && y1 <= H - m) return;
+    const z = clamp(Math.min((W - m * 2) / Math.max(1, r.w), (H - m * 2) / Math.max(1, r.h), v.zoom), 0.01, 16);
+    this.fitted = false;
+    this.setView({ zoom: z, panX: Math.round(W / 2 - (r.x + r.w / 2) * z), panY: Math.round(H / 2 - (r.y + r.h / 2) * z) });
+  }
+
   // ---------- rendering ----------
   private markDirty(r: Rect | null): void {
     if (!r || !this.doc) return;
@@ -1287,8 +1299,8 @@ export class Editor {
     s.size.textContent = d ? `${d.width} × ${d.height} px` : 'No picture open';
     s.pos.textContent = d && p ? `x ${Math.floor(p.x)}, y ${Math.floor(p.y)}` : '';
     s.sel.textContent = d?.selection ? (this.hole ? 'Everything except a box selected' : `Selected ${d.selection.w} × ${d.selection.h} px`) : '';
-    const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? '');
-    s.hint.textContent = r ? `${r.plain}: ${r.help}` : '';
+    const r = BY_ID.get(Object.keys(TOOLS).find((k) => TOOLS[k] === this.tool) ?? ''), act = this.tk?.activity() ?? null;
+    s.hint.textContent = act ? `${act.plain}: ${act.help}` : r ? `${r.plain}: ${r.help}` : '';
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -1355,7 +1367,7 @@ export class Editor {
       tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
       slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
       forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
-      paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush),
+      paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
     };
   }
   private toolSheet(id: string, title: string, body: HTMLElement): void {
@@ -1587,7 +1599,9 @@ export class Editor {
     const o = this.optionsBar, t = this.tool, d = this.doc;
     o.replaceChildren();
     const id = Object.keys(TOOLS).find((k) => TOOLS[k] === t), r = id ? BY_ID.get(id) : undefined;
-    if (r) o.append(h('span', { class: 'fpe-opt-tool', 'data-tipcmd': r.id }, icon(GROUP_ICON[r.place] ?? 'square'), this.names(r.plain, r.pro)));
+    const act = this.tk?.activity() ?? null;
+    if (act) o.append(h('span', { class: 'fpe-opt-tool', 'data-testid': 'opt-tool', 'data-help-title': `${act.plain} · ${act.pro}`, 'data-help': act.help }, icon('move'), this.names(act.plain, act.pro)));
+    else if (r) o.append(h('span', { class: 'fpe-opt-tool', 'data-testid': 'opt-tool', 'data-tipcmd': r.id }, icon(GROUP_ICON[r.place] ?? 'square'), this.names(r.plain, r.pro)));
     const hint = (s: string): HTMLElement => h('span', { class: 'fpe-hint' }, s);
     const btn = (cmd: string, label: string, testid?: string): HTMLElement => this.cmdBtn(cmd, null, label, testid ? { 'data-testid': testid } : {});
     if (t === 'brush' || t === 'eraser' || t === 'pencil') {
@@ -1641,6 +1655,13 @@ export class Editor {
     }
     this.tk?.decorate(o, t);
     this.syncChrome();
+    this.cueOptions();
+  }
+  /** The options bar scrolls sideways when it is too long (phones), with a soft fade on the side that has more, like the panel tabs. */
+  private cueOptions(): void {
+    const o = this.optionsBar, max = o.scrollWidth - o.clientWidth;
+    const more = max <= 1 ? '' : o.scrollLeft <= 1 ? 'right' : o.scrollLeft >= max - 1 ? 'left' : 'both';
+    if (more) o.dataset.more = more; else delete o.dataset.more;
   }
   private slider(label: string, help: string, min: number, max: number, value: number, unit: string, onInput: (v: number) => void, testid: string): HTMLElement {
     const id = `fpe-${this.uid}-${testid}`;
@@ -2081,8 +2102,9 @@ export class Editor {
     const s = this.session, dlg = this.dlgEl;
     if (!s || s.def.instant) { dlg.hidden = true; dlg.replaceChildren(); this.dlgCanvas = null; return; }
     const r = BY_ID.get(s.id) as Row, params = (s.spec.params ??= {}), id = `fpe-${this.uid}-a`;
-    const kids: Node[] = [h('div', { class: 'fpe-dlg-head' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
-      iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() })),
+    const kids: Node[] = [this.dragHead(h('div', { class: 'fpe-dlg-head', 'data-testid': 'dialog-head', 'data-help-title': 'Move this box',
+      'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
+      iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
       h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     this.dlgCanvas = null;
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
@@ -2701,8 +2723,67 @@ export class Editor {
     const t = this.toastEl;
     t.textContent = msg;
     t.setAttribute('data-on', '');
+    this.placeToast();
     clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => t.removeAttribute('data-on'), ms);
+  }
+
+  /**
+   * One rule for every toast: inside the picture area, never over the zoom buttons, an open dialog, a panel sheet or any bar.
+   * Tried at the top of the picture area, then at its bottom, across its width or beside an open dialog.
+   */
+  private placeToast(): void {
+    const t = this.toastEl, host = (t.offsetParent as HTMLElement | null) ?? this.root, hr = host.getBoundingClientRect(), st = this.stage.getBoundingClientRect();
+    const box = (el: Element | null | undefined): DOMRect | null => {
+      if (!el || (el as HTMLElement).hidden) return null;
+      const cs = getComputedStyle(el), b = el.getBoundingClientRect();
+      return cs.display === 'none' || cs.visibility === 'hidden' || !b.width || !b.height ? null : b;
+    };
+    const dlg = box(this.dlgEl);
+    const avoid = [this.stage.querySelector('.fpe-zoom'), this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'),
+      ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
+    const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
+    if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);
+    spans.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
+    Object.assign(t.style, { transform: 'none', bottom: 'auto', right: 'auto' });
+    const put = (x: number, y: number): void => { t.style.left = Math.round(x - hr.left) + 'px'; t.style.top = Math.round(y - hr.top) + 'px'; };
+    for (const [L, R] of spans) {
+      const w = R - L;
+      if (w < 140) continue;
+      t.style.maxWidth = Math.min(560, w) + 'px';
+      const tw = t.offsetWidth, th = t.offsetHeight, x = L + (w - tw) / 2;
+      for (const y of [st.top + pad, st.bottom - pad - th]) {
+        if (y < st.top || y + th > st.bottom) continue;
+        if (avoid.some((a) => a.left < x + tw && a.right > x && a.top < y + th && a.bottom > y)) continue;
+        put(x, y);
+        return;
+      }
+    }
+    // No clear spot (a full panel sheet covers the picture): the top of the picture area.
+    t.style.maxWidth = Math.min(560, Math.max(140, st.width - pad * 2)) + 'px';
+    put(st.left + (st.width - t.offsetWidth) / 2, st.top + pad);
+  }
+  /** Lets a dialog be dragged by its title bar, so it never has to cover the part of the picture being changed. */
+  private dragHead(head: HTMLElement): HTMLElement {
+    head.addEventListener('pointerdown', (e) => {
+      const box = head.closest<HTMLElement>('.fpe-dlg');
+      if (!box || e.button > 0 || (e.target as Element).closest('button, input, select, a')) return;
+      const host = (box.offsetParent as HTMLElement | null) ?? this.root, hr = host.getBoundingClientRect(), b = box.getBoundingClientRect();
+      const dx = e.clientX - b.left, dy = e.clientY - b.top;
+      Object.assign(box.style, { left: Math.round(b.left - hr.left) + 'px', top: Math.round(b.top - hr.top) + 'px', width: Math.round(b.width) + 'px', right: 'auto', bottom: 'auto' });
+      box.dataset.moved = '';
+      head.setPointerCapture(e.pointerId);
+      const move = (ev: PointerEvent): void => {
+        box.style.left = Math.round(clamp(ev.clientX - hr.left - dx, 0, Math.max(0, hr.width - b.width))) + 'px';
+        box.style.top = Math.round(clamp(ev.clientY - hr.top - dy, 0, Math.max(0, hr.height - b.height))) + 'px';
+      };
+      const up = (): void => { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up); };
+      head.addEventListener('pointermove', move);
+      head.addEventListener('pointerup', up);
+      head.addEventListener('pointercancel', up);
+      e.preventDefault();
+    });
+    return head;
   }
 
   // ---------- public API ----------

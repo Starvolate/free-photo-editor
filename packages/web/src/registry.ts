@@ -56,6 +56,7 @@ edit.undo | Undo | Undo | Take back the last change. | undo, mistake, go back, o
 edit.redo | Redo | Redo | Bring back a change you undid. | redo, again | R | 1 | Ctrl+Shift+Z
 edit.history-back | Step back | Step backward | Go one step back in the History list. | previous step | R | W1
 edit.history-forward | Step forward | Step forward | Go one step forward in the History list. | next step | R | W1
+edit.history-brush-step | Choose the step to paint back | History brush source | Pick which History step the history brush paints from; today it paints the picture as opened. | paint back from step, history brush source | P | 4
 edit.fade | Soften the last change | Fade | Make the last filter or paint change weaker. | weaker, fade, reduce effect | P | 13
 --
 edit.cut | Cut | Cut | Move the selected part of this layer to the clipboard. | cut out | R | W1 | Ctrl+X
@@ -459,8 +460,8 @@ tool.mixer | Blend paint | Mixer brush | Paint that mixes with the colours alrea
 @Tools > Clone = Copy an area | Clone stamp | Paint with pixels copied from another spot.
 tool.clone | Copy an area | Clone stamp | Alt-click a source, then paint to copy it somewhere else. | clone, copy area, duplicate object | R | W3 | S
 tool.pattern-stamp | Paint a pattern | Pattern stamp | Paint with a repeating pattern. | pattern brush | P | 4
-@Tools > History brush = Paint back | History brush | Paint parts back to an earlier step.
-tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked before. | undo part | R | W3 | Y
+@Tools > History brush = Paint back | History brush | Paint parts back to how they looked when the picture was opened.
+tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked when it was opened. | undo part, paint back, restore part | R | W3 | Y
 tool.art-history | Painterly strokes | Art history brush | Paint quick artistic strokes from an earlier step. | art brush | P | 4
 @Tools > Erase = Erase | Eraser | Remove pixels.
 tool.eraser | Eraser | Eraser | Rub out pixels so they become see-through. | erase, rub out | R | 1 | E

@@ -100,8 +100,8 @@ export function shapeBounds(s: ShapeContent): Rect {
 export function moveContent(c: LayerContent, dx: number, dy: number): LayerContent {
   if (!dx && !dy) return c;
   if (c.kind === 'text') {
-    const w = c.warp?.path ? { ...c.warp, path: c.warp.path.map((p) => ({ x: p.x + dx, y: p.y + dy })) } : c.warp;
-    return w ? { ...c, x: c.x + dx, y: c.y + dy, warp: w } : { ...c, x: c.x + dx, y: c.y + dy };
+    const w = c.warp; // text along a line: its line moves too
+    return { ...c, x: c.x + dx, y: c.y + dy, ...(w?.path && { warp: { ...w, path: w.path.map((p) => ({ x: p.x + dx, y: p.y + dy })) } }) };
   }
   return { ...c, x0: c.x0 + dx, y0: c.y0 + dy, x1: c.x1 + dx, y1: c.y1 + dy };
 }

@@ -401,12 +401,11 @@ HANDLERS['select.to-path'] = w3('select.to-path', hasSel);
 const hasPath = (e: Editor): boolean => !!e.doc?.paths?.some((p) => p.subpaths.some((s) => s.anchors.length > 1));
 for (const id of ['path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen',
   'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke']) HANDLERS[id] = w3(id, hasPath);
-for (const id of ['shape.spiral-star', 'shape.qr']) HANDLERS[id] = w3(id);
 HANDLERS['panel.paths'] = H((e) => e.togglePanelShown('paths'), always, (e) => e.panelShown('paths'));
-// Add text clears a pending "Add up-down text" in the tool kit, so the next words are straight again.
-HANDLERS['type.add'] = w3('type.add'); // through the same toolkit load as Add up-down text, so the two run in click order
-// Shapes & text, type: bent text and text along a line (typekit.ts, loaded by the tool kit on first use).
-for (const id of ['type.warp', 'type.path', 'type.find', 'type.smooth', 'type.add-vertical', 'type.to-shape', 'type.styles', 'type.opentype', 'type.in-shape']) HANDLERS[id] = w3(id);
+// Shapes & text through the tool kit: star and spiral and QR codes (pathops.ts), and type (typekit.ts, loaded on first use).
+// Add text goes through the same toolkit load as Add up-down text, so the two run in click order and Add text clears a
+// pending up-down. One space-split list keeps the first screen small.
+for (const id of 'shape.spiral-star shape.qr type.add type.warp type.path type.find type.smooth type.add-vertical type.to-shape type.styles type.opentype type.in-shape'.split(' ')) HANDLERS[id] = w3(id);
 // Batch view-tools: guides, snapping, the pixel grid, print size, composition guides and the sharp parts (viewkit.ts).
 const vf = (e: Editor) => e.tk?.viewFlags() ?? null;
 const vt = (id: string, enabled: Handler['enabled'], on: (f: NonNullable<ReturnType<typeof vf>>) => boolean): Handler =>

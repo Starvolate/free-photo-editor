@@ -5,6 +5,7 @@
  * Loading this module also lets Free transform and Picture size redraw smart layers from their kept original.
  */
 import { activeLayer, type Command, type Doc, type Layer } from '@free-photoeditor/core';
+import { h } from './dom';
 import { canMakeSmart, convertToSmart, installSmartHooks, rasterizeSmart } from '@free-photoeditor/core/smart';
 
 export interface SmartHost {
@@ -39,3 +40,6 @@ export function runSmart(id: string, host: SmartHost): void {
     if (c) host.push(c, true);
   }
 }
+/** The "Smart" tag on a smart layer's row in the Layers panel (styled here, so the first screen's CSS stays as it was). */
+export const tag = (): HTMLElement => h('span', { class: 'fpe-layer-tag', 'data-testid': 'smart-tag', title: 'Smart layer: keeps its original pixels',
+  style: 'flex:none;font-size:12px;line-height:18px;padding:0 5px;border:1px solid var(--line);border-radius:4px;color:var(--muted)' }, 'Smart');

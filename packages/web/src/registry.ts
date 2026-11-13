@@ -232,10 +232,10 @@ layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mas
 layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | P | 6
 layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text, clipping mask | R | 2 | Ctrl+Alt+G
 @Layer > Smart layer = Smart layer | Keep-original layer | A layer that keeps its original pixels, so resizing never loses quality.
-layer.smart-convert | Make a smart layer | Keep-original layer | Keep the layer's original pixels safe: resize or turn it as often as you like and get them back exactly. PSD files keep it as plain pixels. | smart object, convert to smart object, protect pixels, resize without losing quality | R | 3
+layer.smart-convert | Make a smart layer | Keep-original layer | Keep the layer's original pixels safe from resizing; PSD keeps plain pixels. | smart object, convert to smart object | R | 3
 layer.smart-edit | Edit the contents | Open the original | Open the original pixels to change them. | edit smart object, edit contents | P | 3
 layer.smart-replace | Replace the contents | Swap the original | Swap the contents for another picture. | mockup, replace contents | P | 3
-layer.smart-rasterize | Turn back into pixels | Flatten to pixels | Make the smart layer an ordinary layer you can paint on; its kept original goes. | rasterize, rasterize smart object | R | 3
+layer.smart-rasterize | Turn back into pixels | Flatten to pixels | Make the smart layer an ordinary layer. | rasterize, rasterize smart object | R | 3
 @Layer
 layer.rasterize | Turn into plain pixels | Rasterize layer | Make text, shapes or effects into ordinary pixels. | flatten text | R | W3
 --

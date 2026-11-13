@@ -46,9 +46,10 @@ let browser: Browser;
 let server: Server;
 let url = '';
 const errors: string[] = [];
-type St = { width: number; height: number; step: number; layers: { kind: string }[] };
+// The document's size is in state().info (state() itself has no width or height).
+type St = { info: { width: number; height: number }; step: number; layers: { kind: string }[] };
 const st = (p: Page): Promise<St> => p.evaluate(() => (window as unknown as Win).fpe.state() as unknown as St);
-const whole = (p: Page): Promise<number> => p.evaluate(() => { const s = (window as unknown as Win).fpe.state() as unknown as St; return (window as unknown as Win).fpe.checksum(0, 0, s.width, s.height); });
+const whole = (p: Page): Promise<number> => p.evaluate(() => { const s = (window as unknown as Win).fpe.state() as unknown as St; return (window as unknown as Win).fpe.checksum(0, 0, s.info.width, s.info.height); });
 async function fresh(p: Page): Promise<void> {
   await p.reload();
   await p.waitForFunction(() => !!(window as unknown as Win).fpe);
@@ -62,7 +63,7 @@ async function pictureSize(p: Page, w: number, h: number): Promise<void> {
   await p.fill('[data-testid="size-w"]', String(w));
   await p.fill('[data-testid="size-h"]', String(h));
   await p.click('[data-testid="size-apply"]');
-  await p.waitForFunction((x) => { const s = (window as unknown as Win).fpe.state() as unknown as St; return s.width === x[0] && s.height === x[1]; }, [w, h]);
+  await p.waitForFunction((x) => { const s = (window as unknown as Win).fpe.state() as unknown as St; return s.info.width === x[0] && s.info.height === x[1]; }, [w, h]);
 }
 
 const suite = CHROME ? describe : describe.skip;
@@ -88,7 +89,7 @@ suite('Smart layers (headless Chrome)', () => {
 
     // A plain layer loses detail on the way down and back.
     await fresh(p);
-    const orig = await whole(p), { width: W, height: H } = await st(p);
+    const orig = await whole(p), { width: W, height: H } = (await st(p)).info;
     await pictureSize(p, Math.round(W / 2), Math.round(H / 2));
     await pictureSize(p, W, H);
     expect(await whole(p)).not.toBe(orig);

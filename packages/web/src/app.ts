@@ -1686,7 +1686,7 @@ export class Editor {
       return false;
     }
     if (l.kind === 'smart' && pixels && !(this.maskTarget && l.mask)) {
-      this.toast(`"${l.name}" is a smart layer: it keeps its original pixels. To paint on it, choose Turn back into pixels (Effects & masks, Live effects).`);
+      this.toast(`"${l.name}" is a smart layer: choose Turn back into pixels to paint on it.`);
       return false;
     }
     const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
@@ -2230,7 +2230,7 @@ export class Editor {
       : l.kind === 'fill' ? swatch()
       : h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
     const m = l.mask;
-    if (!m) return l.kind === 'smart' ? [pic, h('span', { class: 'fpe-layer-tag', 'data-testid': 'smart-tag', title: 'Smart layer: keeps its original pixels' }, 'Smart')] : [pic];
+    if (!m) return l.kind === 'smart' && this.smartLib ? [pic, this.smartLib.tag()] : [pic];
     const maskOn = on && this.maskTarget;
     return [
       h('button', { type: 'button', class: 'fpe-btn fpe-thumb-btn' + (on && !maskOn ? ' fpe-target' : ''), 'aria-pressed': String(on && !maskOn), 'data-testid': 'layer-pixels',
@@ -3397,7 +3397,7 @@ export class Editor {
     try {
       const m = this.smartLib ?? (this.smartLib = await import('./smart'));
       m.ensureSmartHooks();
-      if (id) m.runSmart(id, this.toolHost());
+      if (id) m.runSmart(id, this.toolHost()); else this.renderLayers();
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   async fileMore(id: string): Promise<void> {

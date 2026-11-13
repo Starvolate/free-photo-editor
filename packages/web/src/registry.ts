@@ -17,8 +17,8 @@ file.new | New picture | New | Start an empty picture of any size. | blank, empt
 file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | R | 1 | Ctrl+O
 file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | R | 1 | Ctrl+Shift+O
 file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | R | W1
-file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | P | 7
-file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | P | 8
+file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | R | 7
+file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | R | 8
 file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | P | 8
 --
 file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | R | 8
@@ -51,8 +51,8 @@ file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression
 file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | R | 7
 file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | R | 7
 @File
-file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | P | 7
-file.print | Print | Print | Print the picture on paper. | printer, paper | P | 8
+file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | R | 7
+file.print | Print | Print | Print the picture on paper. | printer, paper | R | 8
 file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | P | 7
 @File > Automate = Do many at once | Automate | Repeat a job on many pictures.
 file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | P | 13

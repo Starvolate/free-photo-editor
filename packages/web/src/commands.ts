@@ -401,6 +401,8 @@ const canFx = (e: Editor): boolean => { const a = e.active(); return !!a && hasP
 for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-shadow'], ['outer-glow', 'outer-glow'], ['inner-glow', 'inner-glow'],
   ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
+// File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
+for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

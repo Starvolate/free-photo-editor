@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 308 Ready, 367 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 305 Ready, 370 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 192 | 458 | 0 |
-| Ready today | 308 | 25 | 142 | 141 | 0 |
+| All functions | 675 | 25 | 187 | 463 | 0 |
+| Ready today | 305 | 25 | 141 | 139 | 0 |
 
 ## The Task ribbon
 
@@ -27,7 +27,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
-| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
+| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 8 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 13 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (30 Ready, 11 Planned)
+## File (34 Ready, 7 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -112,8 +112,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | File | File sheet | Ready | 1 | Ctrl+O |
 | file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | File | File sheet | Ready | 1 | Ctrl+Shift+O |
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
-| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Planned | 7 |  |
-| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Planned | 8 |  |
+| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
+| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
 | file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
@@ -141,8 +141,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression. | bmp, bitmap, windows picture | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | File › Export as | Export sheet | Ready | 7 |  |
-| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Planned | 7 |  |
-| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Planned | 8 |  |
+| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Ready | 7 |  |
+| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Ready | 8 |  |
 | file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | File | File sheet | Planned | 7 |  |
 | file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
 | file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (59 Ready, 13 Planned)
+## Layer (52 Ready, 20 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -268,16 +268,16 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.duplicate | Duplicate layer | Duplicate layer | Make an exact copy of the active layer. | copy layer, clone layer | Layer | Effects & masks › New · More list | Ready | 1 |  |
 | layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | Layer | Arrange layers › This layer · More list | Ready | 1 |  |
 | layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | Layer | Arrange layers › This layer · small button | Ready | W1 |  |
-| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
-| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
-| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
-| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
+| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
-| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
+| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
 | layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
 | layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |

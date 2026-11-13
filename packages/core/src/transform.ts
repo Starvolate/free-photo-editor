@@ -4,7 +4,8 @@
  * Free transform and friends: a layer (or the selection) is redrawn so its four corners land anywhere. Scale, turn, slant,
  * pull corners and perspective are all the same map (a 3 × 3 projective matrix). Also lining layers up and spacing them out.
  */
-import { docRect, findLayer, geomOf, setGeom, type Bitmap, type Doc, type Layer, type Selection } from './document';
+import { docRect, findLayer, geomOf, setGeom, type Bitmap, type Doc, type Layer, type LayerMask, type Selection } from './document';
+import { placeLayer, plusMask } from './mask';
 import { intersect, type Point, type Rect } from './geometry';
 import { geomCommand, propsCommand, type Command } from './history';
 
@@ -90,13 +91,30 @@ export function warpBitmap(src: Bitmap, to: Quad, smooth = true, limit?: Rect): 
   }
   return { x: b.x, y: b.y, width: b.w, height: b.h, data: out };
 }
-/** Free transform of a layer: its corners go to `to`. Works far past the canvas but not without limit. */
+/** A linked mask redrawn by the same map as its layer (the layer's box, before the change, goes to `to`). */
+export function warpMask(m: LayerMask, l: { x: number; y: number; width: number; height: number }, to: Quad, smooth: boolean, limit?: Rect): LayerMask {
+  const H = m.width && m.height ? homography(quadOfRect({ x: 0, y: 0, w: l.width, h: l.height }), to) : null;
+  if (!H) return m;
+  const q = quadOfRect({ x: m.x - l.x, y: m.y - l.y, w: m.width, h: m.height }).map((p) => mapPoint(H, p.x, p.y)) as Quad;
+  const inv = m.outside === 255, src = new Uint8ClampedArray(m.data.length * 4);
+  for (let i = 0; i < m.data.length; i++) src[i * 4 + 3] = inv ? 255 - m.data[i] : m.data[i];
+  const g = warpBitmap({ width: m.width, height: m.height, data: src }, q, smooth, limit);
+  if (!g) return { ...m, x: 0, y: 0, width: 0, height: 0, data: new Uint8Array(0) };
+  const data = new Uint8Array(g.width * g.height);
+  for (let i = 0; i < data.length; i++) data[i] = inv ? 255 - g.data[i * 4 + 3] : g.data[i * 4 + 3];
+  return { ...m, x: g.x, y: g.y, width: g.width, height: g.height, data };
+}
+/** Free transform of a layer: its corners go to `to`. Works far past the canvas but not without limit. A linked mask follows. */
 export function transformLayer(doc: Doc, l: Layer, to: Quad, label = 'Free transform', smooth = true): Command | null {
-  const before = geomOf(l), pad = Math.max(doc.width, doc.height);
-  const g = warpBitmap({ width: l.width, height: l.height, data: l.data }, to, smooth, { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad });
+  const before = geomOf(l), pad = Math.max(doc.width, doc.height), limit = { x: -pad, y: -pad, w: doc.width + 2 * pad, h: doc.height + 2 * pad };
+  const g = warpBitmap({ width: l.width, height: l.height, data: l.data }, to, smooth, limit);
   if (!g) return null;
+  const mb = l.mask, ma = mb?.linked ? warpMask(mb, l, to, smooth, limit) : mb;
   setGeom(l, g);
-  return geomCommand(label, l.id, before, geomOf(l));
+  const cmd = geomCommand(label, l.id, before, geomOf(l));
+  if (ma === mb) return cmd;
+  l.mask = ma;
+  return plusMask(cmd, l.id, mb, ma);
 }
 /** Select > Transform selection: the selection's outline is redrawn so its box's corners land on `to`. */
 export function transformSelection(sel: Selection, to: Quad, docW: number, docH: number): Selection | null {
@@ -159,7 +177,7 @@ export function alignShift(b: Rect, to: Rect, how: AlignEdge): Point {
 function moveBy(l: Layer, dx: number, dy: number, label: string): Command | null {
   if (!dx && !dy) return null;
   const before = { x: l.x, y: l.y }, after = { x: l.x + dx, y: l.y + dy };
-  Object.assign(l, after);
+  placeLayer(l, after.x, after.y);
   return propsCommand(l.id, before, after, label);
 }
 /** Line up a layer's visible part with `to` (the selection or the whole picture). */

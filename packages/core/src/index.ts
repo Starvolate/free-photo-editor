@@ -6,6 +6,8 @@ export * from './color';
 export * from './text';
 export * from './credit';
 export * from './blend';
+export * from './composite';
+export * from './mask';
 export * from './document';
 export * from './history';
 export * from './stroke';

@@ -6,6 +6,7 @@
  */
 import { findLayer, indexOfLayer, readRegion, setGeom, writeRegion, type Doc, type Layer, type LayerGeom, type Selection } from './document';
 import type { Rect } from './geometry';
+import { placeLayer } from './mask';
 
 export interface Command { readonly label: string; readonly bytes: number; undo(doc: Doc): void; redo(doc: Doc): void; }
 interface Entry { cmd: Command; id: number; }
@@ -118,12 +119,19 @@ export function reorderCommand(from: number, to: number, label = 'Move layer'): 
   const move = (doc: Doc, a: number, b: number): void => { const [l] = doc.layers.splice(a, 1); doc.layers.splice(b, 0, l); };
   return { label, bytes: 0, redo(doc) { move(doc, from, to); }, undo(doc) { move(doc, to, from); } };
 }
-export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y' | 'locked'>>;
+export type LayerProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'blendMode' | 'x' | 'y' | 'locked' | 'mask'>>;
+/** Set layer properties. A move (x or y) carries a linked mask with it; a mask is swapped as a whole (a value object). */
+export function applyProps(l: Layer, p: LayerProps): void {
+  const { x, y, mask, ...rest } = p;
+  if ('mask' in p) { if (mask) l.mask = mask; else delete l.mask; }
+  if (x !== undefined || y !== undefined) placeLayer(l, x ?? l.x, y ?? l.y);
+  Object.assign(l, rest);
+}
 export function propsCommand(layerId: string, before: LayerProps, after: LayerProps, label = 'Layer change'): Command {
   return {
     label, bytes: 0,
-    undo(doc) { const l = findLayer(doc, layerId); if (l) Object.assign(l, before); },
-    redo(doc) { const l = findLayer(doc, layerId); if (l) Object.assign(l, after); },
+    undo(doc) { const l = findLayer(doc, layerId); if (l) applyProps(l, before); },
+    redo(doc) { const l = findLayer(doc, layerId); if (l) applyProps(l, after); },
   };
 }
 export interface DocState { width: number; height: number; layers: Layer[]; activeId: string; selection: Selection | null; }
@@ -137,6 +145,6 @@ export function restoreDoc(doc: Doc, s: DocState): void {
 }
 export function docCommand(label: string, before: DocState, after: DocState): Command {
   let bytes = 0;
-  for (const l of after.layers) bytes += l.data.length;
+  for (const l of after.layers) bytes += l.data.length + (l.mask?.data.length ?? 0);
   return { label, bytes, undo(doc) { restoreDoc(doc, before); }, redo(doc) { restoreDoc(doc, after); } };
 }

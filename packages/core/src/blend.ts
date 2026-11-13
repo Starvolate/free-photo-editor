@@ -4,8 +4,7 @@
  * Blend modes: how a layer mixes with what is below it. The separable modes and the colour modes
  * follow the public W3C "Compositing and Blending Level 1" formulas; alpha uses source-over.
  */
-import type { Rect } from './geometry';
-import type { RGBA } from './color';
+import type { LayerMask } from './document';
 
 export const BLEND_MODES = ['normal', 'dissolve', 'darken', 'multiply', 'color-burn', 'linear-burn', 'darker-color',
   'lighten', 'screen', 'color-dodge', 'linear-dodge', 'lighter-color', 'overlay', 'soft-light', 'hard-light',
@@ -42,7 +41,7 @@ const softLight: Sep = (b, s) => {
   const d = b <= 0.25 ? ((16 * b - 12) * b + 4) * b : Math.sqrt(b);
   return b + (2 * s - 1) * (d - b);
 };
-const SEPARABLE: Partial<Record<BlendMode, Sep>> = {
+export const SEPARABLE: Partial<Record<BlendMode, Sep>> = {
   normal: (_b, s) => s, dissolve: (_b, s) => s, multiply: (b, s) => b * s, screen,
   overlay: (b, s) => hardLight(s, b), darken: (b, s) => Math.min(b, s), lighten: (b, s) => Math.max(b, s),
   'color-dodge': colorDodge, 'color-burn': colorBurn, 'hard-light': hardLight, 'soft-light': softLight,
@@ -81,7 +80,7 @@ function setSat(c: Float64Array, s: number): void {
   c[mid] = ((c[mid] - c[lo]) * s) / (c[hi] - c[lo]);
   c[hi] = s; c[lo] = 0;
 }
-function nonSeparable(mode: BlendMode, br: number, bg: number, bb: number, sr: number, sg: number, sb: number, o: Float64Array): void {
+export function nonSeparable(mode: BlendMode, br: number, bg: number, bb: number, sr: number, sg: number, sb: number, o: Float64Array): void {
   const src = (): void => { o[0] = sr; o[1] = sg; o[2] = sb; };
   const back = (): void => { o[0] = br; o[1] = bg; o[2] = bb; };
   switch (mode) {
@@ -94,64 +93,15 @@ function nonSeparable(mode: BlendMode, br: number, bg: number, bb: number, sr: n
     default: src();
   }
 }
-function hash01(x: number, y: number): number {
+export function hash01(x: number, y: number): number {
   let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** The parts of a layer the compositor reads. */
+/** The parts of a layer the compositor reads. The mask is optional, so callers that pass plain objects keep working. */
 export interface BlendLayer {
   visible: boolean; opacity: number; blendMode: BlendMode;
   x: number; y: number; width: number; height: number; data: Uint8ClampedArray;
-}
-
-/** Composite layers (index 0 = bottom) for one document rectangle. Returns rect-sized RGBA. */
-export function compositeRect(layers: readonly BlendLayer[], r: Rect, background: RGBA | null = null): Uint8ClampedArray {
-  const w = Math.max(0, r.w), h = Math.max(0, r.h);
-  const out = new Uint8ClampedArray(w * h * 4);
-  if (!w || !h) return out;
-  const acc = new Float32Array(w * 4);
-  const mix = new Float64Array(3);
-  const bR = background ? background.r / 255 : 0, bG = background ? background.g / 255 : 0;
-  const bB = background ? background.b / 255 : 0, bA = background ? background.a / 255 : 0;
-  const list = layers.filter((l) => l.visible && l.opacity > 0 && l.x < r.x + w && l.y < r.y + h && l.x + l.width > r.x && l.y + l.height > r.y);
-  for (let row = 0; row < h; row++) {
-    const y = r.y + row;
-    for (let i = 0; i < w * 4; i += 4) { acc[i] = bR; acc[i + 1] = bG; acc[i + 2] = bB; acc[i + 3] = bA; }
-    for (const L of list) {
-      const ly = y - L.y;
-      if (ly < 0 || ly >= L.height) continue;
-      const x0 = Math.max(r.x, L.x), x1 = Math.min(r.x + w, L.x + L.width);
-      if (x0 >= x1) continue;
-      const mode = L.blendMode;
-      const sep = SEPARABLE[mode];
-      const plain = mode === 'normal' || mode === 'dissolve';
-      const dissolve = mode === 'dissolve';
-      const d = L.data;
-      const k255 = L.opacity / 255;
-      let si = (ly * L.width + (x0 - L.x)) * 4;
-      let ai = (x0 - r.x) * 4;
-      for (let x = x0; x < x1; x++, si += 4, ai += 4) {
-        let as = d[si + 3] * k255;
-        if (as <= 0) continue;
-        if (dissolve) { if (hash01(x, y) >= as) continue; as = 1; }
-        const sr = d[si] / 255, sg = d[si + 1] / 255, sb = d[si + 2] / 255;
-        const ab = acc[ai + 3], br = acc[ai], bg = acc[ai + 1], bb = acc[ai + 2];
-        let mr = sr, mg = sg, mb = sb;
-        if (!plain && ab > 0) {
-          if (sep) { mr = sep(br, sr); mg = sep(bg, sg); mb = sep(bb, sb); }
-          else { nonSeparable(mode, br, bg, bb, sr, sg, sb, mix); mr = mix[0]; mg = mix[1]; mb = mix[2]; }
-          mr = (1 - ab) * sr + ab * mr; mg = (1 - ab) * sg + ab * mg; mb = (1 - ab) * sb + ab * mb;
-        }
-        const k = ab * (1 - as);
-        const ao = as + k;
-        acc[ai] = (as * mr + k * br) / ao; acc[ai + 1] = (as * mg + k * bg) / ao;
-        acc[ai + 2] = (as * mb + k * bb) / ao; acc[ai + 3] = ao;
-      }
-    }
-    const o = row * w * 4;
-    for (let i = 0; i < w * 4; i++) out[o + i] = acc[i] * 255;
-  }
-  return out;
+  mask?: LayerMask;
 }

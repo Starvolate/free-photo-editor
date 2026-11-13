@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** The document model: a size, layers from bottom (index 0) to top, the active layer and a selection. */
-import { compositeRect, type BlendMode } from './blend';
+import type { BlendMode } from './blend';
+import { compositeRect } from './composite';
 import { WHITE, type RGBA } from './color';
 import { contains, intersect, union, type Rect } from './geometry';
 import type { LayerContent } from './vector';
@@ -17,6 +18,25 @@ export interface Layer {
   data: Uint8ClampedArray;
   /** Text and shape layers: what the layer is made of, so it stays editable (vector.ts). */
   content?: LayerContent;
+  /** Hides parts of the layer without deleting pixels (mask.ts). A value object: a change replaces the whole object. */
+  mask?: LayerMask;
+}
+/** A layer mask: a grey picture over the document. 255 shows the layer, 0 hides it. */
+export interface LayerMask {
+  /** Document position of the painted part (may be 0 × 0). */
+  x: number; y: number; width: number; height: number;
+  /** width * height grey values: 255 shows, 0 hides. */
+  data: Uint8Array;
+  /** The value beyond the box (PSD "default colour"). */
+  outside: 0 | 255;
+  /** False = switched off: kept and saved, but not applied. */
+  enabled: boolean;
+  /** True = follows the layer when it moves or is transformed. */
+  linked: boolean;
+  /** 0..1: 1 = full strength, 0.5 = hidden parts half show. */
+  density: number;
+  /** Pixels: a soft edge added when drawn, never baked in. */
+  feather: number;
 }
 /** A selected area. Without `alpha` the whole rectangle is selected; `alpha` (w * h) allows soft or shaped masks. */
 export interface Selection extends Rect { alpha?: Uint8Array | null; }
@@ -52,7 +72,11 @@ export const layerRect = (l: Layer): Rect => ({ x: l.x, y: l.y, w: l.width, h: l
 export const indexOfLayer = (doc: Doc, id: string): number => doc.layers.findIndex((l) => l.id === id);
 export const findLayer = (doc: Doc, id: string): Layer | undefined => doc.layers.find((l) => l.id === id);
 export const activeLayer = (doc: Doc): Layer | undefined => findLayer(doc, doc.activeId);
-export const duplicateLayer = (l: Layer, name = l.name + ' copy'): Layer => ({ ...l, id: newId(), name, data: l.data.slice() });
+export function duplicateLayer(l: Layer, name = l.name + ' copy'): Layer {
+  const out: Layer = { ...l, id: newId(), name, data: l.data.slice() };
+  if (l.mask) out.mask = { ...l.mask, data: l.mask.data.slice() };
+  return out;
+}
 export function nextLayerName(doc: Doc): string {
   const names = new Set(doc.layers.map((l) => l.name));
   let n = doc.layers.length + 1;

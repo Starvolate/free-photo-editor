@@ -7,7 +7,7 @@
 import { initializeCanvas, readPsd, writePsd } from 'ag-psd';
 import type { BlendMode } from './blend';
 import { CREDIT } from './credit';
-import { createDocument, flatten, newId, type Doc, type Layer } from './document';
+import { createDocument, flatten, newId, type Doc, type Layer, type LayerMask } from './document';
 import { buildXmp } from './metadata';
 
 const TO_PSD: Record<BlendMode, string> = {
@@ -22,9 +22,13 @@ const FROM_PSD: Record<string, BlendMode> = { subtraction: 'subtract' };
 for (const [k, v] of Object.entries(TO_PSD)) FROM_PSD[v] = k as BlendMode;
 
 interface AgPixels { width: number; height: number; data: unknown; }
+interface AgMask {
+  top?: number; left?: number; bottom?: number; right?: number; defaultColor?: number; disabled?: boolean; fromVectorData?: boolean;
+  positionRelativeToLayer?: boolean; userMaskDensity?: number; userMaskFeather?: number; imageData?: AgPixels;
+}
 interface AgLayer {
   name?: string; hidden?: boolean; opacity?: number; blendMode?: string; left?: number; top?: number;
-  imageData?: AgPixels; children?: AgLayer[]; adjustment?: unknown; text?: unknown; mask?: unknown;
+  imageData?: AgPixels; children?: AgLayer[]; adjustment?: unknown; text?: unknown; mask?: AgMask; realMask?: AgMask; vectorMask?: unknown;
 }
 interface AgPsd { width: number; height: number; children?: AgLayer[]; imageData?: AgPixels; imageResources?: { xmpMetadata?: string }; }
 
@@ -47,6 +51,35 @@ function toRgba8(p: AgPixels | undefined): Uint8ClampedArray | null {
   return null;
 }
 
+/**
+ * The layer's pixel mask. With a shape (vector) mask as well, ag-psd gives the pixel mask as `realMask`; density and soft edge
+ * always sit on `mask`. The PSD flag "position relative to layer" can't be confirmed as Photoshop's link, so every mask opens
+ * linked (design 8.10). Density is stored in 1/255 steps, so it is read back to the nearest whole percent, as the slider sets it.
+ */
+function readMask(l: AgLayer, notes: Set<string>): LayerMask | undefined {
+  if (l.vectorMask || l.mask?.fromVectorData) notes.add('Shape masks (vector masks) were left out.');
+  const px = l.realMask ?? (l.mask && !l.mask.fromVectorData ? l.mask : undefined);
+  if (!px) return undefined;
+  const x = px.left ?? 0, y = px.top ?? 0, w = Math.max(0, (px.right ?? 0) - x), h = Math.max(0, (px.bottom ?? 0) - y);
+  const rgba = w && h && px.imageData?.width === w && px.imageData.height === h ? toRgba8(px.imageData) : null;
+  const data = new Uint8Array(rgba ? w * h : 0);
+  if (rgba) for (let i = 0; i < data.length; i++) data[i] = rgba[i * 4];
+  const p = l.mask ?? {}, dens = p.userMaskDensity === undefined ? 1 : Math.round(Math.max(0, Math.min(1, p.userMaskDensity)) * 100) / 100;
+  return { x, y, width: rgba ? w : 0, height: rgba ? h : 0, data, outside: (px.defaultColor ?? 0) >= 128 ? 255 : 0, enabled: !px.disabled,
+    linked: true, density: dens, feather: Math.max(0, p.userMaskFeather ?? 0) };
+}
+function writeMask(m: LayerMask): AgMask {
+  const out: AgMask = { top: m.y, left: m.x, bottom: m.y + m.height, right: m.x + m.width, defaultColor: m.outside, disabled: !m.enabled };
+  if (m.density !== 1) out.userMaskDensity = m.density;
+  if (m.feather) out.userMaskFeather = m.feather;
+  if (m.width && m.height) {
+    const d = new Uint8ClampedArray(m.data.length * 4);
+    for (let i = 0; i < m.data.length; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = m.data[i]; d[i * 4 + 3] = 255; }
+    out.imageData = { width: m.width, height: m.height, data: d };
+  }
+  return out;
+}
+
 export interface PsdImport { doc: Doc; notes: string[]; credit: string | null; }
 /** Read a PSD. `notes` lists, in plain words, anything that was simplified on the way in. */
 export function readPsdDocument(bytes: Uint8Array | ArrayBuffer): PsdImport {
@@ -64,12 +97,14 @@ export function readPsdDocument(bytes: Uint8Array | ArrayBuffer): PsdImport {
       const data = toRgba8(l.imageData);
       if (!data || !l.imageData) { if (l.adjustment) notes.add('Adjustment layers were left out.'); continue; }
       if (l.text) notes.add('Text layers were opened as pixels.');
-      if (l.mask) notes.add('Layer masks were left out.');
-      layers.push({
+      const layer: Layer = {
         id: newId(), name: l.name || 'Layer', visible: visible && !l.hidden, opacity: Math.max(0, Math.min(1, opacity * (l.opacity ?? 1))),
         blendMode: FROM_PSD[l.blendMode ?? 'normal'] ?? 'normal', x: l.left ?? 0, y: l.top ?? 0,
         width: l.imageData.width, height: l.imageData.height, data,
-      });
+      };
+      const mask = readMask(l, notes);
+      if (mask) layer.mask = mask;
+      layers.push(layer);
     }
   };
   walk(psd.children ?? [], true, 1);
@@ -96,6 +131,7 @@ export function writePsdDocument(doc: Doc, credit: string = CREDIT): Uint8Array 
       name: l.name, hidden: !l.visible, opacity: l.opacity, blendMode: TO_PSD[l.blendMode],
       left: l.x, top: l.y, right: l.x + l.width, bottom: l.y + l.height,
       imageData: { width: l.width, height: l.height, data: l.data },
+      ...(l.mask ? { mask: writeMask(l.mask) } : {}),
     })),
   };
   const out = writePsd(psd as never, { generateThumbnail: false, trimImageData: false } as never) as unknown as ArrayBuffer;

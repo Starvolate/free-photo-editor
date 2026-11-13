@@ -5,6 +5,7 @@ import { activeLayer, createLayer, docRect, duplicateLayer, findLayer, indexOfLa
   readRegion, selectionAlpha, writeRegion, type Bitmap, type Doc, type Layer, type Selection } from './document';
 import { expandRect, intersect, type Rect } from './geometry';
 import type { RGBA } from './color';
+import { cropMask } from './mask';
 import { addLayerCommand, docCommand, pixelCommand, propsCommand, removeLayerCommand, reorderCommand, snapshotDoc,
   type Command, type DocState, type LayerProps } from './history';
 
@@ -102,9 +103,9 @@ export function cropDocument(doc: Doc, area: Rect): Command | null {
   if (!cr) return null;
   const before = snapshotDoc(doc);
   const layers = doc.layers.map((l) => {
-    const ir = intersect(layerRect(l), cr);
-    if (!ir) return { ...l, x: 0, y: 0, width: 1, height: 1, data: new Uint8ClampedArray(4) };
-    return { ...l, x: ir.x - cr.x, y: ir.y - cr.y, width: ir.w, height: ir.h, data: readRegion(l, { x: ir.x - l.x, y: ir.y - l.y, w: ir.w, h: ir.h }) };
+    const ir = intersect(layerRect(l), cr), mask = l.mask ? { mask: cropMask(l.mask, cr) } : {};
+    if (!ir) return { ...l, x: 0, y: 0, width: 1, height: 1, data: new Uint8ClampedArray(4), ...mask };
+    return { ...l, x: ir.x - cr.x, y: ir.y - cr.y, width: ir.w, height: ir.h, data: readRegion(l, { x: ir.x - l.x, y: ir.y - l.y, w: ir.w, h: ir.h }), ...mask };
   });
   const after: DocState = { width: cr.w, height: cr.h, layers, activeId: doc.activeId, selection: null };
   const cmd = docCommand('Crop', before, after);

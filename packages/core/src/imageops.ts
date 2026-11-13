@@ -4,10 +4,11 @@
  * Whole-picture and whole-layer operations: picture size, canvas size, turning and flipping, trim, reveal all,
  * merging and flattening, and the inverse selection. Each applies its change and returns the Command for the history.
  */
-import { compositeRect } from './blend';
 import { WHITE, type RGBA } from './color';
+import { compositeRect } from './composite';
 import { activeLayer, createLayer, docRect, flatten, geomOf, indexOfLayer, layerRect, selectionAlpha, type Bitmap, type Doc, type Layer,
-  type Selection } from './document';
+  type LayerMask, type Selection } from './document';
+import { plusMask, shiftMask } from './mask';
 import { union, type Rect } from './geometry';
 import { docCommand, geomCommand, snapshotDoc, type Command, type DocState } from './history';
 import { cropDocument } from './ops';
@@ -78,6 +79,37 @@ export function resizeBitmap(src: Bitmap, w: number, h: number, mode: Resample =
   }
   return out;
 }
+/** Turn or flip a grey mask's pixels. */
+function turnGrey(d: Uint8Array, w: number, h: number, t: Turn): Uint8Array {
+  const swap = t === 'cw' || t === 'ccw', W = swap ? h : w, H = swap ? w : h, out = new Uint8Array(d.length);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let sx: number, sy: number;
+    if (t === 'cw') { sx = y; sy = h - 1 - x; } else if (t === 'ccw') { sx = w - 1 - y; sy = x; } else if (t === '180') { sx = w - 1 - x; sy = h - 1 - y; }
+    else if (t === 'flip-h') { sx = w - 1 - x; sy = y; } else { sx = x; sy = h - 1 - y; }
+    out[y * W + x] = d[sy * w + sx];
+  }
+  return out;
+}
+/** A mask turned with the frame it sits in (the layer's box or the canvas); (nx, ny) is the frame's top-left afterwards. */
+export function turnMask(m: LayerMask, f: Rect, nx: number, ny: number, t: Turn): LayerMask {
+  const bx = m.x, by = m.y, w = m.width, h = m.height, swap = t === 'cw' || t === 'ccw';
+  let x: number, y: number;
+  if (t === 'cw') { x = nx + f.y + f.h - (by + h); y = ny + bx - f.x; } else if (t === 'ccw') { x = nx + by - f.y; y = ny + f.x + f.w - (bx + w); }
+  else if (t === '180') { x = nx + f.x + f.w - (bx + w); y = ny + f.y + f.h - (by + h); }
+  else if (t === 'flip-h') { x = nx + f.x + f.w - (bx + w); y = ny + by - f.y; } else { x = nx + bx - f.x; y = ny + f.y + f.h - (by + h); }
+  return { ...m, x, y, width: swap ? h : w, height: swap ? w : h, data: w && h ? turnGrey(m.data, w, h, t) : m.data };
+}
+/** A mask redrawn at a new picture scale, placed the way its layer is. */
+export function resizeMask(m: LayerMask, sx: number, sy: number, mode: Resample = 'smooth'): LayerMask {
+  const x = Math.round(m.x * sx), y = Math.round(m.y * sy);
+  if (!m.width || !m.height) return { ...m, x, y };
+  const nw = Math.max(1, Math.round(m.width * sx)), nh = Math.max(1, Math.round(m.height * sy)), rgba = new Uint8ClampedArray(m.data.length * 4);
+  for (let i = 0; i < m.data.length; i++) { rgba[i * 4] = m.data[i]; rgba[i * 4 + 3] = 255; }
+  const px = resizeBitmap({ width: m.width, height: m.height, data: rgba }, nw, nh, mode), data = new Uint8Array(nw * nh);
+  for (let i = 0; i < data.length; i++) data[i] = px[i * 4];
+  return { ...m, x, y, width: nw, height: nh, data };
+}
+const withMask = (l: Layer, f: (m: LayerMask) => LayerMask): { mask?: LayerMask } => (l.mask ? { mask: f(l.mask) } : {});
 /** Picture size: every layer is redrawn at the new scale. */
 export function resizeDocument(doc: Doc, width: number, height: number, mode: Resample = 'smooth'): Command | null {
   const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
@@ -85,7 +117,7 @@ export function resizeDocument(doc: Doc, width: number, height: number, mode: Re
   const sx = w / doc.width, sy = h / doc.height, before = snapshotDoc(doc);
   const layers = doc.layers.map((l) => {
     const nw = Math.max(1, Math.round(l.width * sx)), nh = Math.max(1, Math.round(l.height * sy));
-    return { ...l, x: Math.round(l.x * sx), y: Math.round(l.y * sy), width: nw, height: nh, data: resizeBitmap(l, nw, nh, mode) };
+    return { ...l, x: Math.round(l.x * sx), y: Math.round(l.y * sy), width: nw, height: nh, data: resizeBitmap(l, nw, nh, mode), ...withMask(l, (m) => resizeMask(m, sx, sy, mode)) };
   });
   return commit(doc, 'Picture size', before, { width: w, height: h, layers, activeId: doc.activeId, selection: null });
 }
@@ -97,7 +129,7 @@ export function resizeCanvas(doc: Doc, width: number, height: number, ax = 0.5, 
   const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
   if (w === doc.width && h === doc.height) return null;
   const dx = Math.round((w - doc.width) * ax), dy = Math.round((h - doc.height) * ay), before = snapshotDoc(doc);
-  const layers = doc.layers.map((l) => ({ ...l, x: l.x + dx, y: l.y + dy }));
+  const layers = doc.layers.map((l) => ({ ...l, x: l.x + dx, y: l.y + dy, ...withMask(l, (m) => shiftMask(m, dx, dy)) }));
   if (fill && fill.a > 0 && layers.length) {
     const b = layers[0], data = new Uint8ClampedArray(w * h * 4);
     for (let i = 0; i < data.length; i += 4) { data[i] = fill.r; data[i + 1] = fill.g; data[i + 2] = fill.b; data[i + 3] = fill.a; }
@@ -131,7 +163,7 @@ export function turnDocument(doc: Doc, t: Turn): Command {
     let x = l.x, y = l.y;
     if (t === 'cw') { x = H - (l.y + l.height); y = l.x; } else if (t === 'ccw') { x = l.y; y = W - (l.x + l.width); }
     else if (t === '180') { x = W - (l.x + l.width); y = H - (l.y + l.height); } else if (t === 'flip-h') x = W - (l.x + l.width); else y = H - (l.y + l.height);
-    return { ...l, x, y, width: p.width, height: p.height, data: p.data };
+    return { ...l, x, y, width: p.width, height: p.height, data: p.data, ...withMask(l, (m) => turnMask(m, { x: 0, y: 0, w: W, h: H }, 0, 0, t)) };
   });
   const swap = t === 'cw' || t === 'ccw';
   return commit(doc, TURN_LABEL[t], before, { width: swap ? H : W, height: swap ? W : H, layers, activeId: doc.activeId, selection: null });
@@ -140,8 +172,10 @@ export function turnDocument(doc: Doc, t: Turn): Command {
 export function turnLayer(doc: Doc, t: Turn): Command | null {
   const l = activeLayer(doc);
   if (!l) return null;
-  const p = turnPixels(l, t), cx = l.x + l.width / 2, cy = l.y + l.height / 2;
-  const cmd = geomCommand(TURN_LABEL[t], l.id, geomOf(l), { x: Math.round(cx - p.width / 2), y: Math.round(cy - p.height / 2), width: p.width, height: p.height, data: p.data });
+  const p = turnPixels(l, t), cx = l.x + l.width / 2, cy = l.y + l.height / 2, nx = Math.round(cx - p.width / 2), ny = Math.round(cy - p.height / 2);
+  const mb = l.mask, ma = mb?.linked ? turnMask(mb, layerRect(l), nx, ny, t) : mb;
+  const g = geomCommand(TURN_LABEL[t], l.id, geomOf(l), { x: nx, y: ny, width: p.width, height: p.height, data: p.data });
+  const cmd = ma === mb ? g : plusMask(g, l.id, mb, ma);
   cmd.redo(doc);
   return cmd;
 }
@@ -172,7 +206,7 @@ export function revealAll(doc: Doc): Command | null {
   const r = u as Rect;
   if (r.x === 0 && r.y === 0 && r.w === doc.width && r.h === doc.height) return null;
   const before = snapshotDoc(doc);
-  const layers = doc.layers.map((l) => ({ ...l, x: l.x - r.x, y: l.y - r.y }));
+  const layers = doc.layers.map((l) => ({ ...l, x: l.x - r.x, y: l.y - r.y, ...withMask(l, (m) => shiftMask(m, -r.x, -r.y)) }));
   return commit(doc, 'Reveal all', before, { width: r.w, height: r.h, layers, activeId: doc.activeId, selection: null });
 }
 /** Combine the active layer with the one below; the result keeps the lower layer's name, opacity and blend. */
@@ -182,6 +216,7 @@ export function mergeDown(doc: Doc): Command | null {
   const top = doc.layers[i], below = doc.layers[i - 1], r = union(layerRect(top), layerRect(below)) as Rect, before = snapshotDoc(doc);
   const data = compositeRect([{ ...below, visible: true, opacity: 1, blendMode: 'normal' }, top], r, null);
   const merged: Layer = { ...below, x: r.x, y: r.y, width: r.w, height: r.h, data };
+  delete merged.mask; // the masks are drawn into the merged pixels
   const layers = doc.layers.slice();
   layers.splice(i - 1, 2, merged);
   return commit(doc, 'Merge down', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });
@@ -194,6 +229,7 @@ export function mergeVisible(doc: Doc): Command | null {
   for (const l of vis) u = union(u, layerRect(l));
   const r = u as Rect, first = doc.layers.findIndex((l) => l.visible), before = snapshotDoc(doc);
   const merged: Layer = { ...doc.layers[first], opacity: 1, blendMode: 'normal', locked: false, x: r.x, y: r.y, width: r.w, height: r.h, data: compositeRect(vis, r, null) };
+  delete merged.mask;
   const layers = doc.layers.filter((l) => !l.visible);
   layers.splice(first, 0, merged);
   return commit(doc, 'Merge visible', before, { width: doc.width, height: doc.height, layers, activeId: merged.id, selection: doc.selection ? { ...doc.selection } : null });

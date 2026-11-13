@@ -1542,9 +1542,15 @@ export class Editor {
     }
     const n = ml && this.cards ? this.cards.layerNames(ml) : null;
     s.layer.textContent = n ? `${n.plain} · pros call it ${n.pro}` : '';
-    // True for each picture: "Saved on this device" only after this picture's own safety copy is written.
-    const sv = this.saver, tab = this.tabs[this.cur];
-    s.saved.textContent = !d ? '' : !sv?.enabled ? 'Safety copies off' : sv.lastError ? 'Not saved: browser storage refused' : { saved: 'Saved on this device', saving: 'Saving…', none: '' }[tab ? sv.stateOf(tab) : 'none'];
+  }
+  /**
+   * True for each picture: "Saved on this device" only after this picture's own safety copy is written. Runs when the saver
+   * reports (each change and each write) and when a tab opens, closes or switches, never on a pointer move or a stroke frame.
+   */
+  private renderSaved(): void {
+    const sv = this.saver, tab = this.tabs[this.cur], el = this.stat.saved;
+    if (!el) return;
+    el.textContent = !this.doc ? '' : !sv?.enabled ? 'Safety copies off' : sv.lastError ? 'Not saved: browser storage refused' : { saved: 'Saved on this device', saving: 'Saving…', none: '' }[tab ? sv.stateOf(tab) : 'none'];
   }
   private renderInfo(): void {
     const b = this.infoBody;
@@ -3322,6 +3328,7 @@ export class Editor {
     this.updateAnts();
     this.renderOptions();
     this.afterEdit();
+    this.renderSaved();
   }
   private addTab(doc: Doc, name: string): void {
     this.stash();
@@ -3425,7 +3432,7 @@ export class Editor {
     this.appShell = new AppShell({ root: this.root, openFiles: (f) => this.openFiles(f), toast: (m, ms) => this.toast(m, ms),
       openModal: (id) => this.openModal(id), beforeReload: () => this.saver.flush() }, opts.app);
     this.installBody.replaceChildren(this.appShell.installSheet());
-    this.saver = new Autosave({ pictures: () => this.pictures(), busy: () => !!(this.stroke || this.drag || this.session), saved: () => { if (this.stat?.saved) this.renderStatus(); } });
+    this.saver = new Autosave({ pictures: () => this.pictures(), busy: () => !!(this.stroke || this.drag || this.session), saved: () => this.renderSaved() });
     let on = true;
     try { on = localStorage.getItem('fpe-autosave') !== 'off'; } catch { /* storage may be blocked */ }
     this.saver.enabled = opts.autosave !== false && on && typeof indexedDB !== 'undefined';
@@ -3497,6 +3504,7 @@ export class Editor {
     try { localStorage.setItem('fpe-autosave', on ? 'on' : 'off'); } catch { /* storage may be blocked */ }
     if (on) { this.saver.start(); this.saver.enable(); this.toast('Safety copies are on: open pictures are kept in this browser, never sent anywhere.'); }
     else { void this.saver.disable(); this.toast('Safety copies are off. Open pictures are no longer kept in this browser.'); }
+    this.renderSaved();
   }
   canInstall(): boolean { return !!this.appShell?.enabled && !this.appShell.installed(); }
   installApp(): void { this.appShell.install(); }

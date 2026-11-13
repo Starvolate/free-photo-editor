@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 368 Ready, 307 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 425 Ready, 250 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-230 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+178 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 204 | 446 | 0 |
-| Ready today | 368 | 25 | 167 | 176 | 0 |
+| All functions | 675 | 25 | 221 | 429 | 0 |
+| Ready today | 425 | 25 | 185 | 215 | 0 |
 
 ## The Task ribbon
 
@@ -30,11 +30,11 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 14 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
-| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 2 |
+| Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
-| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
-| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
+| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
+| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 6 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 15 |
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (34 Ready, 7 Planned)
+## File (38 Ready, 3 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -114,7 +114,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
 | file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
 | file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
-| file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
+| file.recent | Recent pictures | Open recent | Open again a picture you opened before. The files are kept only in this browser on this device; nothing is uploaded. | last files, history, open again | File | File sheet | Ready | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
 | file.install | Install as an app | Install app | Put the editor on your home screen or desktop. It opens in its own window and works offline. | install, app, home screen, desktop app, offline, add to dock, pwa | File | File sheet | Ready | 8 |  |
@@ -144,11 +144,11 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Ready | 7 |  |
 | file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Ready | 8 |  |
 | file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | File | File sheet | Planned | 7 |  |
-| file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
-| file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
+| file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | File › Automate | Automate & batch › Do many at once · big button | Ready | 13 |  |
+| file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · small button | Ready | 13 |  |
 | file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
-| file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · More list | Planned | 13 |  |
-| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
+| file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · small button | Ready | 13 |  |
+| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
 ## Edit (29 Ready, 11 Planned)
 
@@ -187,8 +187,8 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.smart-scale | Stretch without squashing people | Content-aware scale | Resize while protecting the important parts. | stretch background | Edit | Crop & resize › Bend and push · More list | Planned | 11 |  |
 | edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
 | edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | Edit | Crop & resize › Bend and push · More list | Planned | 3 |  |
-| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
-| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
 | edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | Edit | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | Edit | Paint & draw › Fill · More list | Planned | 4 |  |
 | edit.pref-pro-names | Show pro names first | Pro names first | Put the usual professional names before the plain names. | expert names, professional names | Edit › Settings | Help sheet | Ready | W1 |  |
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (12 Ready, 10 Planned)
+## Panels (Window menu and the dock) (13 Ready, 9 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -511,7 +511,7 @@ Groups: Screen mode · Screen mode.
 | panel.paragraph | Paragraph | Paragraph | Line-up and spacing of text blocks. | align text | Window | Shapes & text › Text style · More list | Ready | W3 |  |
 | panel.brushes | Brush tips | Brushes | Choose and shape brush tips. | brush shapes | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | panel.histogram | Tone graph | Histogram | A graph of how many dark and light pixels there are. | histogram | Window | Develop RAW › Check · small button | Ready | W2 |  |
-| panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | Window | Automate & batch › Record steps · More list | Planned | 13 |  |
+| panel.actions | Recorded steps | Actions | Record steps and play them back. | macro, record | Window | Automate & batch › Record steps · big button | Ready | 13 |  |
 | panel.styles | Saved effects | Styles | Effects you saved to use again. | styles | Window | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | Window | Shapes & text › Text style · More list | Planned | 6 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (230 Planned, 31 Ready), by home
+## New functions from the feature census (178 Planned, 83 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -654,38 +654,38 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| raw.white-balance | U002 | Fix the colour of the light | White balance (temperature and tint) | Set the scene's light by temperature and tint, or click something grey and let it work out the light. | white balance, temperature, tint, too orange, too blue, grey picker | Develop RAW › Develop · More list | Planned | B6 |
+| raw.white-balance | U002 | Fix the colour of the light | White balance (temperature and tint) | Set the scene's light by temperature and tint, or click something grey and let it work out the light. | white balance, temperature, tint, too orange, too blue, grey picker | Develop RAW › Develop · big button | Ready | B6 |
 | raw.local-edits | U003 | Edit one area with brush, gradient, range or AI masks | Masking (local adjustments) | Draw an area, or let the AI find one (sky, subject, a colour or brightness range), and give it its own light and colour sliders. | local adjustment, edit one area, brighten only the sky, mask sliders, local edit | Develop RAW › Edit one area · More list | Planned | B6 |
-| raw.camera-profile | U028 | Choose how the camera's colours are read | Camera profile and calibration | Adjust how the camera's colours are rendered. | camera profile, calibration, camera colours, colour profile for raw | Develop RAW › Develop · More list | Planned | B12 |
-| raw.negative | U029 | Fix film negatives | Negadoctor / film negative | Turn a scan or photo of a film negative into a positive. | film negative, scan negative, invert film, negative to positive | Develop RAW › Develop · More list | Planned | B12 |
+| raw.camera-profile | U028 | Choose how the camera's colours are read | Camera profile and calibration | Adjust how the camera's colours are rendered. Not built yet: it needs measured colour profiles for each camera. | camera profile, calibration, camera colours, colour profile for raw | Develop RAW › Develop · More list | Planned | B12 |
+| raw.negative | U029 | Fix film negatives | Negadoctor / film negative | Turn a scan or photo of a film negative into a positive. | film negative, scan negative, invert film, negative to positive | Develop RAW › Develop · small button | Ready | B12 |
 | raw.filmic | U030 | Natural-looking bright-to-dark curve | Filmic RGB / Sigmoid / AgX tone mapping | Squeeze a wide brightness range into a screen so highlights roll off softly. | filmic, tone mapping, highlight roll off, sigmoid, agx | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.tone-equalizer | U031 | Brighten by zone with a slider per zone | Tone equalizer | Raise or lower brightness separately for dark, mid and bright zones with a mask-friendly graph. | tone equalizer, zone brightness, dodge and burn by zones | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.highlights | U032 | Rescue blown-out bright areas | Highlight reconstruction | Rebuild detail where the sensor clipped to white. | blown highlights, burnt sky, clipped white, rebuild highlights | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.dehaze | U033 | Remove haze | Haze Removal | Lifts fog or haze from a landscape. | dehaze, haze, fog, foggy, mist, smog | Develop RAW › Light and tone · More list | Planned | B12 |
-| raw.colour-grading | U034 | Colour wheels for shadows, mids, highlights | Colour Grading | Three colour wheels plus blending and balance for cinematic looks. | colour grading, colour wheels, split toning, cinematic look, teal and orange | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.colour-mixer | U035 | Change one colour by picking it | Colour mixer (point colour, colour zones) | Pick a colour or a hue band and shift its hue, strength and lightness, with a graph. | colour mixer, hsl, point colour, change one colour, colour zones | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.ai-denoise | U036 | Remove noise with AI | AI Denoise | An on-device model removes grain from high-ISO and low-light shots while keeping detail. | ai denoise, noisy photo, grainy, high iso, night photo, remove noise with ai | Develop RAW › Detail and lens · More list | Planned | B13 |
-| raw.denoise-profiled | U037 | Noise clean-up tuned to your camera and ISO | Denoise (profiled) | Remove noise using a measured noise profile of each camera model. | profiled denoise, camera noise, iso noise, noise reduction for raw | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.capture-sharpen | U038 | Sharpen using the raw capture | Capture sharpening / deconvolution | Undo lens and sensor blur on raw data before other edits. | capture sharpening, deconvolution, raw sharpen, lens blur fix | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.contrast-levels | U039 | Contrast at each detail size | Contrast equalizer / contrast by detail levels / wavelets | Boost or calm texture, medium and large shapes separately. | contrast by detail size, wavelets, texture, local contrast levels | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.clarity | U040 | Add punch to mid-size detail | Clarity / local contrast | Add punch to mid-sized contrast without touching the whole picture. | clarity, local contrast, punch, texture, crisp | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.upright | U041 | Straighten and fix the angle in one tool | Rotate and perspective | Level the horizon and correct keystone with guide lines drawn on the photo. | upright, level horizon, straighten building, keystone, fix tilted | Develop RAW › Detail and lens · More list | Planned | B12 |
+| raw.tone-equalizer | U031 | Brighten by zone with a slider per zone | Tone equalizer | Raise or lower brightness separately for five zones, from blacks to whites, without halos. | tone equalizer, zone brightness, dodge and burn by zones | Develop RAW › Light and tone · small button | Ready | B12 |
+| raw.highlights | U032 | Rescue bright and dark areas | Highlights and shadows | Calm bright areas and open up dark ones, each with its own slider; detail the camera never recorded cannot come back. | blown highlights, burnt sky, clipped white, rebuild highlights | Develop RAW › Light and tone · small button | Ready | B12 |
+| raw.dehaze | U033 | Remove haze | Haze Removal | Lifts fog or haze from a landscape. | dehaze, haze, fog, foggy, mist, smog | Develop RAW › Light and tone · More list | Ready | B12 |
+| raw.colour-grading | U034 | Colour wheels for shadows, mids, highlights | Colour grading | Three colour wheels (darks, middle tones, lights) as hue and amount sliders, plus balance, for cinematic looks. | colour grading, colour wheels, split toning, cinematic look, teal and orange | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.colour-mixer | U035 | Change one colour by picking it | Colour mixer (point colour, colour zones) | Pick one of eight colour bands and shift its hue, strength and lightness. | colour mixer, hsl, point colour, change one colour, colour zones | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.ai-denoise | U036 | Remove noise with AI | AI Denoise | Removes grain from high-ISO and night shots with an on-device model. Not built yet: the model's licence must be checked first. | ai denoise, noisy photo, grainy, high iso, night photo, remove noise with ai | Develop RAW › Detail and lens · More list | Planned | B13 |
+| raw.denoise-profiled | U037 | Clean up grain measured from the photo | Denoise (measured) | Measures the grain in this photo and smooths it while keeping edges, without AI; there are no per-camera noise profiles yet. | profiled denoise, camera noise, iso noise, noise reduction for raw | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.capture-sharpen | U038 | Sharpen using the raw capture | Capture sharpening / deconvolution | Undo slight lens and sensor softness with a few rounds of deconvolution. | capture sharpening, deconvolution, raw sharpen, lens blur fix | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.contrast-levels | U039 | Contrast at each detail size | Contrast equalizer / contrast by detail levels / wavelets | Boost or calm texture, medium and large shapes separately. | contrast by detail size, wavelets, texture, local contrast levels | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.clarity | U040 | Add punch to mid-size detail | Clarity / local contrast | Add punch to mid-sized contrast without touching the whole picture. | clarity, local contrast, punch, texture, crisp | Develop RAW › Detail and lens · More list | Ready | B12 |
+| raw.upright | U041 | Level a tilted picture | Upright (auto level and straighten) | Level the picture by its strongest straight lines, or turn it by hand; it zooms in just enough to hide the corners. | upright, level horizon, straighten building, keystone, fix tilted | Develop RAW › Detail and lens · More list | Ready | B12 |
 | raw.wide-angle | U042 | Straighten a wide-angle picture | Adaptive Wide Angle | Correct curved lines and stretch from wide lenses. | wide angle, bent lines, curved lines, wide lens fix | Develop RAW › Detail and lens · More list | Planned | B12 |
-| raw.clipping | U043 | Warn about burnt areas | Clipping warning / raw overexposed warning | Overlay that marks pixels that are pure white or black. | clipping warning, blown out, overexposed warning, burnt areas | Develop RAW › Check · More list | Planned | B12 |
-| raw.scopes | U044 | Colour scopes | Waveform, vectorscope and colour readouts | Read colour numbers and see the picture's tone spread. | waveform, vectorscope, scopes, parade, colour readout | Develop RAW › Check · More list | Planned | B12 |
-| raw.snapshots | U045 | Compare before and after snapshots | Snapshots | Keep a state of the edit and slide it against the live one. | snapshot, before and after, save state, compare versions | Develop RAW › Check · More list | Planned | B12 |
-| raw.presets | U046 | Save an edit as a reusable look | Presets (Adaptive profiles, Adaptive presets, Creative presets) | Save slider settings and pick looks that adapt to each photo. | preset, look, save edit, reusable look, filter preset | Develop RAW › Colour and looks · More list | Planned | B12 |
-| raw.black-white-points | U110 | Set black and white points of the sensor | Raw black/white point | Fix the darkest and brightest values the sensor recorded. | sensor black point, raw white point, raw levels | Develop RAW › Develop · More list | Planned | T3 |
+| raw.clipping | U043 | Warn about burnt areas | Clipping warning / raw overexposed warning | Marks pure white in red and pure black in blue while you edit; Apply never keeps the marks. | clipping warning, blown out, overexposed warning, burnt areas | Develop RAW › Check · More list | Ready | B12 |
+| raw.scopes | U044 | Colour scopes | Waveform, vectorscope and colour readouts | See the tones as a waveform, or the colours as a vectorscope, live as you edit. | waveform, vectorscope, scopes, parade, colour readout | Develop RAW › Check · More list | Ready | B12 |
+| raw.snapshots | U045 | Keep and recall snapshots of an edit | Snapshots | Keep named states of the develop settings and go back to any of them while the page is open. | snapshot, before and after, save state, compare versions | Develop RAW › Check · More list | Ready | B12 |
+| raw.presets | U046 | Save an edit as your own look | Presets | Save your develop settings under a name and apply them to any photo; they stay in this browser. | preset, look, save edit, reusable look, filter preset | Develop RAW › Colour and looks · More list | Ready | B12 |
+| raw.black-white-points | U110 | Set black and white points of the sensor | Raw black/white point | Choose which tone becomes pure black and which pure white, for any photo. | sensor black point, raw white point, raw levels | Develop RAW › Develop · small button | Ready | T3 |
 | raw.colour-rescue | U111 | Rescue clipped colours | Colour reconstruction | Bring back believable colour in areas that clipped. | clipped colours, rescue colour, colour reconstruction | Develop RAW › Light and tone · More list | Planned | T3 |
-| raw.base-curve | U112 | Starting curve for a camera | Base curve | The first brightness curve applied to a raw file, one per camera. | base curve, camera curve, starting curve | Develop RAW › Light and tone · More list | Planned | T3 |
-| raw.colour-checker | U113 | Fix colours with a chart photo | Colour checker calibration | Build a custom colour correction from a photo of a standard colour chart, with an accuracy report. | colour checker, colour chart, calibrate with chart | Develop RAW › Colour and looks · More list | Planned | T3 |
+| raw.base-curve | U112 | Starting curve for a camera | Base curve | Start from a gentle, medium, strong or film-like brightness curve; there are no per-camera curves yet. | base curve, camera curve, starting curve | Develop RAW › Light and tone · More list | Ready | T3 |
+| raw.colour-checker | U113 | Fix colours with a chart photo | Colour checker calibration | Build a colour correction from a photo of a standard colour chart. Not built yet: it needs reference values for the chart's patches. | colour checker, colour chart, calibrate with chart | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.colour-match | U114 | Match one patch's colour across photos | Area colour mapping | Pick a target colour in one photo and match it in others, useful for batches. | match colour across photos, colour mapping, same colour in every photo | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.colour-appearance | U115 | Colour by how it looks to the eye | Colour appearance model (CIECAM02 / CAM16, JzCzHz) | Change brightness, colourfulness and lightness in a model of human vision. | colour appearance, cam16, ciecam, how the eye sees colour | Develop RAW › Colour and looks · More list | Planned | T3 |
 | raw.gamut-compress | U116 | Soft-clip very vivid colours | Gamut compression (ACES) | Pull oversaturated colours back before editing. | vivid colours clipping, neon colours, gamut compression, aces | Develop RAW › Colour and looks · More list | Planned | T3 |
-| raw.hot-pixels | U117 | Remove stuck bright dots | Hot pixels | Find and hide sensor pixels that are always lit. | hot pixels, stuck pixels, bright dots, dead pixels | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.defish | U118 | Flatten a fisheye picture | De-fish | Turn a fisheye shot into a normal-looking one. | fisheye, defish, flatten fisheye, fisheye correction | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.vignette | U119 | Add or remove dark corners | Vignetting | Darken or lighten the picture's edges. | vignette, dark corners, remove vignetting, corner shading | Develop RAW › Detail and lens · More list | Planned | T3 |
-| raw.community-looks | U120 | Copy and share community looks | Community filters | Browse and apply filters made by other users. | community looks, shared filters, download looks, share preset | Develop RAW › Colour and looks · More list | Planned | T3 |
+| raw.hot-pixels | U117 | Remove stuck bright dots | Hot pixels | Find and hide sensor pixels that are always lit. | hot pixels, stuck pixels, bright dots, dead pixels | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.defish | U118 | Flatten a fisheye picture | De-fish | Turn a fisheye shot into a normal-looking one, set by the lens's field of view. | fisheye, defish, flatten fisheye, fisheye correction | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.vignette | U119 | Add or remove dark corners | Vignetting | Darken or lighten the picture's edges. | vignette, dark corners, remove vignetting, corner shading | Develop RAW › Detail and lens · More list | Ready | T3 |
+| raw.community-looks | U120 | Copy and share community looks | Community filters | Browse and apply filters made by other users. Not built yet: sharing looks needs a place to host them. | community looks, shared filters, download looks, share preset | Develop RAW › Colour and looks · More list | Planned | T3 |
 
 ### AI tools (23)
 
@@ -747,31 +747,31 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 |---|---|---|---|---|---|---|---|---|
 | shape.live | U068 | Live editable shapes | Live Shapes (corner radius sliders) | Rectangles and polygons whose corners stay editable. | live shape, editable shape, corner radius, rounded corners | Shapes & text › Shapes · More list | Planned | B15 |
 | shape.vector-layer | U069 | Vector layer | Vector Layer | A layer holding editable shapes and text that stay sharp. | vector layer, sharp shapes, scalable drawing | Shapes & text › Shapes · More list | Planned | B15 |
-| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Builds one shape from several by adding, subtracting or keeping overlaps. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · More list | Planned | B4 |
-| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins shapes into one path or separates them. | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · More list | Planned | B4 |
-| path.stroke-style | U072 | Arrowheads and dash styles | Arrowheads, Dot/dash line styles | Line ends and patterns. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · More list | Planned | B15 |
+| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Merges the picked outline with the one above it in Outlines, cuts it out of that one, or keeps only the overlap or only what does not overlap. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · small button | Ready | B4 |
+| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins the picked outline and the one above it into one outline, or splits an outline into its separate pieces (a hole stays with its shape). | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · small button | Ready | B4 |
+| path.stroke-style | U072 | Arrowheads and dash styles | Stroke style: dashes, line ends, corners, arrowheads | Draws the picked outline as a line on a new layer: solid, dashed or dotted, flat, round or square ends, sharp, round or cut corners, and arrowheads. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · small button | Ready | B15 |
 | path.effects | U073 | Non-destructive path effects, stackable | Live Path Effects | Adds editable effects to a path that update when the path changes; effects can be stacked. | path effects, live path effect, non-destructive path | Shapes & text › Live shape effects · More list | Planned | B15 |
 | type.opentype | U074 | Variable fonts and OpenType features | Variable fonts, ligatures, stylistic sets | Weight and width sliders and type features for fonts. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Planned | B15 |
 | type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Planned | B15 |
 | type.scripts | U076 | Text in every script | Complex scripts (Arabic, Hebrew, Indic) | Correct shaping and right-to-left layout for Arabic, Hebrew, Hindi and other Indic scripts. | hindi text, arabic text, hebrew, right to left, indic script, complex script | Shapes & text › Text style · More list | Planned | B15 |
 | path.tweak | U142 | Reshape a path by brushing it | Tweak Tool (push, shrink, roughen, jitter colours) | Pushes, thins or roughens path parts like clay. | tweak path, push path, roughen path, brush a shape | Shapes & text › Draw outlines · More list | Planned | T3 |
-| shape.spiral-star | U143 | Shape tools: spirals, stars, 3D boxes | Spiral, Star/Polygon, 3D Box tools | Draws parametric shapes you can edit by numbers. | spiral, star, 3d box, polygon star | Shapes & text › Shapes · More list | Planned | T3 |
+| shape.spiral-star | U143 | Star and spiral outlines | Star and spiral tools | Draws a star (number of points, inner size) or a spiral (turns) as an outline you can reshape and fill. | spiral, star, polygon star, star shape, swirl | Shapes & text › Shapes · More list | Ready | T3 |
 | shape.qr | U144 | Draw QR codes | QR code shape | Generates an editable QR code. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.generate | U145 | Generate shapes (barcodes, grids, gears) | Render extensions | Creates new objects from numbers. | barcode, grid, gear, generate shapes | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draw and edit comic panel frames. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Planned | T3 |
-| path.divide | U147 | Slice a shape with another shape | Division and Cut Path | Cuts the lower shape into pieces along the upper one. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Planned | T3 |
-| path.bend | U148 | Bend a shape along a curve | LPE Bend | Deforms an object along a custom path. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.hatches | U149 | Hatches | LPE Hatches | Fills a shape with adjustable hatch lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.interpolate | U150 | Blend between parts of a path | LPE Interpolate Sub-Paths | Creates in-between steps between two parts of one path. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.divide | U147 | Slice a shape with another shape | Division | Slices the outline above the picked one along the picked one's edge: the parts outside it and the parts inside it each become their own outline. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Ready | T3 |
+| path.bend | U148 | Bend a shape along a curve | Bend | Bends the outline above the picked line along it, stretched to the line's length. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.hatches | U149 | Hatch lines | Hatches | Fills the picked outline with evenly spaced lines (holes stay empty): pick the gap, the angle, and crossed lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.interpolate | U150 | Blend between two shapes | Interpolate sub-paths | Adds in-between shapes that blend the outline above into the picked one (or one piece into the next) in the number of steps you pick. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.knot | U151 | Over-and-under crossings | LPE Knot | Makes gaps where a path crosses itself, like a knot. | knot, over and under, weave lines | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.mirror | U152 | Draw one half, mirror the other | LPE Mirror Symmetry | Mirrors a drawing across an axis live. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Four corner handles tilt a flat object in 3D space. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.stitch | U154 | Stitch lines between two paths | LPE Stitch Sub-Paths | Adds cross lines between two paths. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.pattern-along | U155 | Repeat a shape along a line | LPE Pattern Along Path | Repeats and bends a shape to follow a path. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.offset | U156 | Grow or shrink a shape by a distance | LPE Offset | Thickens or thins a whole outline by exact amount. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.power-stroke | U157 | Strokes with changing thickness | LPE Power Stroke | Handles set stroke width at points along a path. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.rotate-copies | U158 | Copies around a circle | LPE Rotate Copies | Spins copies of a shape around a centre for mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.roughen | U159 | Hand-drawn wobble | LPE Roughen | Adds organic imperfections to outlines. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.stitch | U154 | Stitch lines between two paths | Stitch sub-paths | Adds straight lines across from the outline above to the picked one, spaced evenly along both, like string art. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.pattern-along | U155 | Repeat a shape along a line | Pattern along path | Repeats the outline above along the picked line, each copy bent to follow it, with the gap you pick. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.power-stroke | U157 | Strokes with changing thickness | Power stroke | Turns the picked line into a shape that is thick and thin along its length: sliders set the width at the start, the middle and the end. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.rotate-copies | U158 | Copies around a circle | Rotate copies | Spins copies of an outline round its own centre or the picture's centre and joins them, for flowers and mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.roughen | U159 | Hand-drawn wobble | Roughen | Gives an outline a hand-drawn wobble: pick how far points move, how fine the wobble is, and another random pattern. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.sketch | U160 | Sketch look from a path | LPE Sketch | Turns a path into several pencil-like lines. | sketch path, sketchy lines, pencil look from path | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.tiling | U161 | Tile many copies in a grid | LPE Tiling | Makes rows and columns of copies with gaps and offsets. | tile copies, grid of copies, repeat in grid | Shapes & text › Live shape effects · More list | Planned | T3 |
 | type.match-font | U162 | Change a font to match a picture | Match Font | Find a similar font from a photo of text. | match font, what font is this, identify font, font finder | Shapes & text › Text · More list | Planned | T3 |
@@ -783,20 +783,20 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Paste a saved set of edits onto a selection of photos. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · More list | Planned | B7 |
-| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Copy this picture's light-and-colour layers and your last filter, then paste them onto other open pictures or many picture files. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · small button | Ready | B7 |
+| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. Not built: needs automatic alignment first. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. Not built: needs automatic alignment, and the editor holds 8 bits per colour. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
 | auto.stacks | U080 | Stack photos to remove moving objects or noise | Image stacks (median, mean, exposure merge) | Combines many shots of one scene to drop passers-by, cut noise or blend exposures. | stack photos, remove tourists by stacking, median stack, noise stack | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
+| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. Not built: outside code needs a safe sandbox first. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
 | auto.record-painting | U166 | Record a painting | Recorder Docker | Records the painting session into a timelapse. | record painting, timelapse, record strokes | Automate & batch › Record steps · More list | Planned | T3 |
-| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.watermark | U168 | Watermark | Watermark | Stamp a logo or text on export. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
+| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. Not built yet; use Edit many pictures the same way. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
+| auto.watermark | U168 | Watermark | Watermark | Stamp your text or logo on this picture as a movable layer, or on many pictures at once. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · small button | Ready | T3 |
+| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. Not built: needs automatic alignment first. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. Not built: needs pixel-exact alignment first. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. Not built: scripts need a safe sandbox first. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
 | auto.filter-graph | U172 | Draw-your-own filter graph | GEGL Graph, GEGL Operation tool | Type a chain of filters and run it. | node editor, filter graph, node based, gegl graph | Automate & batch › Scripts and data · More list | Planned | T3 |
-| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Planned | T3 |
-| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Crops and lays out photos to passport rules. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Planned | T3 |
+| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Ready | T3 |
+| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Fills a print page with copies of your photo at a passport size. Check your own country's rules: only the size is set. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Ready | T3 |
 
 ### Arrange layers (16)
 
@@ -855,38 +855,38 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 |---|---|---|---|---|---|---|---|---|
 | filter.depth-blur | U088 | Add depth blur from a depth map | Depth Blur | Blur by distance with focal distance and strength sliders. | depth blur, background blur, portrait mode, bokeh, blur background by depth | Filters & blur › Camera blurs · family sheet | Planned | B13 |
 | filter.blur-variable | U205 | Blur by a map | Variable Blur | Blur strength set by a second layer. | variable blur, blur by map, gradient blur | Filters & blur › Blur · family sheet | Planned | T3 |
-| filter.blur-edge-keep | U206 | Edge-keeping blurs | Mean Curvature, Selective Gaussian, Symmetric Nearest Neighbor | Smooth noise while keeping edges. | edge preserving blur, smooth skin blur, selective blur, bilateral | Filters & blur › Blur · family sheet | Planned | T3 |
+| filter.blur-edge-keep | U206 | Edge-keeping blurs | Mean Curvature, Selective Gaussian, Symmetric Nearest Neighbor | Smooth noise while keeping edges. | edge preserving blur, smooth skin blur, selective blur, bilateral | Filters & blur › Blur · family sheet | Ready | T3 |
 | filter.blur-sketch | U207 | Sketchy brush-stroke blur | Sketch Blur | Coarse painted look from median estimation. | sketch blur, brush stroke blur, painterly blur | Filters & blur › Blur · family sheet | Planned | T3 |
 | filter.blur-tileable | U208 | Make a tile repeat without seams (blur edge) | Tileable Blur | Blurs edges so a pattern tiles. | tileable blur, seamless blur, wrap edges blur | Filters & blur › Blur · family sheet | Planned | T3 |
 | filter.diffuse-sharpen | U209 | Diffuse or sharpen detail | Diffuse or sharpen | A flexible tool that sharpens, deblurs, softens or adds bloom by spreading detail. | diffuse, sharpen detail, local sharpen, soften detail | Filters & blur › Sharpen · family sheet | Planned | T3 |
-| filter.destripe | U210 | Remove stripes from a picture | Destripe | Removes vertical stripes from scans. | destripe, stripes, scan lines, banding | Filters & blur › Grain and specks · family sheet | Planned | T3 |
-| filter.deinterlace | U211 | Fix interlace lines | Deinterlace | Removes line artefacts from video frames. | deinterlace, interlace lines, video lines, tv lines | Filters & blur › Grain and specks · family sheet | Planned | T3 |
-| filter.kaleidoscope | U212 | Kaleidoscope | Kaleidoscope | Mirror slices around a centre. | kaleidoscope, mirror pattern, mandala effect | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.destripe | U210 | Remove stripes from a picture | Destripe | Removes vertical stripes from scans. | destripe, stripes, scan lines, banding | Filters & blur › Grain and specks · family sheet | Ready | T3 |
+| filter.deinterlace | U211 | Fix interlace lines | Deinterlace | Removes line artefacts from video frames. | deinterlace, interlace lines, video lines, tv lines | Filters & blur › Grain and specks · family sheet | Ready | T3 |
+| filter.kaleidoscope | U212 | Kaleidoscope | Kaleidoscope | Mirror slices around a centre. | kaleidoscope, mirror pattern, mandala effect | Filters & blur › Bend and twist · family sheet | Ready | T3 |
 | filter.panorama-projection | U213 | Flat panorama to 3D view | Panorama Projection | Projects a 360 picture into a view. | little planet, panorama projection, 360 photo, tiny planet | Filters & blur › Bend and twist · family sheet | Planned | T3 |
 | filter.page-curl | U214 | Page curl and curve bend | Page Curl, Curve Bend | Peel a corner; bend along a curve. | page curl, curl corner, bend picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
 | filter.illusion | U215 | Illusion and recursive transform | Illusion, Recursive Transform | Repeating mirrored and nested copies. | illusion, recursive, droste, infinite picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
 | filter.fractal-trace | U216 | Crumple and fractal looks | Fractal Trace, Value Propagate | Odd mapped and spread-colour effects. | fractal trace, crumple, crumpled paper, value propagate | Filters & blur › Bend and twist · family sheet | Planned | T3 |
 | filter.dents | U217 | Dents and tile reflection | Dents, Tile Reflection | Water-like and mirrored-tile distortions. | dents, tile reflection, bumpy glass | Filters & blur › Bend and twist · family sheet | Planned | T3 |
 | filter.newsprint | U218 | Newsprint and engrave | Newsprint, Engrave | Halftone and line-engraved looks. | newsprint, engrave, comic dots, print dots | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
-| filter.video-degrade | U219 | Video degradation | Video Degradation | Old TV pixel-pattern look. | vhs, old tv, video glitch, retro screen | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
+| filter.video-degrade | U219 | Video degradation | Video Degradation | Old TV pixel-pattern look. | vhs, old tv, video glitch, retro screen | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
 | filter.superpixels | U220 | Superpixels | SLIC, Waterpixels | Group pixels into regions. | superpixels, cells, low poly look | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
-| filter.star-burst | U221 | Star burst | Supernova, Gradient Flare, Sparkle | Bright star and flare effects. | star burst, sparkle, supernova, light rays, gradient flare | Filters & blur › Patterns and light · family sheet | Planned | T3 |
-| filter.bump-map | U222 | Bump map and normal map | Bump Map, Normal Map | Create 3D-looking shading or game normal maps from a picture. | bump map, normal map, texture relief | Filters & blur › Patterns and light · family sheet | Planned | T3 |
+| filter.star-burst | U221 | Star burst | Supernova, Gradient Flare, Sparkle | Bright star and flare effects. | star burst, sparkle, supernova, light rays, gradient flare | Filters & blur › Patterns and light · family sheet | Ready | T3 |
+| filter.bump-map | U222 | Bump map and normal map | Bump Map, Normal Map | Create 3D-looking shading or game normal maps from a picture. | bump map, normal map, texture relief | Filters & blur › Patterns and light · family sheet | Ready | T3 |
 | filter.noise-patterns | U223 | Noise patterns | Cell, Perlin, Simplex, Solid, Plasma | Generated organic textures. | perlin noise, cell noise, plasma, solid noise, random texture | Filters & blur › Patterns and light · family sheet | Planned | T3 |
 | filter.fractals | U224 | Fractals | Julia, Mandelbrot, Fractal Explorer, IFS, Flame | Generated fractal art. | fractal, mandelbrot, julia set, flame fractal | Filters & blur › Patterns and light · family sheet | Planned | T3 |
 | filter.patterns | U225 | Patterns: grid, checkerboard, maze, spiral, sinus, jigsaw | Render patterns | Generates geometric backgrounds. | checkerboard, grid pattern, maze, spiral pattern, jigsaw | Filters & blur › Patterns and light · family sheet | Planned | T3 |
-| filter.bloom | U226 | Glow around lights | Bloom / Soft glow | Spreads light from bright areas. | bloom, glow, soft glow, dreamy, glowing lights | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.bloom | U226 | Glow around lights | Bloom / Soft glow | Spreads light from bright areas. | bloom, glow, soft glow, dreamy, glowing lights | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.long-shadow | U227 | Long cast shadow | Long Shadow | Flat long shadow behind an object. | long shadow, flat design shadow, cast shadow | Filters & blur › Graphic looks · family sheet | Planned | T3 |
 | filter.tile-seamless | U228 | Seamless tiling | Tile Seamless, Tile, Small Tiles, Paper Tile | Make or build repeating textures. | seamless tile, make tileable, repeat texture | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.edge-detect | U229 | Edge detectors | Difference of Gaussians, Sobel, Laplace, Neon, Edge | Different line-finding methods. | edge detect, sobel, laplace, neon edges, outline edges | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.edge-detect | U229 | Edge detectors | Difference of Gaussians, Sobel, Laplace, Neon, Edge | Different line-finding methods. | edge detect, sobel, laplace, neon edges, outline edges | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.outline-relief | U230 | Outline and relief | Outline, Relief | Edge tracing and edge-blended emboss. | outline, relief, carved, emboss outline | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.alien-map | U231 | Weird colour shift | Alien Map | Rotates colours in a non-natural way. | alien map, psychedelic, weird colours, trippy | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.lowlight | U232 | Simulate a dark-adapted eye | Lowlight vision | Show how a night scene looks to the eye. | night vision, dark adapted, lowlight, blue night look | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.alien-map | U231 | Weird colour shift | Alien Map | Rotates colours in a non-natural way. | alien map, psychedelic, weird colours, trippy | Filters & blur › Graphic looks · family sheet | Ready | T3 |
+| filter.lowlight | U232 | Simulate a dark-adapted eye | Lowlight vision | Show how a night scene looks to the eye. | night vision, dark adapted, lowlight, blue night look | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.cartoon | U233 | Cartoon, photocopy, cubism, glass tile | Cartoon, Photocopy, Cubism, Glass Tile | Graphic and painterly restyles. | cartoon, photocopy, cubism, glass tiles, comic look | Filters & blur › Artistic · family sheet | Planned | T3 |
 | filter.ink-sketch | U234 | Ink sketch and pencil sketch | Ink Sketch, Pencil Sketch | Drawn looks. | pencil sketch, ink sketch, drawing from photo, sketch effect | Filters & blur › Artistic · family sheet | Planned | T3 |
 | filter.linocut | U235 | Linocut and stained glass | Linocut, Stained Glass | Block print and leaded-glass looks. | linocut, woodcut, stained glass, print block | Filters & blur › Artistic · family sheet | Planned | T3 |
 | filter.frames-overlays | U236 | Frames, borders, texture, light leaks, bokeh overlays | Photo Frames / Texture Background / Overlays | Add frames and texture overlays with blend control. | photo frame, border, light leaks, bokeh overlay, texture overlay | Filters & blur › Artistic · family sheet | Planned | T3 |
-| filter.antialias | U237 | Smooth jagged edges | Antialias | Softens stair-stepped edges. | antialias, smooth jaggies, jagged edges, staircase edges | Filters & blur › More effects · family sheet | Planned | T3 |
+| filter.antialias | U237 | Smooth jagged edges | Antialias | Softens stair-stepped edges. | antialias, smooth jaggies, jagged edges, staircase edges | Filters & blur › More effects · family sheet | Ready | T3 |
 
 ### File sheet (12)
 

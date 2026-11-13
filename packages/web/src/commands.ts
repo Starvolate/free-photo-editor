@@ -439,8 +439,8 @@ for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-mo
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers', 'file.recent']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' || id === 'file.recent' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
-for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits'])
-  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' || id === 'auto.copy-edits' ? hasDoc : always);
+for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits', 'edit.auto-align'])
+  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' || id === 'auto.copy-edits' || id === 'edit.auto-align' ? hasDoc : always);
 // Batch select-and-layers (selmore.ts, loaded on first use): select by brightness, channel or a layer's solid parts; fill holes,
 // round, roughen or refine the selection, or paint it as a grey picture; lift it into a layer; crop, fill, swap, split or clean the
 // edge of a layer; reverse the layer order; colour labels, notes and Find layers. The letter says when each one can run.

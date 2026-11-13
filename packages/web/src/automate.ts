@@ -3,7 +3,7 @@
 /**
  * Automate and batch, loaded the first time one is used: Recorded steps (record what you do once, play it again on this
  * picture as one undo step), Edit many pictures the same way, Resize many pictures, a Sheet of small photos, Watermark,
- * Collage and a Passport photo sheet.
+ * Collage, a Passport photo sheet and Line up layers automatically (the matching lives in core/align.ts).
  * Steps are recorded from the command bus (a function's id plus its settings), never from mouse positions, and every
  * step is played by one player (`playSteps`) that does exactly what the editor's own dialog does, so a played set gives
  * the same pixels as doing the steps by hand. Many-picture work holds one picture in memory at a time.
@@ -12,6 +12,7 @@
 import { WHITE, activeLayer, addLayer, docRect, intersect, writeRegion, combineCommands, commitResult, createDocument, documentFromBitmap, editRegion, findLayer, flatten, flattenDocument, hasPixels,
   innerOf, jobPadding, mergeVisible, paddedRegion, parseHex, readRegion, resizeBitmap, resizeDocument, runJob, trimDocument, turnDocument, turnLayer,
   createLayer, type Bitmap, type Command, type Doc, type JobParams, type JobSpec, type RGBA, type Rect, type Turn } from '@free-photoeditor/core';
+import { autoAlign } from '@free-photoeditor/core/align';
 import { zipSync, type Zippable } from '@free-photoeditor/formats/zip';
 import { ADJ, BATCH_IDS } from './commands';
 import { BY_ID } from './registry';
@@ -770,9 +771,25 @@ function actions(host: AutoHost): void {
   draw();
 }
 
+// ---- Line up layers automatically ---------------------------------------------------------------------------------------------
+const names = (l: string[]): string => l.map((n) => `"${n}"`).join(', ');
+/** Every other shown picture layer is matched to the bottom one and moved or turned onto it, as one undo step. */
+function lineUp(host: AutoHost): void {
+  const d = host.doc();
+  if (!d) return;
+  const r = autoAlign(d);
+  if (!r) { host.toast('Line up needs two or more shown picture layers of the same scene. Add the other photo with File > Add a photo as a layer.'); return; }
+  if (r.cmd) host.push(r.cmd, true);
+  host.toast((r.moved.length ? `Lined up ${names(r.moved)} with "${r.ref}", as one step you can undo.` : 'Nothing was moved.') +
+    (r.same.length ? ` Already in line: ${names(r.same)}.` : '') +
+    (r.missed.length ? ` No matching points found in ${names(r.missed)}: they show another scene, or too little detail, so they stay where they are.` : '') +
+    (r.locked.length ? ` Locked, so left alone: ${names(r.locked)}.` : ''));
+}
+
 /** Run one of the automate functions. */
 export function runAutomate(id: string, host: AutoHost): void {
-  if (id === 'panel.actions') actions(host);
+  if (id === 'edit.auto-align') lineUp(host);
+  else if (id === 'panel.actions') actions(host);
   else if (id === 'file.batch') batch(host);
   else if (id === 'file.resize-many') resizeMany(host);
   else if (id === 'file.contact-sheet') contactSheet(host);

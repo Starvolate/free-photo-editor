@@ -428,3 +428,19 @@ export function arrowHead(pts: readonly Point[], atStart: boolean, size: number)
   const bx = s.x - dx * size, by = s.y - dy * size, hw = size / 2;
   return [{ x: s.x, y: s.y }, { x: bx - dy * hw, y: by + dx * hw }, { x: bx + dy * hw, y: by - dx * hw }];
 }
+
+/**
+ * Comic panels (shape.comic-panels): `rows` by `cols` panel boxes filling a page `width` by `height`, `margin` pixels in
+ * from its edge and `gap` pixels apart, in reading order (left to right, then down), each a closed box drawn clockwise
+ * from its top-left corner. Empty when the gaps and margins leave no room.
+ */
+export function comicPanels(width: number, height: number, rows: number, cols: number, gap: number, margin: number): Subpath[] {
+  const r = Math.max(1, Math.round(rows)), c = Math.max(1, Math.round(cols));
+  const pw = (width - 2 * margin - (c - 1) * gap) / c, ph = (height - 2 * margin - (r - 1) * gap) / r, out: Subpath[] = [];
+  if (pw < 1 || ph < 1) return out;
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) {
+    const x0 = margin + j * (pw + gap), y0 = margin + i * (ph + gap), x1 = x0 + pw, y1 = y0 + ph;
+    out.push({ anchors: [anchorAt(x0, y0), anchorAt(x1, y0), anchorAt(x1, y1), anchorAt(x0, y1)], closed: true });
+  }
+  return out;
+}

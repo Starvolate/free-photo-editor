@@ -3,6 +3,7 @@
 /** Path operations, part 2: slice, hatch lines, stitch lines, in-between shapes, repeat and bend along a line, thick and thin strokes, dashes and arrowheads. Every number is worked out by hand in its comment. */
 import { describe, expect, it } from 'vitest';
 import { anchorAt, type Subpath } from '../src/path';
+import { comicPanels } from '../src/pathops';
 import {
   arrowHead, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, patternAlong, powerStroke, ringPoints, stitchSubpaths, subpathsBounds, tracedArea,
 } from '../src/pathops';
@@ -132,5 +133,21 @@ describe('dashes and arrowheads', () => {
     const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
     expect(arrowHead(pts, false, 20)).toEqual([{ x: 100, y: 0 }, { x: 80, y: 10 }, { x: 80, y: -10 }]);
     expect(arrowHead(pts, true, 20).map((p) => [p.x + 0, p.y + 0])).toEqual([[0, 0], [20, -10], [20, 10]]);
+  });
+});
+
+describe('comic panels', () => {
+  it('fills a 960 x 640 page with 2 rows of 3 panels, 40 px in from the edge and 20 px apart, in reading order', () => {
+    // Width: (960 - 2·40 - 2·20) / 3 = 280 per panel. Height: (640 - 2·40 - 20) / 2 = 270 per panel.
+    const p = comicPanels(960, 640, 2, 3, 20, 40), xy = (s: Subpath) => s.anchors.map((a) => [a.x, a.y]);
+    expect(p.length).toBe(6);
+    expect(p.every((s) => s.closed && s.anchors.length === 4)).toBe(true);
+    expect(xy(p[0])).toEqual([[40, 40], [320, 40], [320, 310], [40, 310]]);
+    expect(xy(p[1])).toEqual([[340, 40], [620, 40], [620, 310], [340, 310]]);
+    expect(xy(p[5])).toEqual([[640, 330], [920, 330], [920, 600], [640, 600]]);
+  });
+  it('gives nothing when the gaps and margins leave no room, and rounds rows and columns to at least 1', () => {
+    expect(comicPanels(100, 100, 2, 2, 80, 10)).toEqual([]); // (100 - 2·10 - 80) / 2 = 0 px per panel
+    expect(comicPanels(100, 100, 0, 0.4, 5, 10).map((s) => s.anchors.map((a) => [a.x, a.y]))).toEqual([[[10, 10], [90, 10], [90, 90], [10, 90]]]);
   });
 });

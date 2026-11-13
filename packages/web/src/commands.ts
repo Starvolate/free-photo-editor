@@ -15,7 +15,7 @@ export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' 
   | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove'
   | 'pen' | 'path-select' | 'direct-select' | 'anchor-add' | 'anchor-delete' | 'anchor-convert'
   | 'select-ellipse' | 'select-row' | 'select-column' | 'ruler' | 'color-sampler' | 'note'
-  | 'turn' | 'crop-quad';
+  | 'turn' | 'crop-quad' | 'lasso-edge';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -267,7 +267,7 @@ export const W3_TOOLS: Record<string, ToolId> = {
   'tool.select-ellipse': 'select-ellipse', 'tool.select-row': 'select-row', 'tool.select-column': 'select-column', 'tool.ruler': 'ruler',
   'tool.color-sampler': 'color-sampler', 'tool.note': 'note',
   // Batch tools (toolkit-more.ts, inside the tool kit's chunk).
-  'tool.rotate-view': 'turn', 'tool.crop-perspective': 'crop-quad',
+  'tool.rotate-view': 'turn', 'tool.crop-perspective': 'crop-quad', 'tool.lasso-magnetic': 'lasso-edge',
 };
 Object.assign(TOOLS, W3_TOOLS);
 export const TK_TOOLS = new Set<ToolId>(Object.values(W3_TOOLS));

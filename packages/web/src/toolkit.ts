@@ -21,7 +21,7 @@ import type { AiKit } from './ai';
 import { h } from './dom';
 import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
-import { MORE_TOOLS, createMoreKit } from './toolkit-more';
+import { MORE_BAR, MORE_TOOLS, createMoreKit } from './toolkit-more';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
 
@@ -1093,6 +1093,8 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'select-row': case 'select-column': bar.append(modes(), hint(t === 'select-row' ? 'Click to select that one-pixel row right across the picture.' : 'Click to select that one-pixel column right down the picture.')); break;
       case 'object-select': bar.append(modes(), hint('Tap a thing, or drag a box round it. Shift adds, Alt takes away.')); break;
       case 'lasso': bar.append(modes(), sl('Soft edge', 'Feather new selections by this many pixels.', 0, 100, S.feather, ' px', (v) => { S.feather = v; }, 'w3-feather'), hint('Drag around what you want. Shift adds, Alt takes away.')); break;
+      case 'lasso-edge': bar.append(modes(), sl('Soft edge', 'Feather new selections by this many pixels.', 0, 100, S.feather, ' px', (v) => { S.feather = v; }, 'w3-feather'),
+        hint('Drag slowly along the edge of what you want: the outline sticks to the nearest edge. Let go and it closes straight back to the start. Shift adds, Alt takes away.')); break;
       case 'lasso-poly':
         bar.append(modes(), hint(poly ? `${poly.pts.length} corners. Tap the first corner, double-click or press Enter to close.` : 'Click from corner to corner. Close at the first corner.'));
         if (poly) bar.append(btn('Close the outline', 'w3-poly-close', closePoly, true), btn('Cancel', 'w3-poly-cancel', () => { poly = null; host.refreshOptions(); host.render(); }));
@@ -1238,15 +1240,15 @@ export function createToolKit(host: ToolHost): ToolKit {
   // Batch view-tools (viewkit.ts): oval, row and column selections, Measure, colour markers, notes, guides and snapping.
   const view = createViewKit(host, applyMask, (i) => modeOf(i)), viewOn = (): boolean => VIEW_TOOLS.has(host.tool()) || view.busy();
   const snapped = (p: Pt): Pt => (SNAPS.has(host.tool()) ? view.snap(p) : p);
-  // Batch tools (toolkit-more.ts): Turn the view and Crop and straighten.
-  const more = createMoreKit(host), moreOn = (): boolean => MORE_TOOLS.has(host.tool()) || more.busy();
+  // Batch tools (toolkit-more.ts): Turn the view, Crop and straighten, Trace along edges.
+  const more = createMoreKit(host, applyMask, (i) => modeOf(i)), moreOn = (): boolean => MORE_TOOLS.has(host.tool()) || more.busy();
   return {
     claims: (t) => TK_TOOLS.has(t) || view.claims(t) || !!xf || (!!qm && (t === 'brush' || t === 'pencil' || t === 'eraser')),
     start: (p, i) => (MORE_TOOLS.has(host.tool()) ? more.start(p, i) : penOn() ? pen.start(p, i) : !xf && view.claims(host.tool()) ? view.start(p, i) : start(snapped(p), i)),
     move: (p, i) => (moreOn() ? more.move(p, i) : penOn() ? pen.move(p, i) : viewOn() ? view.move(p, i) : move(snapped(p), i)),
     end: (p, i) => (moreOn() ? more.end(p, i) : penOn() ? pen.end(p, i) : viewOn() ? view.end(p, i) : end(snapped(p), i)),
     cancel: () => { more.cancel(); pen.cancel(); view.cancel(); cancel(); },
-    options: (bar, t) => (MORE_TOOLS.has(t) ? more.options(bar, t) : PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
+    options: (bar, t) => (MORE_BAR.has(t) ? more.options(bar, t) : PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
     overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); more.overlay(ctx); },
     cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' || PATH_OPS.has(id) ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
     viewFlags: () => view.flags(),

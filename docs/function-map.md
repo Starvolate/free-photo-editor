@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 427 Ready, 248 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 428 Ready, 247 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 178 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 221 | 429 | 0 |
-| Ready today | 427 | 25 | 186 | 216 | 0 |
+| Ready today | 428 | 25 | 186 | 217 | 0 |
 
 ## The Task ribbon
 
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · More list | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (54 Ready, 11 Planned)
+## Tools (55 Ready, 10 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -534,7 +534,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.select-column | Select one column | Single column marquee | Select a line of pixels one pixel wide. | column | Tools › Select box | Select & cut out › Draw or paint · More list | Ready | 2 |  |
 | tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | Tools › Lasso | Select & cut out › Draw or paint · small button | Ready | W3 | L |
 | tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Ready | W3 |  |
-| tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | Tools › Lasso | Select & cut out › Draw or paint · More list | Planned | 2 |  |
+| tool.lasso-magnetic | Trace along edges | Edge-snapping lasso | Drag slowly along the edge of a thing: the outline sticks to the nearest edge, and letting go closes it straight back to the start. | magnetic lasso, snap to edges, edge selection, trace outline, select along an edge, cut out along edges | Tools › Lasso | Select & cut out › Draw or paint · More list | Ready | 2 |  |
 | tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | Tools › Smart select | Select & cut out › Draw or paint · small button | Ready | W3 |  |
 | tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | Tools › Smart select | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | Tools › Smart select | Select & cut out › Draw or paint · small button | Ready | W3 | W |

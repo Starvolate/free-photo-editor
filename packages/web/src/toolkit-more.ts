@@ -7,13 +7,89 @@
  * Turning the view never touches pixels: the renderer draws the whole stage turned about its centre, and pointer, wheel
  * and pinch input are turned back before any tool sees them (input.ts), so every tool keeps working in the same space.
  */
-import { docCommand, hasPixels, homography, invert3, mapPoint, snapshotDoc, type Command, type Doc, type DocState, type Layer, type Quad } from '@free-photoeditor/core';
+import { compositeDoc, docCommand, docRect, hasPixels, homography, mapPoint, polygonMask, snapshotDoc, type Command, type Doc, type DocState, type Layer, type Mask, type Quad, type SelMode } from '@free-photoeditor/core';
 import type { ToolId } from './commands';
 import { h } from './dom';
 import type { PointerInfo, Pt } from './input';
 import type { ToolHost } from './toolkit';
 
-export const MORE_TOOLS = new Set<ToolId>(['turn', 'crop-quad']);
+export const MORE_TOOLS = new Set<ToolId>(['turn', 'crop-quad', 'lasso-edge']);
+/** The tools whose options bar this kit draws (Trace along edges uses the selection bar in toolkit.ts). */
+export const MORE_BAR = new Set<ToolId>(['turn', 'crop-quad']);
+
+// ---------- Trace along edges (edge-snapping lasso): the maths ----------
+/** The brightness of every pixel (0..255), see-through counted as dark. Taken once per outline, not per point. */
+export function lumaOf(src: Uint8ClampedArray, w: number, h: number): Float32Array {
+  const L = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) L[i] = (0.299 * src[j] + 0.587 * src[j + 1] + 0.114 * src[j + 2]) * (src[j + 3] / 255);
+  return L;
+}
+/** How sharply the brightness changes at a pixel (central differences; the picture's border repeats). */
+export function edgeAt(L: Float32Array, w: number, h: number, x: number, y: number): number {
+  const xa = x > 0 ? x - 1 : x, xb = x < w - 1 ? x + 1 : x, ya = y > 0 ? y - 1 : y, yb = y < h - 1 ? y + 1 : y;
+  return Math.hypot(L[y * w + xb] - L[y * w + xa], L[yb * w + x] - L[ya * w + x]);
+}
+const cell = (v: number, n: number): number => Math.min(n - 1, Math.max(0, Math.floor(v)));
+/** The pixel with the strongest edge within `r` pixels of p (the nearest of equals); p's own pixel when no edge is there. */
+export function snapToEdge(L: Float32Array, w: number, h: number, p: Pt, r: number): Pt {
+  const cx = cell(p.x, w), cy = cell(p.y, h), R = Math.ceil(r);
+  let best: Pt = { x: cx, y: cy }, bg = -1, bd = Infinity;
+  for (let y = Math.max(0, cy - R); y <= Math.min(h - 1, cy + R); y++) for (let x = Math.max(0, cx - R); x <= Math.min(w - 1, cx + R); x++) {
+    const dd = (x - cx) ** 2 + (y - cy) ** 2;
+    if (dd > r * r) continue;
+    const g = edgeAt(L, w, h, x, y);
+    if (g > bg + 1e-3 || (g > bg - 1e-3 && dd < bd)) { bg = Math.max(g, bg); bd = dd; best = { x, y }; }
+  }
+  return bg < 8 ? { x: cx, y: cy } : best; // under 8 brightness levels is no edge at all
+}
+/**
+ * The cheapest way from pixel a to pixel b along strong edges (Dijkstra with a binary heap) inside the two points' box
+ * plus `pad`: each step costs 1 - edge / strongest edge in the box, plus a little so the way stays short; diagonals × √2.
+ * A box over `limit` pixels falls back to the straight line.
+ */
+export function edgePath(L: Float32Array, w: number, h: number, a: Pt, b: Pt, pad = 20, limit = 400_000): Pt[] {
+  const x0 = Math.max(0, Math.min(a.x, b.x) - pad), x1 = Math.min(w - 1, Math.max(a.x, b.x) + pad);
+  const y0 = Math.max(0, Math.min(a.y, b.y) - pad), y1 = Math.min(h - 1, Math.max(a.y, b.y) + pad), bw = x1 - x0 + 1, n = bw * (y1 - y0 + 1);
+  if (n > limit || n <= 0) return [a, b];
+  const cost = new Float32Array(n);
+  let gmax = 0;
+  for (let k = 0; k < n; k++) { cost[k] = edgeAt(L, w, h, x0 + (k % bw), y0 + Math.floor(k / bw)); if (cost[k] > gmax) gmax = cost[k]; }
+  for (let k = 0; k < n; k++) cost[k] = (gmax > 0 ? 1 - cost[k] / gmax : 1) + 0.05;
+  const dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n), hk: number[] = [], hv: number[] = [];
+  const push = (key: number, v: number): void => {
+    let i = hk.length;
+    hk.push(key); hv.push(v);
+    while (i > 0) { const p = (i - 1) >> 1; if (hk[p] <= key) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; }
+    hk[i] = key; hv[i] = v;
+  };
+  const pop = (): number => {
+    const top = hv[0], key = hk.pop() as number, v = hv.pop() as number, m = hk.length;
+    if (m) {
+      let i = 0;
+      for (;;) { let c = 2 * i + 1; if (c >= m) break; if (c + 1 < m && hk[c + 1] < hk[c]) c++; if (hk[c] >= key) break; hk[i] = hk[c]; hv[i] = hv[c]; i = c; }
+      hk[i] = key; hv[i] = v;
+    }
+    return top;
+  };
+  const s = (a.y - y0) * bw + a.x - x0, t = (b.y - y0) * bw + b.x - x0, bh = n / bw;
+  dist[s] = 0; push(0, s);
+  while (hk.length) {
+    const u = pop();
+    if (done[u]) continue;
+    done[u] = 1;
+    if (u === t) break;
+    const ux = u % bw, uy = (u - ux) / bw;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const vx = ux + dx, vy = uy + dy;
+      if ((!dx && !dy) || vx < 0 || vy < 0 || vx >= bw || vy >= bh) continue;
+      const v = vy * bw + vx, nd = dist[u] + cost[v] * (dx && dy ? Math.SQRT2 : 1);
+      if (!done[v] && nd < dist[v]) { dist[v] = nd; prev[v] = u; push(nd, v); }
+    }
+  }
+  const out: Pt[] = [];
+  for (let k = t; k >= 0; k = prev[k]) { out.push({ x: x0 + (k % bw), y: y0 + Math.floor(k / bw) }); if (k === s) break; }
+  return out[out.length - 1]?.x === a.x && out[out.length - 1]?.y === a.y ? out.reverse() : [a, b];
+}
 
 // ---------- Turn the view: the maths ----------
 const TAU = Math.PI * 2;
@@ -137,7 +213,7 @@ export interface MoreKit {
   toClient(x: number, y: number): Pt;
 }
 
-export function createMoreKit(host: ToolHost): MoreKit {
+export function createMoreKit(host: ToolHost, applyMask: (m: Mask, mode: SelMode, label: string) => void, modeOf: (i: PointerInfo) => SelMode): MoreKit {
   const doc = (): Doc | null => host.doc();
   const scr = (p: Pt): Pt => { const v = host.view(); return { x: v.panX + p.x * v.zoom, y: v.panY + p.y * v.zoom }; };
   const centre = (): Pt => { const c = host.canvas(); return { x: c.clientWidth / 2, y: c.clientHeight / 2 }; };
@@ -177,11 +253,28 @@ export function createMoreKit(host: ToolHost): MoreKit {
   };
   const resetQuad = (): void => { quad = null; ensureQuad(); host.render(); };
 
+  // Trace along edges: the brightness is taken once when the drag starts; a new point is fixed every 16 screen px.
+  let trace: { L: Float32Array; W: number; H: number; pts: Pt[]; mode: SelMode } | null = null;
+  const snapR = (): number => Math.min(24, Math.max(4, 8 / host.view().zoom));
+  const traceTo = (p: Pt): void => {
+    if (!trace) return;
+    const { L, W, H, pts } = trace, last = pts[pts.length - 1], b = snapToEdge(L, W, H, p, snapR());
+    if (b.x !== last.x || b.y !== last.y) pts.push(...edgePath(L, W, H, last, b).slice(1));
+  };
+
   return {
     claims: (t) => MORE_TOOLS.has(t),
-    busy: () => !!turnDrag || !!grab,
-    start(p) {
+    busy: () => !!turnDrag || !!grab || !!trace,
+    start(p, i) {
       const t = host.tool();
+      if (t === 'lasso-edge') {
+        const d = doc();
+        if (!d) return;
+        const L = lumaOf(compositeDoc(d, docRect(d)), d.width, d.height);
+        trace = { L, W: d.width, H: d.height, pts: [snapToEdge(L, d.width, d.height, p, snapR())], mode: modeOf(i) };
+        host.render();
+        return;
+      }
       if (t === 'turn') { turnDrag = { a0: angleOf(p), t0: host.turn() }; return; }
       if (t === 'crop-quad') {
         const q = ensureQuad();
@@ -193,6 +286,12 @@ export function createMoreKit(host: ToolHost): MoreKit {
       }
     },
     move(p, i) {
+      if (trace) {
+        const l = trace.pts[trace.pts.length - 1];
+        if (dist(l, p) * host.view().zoom >= 16) traceTo(p);
+        host.render();
+        return;
+      }
       if (turnDrag) { setTurn(dragTurn(turnDrag.t0, turnDrag.a0, angleOf(p), i.shift)); return; }
       const d = doc();
       if (!grab || !quad || !d) return;
@@ -206,10 +305,20 @@ export function createMoreKit(host: ToolHost): MoreKit {
       host.render();
     },
     end(p, i) {
+      if (trace) {
+        traceTo(p);
+        const tr = trace;
+        trace = null;
+        // Let go and the outline closes straight back to where it started.
+        if (tr.pts.length >= 3) applyMask(polygonMask(tr.W, tr.H, tr.pts.map((c) => ({ x: c.x + 0.5, y: c.y + 0.5 }))), tr.mode, 'Trace along edges');
+        else host.toast('Drag slowly along the edge of what you want, all the way round.');
+        host.render();
+        return;
+      }
       if (turnDrag) { this.move(p, i); turnDrag = null; host.refreshOptions(); return; }
       if (grab) { this.move(p, i); grab = null; host.refreshOptions(); }
     },
-    cancel() { turnDrag = null; grab = null; },
+    cancel() { turnDrag = null; grab = null; trace = null; },
     options(bar, t) {
       if (t === 'turn') {
         readout = h('span', { class: 'fpe-hint', 'data-testid': 'turn-readout', 'aria-live': 'polite' });
@@ -233,6 +342,22 @@ export function createMoreKit(host: ToolHost): MoreKit {
       }
     },
     overlay(ctx) {
+      if (trace) {
+        const ptr = host.pointer(), s = trace.pts.map((c) => scr({ x: c.x + 0.5, y: c.y + 0.5 }));
+        if (ptr) s.push(scr(ptr));
+        ctx.save();
+        ctx.beginPath();
+        s.forEach((c, k) => (k ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y)));
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+        ctx.lineDashOffset = 5;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
       if (host.tool() !== 'crop-quad') return;
       const q = ensureQuad();
       if (!q) return;
@@ -276,7 +401,7 @@ export function createMoreKit(host: ToolHost): MoreKit {
       return false;
     },
     toolChanged(prev, next) {
-      turnDrag = null; grab = null;
+      turnDrag = null; grab = null; trace = null;
       if (prev === 'crop-quad' && next !== 'crop-quad') quad = null;
       if (next === 'crop-quad') { ensureQuad(); host.render(); }
     },

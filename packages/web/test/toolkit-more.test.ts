@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
-/** Batch tools, part 1: the maths behind Turn the view and Crop and straighten, on numbers and pixels worked by hand. */
+/** Batch tools: the maths behind Turn the view, Crop and straighten and Trace along edges, on numbers and pixels worked by hand. */
 import { describe, expect, it } from 'vitest';
 import { createDocument, type Doc, type Quad } from '@free-photoeditor/core';
-import { dragTurn, perspectiveCrop, quadGrid, quadOk, quadSize, startQuad, turnDegrees, turnPoint, unturnPoint, wrapTurn } from '../src/toolkit-more';
+import { dragTurn, edgeAt, edgePath, lumaOf, perspectiveCrop, snapToEdge, quadGrid, quadOk, quadSize, startQuad, turnDegrees, turnPoint, unturnPoint, wrapTurn } from '../src/toolkit-more';
 
 const deg = (d: number): number => (d * Math.PI) / 180;
 
@@ -94,5 +94,41 @@ describe('Crop and straighten (perspective crop)', () => {
     expect(g).toHaveLength(4);
     expect(g[0][0].x).toBeCloseTo(10, 6);
     expect(g[1][0].y).toBeCloseTo(10, 6);
+  });
+});
+
+describe('Trace along edges (edge-snapping lasso)', () => {
+  // 40 x 40: black where x < 20, white from x = 20 on. Brightness 0 | 255.
+  const W = 40, H = 40, px = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) { const v = i % W < 20 ? 0 : 255; px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v; px[i * 4 + 3] = 255; }
+  const L = lumaOf(px, W, H);
+  it('measures the edge only on the two columns that meet it, worked by hand', () => {
+    expect(L[19]).toBe(0);
+    expect(L[20]).toBeCloseTo(255, 3);
+    // Central difference: at x = 19, L(20) - L(18) = 255; at x = 20, L(21) - L(19) = 255; one column further out, 0.
+    expect(edgeAt(L, W, H, 19, 7)).toBeCloseTo(255, 3);
+    expect(edgeAt(L, W, H, 20, 7)).toBeCloseTo(255, 3);
+    expect(edgeAt(L, W, H, 18, 7)).toBe(0);
+    expect(edgeAt(L, W, H, 21, 7)).toBe(0);
+    // See-through counts as dark: a white pixel at alpha 0 has brightness 0.
+    expect(lumaOf(new Uint8ClampedArray([255, 255, 255, 0]), 1, 1)[0]).toBe(0);
+  });
+  it('snaps a point 3 px away onto the edge, the nearer of the two edge columns', () => {
+    expect(snapToEdge(L, W, H, { x: 16.4, y: 5.2 }, 8)).toEqual({ x: 19, y: 5 });
+    expect(snapToEdge(L, W, H, { x: 22.9, y: 30 }, 8)).toEqual({ x: 20, y: 30 });
+    // Out of reach (radius 4 from x = 12): no edge, so the point stays on its own pixel.
+    expect(snapToEdge(L, W, H, { x: 12.5, y: 9.5 }, 4)).toEqual({ x: 12, y: 9 });
+  });
+  it('follows the edge from one end to the other: every point on x = 19 or 20, each a neighbour of the last', () => {
+    const a = snapToEdge(L, W, H, { x: 16, y: 5 }, 8), b = snapToEdge(L, W, H, { x: 23, y: 35 }, 8);
+    const path = edgePath(L, W, H, a, b);
+    expect(path[0]).toEqual({ x: 19, y: 5 });
+    expect(path[path.length - 1]).toEqual({ x: 20, y: 35 });
+    for (const q of path) expect([19, 20], JSON.stringify(q)).toContain(q.x);
+    for (let k = 1; k < path.length; k++) expect(Math.max(Math.abs(path[k].x - path[k - 1].x), Math.abs(path[k].y - path[k - 1].y))).toBe(1);
+    // 30 rows down and one column across: 30 steps, so 31 points.
+    expect(path).toHaveLength(31);
+    // A box too big for the limit falls back to the straight line.
+    expect(edgePath(L, W, H, a, b, 20, 10)).toEqual([a, b]);
   });
 });

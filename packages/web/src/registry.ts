@@ -455,7 +455,7 @@ tool.select-column | Select one column | Single column marquee | Select a line o
 @Tools > Lasso = Draw a selection | Lasso | Draw around the part you want.
 tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | R | W3 | L
 tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
-tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | P | 2
+tool.lasso-magnetic | Trace along edges | Edge-snapping lasso | Drag slowly along the edge of a thing: the outline sticks to the nearest edge, and letting go closes it straight back to the start. | magnetic lasso, snap to edges, edge selection, trace outline, select along an edge, cut out along edges | R | 2
 @Tools > Smart select = Smart select | Quick selection | Let the editor find the edges for you.
 tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | R | W3
 tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | R | 11

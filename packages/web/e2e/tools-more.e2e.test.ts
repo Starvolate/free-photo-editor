@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * Batch tools in a real headless Chrome, used as a person uses them: Turn the view (rotate view) and Crop and straighten
- * (perspective crop), each reached from the ribbon with real clicks at 1440. Screenshots go to e2e/out (tools-*.png).
+ * Batch tools in a real headless Chrome, used as a person uses them: Turn the view (rotate view), Crop and straighten
+ * (perspective crop) and Trace along edges (edge-snapping lasso), each reached from the ribbon with real clicks at 1440. Screenshots go to e2e/out (tools-*.png).
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts tools-more
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -96,7 +96,7 @@ const px = (p: Page, x: number, y: number): Promise<number[] | null> => p.evalua
 const span = async (p: Page, W: number): Promise<number> => { const a = await at(p, 0, 0), b = await at(p, W, 0); return Math.hypot(b.x - a.x, b.y - a.y); };
 
 const suite = CHROME ? describe : describe.skip;
-suite('Batch tools: Turn the view and Crop and straighten (headless Chrome)', () => {
+suite('Batch tools (headless Chrome)', () => {
   beforeAll(async () => {
     await mkdir(OUT, { recursive: true });
     ({ server, url } = await serve());
@@ -187,6 +187,27 @@ suite('Batch tools: Turn the view and Crop and straighten (headless Chrome)', ()
     await p.keyboard.press('Enter');
     await p.waitForFunction((w) => (window as unknown as Win).fpe.getInfo()?.width !== w, W, { timeout: 15000 });
     expect((await info(p)).width).toBe(Math.round(W * 0.8));
+    expect(errors).toEqual([]);
+  });
+  it('traces a loose drag onto the edges of a black box on white, at 1440', async () => {
+    const p = await open(1440, 900);
+    // A built picture, not the sample: white, with a black box from (250, 150) to (550, 350).
+    await p.evaluate(async () => {
+      const f = (window as unknown as Win).fpe;
+      f.newDocument(800, 500, '#ffffff');
+      await f.run('tool.default-colors');
+      f.select(250, 150, 300, 200);
+      await f.run('edit.fill');
+      await f.run('select.none');
+    });
+    expect(await px(p, 400, 250)).toEqual([0, 0, 0, 255]);
+    await pick(p, 'tool.lasso-magnetic');
+    expect((await st(p)).tool).toBe('lasso-edge');
+    // Round the box by hand, 5 to 6 px outside it all the way, and let go near the start.
+    await drag(p, [[244, 160], [245, 145], [400, 144], [556, 145], [556, 250], [555, 356], [400, 355], [245, 356], [244, 250], [245, 170]], 10);
+    const s = (await info(p)).selection;
+    expect(s && near(s, 250, 150, 2) && Math.abs(s.x + s.w - 550) <= 2 && Math.abs(s.y + s.h - 350) <= 2, JSON.stringify(s)).toBe(true);
+    await shot(p, 'tools-edge-lasso.png');
     expect(errors).toEqual([]);
   });
 });

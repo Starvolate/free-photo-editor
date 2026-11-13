@@ -25,6 +25,8 @@ export interface Overlay {
 export interface Colors { stage: string; checkA: string; checkB: string; edge: string; }
 export interface Renderer {
   readonly canvas: HTMLCanvasElement;
+  /** Turn the view, radians about the stage centre. */
+  turn?: number;
   setColors(c: Colors): void;
   resize(cssWidth: number, cssHeight: number, dpr: number): void;
   setDocumentSize(width: number, height: number): void;
@@ -47,6 +49,8 @@ export class Canvas2DRenderer implements Renderer {
   private dpr = 1;
   private colors: Colors = { stage: '#0b0c0e', checkA: '#2a2b30', checkB: '#202126', edge: 'rgba(255,255,255,.18)' };
   private pattern: CanvasPattern | null = null;
+  /** Turn the view: radians about the stage centre (0 draws as before). Pixels never turn. */
+  turn = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -103,17 +107,18 @@ export class Canvas2DRenderer implements Renderer {
     ctx.fillStyle = this.colors.stage;
     ctx.fillRect(0, 0, this.cssW, this.cssH);
     if (!this.docW) return;
+    if (this.turn) { const cx = this.cssW / 2, cy = this.cssH / 2; ctx.translate(cx, cy); ctx.rotate(this.turn); ctx.translate(-cx, -cy); }
     const z = view.zoom, px = view.panX, py = view.panY, dw = this.docW * z, dh = this.docH * z;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = this.checker();
     ctx.fillRect(px, py, dw, dh);
     ctx.save();
-    ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * px, dpr * py);
+    ctx.transform(z, 0, 0, z, px, py);
     ctx.imageSmoothingEnabled = z < 1;
     ctx.imageSmoothingQuality = 'high';
     for (const t of this.tiles) {
       const sx = px + t.x * z, sy = py + t.y * z;
-      if (sx > this.cssW || sy > this.cssH || sx + t.w * z < 0 || sy + t.h * z < 0) continue;
+      if (!this.turn && (sx > this.cssW || sy > this.cssH || sx + t.w * z < 0 || sy + t.h * z < 0)) continue;
       ctx.drawImage(t.canvas, t.x, t.y);
     }
     ctx.restore();

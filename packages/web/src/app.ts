@@ -1672,6 +1672,8 @@ export class Editor {
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
       fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
       ai: () => this.ai(),
+      // Turn the view (toolkit-more.ts): the renderer draws turned and input turns points back.
+      turn: () => this.input.turn, setTurn: (r) => { this.renderer.turn = this.input.turn = r; this.requestRender(); },
     };
   }
   /** Open a sheet with this title and body. A sheet is built once per id; a later caller's own body replaces the one shown before. */
@@ -3757,6 +3759,7 @@ export class Editor {
       },
       toClient: (x, y) => {
         if (!this.doc) return null;
+        if (this.input.turn) return this.tk?.toClient(x, y) ?? null;
         const r = this.canvas.getBoundingClientRect();
         return { x: r.left + this.view.panX + x * this.view.zoom, y: r.top + this.view.panY + y * this.view.zoom };
       },

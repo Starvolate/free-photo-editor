@@ -455,15 +455,15 @@ tool.select-column | Select one column | Single column marquee | Select a line o
 @Tools > Lasso = Draw a selection | Lasso | Draw around the part you want.
 tool.lasso | Draw around it | Lasso | Draw freely around what you want to select. | freehand selection | R | W3 | L
 tool.lasso-poly | Click around it | Polygonal lasso | Click from corner to corner in straight lines. | straight lines selection | R | W3
-tool.lasso-magnetic | Snap to edges | Magnetic lasso | Trace near an edge and the outline sticks to it. | edge selection | P | 2
+tool.lasso-magnetic | Trace along edges | Edge-snapping lasso | Drag slowly along the edge of a thing: the outline sticks to the nearest edge, and letting go closes it straight back to the start. | magnetic lasso, snap to edges, edge selection, trace outline, select along an edge, cut out along edges | R | 2
 @Tools > Smart select = Smart select | Quick selection | Let the editor find the edges for you.
 tool.quick-select | Paint to select | Quick selection | Paint over an area and the selection grows to its edges. | quick selection | R | W3
 tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | R | 11
 tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | R | W3 | W
 @Tools > Crop = Crop | Crop | Cut the picture to a new shape.
 tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | R | 1 | C
-tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | P | 3
-tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | P | 13
+tool.crop-perspective | Crop and straighten | Perspective crop | Drag four corners onto a slanted surface: it becomes a straight rectangle, cropped, in one step. | straighten document | R | 3
+tool.slice | Cut into web pieces | Slice | Drag boxes over the picture, then save each as its own PNG, all in one ZIP, for a web page. The boxes stay with that open picture until you clear them. | slice, slices, cut into pieces, web pieces, split image, export slices, image map | R | 13
 @Tools > Measure = Pick and measure | Eyedropper | Pick colours and measure.
 tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | R | 1 | I
 tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | R | 13
@@ -474,7 +474,7 @@ tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it bl
 tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | R | 11
 tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | R | W3
 tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | R | W3
-tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | P | 11
+tool.smart-move | Move and fill the gap | Fill-aware move | Move something and fill the hole it leaves. | move object, content-aware move | P | 11
 tool.red-eye | Fix red eyes | Red eye | Click a red eye to make it dark again. | red eye, flash eyes | R | W3
 @Tools > Paint = Paint | Brush | Paint and draw.
 tool.brush | Paint brush | Brush | Paint with soft or hard edges; pens set the size by pressure. | paint, draw, brush, colour in | R | 1 | B
@@ -524,7 +524,7 @@ tool.line | Line | Line | Drag to draw a straight line or arrow. | arrow, straig
 tool.custom-shape | Ready-made shapes | Custom shape | Draw hearts, arrows, speech bubbles and more. | heart, speech bubble | P | 6
 @Tools > Hand = Move around | Hand | Move around a zoomed picture.
 tool.hand | Move the view | Hand | Drag to move around the picture; hold Space with any tool. | pan, scroll around | R | W1 | H
-tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle. | turn canvas | P | 13 | R
+tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle; the pixels never turn. Esc puts it level. | turn canvas | R | 13 | R
 @Tools > Zoom = Zoom | Zoom | Zoom in and out.
 tool.zoom | Zoom | Zoom tool | Click to zoom in; Alt-click to zoom out. | magnify, zoom | R | W1 | Z
 @Tools > Colours = Colours | Colours | Your main and second colours.

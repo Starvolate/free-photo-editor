@@ -44,6 +44,8 @@ export class CanvasInput {
   private pinch0: { d: number; dx: number; dy: number; zoom: number } | null = null;
   private gScale = 1;
   private off: (() => void)[] = [];
+  /** Turn the view (radians): points are turned back about the canvas centre, so tools see the unturned screen. */
+  turn = 0;
 
   constructor(el: HTMLElement, host: InputHost) {
     this.el = el;
@@ -67,8 +69,10 @@ export class CanvasInput {
   destroy(): void { clearTimeout(this.timer); for (const f of this.off) f(); this.off = []; }
 
   private local(e: { clientX: number; clientY: number }): { sx: number; sy: number } {
-    const r = this.el.getBoundingClientRect();
-    return { sx: e.clientX - r.left, sy: e.clientY - r.top };
+    const r = this.el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (!this.turn) return { sx: x, sy: y };
+    const c = Math.cos(this.turn), s = Math.sin(this.turn), dx = x - r.width / 2, dy = y - r.height / 2;
+    return { sx: r.width / 2 + c * dx + s * dy, sy: r.height / 2 - s * dx + c * dy };
   }
   private info(e: PointerEvent): PointerInfo {
     const pen = e.pointerType === 'pen';
@@ -184,7 +188,7 @@ export class CanvasInput {
     const dx = e.deltaX * unit, dy = e.deltaY * unit;
     const notch = e.deltaMode !== 0 || (dx === 0 && Math.abs(dy) >= 50 && Number.isInteger(dy));
     if (e.ctrlKey || e.metaKey || notch) this.host.zoomAt(Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)), sx, sy);
-    else this.host.pan(-dx, -dy);
+    else { const c = Math.cos(this.turn), s = Math.sin(this.turn); this.host.pan(-(c * dx + s * dy), -(c * dy - s * dx)); }
   }
   private gesture(e: Event): void {
     e.preventDefault();

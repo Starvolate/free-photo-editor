@@ -128,8 +128,13 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
     for (const p of c.slice(1)) await page.mouse.move(p!.x, p!.y, { steps: 6 });
     await page.mouse.up();
   }
-  /** Every file the server handed out, named as the editor's caches name it. */
-  const served = (): string[] => [...new Set(s.hits.filter((x) => x.startsWith('GET ')).map((x) => x.slice(4)))]
+  /**
+   * Requests from the separate Make it bigger tab, as [first, end) indexes into the server's hits. That tab has its own
+   * browser context and so its own caches: what it fetched (the mask settings, for its masked layer) is not page's to keep.
+   */
+  const otherTab: [number, number][] = [];
+  /** Every file the server handed out to page, named as the editor's caches name it. */
+  const served = (): string[] => [...new Set(s.hits.filter((x, i) => x.startsWith('GET ') && !otherTab.some(([a, b]) => i >= a && i < b)).map((x) => x.slice(4)))]
     .filter((x) => x !== '/sw.js' && x !== '/favicon.ico').map((x) => s.url + (x === '/' ? 'index.html' : x.slice(1)));
   const cachedUrls = (): Promise<string[]> => page.evaluate(async () => {
     const out: string[] = [];
@@ -209,6 +214,7 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
     // A page made by browser.newPage() owns its context, so context().newPage() is refused: open its own tab instead.
     const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     listen(p);
+    const first = s.hits.length;
     try {
       await p.goto(s.url);
       await p.waitForFunction(() => !!(window as unknown as Win).fpe, undefined, { timeout: 30_000 });
@@ -244,7 +250,7 @@ describe.skipIf(!CHROME)('on-device AI (W11), real models', () => {
       const m1 = await p.evaluate(() => (window as unknown as Win).fpe.state().layers[1].mask);
       console.log(`W6 make it bigger on a masked layer: mask ${m0?.w} x ${m0?.h} became ${m1?.w} x ${m1?.h}`);
       expect([m1?.w, m1?.h]).toEqual([(m0?.w ?? 0) * 2, (m0?.h ?? 0) * 2]);
-    } finally { await cleanUp(p); await p.close(); }
+    } finally { await cleanUp(p); await p.close(); otherTab.push([first, s.hits.length]); }
   }, 240_000);
 
   it('works offline after the first use: with the server off and the internet cut, Remove an object runs again with no Download button', async () => {

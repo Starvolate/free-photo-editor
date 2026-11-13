@@ -16,6 +16,8 @@ export interface MaskPropsHost {
   run(id: string): void;
   /** Redraw the canvas after a live (not yet recorded) change. */
   live(): void;
+  /** Say something short in plain words. */
+  toast(msg: string): void;
 }
 
 function slider(host: MaskPropsHost, key: 'density' | 'feather', plain: string, pro: string, help: string, max: number, unit: string,
@@ -49,7 +51,8 @@ export function renderMaskProps(el: HTMLElement, host: MaskPropsHost): void {
   const fromSel = (): void => {
     const d = host.doc(), t = host.layer();
     if (!d || !t?.mask) return;
-    const next = d.selection ? makeMask(d, 'selection') : null;
+    if (!d.selection) { host.toast('Select an area first: then this makes the mask show only that part.'); return; }
+    const next = makeMask(d, 'selection');
     if (next) { next.linked = t.mask.linked; host.push(maskCommand('Mask from the selection', t.id, t.mask, next)); }
   };
   el.replaceChildren(

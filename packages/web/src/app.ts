@@ -2140,7 +2140,7 @@ export class Editor {
       void import('./layerprops').then((m) => {
         m.renderMaskProps(box, {
           uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
-          live: () => { this.markAll(); this.requestRender(); },
+          live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg),
         });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
       });

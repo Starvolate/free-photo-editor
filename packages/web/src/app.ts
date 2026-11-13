@@ -247,6 +247,8 @@ export class Editor {
   private session: Session | null = null;
   /** Per tab (each has its own History): the step the history brush paints back, by id; none means as opened. */
   private marks = new WeakMap<History, number>();
+  /** While a filter works at full size: its Cancel, which Escape also presses. */
+  private jobCancel: (() => void) | null = null;
   private hdrag: string | null = null;
   clip: Clip | null = null;
   lastSel: Selection | null = null;
@@ -2279,7 +2281,7 @@ export class Editor {
     this.renderDialog();
     const W = s.padded.w, spec: JobSpec = { op: s.spec.op, kind: s.spec.kind, params: { ...s.spec.params } }, bands = jobBands(spec, s.padded.h);
     let stopped = false;
-    const bar = this.progress(s.label, !!bands, () => { stopped = true; this.jobs.stop(); });
+    const bar = this.progress(s.id, !!bands, () => { stopped = true; this.jobs.stop(); });
     try {
       let out: Uint8ClampedArray;
       if (bands) {
@@ -2311,20 +2313,22 @@ export class Editor {
     }
   }
   /** A progress bar with Cancel over the editor while a filter works at full size; without steps it shows a moving bar. */
-  private progress(label: string, steps: boolean, cancel: () => void): { set(v: number): void; close(): void } {
+  private progress(id: string, steps: boolean, cancel: () => void): { set(v: number): void; close(): void } {
+    const r = BY_ID.get(id) as Row, label = r.plain;
     const bar = h('progress', { max: 1, 'data-testid': 'job-bar', 'aria-label': `${label}: how much is done` }) as HTMLProgressElement;
     if (steps) bar.value = 0;
     const pct = h('p', { class: 'fpe-note', 'data-testid': 'job-pct' }, steps ? '0% done' : 'Working on every pixel…');
     const box = h('div', { class: 'fpe-job', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Applying ${label}`, 'data-testid': 'job-progress' },
-      h('h2', { class: 'fpe-dlg-title' }, `Applying ${label} to the whole picture`),
-      h('p', { class: 'fpe-note' }, 'The preview used a smaller copy to stay quick; now every pixel is done at full size. Big pictures and big settings take longer.'),
+      h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
+      h('p', { class: 'fpe-note' }, 'Applying it to the whole picture. The preview used a smaller copy to stay quick; now every pixel is done at full size. Big pictures and big settings take longer.'),
       bar, pct,
       h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'job-cancel', 'data-help-title': 'Cancel',
         'data-help': 'Stop now and keep the picture as it was.', onclick: cancel }, 'Cancel')));
     const veil = h('div', { class: 'fpe-job-veil' }, box);
     this.root.append(veil);
+    this.jobCancel = cancel;
     requestAnimationFrame(() => box.querySelector<HTMLElement>('button')?.focus({ preventScroll: true }));
-    return { set: (v) => { bar.value = v; pct.textContent = `${Math.round(v * 100)}% done`; }, close: () => veil.remove() };
+    return { set: (v) => { bar.value = v; pct.textContent = `${Math.round(v * 100)}% done`; }, close: () => { this.jobCancel = null; veil.remove(); } };
   }
   /** Shows the dialog's result, or the picture as it was, without ending the dialog. */
   private showResult(s: Session, before: boolean): void {
@@ -2771,6 +2775,7 @@ export class Editor {
   private setSpace(on: boolean): void { this.space = on; this.root.toggleAttribute('data-space', on); }
   private onKey(e: KeyboardEvent): void {
     if (!this.isActive()) return;
+    if (this.session?.applying) { e.preventDefault(); if (e.key === 'Escape') this.jobCancel?.(); return; }
     if (this.tk?.key(e)) { e.preventDefault(); return; }
     const k = e.key, mod = e.ctrlKey || e.metaKey;
     if (k === 'Escape') {

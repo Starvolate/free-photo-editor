@@ -430,6 +430,19 @@ suite('W5 polish (headless Chrome)', () => {
     expect(await sumAt(p, { x: 1800, y: 1300, w: 400, h: 400 }), 'Cancel keeps the picture as it was').toBe(kept);
     expect((await state(p)).step, 'and adds no step').toBe(steps + 1);
     expect(await p.textContent('[data-testid="toast"]')).toContain('stopped');
+
+    await run(p, 'filter.blur-lens');
+    await p.waitForSelector('[data-testid="adjust-dialog"]', { state: 'visible' });
+    await p.$eval('[data-testid="ctl-radius"]', (el) => { const i = el as HTMLInputElement; i.value = '40'; i.dispatchEvent(new Event('input', { bubbles: true })); });
+    await ready();
+    await p.click('[data-testid="adj-apply"]');
+    await p.waitForSelector('[data-testid="job-progress"]', { state: 'visible' });
+    expect(await p.getAttribute('[data-testid="job-bar"]', 'value'), 'lens blur cannot be split exactly, so its bar moves without steps').toBeNull();
+    await p.keyboard.press('Escape');
+    await closed();
+    expect(await p.locator('[data-testid="job-progress"]').count(), 'Escape works like Cancel').toBe(0);
+    expect(await sumAt(p, { x: 1800, y: 1300, w: 400, h: 400 }), 'the picture is as it was').toBe(kept);
+    expect((await state(p)).step, 'and no step was added').toBe(steps + 1);
     expect(errors).toEqual([]);
   }, 300_000);
 

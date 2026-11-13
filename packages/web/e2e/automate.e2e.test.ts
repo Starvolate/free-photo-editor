@@ -256,6 +256,8 @@ suite('Automate and batch (headless Chrome)', () => {
     const info = await p.evaluate(() => (window as unknown as Win).fpe.getInfo());
     expect([info?.width, info?.height]).toEqual([2400, 1600]);
     expect(await p.evaluate(() => Number((window as unknown as Win).fpe.state().tabs))).toBe(2);
+    // Let the view finish drawing the new picture (big pictures draw in bands over a few frames) before the shot.
+    await p.waitForTimeout(600);
     await p.screenshot({ path: join(OUT, 'automate-collage-1440.png') });
     expect(errors).toEqual([]);
   }, 60_000);
@@ -273,4 +275,63 @@ suite('Automate and batch (headless Chrome)', () => {
     expect([info?.width, info?.height, info?.layers.length]).toEqual([1800, 1200, 2]);
     expect(errors).toEqual([]);
   }, 60_000);
+
+  it('Copy edits: a light-and-colour layer pasted onto another open picture gives the same pixels there, as one undo step', async () => {
+    const p = await open();
+    const f = (): Promise<void> => p.evaluate(async () => { await (window as unknown as Win).fpe.run('layer.flatten'); });
+    await f();
+    const original = await hash(p), n0 = await steps(p);
+    // A second picture, the same photo, with an Invert light-and-colour layer on top.
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 2);
+    await f();
+    await p.evaluate(async () => { await (window as unknown as Win).fpe.run('layer.adj-invert'); });
+    const target = await hash(p);
+    expect(target).not.toBe(original);
+    await reach(p, 'auto.copy-edits');
+    await p.waitForSelector('[data-testid="auto.copy-edits-tab-0"]');
+    expect((await p.$$('[data-testid="auto.copy-edits-steps"] li')).length).toBe(1);
+    await p.waitForTimeout(3200); // the toasts of the opened photo clear, so the shot shows the whole sheet
+    await p.screenshot({ path: join(OUT, 'automate-copy-edits-1440.png') });
+    await p.click('[data-testid="auto.copy-edits-paste"]');
+    await p.waitForFunction(() => !(window as unknown as Win).fpe.state().modal);
+    await p.locator('[data-testid="doc-tab"] .fpe-tab-name').first().click();
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tab) === 0);
+    expect(await hash(p)).toBe(target);
+    expect(await steps(p)).toBe(n0 + 1);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    expect(await hash(p)).toBe(original);
+    expect(errors).toEqual([]);
+  }, 60_000);
+
+  it('Recent pictures: an opened file is kept in this browser, opens again with one click, and Clear list empties it', async () => {
+    const p = await open();
+    await p.setInputFiles('[data-testid="file-input"]', files[0]);
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 2);
+    // Keeping the file is quiet and after the open, so wait until the browser holds it (never creating the store here).
+    await p.waitForFunction(() => new Promise<boolean>((res) => {
+      const r = indexedDB.open('free-photo-editor-recent', 1);
+      r.onupgradeneeded = () => r.transaction?.abort();
+      r.onerror = () => res(false);
+      r.onsuccess = () => {
+        const q = r.result.transaction('files', 'readonly').objectStore('files').count();
+        q.onsuccess = () => { r.result.close(); res(q.result > 0); };
+        q.onerror = () => { r.result.close(); res(false); };
+      };
+    }), undefined, { timeout: 15_000 });
+    await reach(p, 'file.recent');
+    await p.waitForSelector('[data-testid="recent-item"]');
+    expect(await p.textContent('[data-testid="recent-list"]')).toContain('wide.png');
+    await p.screenshot({ path: join(OUT, 'automate-recent-1440.png') });
+    await p.click('[data-testid="recent-open"]');
+    await p.waitForFunction(() => Number((window as unknown as Win).fpe.state().tabs) === 3);
+    expect((await p.evaluate(() => (window as unknown as Win).fpe.getInfo()))?.width).toBe(120);
+    await reach(p, 'file.recent');
+    await p.waitForSelector('[data-testid="recent-item"]');
+    expect((await p.$$('[data-testid="recent-item"]')).length).toBe(1);
+    await p.click('[data-testid="recent-clear"]');
+    await p.waitForSelector('[data-testid="recent-empty"]');
+    expect(errors).toEqual([]);
+  }, 60_000);
 });
+

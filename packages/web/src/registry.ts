@@ -19,7 +19,7 @@ file.open-layer | Add a photo as a layer | Place | Put another picture on top of
 file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | R | W1
 file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | R | 7
 file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | R | 8
-file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | P | 8
+file.recent | Recent pictures | Open recent | Open again a picture you opened before. The files are kept only in this browser on this device; nothing is uploaded. | last files, history, open again | R | 8
 --
 file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | R | 8
 file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | R | 8

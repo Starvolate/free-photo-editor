@@ -2,11 +2,11 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /** Automate and batch: a recorded set plays back to the same pixels as the steps done by hand, names, sizes, the sheet's geometry. */
 import { describe, expect, it } from 'vitest';
-import { WHITE, createDocument, flatten, runJob, turnDocument, type Doc } from '@free-photoeditor/core';
+import { WHITE, createAdjustLayer, createDocument, flatten, runJob, turnDocument, type Doc, type Layer } from '@free-photoeditor/core';
 import { runEffect } from '@free-photoeditor/core/fx';
 import { BY_ID } from '../src/registry';
 import { ADJ } from '../src/commands';
-import { STARTERS, buildPassport, collageLayout, cropToShape, fitIn, markPlace, mmPx, passportPlan, stampMark, freeName, loadSets, localJob, outputNames, playSteps, recordStep, sheetLayout, sizeFor, stepText, type Step } from '../src/automate';
+import { STARTERS, buildPassport, editsToSteps, collageLayout, cropToShape, fitIn, markPlace, mmPx, passportPlan, stampMark, freeName, loadSets, localJob, outputNames, playSteps, recordStep, sheetLayout, sizeFor, stepText, type Step } from '../src/automate';
 
 /** A 40 × 30 picture with a colour ramp and a hard edge, so sharpening and grain both change it. */
 function picture(): Doc {
@@ -179,5 +179,58 @@ describe('Watermark, collage and passport photo sheet', () => {
     src.selection = { x: 35, y: 0, w: 35, h: 45 };
     const sel = flatten(buildPassport(src, 35, 45, 152.4, 101.6, 50.8, 2).doc).data;
     expect(Array.from(sel.subarray((19 * 305 + 16) * 4, (19 * 305 + 16) * 4 + 4))).toEqual([0, 0, 255, 255]);
+  });
+});
+
+describe('Copy edits', () => {
+  const KINDS = ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize',
+    'threshold', 'gradient-map', 'selective-color'];
+  /** The dialog's defaults with its first slider moved halfway towards its far end, so the layer really changes the picture. */
+  const moved = (from: string): Record<string, number> => {
+    const p = settings(from), c = ADJ[from].controls.find((x) => !x.type || x.type === 'range');
+    if (c) { const far = c.value >= (c.max ?? c.value) ? c.min ?? c.value : c.max ?? c.value; p[c.key] = c.value + (far - c.value) / 2; }
+    return p;
+  };
+  const adjLayer = (name: string, from: string, p = settings(from)): Layer => createAdjustLayer(name, from, { op: ADJ[from].op, kind: ADJ[from].kind, params: p });
+
+  it('pastes each kind of light-and-colour layer as a step that gives exactly the pixels of the layer itself', async () => {
+    let changed = 0;
+    for (const k of KINDS) {
+      const from = 'image.adj-' + k, src = picture();
+      src.layers.push(adjLayer('Edit', from, moved(from)));
+      const { steps, skipped } = editsToSteps(src, null);
+      expect(skipped, k).toEqual([]);
+      expect(steps.map((s) => s.id), k).toEqual([from]);
+      const target = picture(), before = Buffer.from(flatten(target).data);
+      const played = await playSteps(target, steps, env, 'Pasted edits');
+      expect(played.skipped, k).toEqual([]);
+      const got = Buffer.from(flatten(target).data);
+      expect(got.equals(Buffer.from(flatten(src).data)), k).toBe(true);
+      if (!got.equals(before)) changed++;
+      // Hand-checked: Invert turns the top-left pixel (0, 40, 0) into (255, 215, 255).
+      if (k === 'invert') expect([...got.subarray(0, 4)]).toEqual([255, 215, 255, 255]);
+    }
+    expect(changed).toBeGreaterThanOrEqual(13);
+  });
+
+  it('copies the last filter first, then the layers from the bottom up, and names each layer it cannot copy, with why', () => {
+    const d = picture(), add = (l: Layer, f: (x: Layer) => void = () => undefined): void => { f(l); d.layers.push(l); };
+    add(adjLayer('Invert', 'image.adj-invert'));
+    add(adjLayer('Masked', 'image.adj-invert'), (l) => { l.mask = { x: 0, y: 0, width: 1, height: 1, data: new Uint8ClampedArray(1) } as unknown as Layer['mask']; });
+    add(adjLayer('Half', 'image.adj-invert'), (l) => { l.opacity = 0.5; });
+    add(adjLayer('Multiply', 'image.adj-invert'), (l) => { l.blendMode = 'multiply'; });
+    add(adjLayer('Hidden', 'image.adj-invert'), (l) => { l.visible = false; });
+    add(adjLayer('Clipped', 'image.adj-invert'), (l) => { l.clip = true; });
+    add(adjLayer('Foreign', 'image.adj-invert'), (l) => { l.adjust = { from: 'psd.unknown', job: null }; });
+    add(adjLayer('Levels', 'image.adj-levels', settings('image.adj-levels', { gamma: 1.4 })));
+    const r = editsToSteps(d, { id: 'filter.unsharp', params: { amount: 1.5, radius: 2, threshold: 0, ix: 1, iy: 1, iw: 5, ih: 5 } });
+    expect(r.steps).toEqual([{ id: 'filter.unsharp', p: { amount: 1.5, radius: 2, threshold: 0 } }, { id: 'image.adj-invert', p: {} },
+      { id: 'image.adj-levels', p: settings('image.adj-levels', { gamma: 1.4 }) }]);
+    expect(r.skipped).toEqual([
+      { name: 'Masked', why: 'it has a mask, so it changes only part of the picture' }, { name: 'Half', why: 'its opacity is below 100 %' },
+      { name: 'Multiply', why: 'its blend mode is not Normal' }, { name: 'Hidden', why: 'it is hidden' }, { name: 'Clipped', why: 'it changes only the layer under it' },
+      { name: 'Foreign', why: 'it came from another program and cannot be played here' }]);
+    expect(editsToSteps(picture(), null)).toEqual({ steps: [], skipped: [] });
+    expect(editsToSteps(null, null)).toEqual({ steps: [], skipped: [] });
   });
 });

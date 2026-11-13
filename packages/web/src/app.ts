@@ -3268,6 +3268,7 @@ export class Editor {
     try {
       const o = await readImageFile(file, name, { choose: (t, b, ok) => { done(); return this.openOptions(t, b, ok); } });
       if (o.kind === 'none') return;
+      if (!asLayer || !this.doc) void import('./file-more').then((m) => m.rememberRecent(file, name)).catch(() => undefined);
       let bmp: Bitmap;
       if (o.kind === 'doc') {
         if (asLayer && this.doc) bmp = flatten(o.doc);
@@ -3322,7 +3323,8 @@ export class Editor {
   async automate(id: string): Promise<void> {
     try {
       const m = await import('./automate');
-      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; } });
+      m.runAutomate(id, { ...this.toolHost(), job: (s, b) => this.jobs.run(s, b), openDoc: (d, n) => this.addTab(d, n), fit: () => this.fit(), record: (f) => { this.onStep = f; },
+        lastFilter: () => this.lastFilter, others: () => this.tabs.flatMap((t, i) => (i === this.cur ? [] : [{ name: t.name, doc: t.doc, push: (c: Command) => { t.history.push(c); layerPixelsChanged(); this.renderTabs(); this.saver?.touch(); } }])) });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */

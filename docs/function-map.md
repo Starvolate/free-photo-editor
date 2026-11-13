@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 344 Ready, 331 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 346 Ready, 329 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-255 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+254 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 200 | 450 | 0 |
-| Ready today | 344 | 25 | 163 | 156 | 0 |
+| All functions | 675 | 25 | 201 | 449 | 0 |
+| Ready today | 346 | 25 | 165 | 156 | 0 |
 
 ## The Task ribbon
 
@@ -34,7 +34,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 4 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
-| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 5 |
+| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 6 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (37 Ready, 4 Planned)
+## File (38 Ready, 3 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -114,7 +114,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
 | file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
 | file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
-| file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
+| file.recent | Recent pictures | Open recent | Open again a picture you opened before. The files are kept only in this browser on this device; nothing is uploaded. | last files, history, open again | File | File sheet | Ready | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
 | file.install | Install as an app | Install app | Put the editor on your home screen or desktop. It opens in its own window and works offline. | install, app, home screen, desktop app, offline, add to dock, pwa | File | File sheet | Ready | 8 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (255 Planned, 6 Ready), by home
+## New functions from the feature census (254 Planned, 7 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -783,7 +783,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Paste a saved set of edits onto a selection of photos. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · More list | Planned | B7 |
+| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Copy this picture's light-and-colour layers and your last filter, then paste them onto other open pictures or many picture files. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · small button | Ready | B7 |
 | auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. Not built: needs automatic alignment first. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
 | auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. Not built: needs automatic alignment, and the editor holds 8 bits per colour. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
 | auto.stacks | U080 | Stack photos to remove moving objects or noise | Image stacks (median, mean, exposure merge) | Combines many shots of one scene to drop passers-by, cut noise or blend exposures. | stack photos, remove tourists by stacking, median stack, noise stack | Automate & batch › Merge photos · More list | Planned | B17 |

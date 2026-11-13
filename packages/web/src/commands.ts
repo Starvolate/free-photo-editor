@@ -416,10 +416,10 @@ for (const [id, kind] of [['shadow', 'drop-shadow'], ['inner-shadow', 'inner-sha
   ['color', 'color-overlay'], ['gradient', 'gradient-overlay'], ['stroke', 'stroke']] as const) HANDLERS['layer.fx-' + id] = H((e) => e.addEffect(kind), canFx);
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
 // File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
-for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
+for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers', 'file.recent']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' || id === 'file.recent' ? always : hasDoc);
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
-for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport'])
-  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' ? hasDoc : always);
+for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet', 'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits'])
+  HANDLERS[id] = H((e) => e.automate(id), id === 'auto.passport' || id === 'auto.copy-edits' ? hasDoc : always);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

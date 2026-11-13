@@ -31,6 +31,10 @@ export interface AutoHost extends ToolHost {
   fit(): void;
   /** Point the editor's command bus at a recorder, or at nothing. */
   record(fn: ((id: string, p?: JobParams) => void) | null): void;
+  /** The last filter used (Filter > Last filter) with its settings, if any. */
+  lastFilter(): { id: string; params: JobParams } | null;
+  /** The other open pictures: each one's name, its picture, and a way to add an undo step to its own History. */
+  others(): { name: string; doc: Doc; push(cmd: Command): void }[];
 }
 
 // ---- The player ------------------------------------------------------------------------------------------------------
@@ -594,6 +598,94 @@ function passport(host: AutoHost): void {
   host.sheet(id, 'Passport photo sheet', b);
 }
 
+// ---- Copy edits ------------------------------------------------------------------------------------------------------------------
+/** A light-and-colour layer that is not copied, and why, in plain words. */
+export interface Skipped { name: string; why: string; }
+/** Why a light-and-colour layer cannot be copied as a step that gives the same pixels, or '' when it can. */
+function notCopied(l: Doc['layers'][number]): string {
+  if (!l.visible) return 'it is hidden';
+  if (l.mask) return 'it has a mask, so it changes only part of the picture';
+  if (l.opacity < 1 || (l.fillOpacity ?? 1) < 1) return 'its opacity is below 100 %';
+  if (l.blendMode !== 'normal') return 'its blend mode is not Normal';
+  if (l.clip) return 'it changes only the layer under it';
+  if (l.parentId) return 'it sits in a folder, so it changes only that folder';
+  const a = l.adjust;
+  if (!a?.job || !ADJ[a.from] || Object.values(a.job.params ?? {}).some((v) => typeof v !== 'number')) return 'it came from another program and cannot be played here';
+  return '';
+}
+/**
+ * This picture's edits as steps: the last filter first (it is already in the pixels under the layers), then each
+ * light-and-colour layer from the bottom up, with its settings. Layers that would not give the same pixels as steps are
+ * named instead (masked, below 100 % opacity, not Normal, hidden, clipped, in a folder, or from another program).
+ */
+export function editsToSteps(doc: Doc | null, last: { id: string; params: JobParams } | null): { steps: Step[]; skipped: Skipped[] } {
+  const r = { steps: [] as Step[], passed: new Set<string>() }, skipped: Skipped[] = [];
+  if (last && isDialog(last.id)) recordStep(r, last.id, last.params);
+  for (const l of doc?.layers ?? []) {
+    if (l.kind !== 'adjust') continue;
+    const why = notCopied(l);
+    if (why) skipped.push({ name: l.name, why });
+    else recordStep(r, (l.adjust as { from: string }).from, (l.adjust?.job?.params ?? {}) as JobParams);
+  }
+  return { steps: r.steps, skipped };
+}
+function copyEdits(host: AutoHost): void {
+  const id = 'auto.copy-edits', last = host.lastFilter(), lastName = last ? plainName(last.id) : '';
+  const useLast = h('input', { type: 'checkbox', 'data-testid': id + '-last', ...(last ? { checked: '' } : { disabled: '' }) }) as HTMLInputElement;
+  const plan = (): { steps: Step[]; skipped: Skipped[] } => editsToSteps(host.doc(), useLast.checked ? last : null);
+  const list = h('ol', { class: 'fpe-steps', 'data-testid': id + '-steps' }), skippedNote = note('', id + '-skipped');
+  const show = (): void => {
+    const p = plan();
+    list.replaceChildren(...p.steps.map((s) => h('li', {}, stepText(s))));
+    list.hidden = !p.steps.length;
+    skippedNote.textContent = (p.steps.length ? '' : 'Nothing to copy yet. Add a light-and-colour layer (Layer > New light and colour layer) or use a filter, then come back. ') +
+      (p.skipped.length ? `Not copied: ${p.skipped.map((s) => `"${s.name}" (${s.why})`).join(', ')}.` : '');
+  };
+  useLast.addEventListener('change', show);
+  show();
+  const tabs = host.others(), ticks = tabs.map((_, i) => h('input', { type: 'checkbox', checked: '', 'data-testid': `${id}-tab-${i}` }) as HTMLInputElement);
+  const said = note('', id + '-paste-status');
+  const paste = btn('Paste onto the ticked pictures', true, id + '-paste', () => void (async () => {
+    const p = plan(), picked = tabs.filter((_, i) => ticks[i].checked);
+    if (!p.steps.length) { said.textContent = 'There is nothing to paste yet.'; return; }
+    if (!picked.length) { said.textContent = 'Tick at least one picture.'; return; }
+    paste.disabled = true;
+    let done = 0;
+    const missed: string[] = [];
+    for (const t of picked) {
+      const r = await playSteps(t.doc, p.steps, envOf(host), 'Pasted edits');
+      if (r.cmd) { t.push(r.cmd); done++; }
+      if (r.skipped.length) missed.push(t.name);
+    }
+    paste.disabled = false;
+    host.closeSheet();
+    host.toast(`Pasted ${plural(p.steps.length, 'edit')} onto ${plural(done, 'picture')}, each as one step you can undo in that picture.` +
+      (missed.length ? ` Not everything ran on ${missed.join(', ')}: the active layer there is locked or holds no pixels.` : ''));
+  })());
+  const keep = btn('Keep as a set in Recorded steps', false, id + '-keep', () => {
+    const p = plan();
+    if (!p.steps.length) { said.textContent = 'There is nothing to keep yet.'; return; }
+    const sets = loadSets(), name = freeName('Copied edits', sets);
+    sets.push({ name, steps: p.steps });
+    said.textContent = saveSets(sets) ? `Kept as "${name}" in Recorded steps.` : 'This browser would not keep it.';
+  });
+  const open = tabs.length
+    ? h('div', { class: 'fpe-stack' }, ...tabs.map((t, i) => h('label', { class: 'fpe-check' }, ticks[i], h('span', {}, t.name))))
+    : note('No other pictures are open. Open them first, or paste onto picture files below.');
+  manySheet(host, id, 'Copy edits to other photos',
+    "Copies this picture's light-and-colour layers and, if you like, your last filter, with their settings. Pasting changes the active layer of each picture; picture files are flattened first.",
+    [], () => {
+      const p = plan();
+      if (!p.steps.length) return 'There is nothing to paste yet.';
+      const steps: Step[] = [{ id: 'layer.merge-visible' }, ...p.steps];
+      return async (doc) => { await playSteps(doc, steps, envOf(host), 'Pasted edits'); };
+    }, 'Pictures with copied edits.zip',
+    [h('h3', { class: 'fpe-label' }, 'What is copied'), list, skippedNote,
+      h('label', { class: 'fpe-check' }, useLast, h('span', {}, last ? `Also the last filter you used: ${lastName}` : 'No filter used yet')),
+      h('h3', { class: 'fpe-label' }, 'Paste onto open pictures'), open, said, h('div', { class: 'fpe-actions' }, keep, ...(tabs.length ? [paste] : [])),
+      h('h3', { class: 'fpe-label' }, 'Or paste onto many picture files')]);
+}
+
 // ---- Recorded steps (the Actions sheet) ------------------------------------------------------------------------------------------
 let chosen = 0;
 function stopRecording(host: AutoHost, save: boolean): void {
@@ -684,4 +776,5 @@ export function runAutomate(id: string, host: AutoHost): void {
   else if (id === 'auto.watermark') watermark(host);
   else if (id === 'auto.collage') collage(host);
   else if (id === 'auto.passport') passport(host);
+  else if (id === 'auto.copy-edits') copyEdits(host);
 }

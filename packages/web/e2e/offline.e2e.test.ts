@@ -4,7 +4,8 @@
  * W8 in headless Chrome: the editor works offline (the server is switched off, the page reloads, a filter and a file
  * type used once before still work, export works), passes Chrome's install checks, opens pictures handed to the
  * installed app (Open with, a phone's share sheet, several dropped at once), brings back the last pictures after a
- * reload, and shows "A new version is ready · Reload" when a new build waits.
+ * reload, and shows "A new version is ready · Reload" when a new build waits. A lazy file still downloading when the worker
+ * takes charge on the first visit (the ribbon, held back by the server) is saved too, and works offline.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts offline
  */
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
@@ -33,7 +34,11 @@ const TYPES: Record<string, string> = {
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
 /** A static server that can be switched off (every connection dropped) and can serve a changed sw.js, like a new build. */
-interface Srv { server: Server; url: string; hits: string[]; offline: boolean; swExtra: string; sockets: Set<Socket>; refused: number; }
+interface Srv {
+  server: Server; url: string; hits: string[]; offline: boolean; swExtra: string; sockets: Set<Socket>; refused: number;
+  /** Holds a file's answer until the promise it returns settles: a slow network for that one file. */
+  hold?: (path: string) => Promise<unknown> | undefined;
+}
 /** `prefix` serves the build under a folder, as the site will (/tools/free-photoeditor/). */
 function serve(prefix = '/'): Promise<Srv> {
   const st = { hits: [] as string[], offline: false, swExtra: '', sockets: new Set<Socket>(), refused: 0 } as Srv;
@@ -45,7 +50,7 @@ function serve(prefix = '/'): Promise<Srv> {
     if (path === '/favicon.ico') { res.writeHead(204).end(); return; }
     const file = normalize(join(DIST, path.endsWith('/') ? path + 'index.html' : path));
     if (!file.startsWith(DIST + sep)) { res.writeHead(403).end(); return; }
-    readFile(file).then((body) => {
+    Promise.resolve(st.hold?.(path)).then(() => readFile(file)).then((body) => {
       const b = path === '/sw.js' && st.swExtra ? Buffer.concat([body, Buffer.from(st.swExtra)]) : body;
       res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-cache' }).end(b);
     }, () => res.writeHead(404).end('Not found'));
@@ -256,6 +261,52 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
     sub.server.close();
     sub.server.closeAllConnections?.();
   }, 90_000);
+
+  it('saves a lazy file that was still downloading when the worker took charge on the first visit (the ribbon), so it works offline', async () => {
+    // A desktop-wide screen asks for the ribbon's own file at once. The server sends the worker only after that request has
+    // arrived, and the ribbon only after the worker is in charge. So the ribbon starts before the takeover and finishes after
+    // it: the worker never sees it pass, and the page's list of loaded files did not have it yet at the takeover.
+    const s = await serve();
+    const RIBBON = /^\/assets\/ribbon-[\w-]+\.js$/;
+    let asked!: () => void, release!: () => void;
+    const ribbonAsked = new Promise<void>((r) => { asked = r; });
+    const released = new Promise<void>((r) => { release = r; });
+    s.hold = (path) => {
+      if (RIBBON.test(path)) { asked(); return released; }
+      return path === '/sw.js' ? Promise.race([ribbonAsked, new Promise((r) => setTimeout(r, 10_000))]) : undefined;
+    };
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    contexts.push(ctx);
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.addInitScript("navigator.serviceWorker?.addEventListener('controllerchange', () => { window.__took ??= performance.now(); });");
+    await p.goto(s.url);
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await controlled(p);
+    expect(await p.$$('[data-testid="ribbon-body"]'), 'the ribbon is still on its way').toHaveLength(0);
+    release();
+    await p.waitForSelector('[data-testid="ribbon-body"]', { timeout: 15_000 });
+    const t = await p.evaluate(() => {
+      const r = performance.getEntriesByType('resource').find((e) => /\/assets\/ribbon-[\w-]+\.js$/.test(e.name)) as PerformanceResourceTiming | undefined;
+      return { took: (window as unknown as { __took?: number }).__took ?? -1, url: r?.name ?? '', start: r?.startTime ?? -1, end: r?.responseEnd ?? -1 };
+    });
+    expect(t.url).toMatch(/\/assets\/ribbon-[\w-]+\.js$/);
+    expect(t.took, 'the worker took charge during this visit').toBeGreaterThan(0);
+    expect(t.start, 'the ribbon started before the worker took charge').toBeLessThan(t.took);
+    expect(t.end, 'and finished after it').toBeGreaterThan(t.took);
+    const saved = await until(async () => (await cachedUrls(p)).includes(t.url));
+    expect(saved, 'the ribbon is saved for offline use').toBe(true);
+
+    goOffline(s);
+    await p.reload();
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await p.waitForSelector('[data-testid="ribbon-body"]', { timeout: 15_000 });
+    await p.click('[data-testid="rtab-arrange-layers"]');
+    expect(await p.getAttribute('[data-testid="rtab-arrange-layers"]', 'aria-selected')).toBe('true');
+    expect(errors.filter((e) => e.includes('dynamically imported module'))).toEqual([]);
+    s.server.close();
+    s.server.closeAllConnections?.();
+  }, 120_000);
 
   it('raised no page errors on the way', () => { expect(errors).toEqual([]); });
 });

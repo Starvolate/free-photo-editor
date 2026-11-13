@@ -123,13 +123,16 @@ export function encodePng(w: number, hgt: number, rgba: Uint8Array): Uint8Array 
 }
 
 // ---------- which files are the app shell, and which are add-ons saved on first use ----------
-export interface BundleFile { fileName: string; type: 'chunk' | 'asset'; isEntry?: boolean; imports?: string[]; code?: string; css?: string[]; assets?: string[]; }
+/** `module` is the chunk's own module id (Rollup's facadeModuleId), for example "\0virtual:fpe-help". */
+export interface BundleFile { fileName: string; type: 'chunk' | 'asset'; isEntry?: boolean; module?: string; imports?: string[]; code?: string; css?: string[]; assets?: string[]; }
 const REF = /["'`]([^"'`\s]*?)([\w.-]+\.(?:js|mjs|wasm))["'`]/g;
 /**
  * The shell is the page's entry script with everything it imports up front, its styles, and the files it starts by
- * address (the filter worker), plus `extra` (the page, manifest, icons). Everything else is an add-on.
+ * address (the filter worker), plus `extra` (the page, manifest, icons) and the chunks of `modules` with what they
+ * import (lazy files the editor fetches by itself in its first seconds, such as the help lines). Everything else is an
+ * add-on. A module in `modules` with no chunk stops the build, so a rename cannot quietly make it an add-on again.
  */
-export function splitFiles(files: BundleFile[], extra: string[]): { shell: string[]; addons: string[] } {
+export function splitFiles(files: BundleFile[], extra: string[], modules: string[] = []): { shell: string[]; addons: string[] } {
   const by = new Map(files.map((f) => [f.fileName, f] as const)), shell = new Set<string>(extra);
   const walk = (name: string): void => {
     const f = by.get(name);
@@ -139,6 +142,11 @@ export function splitFiles(files: BundleFile[], extra: string[]): { shell: strin
     for (const i of f.imports ?? []) walk(i);
   };
   for (const f of files) if (f.type === 'chunk' && f.isEntry) walk(f.fileName);
+  for (const m of modules) {
+    const f = files.find((x) => x.type === 'chunk' && x.module === m);
+    if (!f) throw new Error(`pwa: no chunk holds ${JSON.stringify(m)}, so the offline worker would not save it at install`);
+    walk(f.fileName);
+  }
   const dyn = new Set<string>();
   const lazy = (name: string): void => { const f = by.get(name); if (!f || dyn.has(name) || shell.has(name)) return; dyn.add(name); for (const i of f.imports ?? []) lazy(i); };
   for (const f of files) if (f.type === 'chunk' && !f.isEntry && !shell.has(f.fileName)) lazy(f.fileName);
@@ -154,8 +162,12 @@ export function splitFiles(files: BundleFile[], extra: string[]): { shell: strin
   return { shell: [...shell].filter((n) => !skip(n)).sort(), addons: files.map((f) => f.fileName).filter((n) => !shell.has(n) && !skip(n)).sort() };
 }
 
-/** The Vite plugin. */
-export function pwa(): Plugin {
+/**
+ * The Vite plugin. `shell`: module ids whose chunks are saved at install, not on first use (see splitFiles). The help
+ * chunk is one: the editor loads it on idle, often while the worker is still installing, and a file fetched then that
+ * arrives after the worker takes charge is in neither the worker's own saves nor the page's `keep` list.
+ */
+export function pwa(opts: { shell?: string[] } = {}): Plugin {
   let base = './', root = process.cwd();
   return {
     name: 'free-photoeditor-pwa',
@@ -177,10 +189,10 @@ export function pwa(): Plugin {
         for (const i of ICONS) this.emitFile({ type: 'asset', fileName: i.file, source: encodePng(i.size, i.size, drawIcon(i.size, i.kind)) });
         this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: JSON.stringify(webManifest(), null, 2) + '\n' });
         const files: BundleFile[] = Object.values(bundle).map((f) => f.type === 'chunk'
-          ? { fileName: f.fileName, type: 'chunk', isEntry: f.isEntry, imports: f.imports, code: f.code,
+          ? { fileName: f.fileName, type: 'chunk', isEntry: f.isEntry, module: f.facadeModuleId ?? undefined, imports: f.imports, code: f.code,
             css: [...(f.viteMetadata?.importedCss ?? [])], assets: [...(f.viteMetadata?.importedAssets ?? [])] }
           : { fileName: f.fileName, type: 'asset', code: typeof f.source === 'string' && /\.m?js$/.test(f.fileName) ? f.source : undefined });
-        const { shell, addons } = splitFiles(files, ['index.html', 'manifest.webmanifest', ...ICONS.map((i) => i.file)]);
+        const { shell, addons } = splitFiles(files, ['index.html', 'manifest.webmanifest', ...ICONS.map((i) => i.file)], opts.shell);
         const hash = createHash('sha256');
         for (const f of Object.values(bundle).sort((a, b) => a.fileName.localeCompare(b.fileName))) {
           hash.update(f.fileName);

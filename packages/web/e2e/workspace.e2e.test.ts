@@ -51,7 +51,7 @@ const PREP: Record<string, string[]> = {
   'path.offset': ['select.to-path'], 'path.mirror': ['select.to-path'], 'path.rotate-copies': ['select.to-path'], 'path.roughen': ['select.to-path'],
   // Shapes & text, part 2: two outlines (the box, then a frame with a hole) or one outline round the box.
   'path.divide': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.stitch': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.interpolate': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.pattern-along': ['select.to-path', 'select.inverse', 'select.to-path'], 'path.bend': ['select.to-path', 'select.inverse', 'select.to-path'],
-  'path.hatches': ['select.to-path'], 'path.power-stroke': ['select.to-path'], 'path.stroke-style': ['select.to-path'],
+  'path.hatches': ['select.to-path'], 'path.power-stroke': ['select.to-path'], 'path.stroke-style': ['select.to-path'], 'path.envelope': ['select.to-path'],
   // A guide line first, so removing the guides is a visible change.
   'view.guide-clear': ['view.guide-new'],
   // A light and colour layer first, so its .cube file can be saved.

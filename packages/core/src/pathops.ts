@@ -444,3 +444,32 @@ export function comicPanels(width: number, height: number, rows: number, cols: n
   }
   return out;
 }
+
+/**
+ * Envelope (path.envelope): the four corners of an outline's box after a tilt, top-left, top-right, bottom-right,
+ * bottom-left. `lean` (-90..90 %) narrows the top edge (above 0, as if the top leaned away) or the bottom edge (below 0);
+ * `swing` (-90..90 %) shortens the right side (above 0, as if it turned away) or the left side (below 0).
+ */
+export function envelopeCorners(b: Rect, lean: number, swing: number): [Point, Point, Point, Point] {
+  const L = Math.max(-0.9, Math.min(0.9, lean / 100)), T = Math.max(-0.9, Math.min(0.9, swing / 100));
+  const top = L > 0 ? (L * b.w) / 2 : 0, bot = L < 0 ? (-L * b.w) / 2 : 0, rgt = T > 0 ? (T * b.h) / 2 : 0, lft = T < 0 ? (-T * b.h) / 2 : 0;
+  const x1 = b.x + b.w, y1 = b.y + b.h;
+  return [{ x: b.x + top, y: b.y + lft }, { x: x1 - top, y: b.y + rgt }, { x: x1 - bot, y: y1 - rgt }, { x: b.x + bot, y: y1 - lft }];
+}
+/**
+ * Map the box `b` onto four corners (top-left, top-right, bottom-right, bottom-left) in perspective, the classic
+ * square-to-four-corners map: straight lines stay straight, and the box's centre lands where the corners' diagonals
+ * cross. Anchors and their handles move with it.
+ */
+export function envelopeSubpaths(subs: readonly Subpath[], b: Rect, q: readonly Point[]): Subpath[] {
+  const [p0, p1, p2, p3] = q;
+  const dx1 = p1.x - p2.x, dx2 = p3.x - p2.x, dx3 = p0.x - p1.x + p2.x - p3.x, dy1 = p1.y - p2.y, dy2 = p3.y - p2.y, dy3 = p0.y - p1.y + p2.y - p3.y;
+  const den = dx1 * dy2 - dx2 * dy1;
+  if (!den || b.w <= 0 || b.h <= 0) return cloneSubpaths(subs);
+  const g = (dx3 * dy2 - dx2 * dy3) / den, k = (dx1 * dy3 - dx3 * dy1) / den;
+  const a = p1.x - p0.x + g * p1.x, c = p3.x - p0.x + k * p3.x, d = p1.y - p0.y + g * p1.y, e = p3.y - p0.y + k * p3.y;
+  return mapSubpaths(subs, (p) => {
+    const u = (p.x - b.x) / b.w, v = (p.y - b.y) / b.h, w = g * u + k * v + 1;
+    return { x: (a * u + c * v + p0.x) / w, y: (d * u + e * v + p0.y) / w };
+  });
+}

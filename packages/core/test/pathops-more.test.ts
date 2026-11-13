@@ -3,7 +3,7 @@
 /** Path operations, part 2: slice, hatch lines, stitch lines, in-between shapes, repeat and bend along a line, thick and thin strokes, dashes and arrowheads. Every number is worked out by hand in its comment. */
 import { describe, expect, it } from 'vitest';
 import { anchorAt, type Subpath } from '../src/path';
-import { comicPanels } from '../src/pathops';
+import { comicPanels, envelopeCorners, envelopeSubpaths } from '../src/pathops';
 import {
   arrowHead, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, patternAlong, powerStroke, ringPoints, stitchSubpaths, subpathsBounds, tracedArea,
 } from '../src/pathops';
@@ -149,5 +149,49 @@ describe('comic panels', () => {
   it('gives nothing when the gaps and margins leave no room, and rounds rows and columns to at least 1', () => {
     expect(comicPanels(100, 100, 2, 2, 80, 10)).toEqual([]); // (100 - 2·10 - 80) / 2 = 0 px per panel
     expect(comicPanels(100, 100, 0, 0.4, 5, 10).map((s) => s.anchors.map((a) => [a.x, a.y]))).toEqual([[[10, 10], [90, 10], [90, 90], [10, 90]]]);
+  });
+});
+
+describe('tilt an outline in perspective (envelope)', () => {
+  /** Where the diagonals q0 to q2 and q1 to q3 cross. */
+  const cross = (q: { x: number; y: number }[]): number[] => {
+    const [a, b, c, d] = q, r = { x: c.x - a.x, y: c.y - a.y }, s = { x: d.x - b.x, y: d.y - b.y };
+    const t = ((b.x - a.x) * s.y - (b.y - a.y) * s.x) / (r.x * s.y - r.y * s.x);
+    return [a.x + t * r.x, a.y + t * r.y];
+  };
+  const at = (subs: Subpath[], i: number, j = 0): number[] => [subs[i].anchors[j].x, subs[i].anchors[j].y];
+  it('leans a 100 px square back 20%: the top corners move 10 px in; the centre lands at (50, 400/9), where the diagonals cross', () => {
+    const b = { x: 0, y: 0, w: 100, h: 100 }, q = envelopeCorners(b, 20, 0);
+    expect(q.map((p) => [p.x, p.y])).toEqual([[10, 0], [90, 0], [100, 100], [0, 100]]);
+    const out = envelopeSubpaths([rect(0, 0, 100, 100), line([50, 50]), line([0, 50])], b, q);
+    out[0].anchors.forEach((a, i) => { expect(a.x).toBeCloseTo(q[i].x, 9); expect(a.y).toBeCloseTo(q[i].y, 9); });
+    // The centre: w = 1 - 0.2 * 0.5 = 0.9, so x = (40 - 5 + 10) / 0.9 = 50 and y = 40 / 0.9 = 400/9; the diagonals cross at t = 4/9.
+    expect(at(out, 1)[0]).toBeCloseTo(50, 9);
+    expect(at(out, 1)[1]).toBeCloseTo(400 / 9, 9);
+    expect(cross(q)[0]).toBeCloseTo(50, 9);
+    expect(cross(q)[1]).toBeCloseTo(400 / 9, 9);
+    // The middle of the left edge stays on the straight line from (10, 0) to (0, 100): (50/9, 400/9).
+    expect(at(out, 2)[0]).toBeCloseTo(50 / 9, 9);
+    expect(at(out, 2)[1]).toBeCloseTo(400 / 9, 9);
+  });
+  it('turns a 200 x 100 box 50%: the right side shrinks to 25..75 and the centre moves to (400/3, 50), towards the far side', () => {
+    const b = { x: 0, y: 0, w: 200, h: 100 }, q = envelopeCorners(b, 0, 50);
+    expect(q.map((p) => [p.x, p.y])).toEqual([[0, 0], [200, 25], [200, 75], [0, 100]]);
+    const out = envelopeSubpaths([line([100, 50])], b, q);
+    expect(at(out, 0)[0]).toBeCloseTo(400 / 3, 9);
+    expect(at(out, 0)[1]).toBeCloseTo(50, 9);
+  });
+  it('with both sliders, the box corners land on the new corners and the centre where the diagonals cross; 0 and 0 change nothing', () => {
+    const b = { x: 20, y: 10, w: 300, h: 150 }, q = envelopeCorners(b, -30, -60);
+    // Lean -30%: the bottom edge 45 px in at each end; turn -60%: the left side 45 px in at each end.
+    expect(q.map((p) => [p.x, p.y])).toEqual([[20, 55], [320, 10], [275, 160], [65, 115]]);
+    const out = envelopeSubpaths([rect(20, 10, 300, 150), line([170, 85])], b, q);
+    out[0].anchors.forEach((a, i) => { expect(a.x).toBeCloseTo(q[i].x, 9); expect(a.y).toBeCloseTo(q[i].y, 9); });
+    expect(at(out, 1)[0]).toBeCloseTo(cross(q)[0], 9);
+    expect(at(out, 1)[1]).toBeCloseTo(cross(q)[1], 9);
+    const same = envelopeSubpaths([rect(20, 10, 300, 150)], b, envelopeCorners(b, 0, 0));
+    expect(same[0].anchors.map((a) => [a.x, a.y])).toEqual([[20, 10], [320, 10], [320, 160], [20, 160]]);
+    // 200% is held at 90%: the top corners of a 100 px box 45 px in.
+    expect(envelopeCorners({ x: 0, y: 0, w: 100, h: 100 }, 200, 0).slice(0, 2).map((p) => [p.x, p.y])).toEqual([[45, 0], [55, 0]]);
   });
 });

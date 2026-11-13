@@ -221,6 +221,13 @@ const PARTS: [LookPart, string, string][] = [
   ['lines', 'Only the lines (Paragraph style)', 'Alignment and line gap; each layer keeps its letters.'],
 ];
 const L = { part: 'all' as LookPart };
+/** A chip behind a look's name that its colour reads on: light behind dark colours, dark behind light ones. */
+function chipFor(color: string): string {
+  let hex = color.trim().replace('#', '');
+  if (/^[0-9a-f]{3}$/i.test(hex)) hex = hex.replace(/./g, '$&$&');
+  const n = /^[0-9a-f]{6}$/i.test(hex) ? parseInt(hex, 16) : 0x808080;
+  return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255) > 140 ? '#1a1f29' : '#eef0f3';
+}
 function looksSheet(k: TypeKit): void {
   const host = k.host;
   k.commit();
@@ -255,8 +262,8 @@ function looksSheet(k: TypeKit): void {
     list.replaceChildren(...(LOOKS.length ? LOOKS.map((lk, i) => {
       const st = lk.style;
       // The name is shown in its own look (at a readable size), so the list reads like a menu of styles.
-      const sample = h('span', { 'data-testid': 'typelook-sample', style: `flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-family:${JSON.stringify(st.font)};font-weight:${st.weight ?? (st.bold ? 700 : 400)};font-style:${st.italic ? 'italic' : 'normal'};color:${st.color}` }, lk.name);
-      return h('div', { 'data-testid': 'typelook-row', style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid rgba(128,128,128,.35);border-radius:6px;background:#f6f7f9' },
+      const sample = h('span', { 'data-testid': 'typelook-sample', style: `flex:0 1 auto;min-width:0;max-width:100%;padding:2px 10px;border-radius:999px;background:${chipFor(st.color)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-family:${JSON.stringify(st.font)};font-weight:${st.weight ?? (st.bold ? 700 : 400)};font-style:${st.italic ? 'italic' : 'normal'};color:${st.color}` }, lk.name);
+      return h('div', { 'data-testid': 'typelook-row', style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2)' },
         sample,
         btn('typelook-use', 'Use on picked', 'Put this look on the picked text layer (one undo step).', () => useOn(i, false)),
         btn('typelook-all', 'Use on every text layer', 'Put this look on every text layer at once (one undo step).', () => useOn(i, true)),

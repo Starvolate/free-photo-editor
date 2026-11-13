@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 493 Ready, 182 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 494 Ready, 181 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-141 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+140 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 231 | 419 | 0 |
-| Ready today | 493 | 25 | 196 | 272 | 0 |
+| Ready today | 494 | 25 | 196 | 273 | 0 |
 
 ## The Task ribbon
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (141 Planned, 120 Ready), by home
+## New functions from the feature census (140 Planned, 121 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -765,7 +765,7 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | path.interpolate | U150 | Blend between two shapes | Interpolate sub-paths | Adds in-between shapes that blend the outline above into the picked one (or one piece into the next) in the number of steps you pick. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.knot | U151 | Over-and-under crossings | LPE Knot | Makes gaps where a path crosses itself, like a knot. | knot, over and under, weave lines | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Ready | T3 |
-| path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Four corner handles tilt a flat object in 3D space. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Tilts an outline as if seen at an angle: Lean back narrows its top or bottom, Turn shortens a side. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.stitch | U154 | Stitch lines between two paths | Stitch sub-paths | Adds straight lines across from the outline above to the picked one, spaced evenly along both, like string art. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.pattern-along | U155 | Repeat a shape along a line | Pattern along path | Repeats the outline above along the picked line, each copy bent to follow it, with the gap you pick. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Ready | T3 |

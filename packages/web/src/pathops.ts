@@ -4,7 +4,7 @@
  * Shapes & text, path operations (13 Nov 2026): combine two shapes, join or split pieces, grow or shrink, mirror, copies
  * round a centre, a hand-drawn wobble, star and spiral outlines; then (part 2) slice a shape with another, hatch lines,
  * stitch lines, in-between shapes, repeat or bend a shape along a line, thick-and-thin strokes, and drawing an outline as
- * a dashed or arrowed line on a layer; then (part 6) QR codes from our own encoder (core qr.ts); then (part 9) a page of comic panel frames. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
+ * a dashed or arrowed line on a layer; then (part 6) QR codes from our own encoder (core qr.ts); then (part 9) a page of comic panel frames; then (part 10) tilting an outline in perspective. The pen kit (pen.ts) loads this file the first time one of them runs, so neither
  * the first screen nor the tool kit carries it.
  *
  * Each command works at once with the numbers it used last (one undo step), then shows a small sheet: a choice button
@@ -15,7 +15,7 @@ import { addLayer, clonePaths, combineCommands, createLayer, findLayer, geomOf, 
 import { qrEncode, qrPixels, qrSubpaths, type QrLevel } from '@free-photoeditor/core/qr';
 import {
   arrowHead, booleanSubpaths, comicPanels, dashLine, divideSubpaths, hatchSubpaths, interpolateSubpaths, mirrorSubpaths, offsetSubpaths, patternAlong, powerStroke,
-  ringPoints, rotateCopies, roughenSubpaths, sliceWalk, spiralSubpath, splitPieces, starSubpath, stitchSubpaths, subpathsBounds, walk,
+  envelopeCorners, envelopeSubpaths, ringPoints, rotateCopies, roughenSubpaths, sliceWalk, spiralSubpath, splitPieces, starSubpath, stitchSubpaths, subpathsBounds, walk,
   type BoolOp, type MirrorAxis,
 } from '@free-photoeditor/core/pathops';
 import type { ToolHost } from './toolkit';
@@ -37,7 +37,7 @@ export const S = {
   gap: 10, angle: 45, cross: false, keep: true, stitches: 12, steps: 3, along: 0, w0: 2, w1: 16, w2: 2,
   width: 6, dash: 'dash' as Dash, cap: 'round' as CanvasLineCap, corner: 'round' as CanvasLineJoin, ends: 'none' as 'none' | 'end' | 'both',
   qrText: 'https://example.com', qrLevel: 'M' as QrLevel, qrModule: 0,
-  panelRows: 2, panelCols: 2, panelGap: 16, panelMargin: 24, panelLine: 4,
+  panelRows: 2, panelCols: 2, panelGap: 16, panelMargin: 24, panelLine: 4, lean: 20, swing: 0,
 };
 type LineStyle = { width: number; dash: Dash; cap: CanvasLineCap; corner: CanvasLineJoin; ends: 'none' | 'end' | 'both' };
 
@@ -59,6 +59,7 @@ const TITLES: Record<string, [string, string]> = {
   'path.stroke-style': ['Draw the outline as a line', 'Stroke style: dashes, ends, corners, arrowheads'],
   'shape.qr': ['QR code', 'QR code shape'],
   'shape.comic-panels': ['Comic panels', 'Comic panel frames'],
+  'path.envelope': ['Tilt a flat shape in perspective', 'Envelope / Perspective'],
 };
 const LABELS: Record<BoolOp, string> = { unite: 'Merge', subtract: 'Cut out', intersect: 'Keep the overlap', exclude: 'Keep what does not overlap' };
 /** Commands that work on two shapes: the picked outline and the one above it, or the first piece of one outline and the rest. */
@@ -165,6 +166,12 @@ function apply(id: string, d: Doc, pid: string | null, k: PathOpsKit): string | 
       replacePair(d, k, pr!, [{ id: newPathId(), name: nameFor(d, id === 'path.bend' ? 'Bent shape' : 'Pattern'), subpaths: out }]);
       return null;
     }
+    case 'path.envelope': {
+      const b = subpathsBounds(p.subpaths);
+      if (!b || b.w < 1 || b.h < 1) return 'This outline is too thin to tilt: it needs some width and some height.';
+      p.subpaths = envelopeSubpaths(p.subpaths, b, envelopeCorners(b, S.lean, S.swing));
+      return null;
+    }
     case 'path.power-stroke': p.subpaths = p.subpaths.filter((s) => s.anchors.length > 1).flatMap((s) => powerStroke(s, S.w0, S.w1, S.w2)); return null;
   }
   return null;
@@ -197,10 +204,14 @@ export function runPathOp(id: string, k: PathOpsKit): void {
  * holder that is refilled each time. Without it, Mirror after Grow showed Grow's sheet, wired to redo Grow.
  */
 let holder: HTMLElement | null = null;
-function show(k: PathOpsKit, title: string, body: HTMLElement): void {
+function show(k: PathOpsKit, title: string, body: HTMLElement, dock = false): void {
   holder ??= h('div', { 'data-testid': 'pathop-holder' });
   holder.replaceChildren(body);
   k.host.sheet('pathop', title, holder);
+  // A QR code and comic panels fill the middle of the picture, so on a wider screen their sheet sits at the right, beside
+  // them; every other command (and the phone layout) keeps the sheet where the app puts it.
+  const s = holder.closest<HTMLElement>('.fpe-sheet'), side = dock && !holder.closest('[data-layout=phone]');
+  if (s) for (const [key, v] of [['left', 'auto'], ['right', '16px'], ['transform', 'translate(0,-50%)'], ['width', 'min(400px,calc(100% - 32px))']] as const) s.style[key] = side ? v : '';
 }
 
 // ---- drawing an outline as a line on a layer -------------------------------------------------------------------------
@@ -298,7 +309,7 @@ function runQr(k: PathOpsKit): void {
     place(k, dd, ids, 'QR code', qrSubpaths(code, x0 + 4 * m, y0 + 4 * m, m), g, plain);
   };
   go();
-  show(k, `${plain} (${pro})`, sheet('shape.qr', k, go));
+  show(k, `${plain} (${pro})`, sheet('shape.qr', k, go), true);
 }
 
 /**
@@ -340,7 +351,7 @@ function runComic(k: PathOpsKit): void {
     place(k, dd, ids, plain, subs, g, plain);
   };
   go();
-  show(k, `${plain} (${pro})`, sheet('shape.comic-panels', k, go));
+  show(k, `${plain} (${pro})`, sheet('shape.comic-panels', k, go), true);
 }
 
 function seg<T extends string>(label: string, help: string, opts: readonly [T, string][], cur: () => T, set: (v: T) => void, redo: () => void, tid: string): HTMLElement {
@@ -356,7 +367,7 @@ function check(label: string, help: string, get: () => boolean, set: (v: boolean
   return h('label', { title: help, style: 'display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px' }, box, label);
 }
 
-type Num = 'panelRows' | 'panelCols' | 'panelGap' | 'panelMargin' | 'panelLine' | 'qrModule' | 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
+type Num = 'lean' | 'swing' | 'panelRows' | 'panelCols' | 'panelGap' | 'panelMargin' | 'panelLine' | 'qrModule' | 'offset' | 'copies' | 'amount' | 'size' | 'seed' | 'points' | 'inner' | 'turns' | 'gap' | 'angle' | 'stitches' | 'steps' | 'along' | 'w0' | 'w1' | 'w2' | 'width';
 function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
   const host = k.host, rows: HTMLElement[] = [];
   const num = (label: string, help: string, min: number, max: number, key: Num, unit: string): HTMLElement =>
@@ -452,6 +463,11 @@ function sheet(id: string, k: PathOpsKit, redo: () => void): HTMLElement {
         num('Gap between panels (gutter)', 'Pixels between one panel and the next.', 0, 200, 'panelGap', ' px'),
         num('Margin', 'Pixels from the panels to the edge of the picture.', 0, 400, 'panelMargin', ' px'),
         num('Line width', 'How thick the frame lines are, in pixels.', 1, 40, 'panelLine', ' px'));
+      break;
+    case 'path.envelope':
+      note = 'The outline tilts as if it were a flat card seen at an angle: the far edge gets smaller and straight lines stay straight. Update starts again from the outline as it was.';
+      rows.push(num('Lean back', 'Above 0 the top edge gets narrower, as if the top leaned away from you; below 0 the bottom edge does.', -90, 90, 'lean', '%'),
+        num('Turn', 'Above 0 the right side gets shorter, as if it turned away from you; below 0 the left side does.', -90, 90, 'swing', '%'));
       break;
     case 'path.stroke-style':
       note = 'The picked outline is drawn as a line on a new layer in the main colour. Update redraws that layer.';

@@ -583,6 +583,18 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.screenshot({ path: join(OUT, 'ui-c-1440-adjust.png') });
     expect(await p.$$eval('[data-testid="ribbon-body"] .fpe-rgroup > .fpe-rcap', (els) => els.filter((e) => getComputedStyle(e).visibility === 'hidden' || !e.getBoundingClientRect().height).length),
       '1440: every group name shows').toBe(0);
+    // UI-D fixes 4 and 5: the Tone curve row says what it is and History has an icon per step; on Effects & masks the effect
+    // tiles show their "Aa" sample at full strength and say why they cannot go on a light and colour layer.
+    await p.waitForSelector('[data-testid="layer-row"][aria-current="true"] .fpe-layer-sub');
+    expect(await p.textContent('[data-testid="layer-row"][aria-current="true"] .fpe-layer-sub')).toMatch(/^Adjustment(, clipped)? · Normal$/);
+    expect(await p.$$eval('[data-testid="history-step"]', (b) => b.length > 1 && b.every((x) => !!x.querySelector('svg.fpe-hico'))), 'History: an icon on every step').toBe(true);
+    await p.click('[data-testid="rtab-effects-masks"]');
+    const shadow = p.locator('[data-testid="ri-layer.fx-shadow"]');
+    await shadow.waitFor();
+    expect(await shadow.locator('.fpe-raa').textContent()).toBe('Aa');
+    expect(await shadow.getAttribute('data-why')).toContain('light and colour layer');
+    expect(await shadow.locator('.fpe-raa').evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
+    await p.waitForTimeout(250);
     await p.screenshot({ path: join(OUT, 'ui-d-1440-adjust.png') });
     // Below 1400 px the dock is one card with three tabs; nothing in it is cramped.
     await p.setViewportSize({ width: 1280, height: 800 });
@@ -604,6 +616,7 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.waitForTimeout(150);
     expect(await clipped(p), '1280 Properties: nothing cut').toEqual([]);
     await p.screenshot({ path: join(OUT, 'ui-b-1280-props.png') });
+    await p.screenshot({ path: join(OUT, 'ui-d-1280-adjust.png') });
     await p.click('[data-testid="dview-history"]');
     await p.waitForSelector('[data-testid="history-list"]', { state: 'visible' });
     expect(await clipped(p), '1280 History: nothing cut').toEqual([]);
@@ -619,6 +632,69 @@ suite('W1 workspace (headless Chrome)', () => {
     });
     expect(fit.text).toBe('Pass through');
     expect(fit.need, 'Blend shows "Pass through" in full').toBeLessThanOrEqual(fit.have);
+  }, 60_000);
+
+  it('UI-D: a text layer with a drop shadow reads "Text · Normal" with its effect row, whose eye switches it in one step; Learn names a Type layer; picking the Text tool again opens its options; a note never sits on an open sheet\'s title', async () => {
+    const p = await open(1440, 900);
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    await p.waitForSelector('[data-testid="toast"][data-on]');
+    expect(await run(p, 'tool.type')).toBe(true);
+    const c = await p.evaluate(() => (window as unknown as Win).fpe.toClient(120, 90));
+    if (!c) throw new Error('no picture');
+    await p.mouse.click(c.x, c.y);
+    await p.waitForSelector('[data-testid="text-edit"]');
+    await p.keyboard.type('Marbled jug');
+    await p.click('[data-testid="text-done"]');
+    await p.waitForTimeout(150);
+    expect(await run(p, 'layer.fx-shadow')).toBe(true);
+    await p.waitForSelector('[data-testid="fx-row"]');
+    const cur = '[data-testid="layer-row"][aria-current="true"]';
+    expect(await p.textContent(`${cur} .fpe-layer-sub`)).toBe('Text · Normal');
+    expect((await p.locator('[data-testid="fx-row"]').allTextContents()).map((t) => t.trim())).toEqual(['Drop shadowEffect']);
+    expect(await p.textContent('[data-testid="learn-text"]')).toContain('Pros call it a Type layer.');
+    expect(await p.textContent('[data-testid="learn-text"]')).not.toContain('sheet of pixels');
+    expect(await p.textContent('[data-testid="status-layer"]')).toBe('Text layer · pros call it Type layer');
+    expect(await p.$$eval('[data-testid="history-step"]', (b) => b.every((x) => !!x.querySelector('svg.fpe-hico'))), 'History: an icon on every step').toBe(true);
+    // The effect row's eye: off, then on again, one History step each.
+    const steps = await p.locator('[data-testid="history-step"]').count();
+    await p.click('[data-testid="fx-row"] [data-testid="fx-eye"]');
+    await p.waitForSelector('[data-testid="fx-row"][data-off]');
+    expect(await p.locator('[data-testid="history-step"]').count()).toBe(steps + 1);
+    await p.click('[data-testid="fx-row"] [data-testid="fx-eye"]');
+    await p.waitForSelector('[data-testid="fx-row"]:not([data-off])');
+    expect(await p.locator('[data-testid="history-step"]').count()).toBe(steps + 2);
+    expect(await clipped(p), '1440, a text layer with an effect: nothing cut').toEqual([]);
+    // UI-D fix 6: picking the tool that is already picked opens its options on the ribbon.
+    await p.click('[data-testid="rtab-crop-resize"]');
+    await p.waitForSelector('[data-testid="ribbon-ctx"]', { state: 'hidden' });
+    await p.click('.fpe-tool[data-group][aria-pressed="true"]');
+    await p.waitForSelector('[data-testid="ribbon-ctx"]', { state: 'visible' });
+    await p.waitForTimeout(200);
+    await p.screenshot({ path: join(OUT, 'ui-d-1440-text-fx.png') });
+    await p.setViewportSize({ width: 1280, height: 800 });
+    await p.waitForSelector('[data-testid="dock-views"]', { state: 'visible' });
+    await p.click('[data-testid="dview-layers"]');
+    await p.waitForSelector('[data-testid="fx-row"]', { state: 'visible' });
+    await p.waitForTimeout(200);
+    expect(await clipped(p), '1280, a text layer with an effect: nothing cut').toEqual([]);
+    await p.screenshot({ path: join(OUT, 'ui-d-1280-text-fx.png') });
+    // A note and an open sheet, in either order: the note never sits on the sheet's title (seen on the QR code sheet).
+    const onTitle = (): Promise<string> => p.evaluate(() => {
+      const t = document.querySelector('[data-testid="toast"][data-on]')?.getBoundingClientRect(), s = document.querySelector('.fpe-sheet[data-state="open"] .fpe-sheet-head')?.getBoundingClientRect();
+      if (!t || !s) return 'missing ' + (t ? 'sheet' : 'note');
+      return t.left < s.right && t.right > s.left && t.top < s.bottom && t.bottom > s.top ? 'over the title' : '';
+    });
+    const planned = await p.evaluate(() => (window as unknown as Win).fpe.commands().find((x) => x.status !== 'ready')?.id ?? '');
+    expect(planned, 'a Planned command to raise a note').not.toBe('');
+    expect(await run(p, planned)).toBe(false);
+    expect(await run(p, 'help.shortcuts')).toBe(true);
+    await p.waitForTimeout(300);
+    expect(await onTitle(), 'the note first, then the sheet').toBe('');
+    expect(await run(p, planned)).toBe(false);
+    await p.waitForTimeout(100);
+    expect(await onTitle(), 'the sheet first, then the note').toBe('');
+    await p.screenshot({ path: join(OUT, 'ui-d-1280-sheet-note.png') });
+    expect(errors).toEqual([]);
   }, 60_000);
 
   it('phone: Blend has a line of its own, so a folder\'s "Pass through" shows in full', async () => {

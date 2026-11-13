@@ -494,6 +494,11 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     // If the sheet does not open, keep a picture of the screen for the next look.
     await q.waitForSelector('[data-testid="sheet-layer-actions"][data-state="open"]', { timeout: 8_000 })
       .catch(async (e: unknown) => { await q.screenshot({ path: join(OUT, 'w6-s2-phone-390-no-sheet.png') }); throw e; });
+    // The lift that ends the press must not reach the sheet now under the finger: before the fix it ran "Add a mask" and
+    // closed the sheet (CI 43409787484). So the sheet stays open and the pressed layer gains no mask.
+    await q.waitForTimeout(300);
+    expect(await q.getAttribute('[data-testid="sheet-layer-actions"]', 'data-state')).toBe('open');
+    expect((await state(q)).layers.some((l) => !!l.mask)).toBe(false);
     const out = q.locator('[data-testid="layer-action-ungroup"]');
     expect(await out.getAttribute('aria-disabled')).toBeNull();
     expect(await q.locator('[data-testid="layer-action-group"]').getAttribute('aria-disabled')).toBeNull();

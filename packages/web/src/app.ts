@@ -337,6 +337,8 @@ export class Editor {
   private ro: ResizeObserver;
   private stageRo: ResizeObserver;
   private off: (() => void)[] = [];
+  /** True from a long press firing until the click that ends it (see longPress). */
+  private liftEaten = false;
   tk: ToolKit | null = null;
   private tkLoad: Promise<ToolKit> | null = null;
   private aiLoad: Promise<AiKit> | null = null;
@@ -348,6 +350,7 @@ export class Editor {
   constructor(host: HTMLElement, opts: MountOptions) {
     this.opts = opts;
     this.root = h('div', { class: 'fpe', 'data-theme': 'dark', 'data-tool': 'brush', 'data-screen': 'standard', 'data-names': 'plain', 'data-hints': 'on' });
+    this.eatLift(this.root);
     this.loadPrefs();
     this.build();
     host.append(this.root);
@@ -507,12 +510,32 @@ export class Editor {
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
+  /**
+   * Press and hold (or right-click) runs `fn`. The click that ends a held press is swallowed by `eatLift` wherever it lands:
+   * what the press opened (the layer actions sheet, a tool's flyout) now sits under the finger, and that click would run the
+   * item under it and close the sheet (on a phone it ran "Add a mask", 13 Nov 2026).
+   */
   private longPress(el: HTMLElement, fn: () => void): void {
-    let t = 0, fired = false;
-    el.addEventListener('pointerdown', () => { fired = false; t = window.setTimeout(() => { fired = true; fn(); }, 480); });
-    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => clearTimeout(t));
-    el.addEventListener('click', (e) => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } });
-    el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!fired) fn(); fired = true; });
+    let t = 0, fired = false, down = false;
+    const fire = (): void => { fired = true; if (down) this.liftEaten = true; fn(); };
+    el.addEventListener('pointerdown', () => { fired = false; down = true; t = window.setTimeout(fire, 480); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearTimeout(t); down = false; });
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!fired) fire(); });
+  }
+  /** Swallow the one click that ends a long press (see longPress). A new press, or 400 ms after the lift, clears it. */
+  private eatLift(root: HTMLElement): void {
+    let timer = 0;
+    root.addEventListener('click', (e) => {
+      // A keyboard click (detail 0) never ends a press.
+      if (!this.liftEaten || e.detail === 0) return;
+      this.liftEaten = false;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+    root.addEventListener('pointerdown', () => { this.liftEaten = false; clearTimeout(timer); }, true);
+    const lift = (): void => { if (this.liftEaten) { clearTimeout(timer); timer = window.setTimeout(() => { this.liftEaten = false; }, 400); } };
+    root.addEventListener('pointerup', lift, true);
+    root.addEventListener('pointercancel', lift, true);
   }
 
   // ---------- the menu bar (desktop and tablet) ----------

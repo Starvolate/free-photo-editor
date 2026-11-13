@@ -51,6 +51,27 @@ describe('the function map', () => {
     expect(used.size).toBeGreaterThan(30);
     expect([...used].filter((n) => !ICON_NAMES.includes(n))).toEqual([]);
   });
+  it('gives every Ready shortcut to one command only, written the way a key press reads', () => {
+    const owner = new Map<string, string>();
+    const shared: string[] = [];
+    for (const r of ROWS) {
+      if (!r.key || r.status !== 'ready') continue;
+      const had = owner.get(r.key);
+      if (had) shared.push(`${r.key}: ${had} and ${r.id}`); else owner.set(r.key, r.id);
+    }
+    expect(shared).toEqual([]);
+    // A Planned row must not take a Ready row's key either: the key map keeps the last row, so it would win.
+    const shadow = ROWS.filter((r) => r.key && r.status !== 'ready' && owner.has(r.key)).map((r) => `${r.key}: ${owner.get(r.key)} and ${r.id}`);
+    expect(shadow).toEqual([]);
+    // Modifiers in the order the key handler builds them (Ctrl, Shift, Alt), or the shortcut never fires.
+    const order = ['Ctrl', 'Shift', 'Alt'];
+    const bad = ROWS.filter((r) => {
+      if (!r.key) return false;
+      const mods = r.key.split('+').slice(0, -1);
+      return mods.some((m, i) => !order.includes(m) || (i > 0 && order.indexOf(m) <= order.indexOf(mods[i - 1])));
+    }).map((r) => `${r.id}: ${r.key}`);
+    expect(bad).toEqual([]);
+  });
   it('keeps docs/function-map.md in step (WRITE_MAP=1 rewrites it)', () => {
     const md = functionMapMarkdown();
     if (process.env.WRITE_MAP) writeFileSync(MAP, md);

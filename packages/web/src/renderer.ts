@@ -6,6 +6,7 @@
  * which keeps updates small and stays under mobile canvas size limits.
  */
 import type { Rect } from '@free-photoeditor/core';
+import type { Guides } from './handles';
 
 export interface View { zoom: number; panX: number; panY: number; }
 export interface Overlay {
@@ -18,6 +19,8 @@ export interface Overlay {
   outline?: Float32Array | null;
   /** Extra drawing on top (the W3 tools' handles, outlines and previews), in CSS pixels of the canvas. */
   draw?: ((ctx: CanvasRenderingContext2D) => void) | null;
+  /** Guide lines and round handles of an open camera-blur dialog, in picture pixels. */
+  guides?: Guides | null;
 }
 export interface Colors { stage: string; checkA: string; checkB: string; edge: string; }
 export interface Renderer {
@@ -133,6 +136,7 @@ export class Canvas2DRenderer implements Renderer {
     if (ov.crop) this.drawCrop(view, ov.crop);
     if (ov.selection) { if (ov.outline) this.drawOutline(view, ov.outline, ov.ants); else this.drawAnts(view, ov.selection, ov.ants); }
     if (ov.hole) this.drawAnts(view, ov.hole, ov.ants);
+    if (ov.guides) this.drawGuides(view, ov.guides);
     if (ov.cursor) {
       ctx.beginPath();
       ctx.arc(ov.cursor.x, ov.cursor.y, Math.max(2, ov.cursor.r), 0, Math.PI * 2);
@@ -184,6 +188,32 @@ export class Canvas2DRenderer implements Renderer {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
     ctx.strokeRect(s.x, s.y, s.w, s.h);
+  }
+  private drawGuides(view: View, g: Guides): void {
+    const ctx = this.ctx, z = view.zoom, X = (x: number): number => view.panX + x * z, Y = (y: number): number => view.panY + y * z;
+    ctx.save();
+    for (const pass of [0, 1]) {
+      ctx.strokeStyle = pass ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.6)';
+      ctx.lineWidth = pass ? 1.5 : 3.5;
+      for (const s of g.guides) {
+        ctx.setLineDash(s.dash ? [6, 5] : []);
+        ctx.beginPath();
+        if (s.kind === 'ellipse') ctx.ellipse(X(s.x), Y(s.y), Math.max(1, (s.rx ?? 0) * z), Math.max(1, (s.ry ?? 0) * z), 0, 0, Math.PI * 2);
+        else { ctx.moveTo(X(s.x), Y(s.y)); ctx.lineTo(X(s.x2 ?? s.x), Y(s.y2 ?? s.y)); }
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+    for (const hd of g.handles) {
+      ctx.beginPath();
+      ctx.arc(X(hd.x), Y(hd.y), hd.big ? 9 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(0,0,0,.75)';
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   dispose(): void { for (const t of this.tiles) { t.canvas.width = 0; t.canvas.height = 0; } this.tiles = []; }
 }

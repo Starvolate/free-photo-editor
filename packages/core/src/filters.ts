@@ -17,7 +17,7 @@ export function boxesForGauss(sigma: number, n = 3): number[] {
   for (let i = 0; i < n; i++) sizes.push(i < m ? wl : wu);
   return sizes;
 }
-function boxH(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: number, r: number): void {
+export function boxH(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: number, r: number): void {
   const n = 2 * r + 1, last = w - 1;
   for (let y = 0; y < h; y++) {
     const row = y * w * 4;
@@ -31,7 +31,7 @@ function boxH(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: numb
     }
   }
 }
-function boxV(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: number, r: number): void {
+export function boxV(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: number, r: number): void {
   const n = 2 * r + 1, last = h - 1, stride = w * 4;
   for (let x = 0; x < w; x++) {
     for (let c = 0; c < 4; c++) {

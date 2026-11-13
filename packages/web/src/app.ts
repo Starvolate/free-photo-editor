@@ -21,6 +21,7 @@ import { errText, fmtBytes, h, icon, iconButton, type Attrs } from './dom';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
 import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData } from './io';
+import { HANDLES, type Guides } from './handles';
 import { JobRunner } from './jobs';
 import { NOTICES } from './notices';
 import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
@@ -56,6 +57,8 @@ export interface EditorController {
   commands(): CommandInfo[];
   /** Run a function of the map by id. False when it is Planned, unknown or not available right now. */
   run(id: string): Promise<boolean>;
+  /** A fingerprint of the composited pixels of a picture rectangle, so tests can tell whether anything changed. */
+  checksum(x: number, y: number, w: number, h: number): number;
   /** Everything a person could notice changing, as plain data. */
   state(): Record<string, unknown>;
   openSample(): void;
@@ -66,6 +69,8 @@ export interface EditorController {
 interface Session {
   id: string; def: AdjDef; label: string; spec: JobSpec; layerId: string; r: Rect; padded: Rect; source: Uint8ClampedArray; before: Uint8ClampedArray;
   hist: Uint32Array; running: Promise<void> | null; queued: boolean; ran: boolean;
+  /** The last finished preview (cut to `r`), and whether the dialog shows the picture as it was. */
+  after: Uint8ClampedArray | null; showBefore: boolean;
 }
 interface Tab { doc: Doc; history: History; name: string; savedId: number; view: View; fitted: boolean; lastSel: Selection | null; hole: Rect | null; }
 interface Clip { width: number; height: number; data: Uint8ClampedArray; x: number; y: number; serial: number; }
@@ -74,6 +79,7 @@ interface PopItem { label: string; run: () => void; disabled?: boolean; cmd?: st
 
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const keyText = (k: string): string => (MAC ? k.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧').replace(/Alt\+/g, '⌥') : k);
+const hexNum = (hex: string): number => { const c = parseHex(hex) ?? BLACK; return (c.r << 16) | (c.g << 8) | c.b; };
 const fmtNum = (v: number): string => (Number.isInteger(v) ? String(v) : Math.abs(v) < 1 ? v.toFixed(2) : v.toFixed(1));
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const luma = (r: number, g: number, b: number): number => 0.299 * r + 0.587 * g + 0.114 * b;
@@ -235,6 +241,7 @@ export class Editor {
   private modalReturn: HTMLElement | null = null;
   private popover: HTMLElement | null = null;
   private session: Session | null = null;
+  private hdrag: string | null = null;
   clip: Clip | null = null;
   lastSel: Selection | null = null;
   private hole: Rect | null = null;
@@ -1229,7 +1236,7 @@ export class Editor {
     const tks = this.tk?.cursorSize(t) ?? null;
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
     this.renderer.render(this.view, { selection: d && this.flags.extras ? d.selection : null, hole: d && this.flags.extras ? this.hole : null,
-      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0,
+      crop: t === 'crop' ? this.crop : null, cursor, ants: this.ants, grid: d && this.flags.grid ? this.gridSize() : 0, guides: this.sessionGuides(),
       outline: d && this.flags.extras && d.selection?.alpha ? this.outline(d.selection) : null, draw: this.tk ? (ctx) => this.tk?.overlay(ctx) : null });
     if (this.flags.rulers && this.layout !== 'phone' && this.screen === 'standard') this.drawRulers();
     this.renderStatus();
@@ -1413,6 +1420,7 @@ export class Editor {
     this.closePopover();
     this.closeMenus();
     if (!d) return;
+    if (this.session && this.handleStart(p)) return;
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
     if (this.tk?.claims(this.tool) || TK_TOOLS.has(this.tool)) {
       if (!this.tk) { this.toast('Getting the tool ready…'); void this.toolkit(); return; }
@@ -1445,10 +1453,51 @@ export class Editor {
     this.updateAnts();
     this.requestRender();
   }
+  /** The edited box of the open filter dialog, in picture pixels. */
+  private sessionBox(): Rect | null {
+    const s = this.session, d = this.doc, l = s && d ? findLayer(d, s.layerId) : undefined;
+    return s && l ? { x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h } : null;
+  }
+  private sessionGuides(): Guides | null {
+    const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
+    return s && set && b ? set.draw(s.spec.params ?? {}, b) : null;
+  }
+  /** A press near one of the open filter's handles starts dragging it (a generous, touch-sized target). */
+  private handleStart(p: Pt): boolean {
+    const g = this.sessionGuides();
+    if (!g) return false;
+    let best: string | null = null, bd = 24 / this.view.zoom;
+    for (const hd of g.handles) { const dd = Math.hypot(hd.x - p.x, hd.y - p.y); if (dd < bd) { bd = dd; best = hd.key; } }
+    this.hdrag = best;
+    return !!best;
+  }
+  private handleMove(p: Pt): void {
+    const s = this.session, set = s?.def.handles ? HANDLES[s.def.handles] : undefined, b = this.sessionBox();
+    if (!s || !set || !b || !this.hdrag) return;
+    set.drag(this.hdrag, p.x, p.y, (s.spec.params ??= {}), b);
+    this.syncControls();
+    this.preview();
+    this.requestRender();
+  }
+  /** Moves the dialog's sliders to the session's settings (after a handle drag). */
+  private syncControls(): void {
+    const s = this.session;
+    if (!s) return;
+    const params = s.spec.params ?? {};
+    for (const c of s.def.controls) {
+      if (c.type && c.type !== 'range') continue;
+      const inp = this.dlgEl.querySelector<HTMLInputElement>(`[data-testid="ctl-${c.key}"]`), v = Number(params[c.key] ?? c.value);
+      if (!inp) continue;
+      inp.value = String(v);
+      const out = inp.closest('.fpe-field')?.querySelector('output');
+      if (out) out.textContent = fmtNum(v) + (c.unit ?? '');
+    }
+  }
   private toolMove(p: Pt, i: PointerInfo): void {
     const d = this.doc;
     if (!d) return;
     if (this.tkDown) { this.tk?.move(p, i); return; }
+    if (this.hdrag) { this.handleMove(p); return; }
     if (this.stroke) { this.stroke.add(this.strokePoint(p, i)); this.flushStroke(); return; }
     const g = this.drag;
     if (!g) return;
@@ -1483,6 +1532,7 @@ export class Editor {
   private toolEnd(p: Pt, i: PointerInfo): void {
     if (this.tkDown) { this.tkDown = false; this.tk?.end(p, i); return; }
     const d = this.doc;
+    if (this.hdrag) { this.hdrag = null; this.requestRender(); return; }
     if (this.stroke) {
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
@@ -1504,6 +1554,7 @@ export class Editor {
   }
   private toolCancel(): void {
     if (this.tkDown) { this.tkDown = false; this.tk?.cancel(); }
+    this.hdrag = null;
     if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.markDirty(r); this.requestRender(); }
     const g = this.drag;
     this.drag = null;
@@ -2013,11 +2064,14 @@ export class Editor {
     const params: JobParams = {};
     for (const c of def.controls) params[c.key] = preset?.[c.key] ?? c.value;
     const spec: JobSpec = { op: def.op, kind: def.kind, params };
-    const maxR = def.controls.find((c) => c.key === 'radius')?.max ?? 1;
-    const padded = paddedRegion(l, reg, jobPadding({ op: def.op, kind: def.kind, params: { radius: maxR } }));
+    const most: JobParams = {};
+    for (const c of def.controls) most[c.key] = !c.type || c.type === 'range' ? c.max ?? c.value : c.value;
+    const padded = paddedRegion(l, reg, jobPadding({ op: def.op, kind: def.kind, params: most }));
+    if (def.op === 'fx') { params.ix = reg.x - padded.x; params.iy = reg.y - padded.y; params.iw = reg.w; params.ih = reg.h; }
+    if (def.colors) { params.fg = hexNum(this.brush.color); params.bg = hexNum(this.bgColor); }
     const before = readRegion(l, reg), hist = new Uint32Array(256);
     for (let i = 0; i < before.length; i += 4) if (before[i + 3]) hist[Math.round(luma(before[i], before[i + 1], before[i + 2]))]++;
-    this.session = { id, def, label: r.plain, spec, layerId: l.id, r: reg, padded, source: readRegion(l, padded), before, hist, running: null, queued: false, ran: false };
+    this.session = { id, def, label: r.plain, spec, layerId: l.id, r: reg, padded, source: readRegion(l, padded), before, hist, running: null, queued: false, ran: false, after: null, showBefore: false };
     this.preview();
     if (def.instant || instant) { await this.applySession(); return; }
     this.renderDialog();
@@ -2029,7 +2083,7 @@ export class Editor {
     const r = BY_ID.get(s.id) as Row, params = (s.spec.params ??= {}), id = `fpe-${this.uid}-a`;
     const kids: Node[] = [h('div', { class: 'fpe-dlg-head' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() })),
-      h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.`)];
+      h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     this.dlgCanvas = null;
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
       this.dlgCanvas = h('canvas', { class: 'fpe-histo', width: 256, height: 96, 'aria-label': 'Graph of dark to light tones in the picture', 'data-testid': 'adj-graph' });
@@ -2041,8 +2095,21 @@ export class Editor {
       const cid = id + c.key;
       if (c.type === 'select') {
         const sel = h('select', { id: cid, 'data-testid': 'ctl-' + c.key }, ...(c.options ?? []).map((o, k) => h('option', { value: k, selected: k === params[c.key] }, o)));
-        sel.addEventListener('change', () => { params[c.key] = Number(sel.value); this.preview(); });
+        sel.addEventListener('change', () => {
+          params[c.key] = Number(sel.value);
+          const fill = c.fills?.[Number(sel.value)];
+          if (fill) { Object.assign(params, fill); this.renderDialog(); }
+          this.preview();
+        });
         kids.push(h('div', { class: 'fpe-row', 'data-help-title': c.label, 'data-help': c.help }, h('label', { for: cid }, c.label), sel));
+      } else if (c.type === 'num') {
+        const last = kids[kids.length - 1];
+        let grid = last instanceof HTMLElement && last.classList.contains('fpe-kernel') ? last : null;
+        if (!grid) { grid = h('div', { class: 'fpe-kernel', role: 'group', 'aria-label': c.group ?? 'Numbers' }); kids.push(grid); }
+        const inp = h('input', { id: cid, type: 'number', inputmode: 'numeric', min: c.min ?? -99, max: c.max ?? 99, step: c.step ?? 1, value: params[c.key] ?? c.value,
+          'aria-label': c.label, 'data-testid': 'ctl-' + c.key, 'data-help-title': c.label, 'data-help': c.help });
+        inp.addEventListener('input', () => { const v = Number(inp.value); if (inp.value !== '' && Number.isFinite(v)) { params[c.key] = v; this.preview(); } });
+        grid.append(inp);
       } else if (c.type === 'check') {
         const cb = h('input', { id: cid, type: 'checkbox', checked: !!params[c.key], 'data-testid': 'ctl-' + c.key });
         cb.addEventListener('change', () => { params[c.key] = cb.checked ? 1 : 0; this.preview(); });
@@ -2056,6 +2123,9 @@ export class Editor {
       }
     }
     kids.push(h('div', { class: 'fpe-actions' },
+      h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost fpe-before', 'aria-pressed': s.showBefore ? 'true' : 'false', 'data-testid': 'adj-before',
+        'data-help-title': 'Before and after', 'data-help': 'Show the picture as it was, to compare. Press again to see the change.', onclick: () => this.toggleBefore() },
+        s.showBefore ? 'Showing before' : 'Show before'),
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'adj-reset', onclick: () => this.resetSession() }, 'Reset'),
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'adj-cancel', onclick: () => this.cancelSession() }, 'Cancel'),
       h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'adj-apply', onclick: () => void this.applySession() }, icon('check'), 'Apply')));
@@ -2099,8 +2169,10 @@ export class Editor {
       if (this.session !== s || !d) return;
       const l = findLayer(d, s.layerId);
       if (!l) return;
-      commitResult(d, l, s.r, s.before, innerOf(res, s.padded, s.r), s.label);
+      s.after = innerOf(res, s.padded, s.r);
       s.ran = true;
+      if (s.showBefore) return;
+      commitResult(d, l, s.r, s.before, s.after, s.label);
       this.markDirty({ x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h });
       this.requestRender();
     }).catch((e: unknown) => this.toast(errText(e))).finally(() => {
@@ -2114,6 +2186,7 @@ export class Editor {
     if (!s) return;
     while (s.running) await s.running;
     if (this.session !== s) return;
+    if (s.showBefore) { s.showBefore = false; this.showResult(s, false); }
     this.session = null;
     this.renderDialog();
     if (s.ran) {
@@ -2122,6 +2195,22 @@ export class Editor {
       this.afterEdit();
       this.toast(`${s.label}: done.`);
     }
+  }
+  /** Shows the dialog's result, or the picture as it was, without ending the dialog. */
+  private showResult(s: Session, before: boolean): void {
+    const d = this.doc, l = d ? findLayer(d, s.layerId) : undefined;
+    if (!d || !l) return;
+    if (before) writeRegion(l, s.r, s.before); else if (s.after) commitResult(d, l, s.r, s.before, s.after, s.label);
+    this.markDirty({ x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h });
+    this.requestRender();
+  }
+  private toggleBefore(): void {
+    const s = this.session;
+    if (!s) return;
+    s.showBefore = !s.showBefore;
+    this.showResult(s, s.showBefore);
+    const b = this.dlgEl.querySelector('[data-testid="adj-before"]');
+    if (b) { b.setAttribute('aria-pressed', String(s.showBefore)); b.textContent = s.showBefore ? 'Showing before' : 'Show before'; }
   }
   private cancelSession(): void {
     this.tk?.abort();
@@ -2652,6 +2741,14 @@ export class Editor {
         return { id: r.id, status: r.status, kind: r.kind, enabled: this.isEnabled(r.id), checked: hd?.checked ? hd.checked(this) : null, handler: !!hd };
       }),
       run: (id) => this.run(id),
+      checksum: (x, y, w, hh) => {
+        const d = this.doc, r = d ? intersect({ x, y, w, h: hh }, docRect(d)) : null;
+        if (!d || !r) return 0;
+        const px = compositeDoc(d, r);
+        let sum = 0x811c9dc5;
+        for (let i = 0; i < px.length; i++) sum = Math.imul(sum ^ px[i], 0x01000193);
+        return sum >>> 0;
+      },
       state: () => {
         const e = this.history.entries();
         return {

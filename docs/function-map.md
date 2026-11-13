@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 353 Ready, 322 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 355 Ready, 320 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 243 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 202 | 448 | 0 |
-| Ready today | 353 | 25 | 165 | 163 | 0 |
+| Ready today | 355 | 25 | 165 | 165 | 0 |
 
 ## The Task ribbon
 
@@ -332,15 +332,15 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | Layer | Select & cut out › Perfect and keep · More list | Planned | 2 |  |
 | layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | Layer | Arrange layers › Animate · More list | Planned | 13 |  |
 
-## Type (3 Ready, 7 Planned)
+## Type (5 Ready, 5 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
 | type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | Type | Shapes & text › Text · More list | Ready | W3 |  |
 | type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | Type | Shapes & text › Text · More list | Ready | W3 |  |
-| type.warp | Bend text | Warp text | Arc, wave or bulge the text. | curved text, arc text, wavy text | Type | Shapes & text › Text · More list | Planned | 6 |  |
-| type.path | Text along a line | Type on a path | Make text follow a curve or a circle. | text on circle | Type | Shapes & text › Text · More list | Planned | 6 |  |
+| type.warp | Bend text | Warp text | Arc, arch, bulge, wave or flag the words, or wrap them round a circle. They stay words you can change. | curved text, arc text, wavy text, circle text | Type | Shapes & text › Text · More list | Ready | 6 |  |
+| type.path | Text along a line | Type on a path | Make the words follow an outline you drew: a curve, a line or a ring. | text on circle, text on a curve | Type | Shapes & text › Text · More list | Ready | 6 |  |
 | type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | Type | Shapes & text › Text · More list | Planned | 6 |  |
 | type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | Type | Shapes & text › Text · More list | Ready | W3 |  |
 | type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | Type | Shapes & text › Text · More list | Planned | 6 |  |

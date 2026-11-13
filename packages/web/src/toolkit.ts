@@ -20,6 +20,7 @@ import { TK_TOOLS, type ToolId } from './commands';
 import type { AiKit } from './ai';
 import { h } from './dom';
 import { PATH_OPS, PEN_TOOLS, createPenKit } from './pen';
+import { glyphCorners, warpGlyphs, type GlyphBox, type TextWarp } from '@free-photoeditor/core/textwarp';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
@@ -166,8 +167,38 @@ function drawLine(x: CanvasRenderingContext2D, t: string, px: number, py: number
   let cx = px;
   for (const ch of t) { x.fillText(ch, cx, py); cx += x.measureText(ch).width + ls; }
 }
+/** Draw bent text or text along a line: each letter placed and turned on its own (core textwarp.ts). */
+function renderWarped(c: TextContent, warp: TextWarp): Placed {
+  const st = c.style, m = meas();
+  m.font = fontString(st);
+  const lay = layoutText(c, (s) => m.measureText(s).width), asc = st.size * 0.8 + (lay.advance - st.size) / 2;
+  const gs: GlyphBox[] = [], chars: string[] = [];
+  for (const ln of lay.lines) {
+    let gx = ln.x;
+    for (const ch of ln.text) { const w = m.measureText(ch).width; gs.push({ x: gx, w, base: ln.y + asc }); chars.push(ch); gx += w + st.letterSpacing; }
+  }
+  const at = warpGlyphs(gs, warp, st.size), up = st.size * 0.95, down = st.size * 0.3;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  at.forEach((s, i) => { if (s) for (const q of glyphCorners(s, gs[i].w, up, down)) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); } });
+  if (!Number.isFinite(x0)) return renderText({ ...c, warp: undefined });
+  const pad = Math.ceil(st.size * 0.2) + 2, X = Math.floor(x0 - pad), Y = Math.floor(y0 - pad);
+  const x = ctx2d(Math.min(16384, Math.ceil(x1 - x0 + 2 * pad)), Math.min(16384, Math.ceil(y1 - y0 + 2 * pad)));
+  x.font = fontString(st);
+  x.fillStyle = st.color;
+  x.textBaseline = 'alphabetic';
+  at.forEach((s, i) => {
+    if (!s || !chars[i].trim()) return;
+    x.setTransform(1, 0, 0, 1, s.x - X, s.y - Y);
+    x.rotate(s.angle);
+    x.scale(1, s.sy);
+    x.fillText(chars[i], -gs[i].w / 2, 0);
+  });
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  return { x: X, y: Y, width: x.canvas.width, height: x.canvas.height, data: x.getImageData(0, 0, x.canvas.width, x.canvas.height).data };
+}
 /** Draw a text layer's words into pixels (the browser's own fonts). */
 export function renderText(c: TextContent): Placed {
+  if (c.warp && (c.warp.bend || c.warp.style === 'path')) return renderWarped(c, c.warp);
   const st = c.style, m = meas();
   m.font = fontString(st);
   const lay = layoutText(c, (s) => m.measureText(s).width), pad = Math.ceil(st.size * 0.35) + 2;
@@ -560,6 +591,19 @@ export function createToolKit(host: ToolHost): ToolKit {
     const before = { content: l.content ?? null, geom: geomOf(l) }, sn = snapOf({ ...c, style: { ...c.style, ...patch } }, renderText({ ...c, style: { ...c.style, ...patch } }));
     applySnap(l, sn);
     host.push(liveCommand('Text style', l.id, before, sn), true);
+  }
+  /** Put a bend on the picked text layer (or take it off) as one undo step; false when no text layer is picked. */
+  function setWarp(w: TextWarp | undefined, label: string): boolean {
+    if (te) { te.content = { ...te.content, warp: w }; drawText(); return true; }
+    const l = textLayer(), d = doc(), c = l ? currentContent(l) : null;
+    if (!l || !d || c?.kind !== 'text') return false;
+    const next: TextContent = { ...c, warp: w };
+    if (!w) delete next.warp;
+    const old = layerRect(l), before = { content: l.content ?? null, geom: geomOf(l) }, sn = snapOf(next, renderText(next));
+    applySnap(l, sn);
+    host.dirty(union(old, layerRect(l)));
+    host.push(liveCommand(label, l.id, before, sn), true);
+    return true;
   }
   function textControls(which: 'char' | 'para' | 'bar'): HTMLElement[] {
     const st = styleNow(), out: HTMLElement[] = [], u = host.uid;
@@ -1045,6 +1089,11 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'layer.distribute-h': distribute('h'); break;
       case 'layer.distribute-v': distribute('v'); break;
       case 'layer.rasterize': case 'type.rasterize': rasterize(); break;
+      case 'type.warp': case 'type.path':
+        return import('./typekit').then((m) => m.runTypeWarp(id, {
+          host, layer: textLayer, set: setWarp, outline: (d) => pen.outline(d),
+          warp: () => { const l = textLayer(), c = te?.content ?? (l ? currentContent(l) : null); return c?.kind === 'text' ? c.warp ?? null : null; },
+        }));
       case 'type.fonts':
         host.showPanel('character');
         requestAnimationFrame(() => panels.get('character')?.querySelector<HTMLElement>('[data-testid="text-font"]')?.focus());

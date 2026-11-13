@@ -26,6 +26,8 @@ type DragKind = 'pen' | 'close' | 'anchor' | 'handle' | 'path' | 'pull';
 interface Drag { kind: DragKind; before: VectorPath[]; label: string; id: string; sub: number; idx: number; part?: 'in' | 'out'; alone?: boolean; last: Pt; from: Pt; moved: boolean; }
 
 export interface PenKit {
+  /** The picked outline (or the work path, or the last one): what text along a line follows. */
+  outline(d: Doc): VectorPath | null;
   start(p: Pt, i: PointerInfo): void;
   move(p: Pt, i: PointerInfo): void;
   end(p: Pt, i: PointerInfo): void;
@@ -361,6 +363,7 @@ export function createPenKit(host: ToolHost, setSel: (s: Selection | null, label
 
   return {
     start, move, end, cancel, options, overlay, key, fillPanel, refresh, state,
+    outline: (d: Doc) => active(d) ?? list(d).find((x) => x.work) ?? list(d)[list(d).length - 1] ?? null,
     cmd(id) {
       if (PATH_OPS.has(id)) {
         return import('./pathops').then((m) => m.runPathOp(id, {

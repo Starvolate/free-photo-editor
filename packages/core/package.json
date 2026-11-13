@@ -7,6 +7,6 @@
   "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
   "type": "module",
   "sideEffects": false,
-  "exports": { ".": "./src/index.ts", "./psd": "./src/psd.ts", "./fx": "./src/fx/index.ts", "./layerfx": "./src/layerfx/index.ts", "./pathops": "./src/pathops.ts" },
+  "exports": { ".": "./src/index.ts", "./psd": "./src/psd.ts", "./fx": "./src/fx/index.ts", "./layerfx": "./src/layerfx/index.ts", "./pathops": "./src/pathops.ts", "./textwarp": "./src/textwarp.ts" },
   "dependencies": { "ag-psd": "34.2.0" }
 }

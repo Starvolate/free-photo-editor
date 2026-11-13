@@ -268,8 +268,8 @@ layer.frames | Make animation frames | Make frames from layers | Turn each layer
 type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | R | W3
 type.add-vertical | Add up-down text | Vertical type | Text that runs from top to bottom. | vertical text | P | 6
 type.fonts | Choose a font | Font | Pick the typeface for your text. | font, typeface | R | W3
-type.warp | Bend text | Warp text | Arc, wave or bulge the text. | curved text, arc text, wavy text | P | 6
-type.path | Text along a line | Type on a path | Make text follow a curve or a circle. | text on circle | P | 6
+type.warp | Bend text | Warp text | Arc, arch, bulge, wave or flag the words, or wrap them round a circle. They stay words you can change. | curved text, arc text, wavy text, circle text | R | 6
+type.path | Text along a line | Type on a path | Make the words follow an outline you drew: a curve, a line or a ring. | text on circle, text on a curve | R | 6
 type.to-shape | Turn text into a shape | Convert to shape | Make the letters into editable shapes. | outline text | P | 6
 type.rasterize | Turn text into pixels | Rasterize type | Make text into ordinary pixels. | flatten text | R | W3
 type.smooth | Smooth text edges | Anti-aliasing | Choose how soft the edges of letters are. | jagged text | P | 6

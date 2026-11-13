@@ -8,6 +8,7 @@
 import { findLayer, geomOf, setGeom, type Doc, type Layer, type LayerGeom } from './document';
 import type { Point, Rect } from './geometry';
 import type { Command } from './history';
+import type { TextWarp } from './textwarp';
 
 export interface TextStyle {
   font: string; size: number; color: string; bold: boolean; italic: boolean;
@@ -15,7 +16,10 @@ export interface TextStyle {
   /** Distance between lines, as a multiple of the size. */ lineHeight: number;
   /** Extra space between letters, in pixels. */ letterSpacing: number;
 }
-export interface TextContent { kind: 'text'; text: string; x: number; y: number; style: TextStyle; }
+export interface TextContent {
+  kind: 'text'; text: string; x: number; y: number; style: TextStyle;
+  /** Bent text or text along a line (textwarp.ts): the words stay words, the bend is drawn each time. */ warp?: TextWarp;
+}
 export type ShapeKind = 'rect' | 'rounded' | 'ellipse' | 'polygon' | 'line';
 export interface ShapeContent {
   kind: 'shape'; shape: ShapeKind; x0: number; y0: number; x1: number; y1: number;
@@ -90,7 +94,10 @@ export function shapeBounds(s: ShapeContent): Rect {
 /** The content moved by dx, dy (after the layer itself was moved). */
 export function moveContent(c: LayerContent, dx: number, dy: number): LayerContent {
   if (!dx && !dy) return c;
-  if (c.kind === 'text') return { ...c, x: c.x + dx, y: c.y + dy };
+  if (c.kind === 'text') {
+    const w = c.warp?.path ? { ...c.warp, path: c.warp.path.map((p) => ({ x: p.x + dx, y: p.y + dy })) } : c.warp;
+    return w ? { ...c, x: c.x + dx, y: c.y + dy, warp: w } : { ...c, x: c.x + dx, y: c.y + dy };
+  }
   return { ...c, x0: c.x0 + dx, y0: c.y0 + dy, x1: c.x1 + dx, y1: c.y1 + dy };
 }
 /** The content as it applies now: shifted by however far the layer moved since it was drawn. */

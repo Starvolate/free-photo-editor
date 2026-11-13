@@ -5,6 +5,7 @@
  * two shapes (merge, keep the overlap, undo), a star and a spiral, grow, mirror, copies round a centre, a wobble, and
  * join then split two outlines; then slice, in-between shapes, stitch lines, repeat and bend along a line, hatch lines, a
  * thick-and-thin line, and an outline drawn as a dashed line on a layer. The outlines are checked by their corner points.
+ * Then type: words bent into an arc, a wave and straight again, and words run along an outline, each one undo step.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts shapes-text
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -18,7 +19,7 @@ import { reach } from './ribbon';
 interface Paths { count: number; names: string[]; picked: string | null; anchors: number; closed: boolean[]; points: { x: number; y: number }[]; }
 interface Fpe {
   run(id: string): Promise<boolean>; state(): Record<string, unknown>; openSample(): void; select(x: number, y: number, w: number, h: number): void;
-  getInfo(): { layers: unknown[] } | null;
+  getInfo(): { layers: unknown[] } | null; toClient(x: number, y: number): { x: number; y: number } | null;
 }
 type Win = Window & { fpe: Fpe };
 
@@ -215,5 +216,58 @@ suite('Shapes & text: path operations (headless Chrome)', () => {
     expect(await layers()).toBe(before + 1);
     await p.click('[data-testid="pathop-done"]');
     await p.screenshot({ path: join(OUT, 'shapes-text-paths2.png') });
+  });
+
+  it('bends words into an arc, a wave and straight again, then runs other words along an outline; one undo step each', async () => {
+    const p = await open();
+    await outlines(p, [520, 300, 200, 160]);
+    type L = { x: number; y: number; width: number; height: number };
+    const last = (): Promise<L> => p.evaluate(() => (window as unknown as Win).fpe.getInfo()!.layers.at(-1) as L);
+    const wait = async (test: (l: L) => boolean, label: string): Promise<L> => {
+      for (let i = 0; i < 100; i++) { const l = await last(); if (test(l)) return l; await p.waitForTimeout(50); }
+      throw new Error(`${label}: ${JSON.stringify(await last())}`);
+    };
+    const write = async (x: number, y: number, words: string): Promise<L> => {
+      await p.evaluate(() => (window as unknown as Win).fpe.run('tool.type'));
+      const c = await p.evaluate(([a, b]) => (window as unknown as Win).fpe.toClient(a, b), [x, y] as const);
+      await p.mouse.click(c!.x, c!.y);
+      await p.waitForSelector('[data-testid="text-edit"]');
+      await p.keyboard.type(words);
+      await p.click('[data-testid="text-done"]');
+      await p.waitForTimeout(150);
+      return last();
+    };
+    const flat = await write(80, 140, 'Bend me round');
+    await reach(p, 'type.warp');
+    await p.waitForSelector('[data-testid="typewarp-sheet"][data-cmd="type.warp"]', { state: 'visible' });
+    // A half-way arc drops both ends, so the layer grows taller than the straight words.
+    const arc = await wait((l) => l.height > flat.height + 20, 'arc');
+    await p.click('[data-testid="typewarp-wave"]');
+    const wave = await wait((l) => l.height !== arc.height, 'wave');
+    await p.click('[data-testid="typewarp-none"]');
+    // Straight again draws exactly the words as they were: the text stayed text.
+    await wait((l) => l.width === flat.width && l.height === flat.height && l.x === flat.x && l.y === flat.y, 'straight');
+    expect(await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'))).toBe(true);
+    await wait((l) => l.height === wave.height && l.width === wave.width, 'undo to the wave');
+    await reach(p, 'type.warp');
+    await p.click('[data-testid="typewarp-arc"]');
+    await wait((l) => l.height === arc.height && l.width === arc.width, 'arc again');
+    await p.click('[data-testid="typewarp-done"]');
+
+    const line = await write(560, 520, 'Words along a line');
+    await reach(p, 'type.path');
+    await p.waitForSelector('[data-testid="typewarp-sheet"][data-cmd="type.path"]', { state: 'visible' });
+    // About 420 px of words round the 200 x 160 outline (520..720 x 300..460): they turn at least one corner.
+    const run = await wait((l) => l.height > line.height + 40, 'along');
+    expect(run.x).toBeGreaterThanOrEqual(450);
+    expect(run.y).toBeGreaterThanOrEqual(230);
+    expect(run.x + run.width).toBeLessThanOrEqual(950);
+    expect(run.y + run.height).toBeLessThanOrEqual(610);
+    expect(await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'))).toBe(true);
+    await wait((l) => l.x === line.x && l.height === line.height, 'undo along');
+    expect(await p.evaluate(() => (window as unknown as Win).fpe.run('edit.redo'))).toBe(true);
+    await wait((l) => l.x === run.x && l.height === run.height, 'redo along');
+    await p.click('[data-testid="typewarp-done"]');
+    await p.screenshot({ path: join(OUT, 'shapes-text-type.png') });
   });
 });

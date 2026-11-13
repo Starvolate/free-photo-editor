@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 425 Ready, 250 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 427 Ready, 248 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 178 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 221 | 429 | 0 |
-| Ready today | 425 | 25 | 185 | 215 | 0 |
+| All functions | 675 | 25 | 223 | 427 | 0 |
+| Ready today | 427 | 25 | 187 | 215 | 0 |
 
 ## The Task ribbon
 
@@ -35,7 +35,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 6 |
-| Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
+| Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 19 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 15 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (60 Ready, 12 Planned)
+## Layer (61 Ready, 11 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -330,7 +330,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | Layer | Arrange layers › Combine · small button | Ready | W1 | Ctrl+Shift+E |
 | layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | Layer | Arrange layers › Combine · small button | Ready | W1 |  |
 | layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | Layer | Select & cut out › Perfect and keep · More list | Ready | 2 |  |
-| layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | Layer | Arrange layers › Animate · More list | Planned | 13 |  |
+| layer.frames | Make animation frames | Layers to frames | Turn each layer into one frame of an animation, with its own time. | gif animation, frames, make frames from layers | Layer | Arrange layers › Animate · small button | Ready | 13 |  |
 
 ## Type (3 Ready, 7 Planned)
 
@@ -493,7 +493,7 @@ Groups: Screen mode · Screen mode.
 | help.source | Source code | Source code | Open this editor's code on GitHub. | github, open source | Help | Help sheet | Ready | 1 |  |
 | help.report | Report a problem | Report a bug | Tell the maker what went wrong. | bug, issue, feedback | Help | Help sheet | Ready | W1 |  |
 
-## Panels (Window menu and the dock) (13 Ready, 9 Planned)
+## Panels (Window menu and the dock) (14 Ready, 8 Planned)
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
@@ -516,7 +516,7 @@ Groups: Screen mode · Screen mode.
 | panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | Window | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | Window | Shapes & text › Text style · More list | Planned | 6 |  |
 | panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | Window | View sheet | Planned | 13 |  |
-| panel.timeline | Animation timeline | Timeline | Frames of an animation in order. | animation | Window | Arrange layers › Animate · More list | Planned | 13 |  |
+| panel.timeline | Animation timeline | Timeline | The frames in order: play them, set each one's time, reorder and export. | animation, frames, play | Window | Arrange layers › Animate · small button | Ready | 13 |  |
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · More list | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
@@ -814,10 +814,10 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | layer.select-by-state | U184 | Select layers by state | Select hidden / locked / unlocked layers | Lists every hidden, shown, locked or unlocked layer at once; show or unlock them all in one step, or click one to work on it. | select hidden layers, select locked layers, select layers by state | Arrange layers › Find and versions · small button | Ready | T3 |
 | layer.metadata | U185 | Edit layer metadata | Edit Metadata | Write notes and tags on the active layer; Find layers searches them. | layer metadata, layer notes, layer info | Arrange layers › Find and versions · More list | Ready | T3 |
 | layer.video | U186 | Edit video on a timeline | Video Timeline (clips, keyframes, transitions, audio, render video) | A timeline for clips, keyframed effects and audio. | video editing, video timeline, clips, transitions, audio | Arrange layers › Animate · More list | Planned | T3 |
-| layer.keyframes | U187 | Animate with keyframes on layers | Timeline layer keyframes (position, opacity, style, mask) | Animate layer properties over time. | keyframe, animate position, animate opacity, motion | Arrange layers › Animate · More list | Planned | T3 |
+| layer.keyframes | U187 | Animate with keyframes on layers | Keyframes | Animate layer properties over time. | keyframe, animate position, animate opacity, motion, timeline layer keyframes | Arrange layers › Animate · More list | Planned | T3 |
 | layer.onion-skin | U188 | See neighbour frames | Onion Skin | Shows previous frames in red and next in green to draw in-betweens. | onion skin, see previous frame, animation ghost | Arrange layers › Animate · More list | Planned | T3 |
-| layer.storyboard | U189 | Storyboard | Storyboard Docker | Plan shots as a board of panels. | storyboard, shot list, comic planning | Arrange layers › Animate · More list | Planned | T3 |
-| layer.import-frames | U190 | Import animation frames | Import Animation Frames | Bring a folder of images in as frames. | import frames, image sequence, animation frames from files | Arrange layers › Animate · More list | Planned | T3 |
+| layer.storyboard | U189 | Storyboard | Storyboard | Plan shots as a board of panels. | storyboard, shot list, comic planning, storyboard docker | Arrange layers › Animate · More list | Planned | T3 |
+| layer.import-frames | U190 | Import animation frames | Image sequence | Bring a folder of images in as frames. | import frames, image sequence, animation frames from files, import animation frames | Arrange layers › Animate · More list | Planned | T3 |
 
 ### Crop & resize (4)
 

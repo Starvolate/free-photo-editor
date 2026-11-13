@@ -86,14 +86,17 @@ export function decodeGif(b: Uint8Array): Movie {
   if (!frames.length) throw new Error('This GIF has no pictures in it.');
   return { width: W, height: H, frames };
 }
-/** A GIF (moving when there is more than one frame) with the credit in a comment block. */
-export function encodeGif(frames: Frame[], credit: string = CREDIT): Uint8Array {
+/**
+ * A GIF (moving when there is more than one frame) with the credit in a comment block. `loop` is how many times it plays
+ * (0 = forever): once means no loop block at all; n times writes n - 1 repeats, as browsers play the first time plus the repeats.
+ */
+export function encodeGif(frames: Frame[], credit: string = CREDIT, loop = 0): Uint8Array {
   const gif = GIFEncoder(), many = frames.length > 1;
   for (const f of frames) {
     const rgba = new Uint8Array(f.bmp.data.buffer, f.bmp.data.byteOffset, f.bmp.data.length);
     const palette = quantize(rgba, 256, { format: 'rgba4444', oneBitAlpha: true });
     const index = applyPalette(rgba, palette, 'rgba4444'), ti = palette.findIndex((c) => c[3] === 0);
-    gif.writeFrame(index, f.bmp.width, f.bmp.height, { palette, delay: Math.round(f.delay), repeat: many ? 0 : -1, transparent: ti >= 0, transparentIndex: Math.max(0, ti), dispose: many && ti >= 0 ? 2 : -1 });
+    gif.writeFrame(index, f.bmp.width, f.bmp.height, { palette, delay: Math.round(f.delay), repeat: many ? (loop > 0 ? loop - 1 || -1 : 0) : -1, transparent: ti >= 0, transparentIndex: Math.max(0, ti), dispose: many && ti >= 0 ? 2 : -1 });
   }
   gif.finish();
   const out = gif.bytes(), text = latin1Encode(credit), blocks: Uint8Array[] = [new Uint8Array([0x21, 0xfe])];
@@ -135,10 +138,11 @@ export function decodeApng(b: Uint8Array): Movie {
   });
   return { width: W, height: H, frames: out };
 }
-/** A moving PNG: one full frame per layer, with the credit in a Software text chunk. */
-export function encodeApng(frames: Frame[], credit: string = CREDIT): Uint8Array {
+/** A moving PNG: one full frame per layer, with the credit in a Software text chunk. `loop`: how many times it plays (0 = forever). */
+export function encodeApng(frames: Frame[], credit: string = CREDIT, loop = 0): Uint8Array {
   const W = frames[0].bmp.width, H = frames[0].bmp.height, rgb = frames.every((f) => isOpaque(f.bmp.data)), actl = new Uint8Array(8);
   actl.set(be32(frames.length), 0);
+  actl.set(be32(Math.max(0, loop)), 4);
   const parts: Uint8Array[] = [PNG_SIG, makePngChunk('IHDR', ihdr(W, H, 8, rgb ? 2 : 6)), makePngChunk('acTL', actl), creditChunk(credit)];
   let seq = 0;
   frames.forEach((f, i) => {
@@ -185,8 +189,8 @@ export async function decodeAnimatedWebp(b: Uint8Array, host: FormatHost): Promi
   if (!out.length) throw new Error('This WebP file has no frames this editor can read.');
   return { width: W, height: H, frames: out };
 }
-/** A moving WebP: each frame made by the host's WebP encoder, joined here, with the credit in XMP. */
-export async function encodeAnimatedWebp(frames: Frame[], quality: number, host: FormatHost, credit: string = CREDIT): Promise<Uint8Array> {
+/** A moving WebP: each frame made by the host's WebP encoder, joined here, with the credit in XMP. `loop`: how many times it plays (0 = forever). */
+export async function encodeAnimatedWebp(frames: Frame[], quality: number, host: FormatHost, credit: string = CREDIT, loop = 0): Promise<Uint8Array> {
   if (!host.encodeStill) throw new Error("This browser can't make WebP files.");
   const W = frames[0].bmp.width, H = frames[0].bmp.height, anmf: Uint8Array[] = [];
   let alpha = false;
@@ -201,13 +205,13 @@ export async function encodeAnimatedWebp(frames: Frame[], quality: number, host:
   }
   const vp8x = new Uint8Array(10);
   vp8x[0] = 0x02 | 0x04 | (alpha ? 0x10 : 0); put24(vp8x, 4, W - 1); put24(vp8x, 7, H - 1);
-  return stillWebp([riff('VP8X', vp8x), riff('ANIM', new Uint8Array(6)), ...anmf, riff('XMP ', utf8Encode(buildXmp(credit)))]);
+  return stillWebp([riff('VP8X', vp8x), riff('ANIM', new Uint8Array([0, 0, 0, 0, loop & 255, (loop >> 8) & 255])), ...anmf, riff('XMP ', utf8Encode(buildXmp(credit)))]);
 }
 const movieDoc = (m: Movie): Decoded => ({ doc: docFromFrames(m.width, m.height, m.frames),
   notes: m.frames.length > 1 ? [`Each of the ${m.frames.length} frames opened as its own layer; frame 1 shows. Turn the others on in Layers.`] : [] });
-export const gifCodec: FormatCodec = { decode: async (b) => movieDoc(decodeGif(b)), encode: async (doc, o) => encodeGif(framesOf(doc, o.multi, o.delay)) };
-export const apngCodec: FormatCodec = { decode: async (b) => movieDoc(decodeApng(b)), encode: async (doc, o) => encodeApng(framesOf(doc, o.multi, o.delay)) };
+export const gifCodec: FormatCodec = { decode: async (b) => movieDoc(decodeGif(b)), encode: async (doc, o) => encodeGif(framesOf(doc, o.multi, o.delay), CREDIT, doc.loop) };
+export const apngCodec: FormatCodec = { decode: async (b) => movieDoc(decodeApng(b)), encode: async (doc, o) => encodeApng(framesOf(doc, o.multi, o.delay), CREDIT, doc.loop) };
 export const webpAnimCodec: FormatCodec = {
   decode: async (b, host) => movieDoc(await decodeAnimatedWebp(b, host)),
-  encode: async (doc, o, host) => encodeAnimatedWebp(framesOf(doc, o.multi, o.delay), o.quality, host),
+  encode: async (doc, o, host) => encodeAnimatedWebp(framesOf(doc, o.multi, o.delay), o.quality, host, CREDIT, doc.loop),
 };

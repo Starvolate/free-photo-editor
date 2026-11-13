@@ -114,6 +114,8 @@ export interface Doc {
   dpi?: number;
   /** Outlines drawn with the pen (path.ts), kept beside the selection; plain data, so autosave keeps them. */
   paths?: VectorPath[];
+  /** Animation: how many times it plays; absent or 0 = forever, 1 = once. Read by the GIF, PNG and WebP animation export. */
+  loop?: number;
 }
 export interface LayerGeom { x: number; y: number; width: number; height: number; data: Uint8ClampedArray; }
 

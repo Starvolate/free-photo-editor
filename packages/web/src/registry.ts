@@ -262,7 +262,7 @@ layer.merge-down | Merge into the layer below | Merge down | Combine the active 
 layer.merge-visible | Merge the shown layers | Merge visible | Combine every shown layer into one. | combine visible | R | W1 | Ctrl+Shift+E
 layer.flatten | Flatten into one layer | Flatten image | Combine all layers into one on white. | flatten, single layer | R | W1
 layer.defringe | Clean up edge colour | Defringe | Remove coloured halos around cut-outs. | halo, fringe | R | 2
-layer.frames | Make animation frames | Make frames from layers | Turn each layer into a frame of an animation. | gif animation, frames | P | 13
+layer.frames | Make animation frames | Layers to frames | Turn each layer into one frame of an animation, with its own time. | gif animation, frames, make frames from layers | R | 13
 
 @Type = Type | Type | Add and style text.
 type.add | Add text | Horizontal type | Click on the picture and type words. | text, words, caption, title, write, quote | R | W3
@@ -427,7 +427,7 @@ panel.styles | Saved effects | Styles | Effects you saved to use again. | styles
 panel.tool-presets | Saved tool settings | Tool presets | Tool settings you saved to use again. | presets | P | 4
 panel.glyphs | Special characters | Glyphs | Symbols and letters not on your keyboard. | symbols | P | 6
 panel.notes | Notes | Notes | Notes you pinned on the picture. | notes | P | 13
-panel.timeline | Animation timeline | Timeline | Frames of an animation in order. | animation | P | 13
+panel.timeline | Animation timeline | Timeline | The frames in order: play them, set each one's time, reorder and export. | animation, frames, play | R | 13
 panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | P | 13
 panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | P | 6
 --

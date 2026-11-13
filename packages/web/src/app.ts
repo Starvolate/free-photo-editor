@@ -2114,6 +2114,7 @@ export class Editor {
   // ---------- panels ----------
   private renderPanels(): void {
     this.tk?.refresh();
+    this.anim?.refresh();
     this.renderLayers();
     this.renderHistory();
     this.renderProps();
@@ -3399,6 +3400,12 @@ export class Editor {
         lastFilter: () => this.lastFilter, others: () => this.tabs.flatMap((t, i) => (i === this.cur ? [] : [{ name: t.name, doc: t.doc, push: (c: Command) => { t.history.push(c); layerPixelsChanged(); this.renderTabs(); this.saver?.touch(); } }])) });
     } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
+  /** Animation (animate.ts), loaded on first use: frames from layers and the timeline under the picture. */
+  anim: import('./animate').AnimKit | null = null;
+  async animate(id: string): Promise<void> {
+    try { const m = await import('./animate'); (this.anim ??= m.animKit({ ...this.toolHost(), exportAnim: () => void this.openExport('gif', true) })).run(id); }
+    catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   /** More Select & cut out and Arrange layers commands (selmore.ts), loaded on first use. */
   async selMore(id: string): Promise<void> {
     try { (await import('./selmore')).runSelMore(id, this.toolHost()); } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
@@ -3692,7 +3699,7 @@ export class Editor {
           tabs: this.tabs.length, tab: this.cur, saved: !this.doc || this.history.stateId() === this.savedId, step: e.index, steps: e.labels.length,
           fg: this.brush.color, bg: this.bgColor, theme: this.root.dataset.theme, names: this.proNames, hints: this.hints, screen: this.screen, flags: { ...this.flags },
           hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), panelTabs: [...this.groupActive].map((x) => x.join(':')).sort(), dockView: this.dview, dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
-          adjust: this.session?.id ?? null,
+          adjust: this.session?.id ?? null, anim: this.anim?.state() ?? null,
           preview: this.session ? { scale: this.session.scale, done: this.session.ran && !this.session.running, applying: this.session.applying } : null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
           w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },

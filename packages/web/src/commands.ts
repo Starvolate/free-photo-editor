@@ -466,6 +466,10 @@ for (const w of ('select.luminance:d select.from-channel:d select.from-alpha:p s
   HANDLERS[id] = H((e) => e.selMore(id), SM[k]);
 }
 
+// Animation (animate.ts, loaded on first use): frames from layers, and the timeline under the picture.
+HANDLERS['layer.frames'] = H((e) => e.animate('layer.frames'), (e) => layers(e) > 1);
+HANDLERS['panel.timeline'] = H((e) => e.animate('panel.timeline'), hasDoc, (e) => !!e.anim?.state().timeline);
+
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {
   title: string; cmd: string; icon: string; ratio?: number; help?: string;

@@ -4,10 +4,10 @@
 import { existsSync, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { CREDIT } from '@free-photoeditor/core';
+import { CREDIT, isDpi, parsePrintSize } from '@free-photoeditor/core';
 import { findOperation, opsIn, operationJson, resolveParams, searchWishes, suggest, type OpGroup, type SettingValue } from './catalog';
 import { FORMAT_NAMES } from './codecs';
-import { DEFAULT_MAX_PIXELS, FLIPS, TURNS, applyOperation, cropPicture, describePicture, flattenLayers, keepOnlyLayer, layerList,
+import { DEFAULT_MAX_PIXELS, FLIPS, TURNS, applyOperation, applyPrint, cropPicture, describePicture, flattenLayers, keepOnlyLayer, layerList,
   mergeLayers, openPicture, parseArea, planOutput, resizePicture, savePicture, turnPicture, type Picture } from './engine';
 import { expandGlob, hasGlob } from './glob';
 import { BIN, COMMANDS, commandHelp, mainHelp, names, opHelp, opsHelp, versionText } from './help';
@@ -21,7 +21,7 @@ const OPTIONS = {
   set: { type: 'string', short: 's', multiple: true }, settings: { type: 'string' }, layer: { type: 'string' }, area: { type: 'string' },
   color: { type: 'string' }, color2: { type: 'string' }, width: { type: 'string' }, height: { type: 'string' }, scale: { type: 'string' },
   mode: { type: 'string' }, aspect: { type: 'string' }, trim: { type: 'boolean' }, turn: { type: 'string' }, direction: { type: 'string' },
-  background: { type: 'string' },
+  background: { type: 'string' }, dpi: { type: 'string' }, 'resize-to-print': { type: 'string' },
 } as const;
 const parse = (argv: string[]) => parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
 type Values = ReturnType<typeof parse>['values'];
@@ -67,7 +67,7 @@ export function expandFiles(tokens: string[], cwd: string): string[] {
   return [...new Set(out)];
 }
 
-interface Result { input: string; output?: string; type?: string; width?: number; height?: number; layers?: number; bytes?: number; notes?: string[]; error?: string; }
+interface Result { input: string; output?: string; type?: string; width?: number; height?: number; dpi?: number; layers?: number; bytes?: number; notes?: string[]; error?: string; }
 class Run {
   readonly results: Result[] = [];
   failed = 0;
@@ -89,14 +89,17 @@ class Run {
   /** Open each picture, change it, save the result with the credit. */
   async edit(files: string[], suffix: string | undefined, change: (p: Picture) => string[] | void, extra: Record<string, unknown> = {}): Promise<number> {
     const maxPixels = num(this.v['max-pixels'], 'max-pixels') ?? DEFAULT_MAX_PIXELS, quality = num(this.v.quality, 'quality');
+    const print = { dpi: num(this.v.dpi?.replace(/\s*(dpi|ppi)$/i, ''), 'dpi'), printSize: this.v['resize-to-print'] };
+    if (print.dpi !== undefined && !isDpi(print.dpi)) throw new UsageError('--dpi needs a number from 1 to 10000, for example 300.');
+    if (print.printSize) { try { parsePrintSize(print.printSize); } catch (e) { throw new UsageError(msg(e)); } }
     for (const input of files) {
       try {
-        const pic = await openPicture(input, maxPixels), notes = [...pic.notes, ...(change(pic) ?? [])];
+        const pic = await openPicture(input, maxPixels), notes = [...pic.notes, ...(change(pic) ?? []), ...applyPrint(pic.doc, print, maxPixels)];
         const plan = planOutput(input, pic.format, { output: this.v.output, outDir: this.v['out-dir'], to: this.v.to, suffix, cwd: this.io.cwd, many: files.length > 1 });
         await fs.mkdir(path.dirname(plan.file), { recursive: true });
         const s = await savePicture(pic.doc, plan.file, plan.format, { quality, overwrite: this.v.overwrite });
         const all = [...notes, ...s.notes];
-        this.ok({ input, output: s.output, type: FORMAT_NAMES[s.format], width: s.width, height: s.height, layers: s.layers, bytes: s.bytes, notes: all },
+        this.ok({ input, output: s.output, type: FORMAT_NAMES[s.format], width: s.width, height: s.height, dpi: s.dpi, layers: s.layers, bytes: s.bytes, notes: all },
           [`Saved ${this.rel(s.output)} (${s.width} × ${s.height} ${FORMAT_NAMES[s.format]}${s.layers > 1 ? `, ${s.layers} layers` : ''})`, ...all.map((n) => `  Note: ${n}`)]);
       } catch (e) { this.bad(input, e); }
     }
@@ -165,7 +168,7 @@ export async function run(argv: string[], io: Io = stdIo()): Promise<number> {
       case 'info': return await r.read(expandFiles(rest, io.cwd), (p) => {
         const d = describePicture(p);
         return { data: d, lines: [`${r.rel(p.file)}: ${d.type}, ${d.width} × ${d.height}${d.megapixels >= 0.01 ? ` (${d.megapixels} megapixels)` : ''}, ${d.layers.length} layer${d.layers.length === 1 ? '' : 's'}${d.transparent ? ', has see-through areas' : ''}`,
-          `  Made with: ${d.madeWith ?? 'no credit stored'}`, ...(d.layers.length > 1 ? ['  Layers, top first:', ...layerLines(p)] : []), ...d.notes.map((n) => `  Note: ${n}`)] };
+          `  Print: ${d.print}`, `  Made with: ${d.madeWith ?? 'no credit stored'}`, ...(d.layers.length > 1 ? ['  Layers, top first:', ...layerLines(p)] : []), ...d.notes.map((n) => `  Note: ${n}`)] };
       });
       case 'convert': case 'export': {
         if (!v.to && !v.output) throw new UsageError(`Say which type to save: --to png, jpeg, webp or psd (or name the file with -o).`);

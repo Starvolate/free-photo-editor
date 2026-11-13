@@ -16,7 +16,10 @@ export interface FormatCaps {
   /** The largest picture side the format holds. */ maxSide?: number;
   /** Layers can be saved as the frames of an animation, or as pages. */ multi?: 'frames' | 'pages';
 }
-export interface FormatOptions { quality: number; multi: boolean; delay: number; }
+export interface FormatOptions {
+  quality: number; multi: boolean; delay: number;
+  /** Print resolution to store where the format has room for it (72 when not given). */ dpi?: number;
+}
 export interface Decoded { doc: Doc; notes: string[]; }
 /** What the app around the engine offers the codecs: the browser's own picture decoders and encoders. */
 export interface FormatHost {

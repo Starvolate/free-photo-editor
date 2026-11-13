@@ -3,7 +3,7 @@
 /// <reference path="./ambient.d.ts" />
 /**
  * PDF. Saving is written for Free Photo Editor: each page holds the picture exactly (Flate, with a soft mask for
- * see-through), with the credit as Producer and Creator and in XMP. Opening draws a page with pdf.js (Apache-2.0),
+ * see-through), with the credit as Producer and Creator and in XMP; the page size follows the print resolution (DPI). Opening draws a page with pdf.js (Apache-2.0),
  * loaded only when a PDF is first opened; the app asks which page and how sharp.
  */
 import { zlibSync } from 'fflate';
@@ -15,7 +15,7 @@ export function encodePdf(pages: Bitmap[], credit: string = CREDIT, dpi = 72): U
   const objs: Uint8Array[] = [];
   const add = (body: Uint8Array | string): number => { objs.push(typeof body === 'string' ? latin1Encode(body) : body); return objs.length; };
   const stream = (dict: string, data: Uint8Array): Uint8Array => concatBytes(latin1Encode(`<< ${dict} /Length ${data.length} >>\nstream\n`), data, latin1Encode('\nendstream'));
-  const catalog = add(''), pagesId = add(''), meta = add(stream('/Type /Metadata /Subtype /XML', utf8Encode(buildXmp(credit)))), kids: number[] = [], k = 72 / dpi;
+  const catalog = add(''), pagesId = add(''), meta = add(stream('/Type /Metadata /Subtype /XML', utf8Encode(buildXmp(credit, dpi)))), kids: number[] = [], k = 72 / dpi;
   for (const bmp of pages) {
     const { width: w, height: h, data } = bmp, rgb = new Uint8Array(w * h * 3), a = isOpaque(data) ? null : new Uint8Array(w * h);
     for (let i = 0, j = 0; i < w * h; i++, j += 4) { rgb[i * 3] = data[j]; rgb[i * 3 + 1] = data[j + 1]; rgb[i * 3 + 2] = data[j + 2]; if (a) a[i] = data[j + 3]; }
@@ -75,5 +75,5 @@ export const codec: FormatCodec = {
       return { doc: docOf(bmp.width, bmp.height, [{ name: 'Page 1', bmp }]), notes: pdf.pages > 1 ? [`Page 1 of ${pdf.pages} was opened.`] : [] };
     } finally { pdf.close(); }
   },
-  encode: async (doc, o) => encodePdf(framesOf(doc, o.multi, o.delay).map((f) => f.bmp)),
+  encode: async (doc, o) => encodePdf(framesOf(doc, o.multi, o.delay).map((f) => f.bmp), CREDIT, o.dpi ?? 72),
 };

@@ -5,7 +5,7 @@
  * the format add-ons (packages/formats) open and save the rest, each loaded only when first used.
  */
 import {
-  CREDIT, EXPORT_FORMATS, FORMAT_INFO, WHITE, flatten, formatDef, injectMetadata, listFormats, sniffFormat, webpInfo,
+  CREDIT, EXPORT_FORMATS, FORMAT_INFO, WHITE, docDpi, flatten, formatDef, injectMetadata, jpegSampling, listFormats, readDpi, sniffFormat, webpInfo,
   type Bitmap, type Doc, type ExportFormat, type FormatHost,
 } from '@free-photoeditor/core';
 import { OPEN_EXTS, PLANNED_OPEN, registerAllFormats } from '@free-photoeditor/formats';
@@ -14,7 +14,7 @@ registerAllFormats();
 export const OPEN_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,image/vnd.adobe.photoshop,' +
   'image/tiff,image/heic,image/heif,image/jxl,image/apng,image/x-tga,image/openraster,application/pdf,' +
   '.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.ico,.psd,.psb,' + OPEN_EXTS.map((e) => '.' + e).join(',');
-export type Opened = { kind: 'bitmap'; bitmap: Bitmap } | { kind: 'psd'; bytes: Uint8Array } | { kind: 'doc'; doc: Doc; notes: string[] } | { kind: 'none' };
+export type Opened = { kind: 'bitmap'; bitmap: Bitmap; dpi?: number | null } | { kind: 'psd'; bytes: Uint8Array } | { kind: 'doc'; doc: Doc; notes: string[] } | { kind: 'none' };
 /** How the open step asks a question (the PDF page, the RAW develop step). False means the person cancelled. */
 export interface OpenUi { choose(title: string, body: HTMLElement, ok: string): Promise<boolean>; }
 export const baseName = (n: string): string => n.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'image';
@@ -79,13 +79,16 @@ export async function readImageFile(file: Blob, name: string, ui?: OpenUi): Prom
     return { kind: 'doc', doc: res.doc, notes: res.notes };
   }
   const svg = file.type === 'image/svg+xml' || /\.svg$/i.test(name);
+  // The print resolution (DPI) is read from the file's own bytes: the browser's decoders drop it. WebP keeps it at the end.
+  const webp = head[0] === 0x52 && head[1] === 0x49 && head[8] === 0x57 && head[9] === 0x45 && file.size > head.length;
+  const dpi = svg ? null : readDpi(webp ? new Uint8Array(await file.arrayBuffer()) : head);
   if (!svg && typeof createImageBitmap === 'function') {
     try {
       const bmp = await createImageBitmap(file);
-      try { return { kind: 'bitmap', bitmap: draw(bmp, bmp.width, bmp.height) }; } finally { bmp.close(); }
+      try { return { kind: 'bitmap', bitmap: draw(bmp, bmp.width, bmp.height), dpi }; } finally { bmp.close(); }
     } catch { /* some formats only decode through <img> */ }
   }
-  return { kind: 'bitmap', bitmap: await viaImg(file, svg) };
+  return { kind: 'bitmap', bitmap: await viaImg(file, svg), dpi };
 }
 /** How many pixels this device can comfortably edit, from navigator.deviceMemory when the browser shares it. */
 export function maxPixelsForDevice(): number {
@@ -116,10 +119,13 @@ export function fmtInfo(id: string): { label: string; ext: string; mime: string;
 }
 /** Whether a type can hold the layers as animation frames or as pages. PNG and WebP move as APNG and animated WebP. */
 export const multiKind = (id: string): 'frames' | 'pages' | null => (id === 'png' || id === 'webp' ? 'frames' : formatDef(id)?.caps.multi ?? null);
-export interface SaveOptions { multi: boolean; delay: number; }
-/** Encode the picture. Every file carries the credit in its metadata where the format has room for it. */
+export interface SaveOptions { multi: boolean; delay: number; /** Print resolution to store; the picture's own when not given. */ dpi?: number; }
+/**
+ * Encode the picture. Every file carries the credit, and the print resolution (DPI), where the format has room for them.
+ * A JPEG at the best quality (1) is checked: it should keep every colour pixel (4:4:4); if this browser cannot, the note says so.
+ */
 export async function encodeDocument(doc: Doc, format: string, quality: number, opts: SaveOptions = { multi: false, delay: 100 }): Promise<{ blob: Blob; note: string | null }> {
-  const multi = opts.multi && doc.layers.length > 1;
+  const multi = opts.multi && doc.layers.length > 1, dpi = opts.dpi ?? docDpi(doc);
   if (multi && (format === 'png' || format === 'webp')) {
     const { apngCodec, webpAnimCodec } = await import('@free-photoeditor/formats/anim');
     const bytes = await (format === 'png' ? apngCodec : webpAnimCodec).encode?.(doc, { quality, multi: true, delay: opts.delay }, HOST);
@@ -130,14 +136,14 @@ export async function encodeDocument(doc: Doc, format: string, quality: number, 
   if (def) {
     const codec = await def.load();
     if (!codec.encode) throw new Error(`${def.label} files can't be saved yet.`);
-    const bytes = await codec.encode(doc, { quality, multi, delay: opts.delay }, HOST);
+    const bytes = await codec.encode(doc, { quality, multi, delay: opts.delay, dpi }, HOST);
     return { blob: new Blob([bytes as unknown as BlobPart], { type: def.mime }), note: null };
   }
   const fmt = format as ExportFormat, info = FORMAT_INFO[fmt];
   if (!info) throw new Error("This file type can't be saved.");
   if (fmt === 'psd') {
     const { writePsdDocument } = await import('@free-photoeditor/core/psd');
-    return { blob: new Blob([writePsdDocument(doc, CREDIT) as unknown as BlobPart], { type: info.mime }), note: null };
+    return { blob: new Blob([writePsdDocument(doc, CREDIT, dpi) as unknown as BlobPart], { type: info.mime }), note: null };
   }
   const flat = flatten(doc, fmt === 'jpeg' ? WHITE : null);
   const c = document.createElement('canvas');
@@ -147,8 +153,10 @@ export async function encodeDocument(doc: Doc, format: string, quality: number, 
   c.width = 0;
   if (!blob) throw new Error("This browser couldn't make the file.");
   if (blob.type !== info.mime) throw new Error(`This browser can't save ${info.label} files. Try PNG instead.`);
-  const bytes = injectMetadata(new Uint8Array(await blob.arrayBuffer()), fmt, CREDIT);
-  const note = fmt === 'webp' && quality >= 1 && !webpInfo(bytes).lossless ? 'This browser saved the WebP with light compression.' : null;
+  const bytes = injectMetadata(new Uint8Array(await blob.arrayBuffer()), fmt, CREDIT, dpi);
+  const chroma = fmt === 'jpeg' && quality >= 1 ? jpegSampling(bytes) : null;
+  const note = fmt === 'webp' && quality >= 1 && !webpInfo(bytes).lossless ? 'This browser saved the WebP with light compression.'
+    : chroma && chroma !== '4:4:4' && chroma !== 'grey' ? `This browser keeps JPEG colour at lower detail (${chroma}) even at the best quality. For every colour pixel, export PNG or TIFF.` : null;
   return { blob: new Blob([bytes as unknown as BlobPart], { type: info.mime }), note };
 }
 export function download(blob: Blob, filename: string, host: HTMLElement): void {

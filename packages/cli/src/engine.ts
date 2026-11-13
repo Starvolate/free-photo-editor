@@ -7,8 +7,8 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { FORMAT_INFO, activeLayer, commitResult, compositeHasTransparency, cropDocument, docFacts, editRegion, flatten, flattenDocument,
-  innerOf, jobPadding, lossReport, mergeDown, mergeVisible, paddedRegion, parseHex, readRegion, resizeBitmap, resizeDocument, runJob,
+import { FORMAT_INFO, activeLayer, checkDpi, commitResult, compositeHasTransparency, cropDocument, docDpi, docFacts, editRegion, flatten, flattenDocument,
+  innerOf, jobPadding, lossReport, mergeDown, mergeVisible, paddedRegion, parseHex, parsePrintSize, printSize, printTarget, readRegion, resizeBitmap, resizeDocument, runJob,
   trimDocument, turnDocument, turnLayer, type Bitmap, type Doc, type JobParams, type JobSpec, type Layer, type Rect, type Resample,
   type Turn } from '@free-photoeditor/core';
 import { runEffect } from '@free-photoeditor/core/fx';
@@ -105,6 +105,28 @@ export function resizePicture(doc: Doc, r: SizeRequest, maxPixels = DEFAULT_MAX_
   if (w * h > maxPixels) throw tooBig(maxPixels);
   resizeDocument(doc, w, h, r.mode ?? 'smooth');
 }
+export interface PrintOptions { dpi?: number; printSize?: string; mode?: Resample; }
+const n2 = (x: number): string => String(Math.round(x * 100) / 100);
+/** "300 DPI prints 25.4 × 16.93 cm (10 × 6.67 in)" */
+export function printLine(doc: Doc): string {
+  const dpi = docDpi(doc), p = printSize(doc.width, doc.height, dpi);
+  return `${n2(dpi)} DPI prints ${n2(p.cm[0])} × ${n2(p.cm[1])} cm (${n2(p.in[0])} × ${n2(p.in[1])} in)`;
+}
+/**
+ * The print resolution (--dpi, dpi) and, when asked, a resize to a print size at that DPI (--resize-to-print, printSize).
+ * Without a print size only the DPI changes and the pixels stay, because DPI alone never adds detail.
+ */
+export function applyPrint(doc: Doc, o: PrintOptions, maxPixels = DEFAULT_MAX_PIXELS): string[] {
+  if (o.dpi === undefined && !o.printSize) return [];
+  const dpi = o.dpi === undefined ? docDpi(doc) : checkDpi(o.dpi);
+  if (o.printSize) {
+    const t = printTarget(parsePrintSize(o.printSize), dpi, doc);
+    if (t.width * t.height > maxPixels) throw tooBig(maxPixels);
+    resizeDocument(doc, t.width, t.height, o.mode ?? 'smooth');
+  }
+  doc.dpi = dpi;
+  return [`${printLine(doc)}.${o.printSize ? ` The picture was resampled to ${doc.width} × ${doc.height} pixels for that print size.` : ' The pixels are unchanged: DPI alone never adds detail.'}`];
+}
 /** The biggest centred area with this shape, such as 1:1 for a square or 9:16 for a story. */
 export function aspectArea(doc: Doc, aspect: string): Rect {
   const m = /^\s*(\d+(?:\.\d+)?)\s*[:x/×]\s*(\d+(?:\.\d+)?)\s*$/.exec(aspect);
@@ -187,18 +209,19 @@ export async function writeFileSafely(file: string, bytes: Uint8Array, overwrite
 }
 export const normQuality = (q?: number): number => (q === undefined || !Number.isFinite(q) ? 0.92 : q > 1 ? Math.min(100, q) / 100 : Math.max(0.01, q));
 
-export interface Saved { output: string; format: WriteFormat; width: number; height: number; layers: number; bytes: number; notes: string[]; }
+export interface Saved { output: string; format: WriteFormat; width: number; height: number; dpi: number; layers: number; bytes: number; notes: string[]; }
 /** Save with the credit in the file, and say in plain words what this file type loses for this picture. */
 export async function savePicture(doc: Doc, file: string, format: WriteFormat, o: { quality?: number; overwrite?: boolean } = {}): Promise<Saved> {
   const quality = normQuality(o.quality), report = lossReport(docFacts(doc), format, quality);
   const bytes = await encodeImage(doc, format, quality);
   await writeFileSafely(file, bytes, o.overwrite);
-  return { output: file, format, width: doc.width, height: doc.height, layers: format === 'psd' ? doc.layers.length : 1, bytes: bytes.length,
+  return { output: file, format, width: doc.width, height: doc.height, dpi: docDpi(doc), layers: format === 'psd' ? doc.layers.length : 1, bytes: bytes.length,
     notes: report.losses.map((l) => l.text) };
 }
 export function describePicture(p: Picture) {
   const d = p.doc;
-  return { file: p.file, format: p.format, type: FORMAT_NAMES[p.format], width: d.width, height: d.height, megapixels: +((d.width * d.height) / 1e6).toFixed(2),
+  return { file: p.file, format: p.format, type: FORMAT_NAMES[p.format], width: d.width, height: d.height,
+    dpi: docDpi(d), printSize: printSize(d.width, d.height, docDpi(d)), print: printLine(d), megapixels: +((d.width * d.height) / 1e6).toFixed(2),
     fileBytes: p.fileBytes, transparent: compositeHasTransparency(d), layers: layerList(d), madeWith: p.credit, notes: p.notes };
 }
 /** A preview at most `max` pixels on its long side, scaled by the engine. */

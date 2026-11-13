@@ -100,7 +100,7 @@ export const TABS: Tab[] = [
   ] },
   { plain: 'Crop & resize', pro: 'Crop and transform', groups: [
     g('Crop', 'Crop', 'small', 'tool.crop', 'image.crop image.trim tool.crop-perspective', 'image.reveal-all'),
-    g('Size', 'Image and canvas size', 'small', '', 'image.size image.canvas-size image.upscale-2x', 'image.upscale-4x image.fit-canvas tool.artboard'),
+    g('Size', 'Image and canvas size', 'small', '', 'image.size image.canvas-size image.upscale-2x', 'image.resolution image.upscale-4x image.fit-canvas tool.artboard'),
     g('Turn the picture', 'Rotate canvas', 'small', '', 'image.rotate-cw image.rotate-ccw image.rotate-any', 'image.rotate-180 image.flip-h image.flip-v'),
     g('Move and reshape a layer', 'Free transform', 'small', 'tool.move', 'edit.free-transform edit.scale edit.rotate', 'edit.skew edit.distort edit.perspective edit.transform-again'),
     g('Turn a layer', 'Rotate layer', 'small', '', 'edit.flip-layer-h edit.flip-layer-v edit.rotate-layer-cw', 'edit.rotate-layer-ccw edit.rotate-layer-180'),
@@ -132,7 +132,7 @@ export const TABS: Tab[] = [
 /** The four sheets in the app bar: one scrollable page each, so every item is two clicks away. */
 export const SHEETS: Sheet[] = [
   { plain: 'File', pro: 'File (backstage)', ids: words('file.new file.open file.open-layer file.sample file.open-url file.camera file.recent file.restore file.autosave file.install file.close file.close-all file.revert file.export file.print file.info image.duplicate file.libraries file.cloud file.share-review file.phone-handoff file.library file.ratings file.cull file.sidecar file.map file.tether file.templates file.assets') },
-  { plain: 'Export', pro: 'Export as', ids: words('file.save-psd file.quick-png file.export-png file.export-jpeg file.export-webp file.export-psd file.export-avif file.export-gif file.export-tiff file.export-pdf file.export-svg file.export-ico file.export-jxl file.export-tga file.export-bmp file.export-ora file.export-animation file.export-layers file.export-sizes file.credentials file.image-map file.more-formats file.export-gcode file.export-slides') },
+  { plain: 'Export', pro: 'Export as', ids: words('file.save-psd file.quick-png file.export-png file.export-jpeg file.export-webp file.export-psd file.export-avif file.export-gif file.export-tiff file.export-pdf file.export-svg file.export-ico file.export-jxl file.export-tga file.export-bmp file.export-ora file.export-animation file.export-print file.export-best file.export-layers file.export-sizes file.credentials file.image-map file.more-formats file.export-gcode file.export-slides') },
   { plain: 'View', pro: 'View, panels and workspace', ids: words('view.zoom-in view.zoom-out view.fit view.actual view.zoom-200 view.print-size view.screen-standard view.screen-focus view.screen-cycle view.rulers view.grid view.extras view.pixel-grid view.guide-new view.guide-clear view.guide-lock view.snap view.slices-clear window.reset window.collapse panel.navigator panel.info panel.channels panel.notes tool.ruler tool.note tool.hand tool.rotate-view tool.zoom view.task-bar view.quick-compare view.colour-blind view.smart-guides view.isometric-grid view.reference view.task-sets view.slideshow view.focus-peaking view.composition-guides view.colour-check') },
   { plain: 'Help', pro: 'Help, learn and settings', ids: words('edit.pref-pro-names edit.pref-hints edit.pref-theme edit.pref-language edit.pref-gpu help.start help.search help.shortcuts help.guided help.about help.source help.report') },
 ];

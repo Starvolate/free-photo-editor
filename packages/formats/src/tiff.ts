@@ -4,10 +4,10 @@
  * TIFF, written for Free Photo Editor. Opens every page as a layer: strips or tiles; no compression, LZW, Deflate or
  * PackBits; 1 to 32 bits; grey, colour, palette or CMYK; with or without see-through. Saves colour (with see-through
  * when the picture has it) using LZW and the horizontal predictor, one page or one page per layer, with the credit in
- * the Software tag (305) and in XMP (700).
+ * the Software tag (305) and in XMP (700), and the print resolution (DPI) in tags 282, 283 and 296, read back on open.
  */
 import { inflateSync, unzlibSync, zlibSync } from 'fflate';
-import { CREDIT, buildXmp, concatBytes, latin1Decode, latin1Encode, utf8Encode, type Bitmap, type Decoded, type FormatCodec } from '@free-photoeditor/core';
+import { CREDIT, buildXmp, concatBytes, isDpi, latin1Decode, latin1Encode, rationalOf, roundDpi, utf8Encode, type Bitmap, type Decoded, type FormatCodec } from '@free-photoeditor/core';
 import { docFromFrames, errMsg, framesOf, isOpaque } from './util';
 
 const SIZE: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 13: 4, 16: 8, 17: 8, 18: 8 };
@@ -208,7 +208,10 @@ export function decodeTiff(bytes: Uint8Array): Decoded {
   if (!pages.length) throw new Error([...notes][0] ?? 'This TIFF file has no picture this editor can read.');
   if (pages.length > 1) notes.add(`Each of the ${pages.length} pages opened as its own layer; page 1 shows. Turn the others on in Layers.`);
   const w = Math.max(...pages.map((p) => p.bmp.width)), h = Math.max(...pages.map((p) => p.bmp.height));
-  return { doc: docFromFrames(w, h, pages.map((p, i) => ({ bmp: p.bmp, name: pages.length > 1 ? p.name ?? `Page ${i + 1}` : 'Background' })), 'Page'), notes: [...notes] };
+  const doc = docFromFrames(w, h, pages.map((p, i) => ({ bmp: p.bmp, name: pages.length > 1 ? p.name ?? `Page ${i + 1}` : 'Background' })), 'Page');
+  const x = f.ifds[0].tags.get(282)?.[0] ?? 0, unit = f.ifds[0].tags.get(296)?.[0] ?? 2, dpi = roundDpi(unit === 3 ? x * 2.54 : unit === 2 ? x : 0);
+  if (isDpi(dpi)) doc.dpi = dpi;
+  return { doc, notes: [...notes] };
 }
 
 export interface TiffEntry { tag: number; type: number; value: number[] | string | Uint8Array; }
@@ -261,8 +264,8 @@ export function writeTiff(pages: TiffPage[]): Uint8Array {
   return out;
 }
 /** Pages (one or more) as a TIFF, colour with see-through when needed, LZW (or Deflate) with the predictor. */
-export function encodeTiffPages(frames: { bmp: Bitmap; name: string }[], credit: string = CREDIT, compression: 'lzw' | 'deflate' = 'lzw'): Uint8Array {
-  const xmp = utf8Encode(buildXmp(credit)), multi = frames.length > 1;
+export function encodeTiffPages(frames: { bmp: Bitmap; name: string }[], credit: string = CREDIT, compression: 'lzw' | 'deflate' = 'lzw', dpi = 72): Uint8Array {
+  const xmp = utf8Encode(buildXmp(credit, dpi)), multi = frames.length > 1, res = rationalOf(dpi);
   return writeTiff(frames.map(({ bmp, name }, i) => {
     const alpha = !isOpaque(bmp.data), spp = alpha ? 4 : 3, rowBytes = bmp.width * spp;
     const rps = Math.max(1, Math.min(bmp.height, Math.floor(65536 / rowBytes))), strips: Uint8Array[] = [];
@@ -279,7 +282,7 @@ export function encodeTiffPages(frames: { bmp: Bitmap; name: string }[], credit:
       { tag: 254, type: 4, value: [multi ? 2 : 0] }, { tag: 256, type: 4, value: [bmp.width] }, { tag: 257, type: 4, value: [bmp.height] },
       { tag: 258, type: 3, value: new Array<number>(spp).fill(8) }, { tag: 259, type: 3, value: [compression === 'lzw' ? 5 : 8] },
       { tag: 262, type: 3, value: [2] }, { tag: 277, type: 3, value: [spp] }, { tag: 278, type: 4, value: [rps] },
-      { tag: 282, type: 5, value: [72, 1] }, { tag: 283, type: 5, value: [72, 1] }, { tag: 284, type: 3, value: [1] },
+      { tag: 282, type: 5, value: res }, { tag: 283, type: 5, value: res }, { tag: 284, type: 3, value: [1] },
       { tag: 296, type: 3, value: [2] }, { tag: 305, type: 2, value: credit }, { tag: 317, type: 3, value: [2] }, { tag: 700, type: 1, value: xmp },
     ];
     if (multi) entries.push({ tag: 285, type: 2, value: name || `Page ${i + 1}` }, { tag: 297, type: 3, value: [i, frames.length] });
@@ -289,5 +292,5 @@ export function encodeTiffPages(frames: { bmp: Bitmap; name: string }[], credit:
 }
 export const codec: FormatCodec = {
   decode: async (bytes) => decodeTiff(bytes),
-  encode: async (doc, o) => encodeTiffPages(framesOf(doc, o.multi, o.delay)),
+  encode: async (doc, o) => encodeTiffPages(framesOf(doc, o.multi, o.delay), CREDIT, 'lzw', o.dpi ?? 72),
 };

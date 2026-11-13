@@ -4,8 +4,8 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**670 functions: 266 Ready, 404 Planned** (65 tools, 22 panels, 37 menus and submenus).
-409 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
+**673 functions: 269 Ready, 404 Planned** (65 tools, 22 panels, 37 menus and submenus).
+412 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 all Planned, which never join the menu bar: search lists them with their "Planned" tag, and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 670 | 26 | 255 | 389 | 0 |
-| Ready today | 266 | 26 | 113 | 127 | 0 |
+| All functions | 673 | 26 | 257 | 390 | 0 |
+| Ready today | 269 | 26 | 115 | 128 | 0 |
 
 ## The Task ribbon
 
@@ -36,11 +36,11 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 13 |
 | Arrange layers · Layer arrangement | This layer, Order, Line up, Combine, Find and versions, Animate | 40 | 40 | 17 |
-| Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 37 | 37 | 20 |
+| Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 20 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 16 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 9 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
-| Export sheet · Export as | app-bar sheet | 24 | 24 | 24 |
+| Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
 | View sheet · View, panels and workspace | app-bar sheet | 40 | 40 | 40 |
 | Help sheet · Help, learn and settings | app-bar sheet | 12 | 12 | 12 |
 
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (28 Ready, 11 Planned)
+## File (30 Ready, 11 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -124,6 +124,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.save-psd | Save with layers | Save as PSD | Keep every layer in a file other editors can open. | psd, keep layers, project file, save project | File | Export sheet | Ready | 1 |  |
 | file.export | Export | Export as | Save a copy as PNG, JPEG, WebP, PSD, TIFF, GIF, AVIF, JPEG XL, PDF, SVG and more, with a note on what each type loses. | save, download, png, jpg, save as | File | File sheet | Ready | 1 | Ctrl+S |
 | file.quick-png | Quick export as PNG | Quick export | Save a PNG straight away, no questions asked. | quick save, png, download now | File | Export sheet | Ready | W1 | Ctrl+Shift+Alt+S |
+| file.export-print | Export for print at a DPI | Export at resolution | Pick the DPI (300 for print, 500, 600 or any number), see the print size it gives, then save. | dpi, ppi, 300 dpi, 600 dpi, print quality, high resolution, pixels per inch, for print | File | Export sheet | Ready | 7 |  |
+| file.export-best | Export in best quality | Maximum quality | Save at the top setting: a JPEG keeps every colour pixel (4:4:4); WebP, AVIF and JPEG XL lose nothing. | best quality, highest quality, max quality, 100 percent, no compression, sharpest | File | Export sheet | Ready | 7 |  |
 | file.export-png | PNG picture | PNG | Sharp and keeps see-through areas; bigger files. | png, transparent background, lossless | File › Export as | Export sheet | Ready | 1 |  |
 | file.export-jpeg | JPEG photo | JPEG | Small photo files; drops see-through areas and a little detail. | jpg, jpeg, small file, email | File › Export as | Export sheet | Ready | 1 |  |
 | file.export-webp | WebP picture | WebP | Small modern web pictures that can keep see-through areas. | webp, website picture | File › Export as | Export sheet | Ready | 1 |  |
@@ -195,7 +197,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Help sheet | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Help sheet | Planned | 11 |  |
 
-## Image (34 Ready, 14 Planned)
+## Image (35 Ready, 14 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
@@ -231,6 +233,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+Alt+L |
 | image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+B |
 | image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | Image | Crop & resize › Size · small button | Ready | W1 | Ctrl+Alt+I |
+| image.resolution | Print resolution | Resolution (DPI/PPI) | Set how many pixels print in one inch. With Resample off the pixels stay and only the print size changes. | dpi, ppi, print size, pixels per inch, document size, 300 dpi | Image | Crop & resize › Size · More list | Ready | 7 |  |
 | image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it. Planned: it still cuts away parts of some subjects. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Select & cut out › Select with AI · small button | Planned | 11 |  |
 | image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | Image › Make it bigger | Crop & resize › Size · small button | Ready | 11 |  |
 | image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | Image › Make it bigger | Crop & resize › Size · More list | Ready | 11 |  |

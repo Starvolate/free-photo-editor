@@ -21,6 +21,7 @@ import type { AiKit } from './ai';
 import { h } from './dom';
 import { PEN_TOOLS, createPenKit } from './pen';
 import { VIEW_BAR, VIEW_CMDS, VIEW_TOOLS, createViewKit } from './viewkit';
+import { MORE_TOOLS, createMoreKit } from './toolkit-more';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
 
@@ -67,6 +68,9 @@ export interface ToolHost {
   paintFrom(): number;
   /** That step left History (a new change replaced it, or it was trimmed): go back to the oldest step, and say so. */
   paintFromGone(): void;
+  /** Turn the view (toolkit-more.ts): the angle in radians, and setting it. The pixels never turn. */
+  turn(): number;
+  setTurn(r: number): void;
 }
 export interface ToolKit {
   claims(t: ToolId): boolean;
@@ -1232,20 +1236,22 @@ export function createToolKit(host: ToolHost): ToolKit {
   // Batch view-tools (viewkit.ts): oval, row and column selections, Measure, colour markers, notes, guides and snapping.
   const view = createViewKit(host, applyMask, (i) => modeOf(i)), viewOn = (): boolean => VIEW_TOOLS.has(host.tool()) || view.busy();
   const snapped = (p: Pt): Pt => (SNAPS.has(host.tool()) ? view.snap(p) : p);
+  // Batch tools (toolkit-more.ts): Turn the view and Crop and straighten.
+  const more = createMoreKit(host), moreOn = (): boolean => MORE_TOOLS.has(host.tool()) || more.busy();
   return {
     claims: (t) => TK_TOOLS.has(t) || view.claims(t) || !!xf || (!!qm && (t === 'brush' || t === 'pencil' || t === 'eraser')),
-    start: (p, i) => (penOn() ? pen.start(p, i) : !xf && view.claims(host.tool()) ? view.start(p, i) : start(snapped(p), i)),
-    move: (p, i) => (penOn() ? pen.move(p, i) : viewOn() ? view.move(p, i) : move(snapped(p), i)),
-    end: (p, i) => (penOn() ? pen.end(p, i) : viewOn() ? view.end(p, i) : end(snapped(p), i)),
-    cancel: () => { pen.cancel(); view.cancel(); cancel(); },
-    options: (bar, t) => (PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
-    overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); },
+    start: (p, i) => (MORE_TOOLS.has(host.tool()) ? more.start(p, i) : penOn() ? pen.start(p, i) : !xf && view.claims(host.tool()) ? view.start(p, i) : start(snapped(p), i)),
+    move: (p, i) => (moreOn() ? more.move(p, i) : penOn() ? pen.move(p, i) : viewOn() ? view.move(p, i) : move(snapped(p), i)),
+    end: (p, i) => (moreOn() ? more.end(p, i) : penOn() ? pen.end(p, i) : viewOn() ? view.end(p, i) : end(snapped(p), i)),
+    cancel: () => { more.cancel(); pen.cancel(); view.cancel(); cancel(); },
+    options: (bar, t) => (MORE_TOOLS.has(t) ? more.options(bar, t) : PEN_TOOLS.has(t) ? pen.options(bar, t) : VIEW_BAR.has(t) ? view.options(bar, t) : options(bar, t)),
+    overlay: (ctx) => { overlay(ctx); pen.overlay(ctx); view.overlay(ctx); more.overlay(ctx); },
     cmd: (id) => (id === 'select.from-path' || id === 'select.to-path' ? pen.cmd(id) : VIEW_CMDS.has(id) ? view.cmd(id) : cmd(id)),
     viewFlags: () => view.flags(),
     fillPanel: (pid, body) => (pid === 'paths' ? pen.fillPanel(body) : fillPanel(pid, body)),
     decorate,
     key(e) {
-      if (pen.key(e)) return true;
+      if (more.key(e) || pen.key(e)) return true;
       const k = e.key, mod = e.ctrlKey || e.metaKey;
       if (te && (k === 'Escape' || (k === 'Enter' && mod))) { commitText(); return true; }
       if (xf && (k === 'Enter' || k === 'Escape')) { endXf(k === 'Enter'); return true; }
@@ -1259,6 +1265,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     },
     toolChanged(prev, next) {
       pen.toolChanged(prev, next);
+      more.toolChanged(prev, next);
       view.cancel();
       if (prev === 'type' && te) commitText();
       if (prev === 'lasso-poly') poly = null;
@@ -1271,7 +1278,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       const d = doc(), sel = d?.selection, l = d ? activeLayer(d) : undefined;
       return { quickMask: !!qm, transform: xf ? `${xf.mode}:${xf.target}` : null, polygon: poly?.pts.length ?? 0, editingText: !!te, source: !!src,
         savedSel: !!(d && saved.get(d)), shaped: !!sel?.alpha, selected: sel && d ? countSelected(maskFromSelection(sel, d.width, d.height)) : 0,
-        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [], paths: pen.state(), view: view.state() };
+        content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [], paths: pen.state(), view: view.state(), more: more.state() };
     },
     cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : t === 'remove' ? S.rm : null; },
     refresh() { for (const [pid, b] of panels) fillPanel(pid, b); pen.refresh(); },

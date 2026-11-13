@@ -462,7 +462,7 @@ tool.object-select | Select an object | Object selection | Tap a thing, or drag 
 tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | R | W3 | W
 @Tools > Crop = Crop | Crop | Cut the picture to a new shape.
 tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | R | 1 | C
-tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | P | 3
+tool.crop-perspective | Crop and straighten | Perspective crop | Drag four corners onto a slanted surface: it becomes a straight rectangle, cropped, in one step. | straighten document | R | 3
 tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | P | 13
 @Tools > Measure = Pick and measure | Eyedropper | Pick colours and measure.
 tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | R | 1 | I
@@ -524,7 +524,7 @@ tool.line | Line | Line | Drag to draw a straight line or arrow. | arrow, straig
 tool.custom-shape | Ready-made shapes | Custom shape | Draw hearts, arrows, speech bubbles and more. | heart, speech bubble | P | 6
 @Tools > Hand = Move around | Hand | Move around a zoomed picture.
 tool.hand | Move the view | Hand | Drag to move around the picture; hold Space with any tool. | pan, scroll around | R | W1 | H
-tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle. | turn canvas | P | 13 | R
+tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle; the pixels never turn. Esc puts it level. | turn canvas | R | 13 | R
 @Tools > Zoom = Zoom | Zoom | Zoom in and out.
 tool.zoom | Zoom | Zoom tool | Click to zoom in; Alt-click to zoom out. | magnify, zoom | R | W1 | Z
 @Tools > Colours = Colours | Colours | Your main and second colours.

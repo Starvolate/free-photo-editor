@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 394 Ready, 281 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 396 Ready, 279 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 208 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 208 | 442 | 0 |
-| Ready today | 394 | 25 | 171 | 198 | 0 |
+| Ready today | 396 | 25 | 172 | 199 | 0 |
 
 ## The Task ribbon
 
@@ -246,7 +246,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.flip-v | Flip the picture upside down | Flip canvas vertical | Mirror the whole picture top to bottom. | reflection | Image › Rotate | Crop & resize › Turn the picture · More list | Ready | W1 |  |
 | image.crop | Cut to the selection | Crop | Keep only the selected area. | crop, cut out, trim | Image | Crop & resize › Crop · small button | Ready | 1 |  |
 | image.trim | Cut away empty edges | Trim | Remove see-through or same-colour edges. | remove border, auto crop, white edges | Image | Crop & resize › Crop · small button | Ready | W1 |  |
-| image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · small button | Ready | W1 |  |
+| image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · More list | Ready | W1 |  |
 | image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | Image | File sheet | Ready | W1 |  |
 | image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
 | image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · small button | Ready | 5 |  |
@@ -520,7 +520,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Arrange layers › Find and versions · More list | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Shapes & text › Draw outlines · More list | Planned | 6 |  |
 
-## Tools (52 Ready, 13 Planned)
+## Tools (54 Ready, 11 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -539,7 +539,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.object-select | Select an object | Object selection | Tap a thing, or drag a box round it, and it becomes the selection; Shift adds, Alt takes away. | object, tap to select, click to select, select a thing, select an object | Tools › Smart select | Select & cut out › Select with AI · small button | Ready | 11 |  |
 | tool.magic-wand | Select similar colour | Magic wand | Click a colour to select the area of similar colour. | magic wand, same colour | Tools › Smart select | Select & cut out › Draw or paint · small button | Ready | W3 | W |
 | tool.crop | Crop | Crop tool | Drag to choose the part to keep, then apply. Ratios make square or story crops. | crop, cut, trim, square, instagram | Tools › Crop | Crop & resize › Crop · big button | Ready | 1 | C |
-| tool.crop-perspective | Crop and straighten | Perspective crop | Crop a slanted surface so it looks straight on. | straighten document | Tools › Crop | Crop & resize › Crop · More list | Planned | 3 |  |
+| tool.crop-perspective | Crop and straighten | Perspective crop | Drag four corners onto a slanted surface: it becomes a straight rectangle, cropped, in one step. | straighten document | Tools › Crop | Crop & resize › Crop · small button | Ready | 3 |  |
 | tool.slice | Cut into web pieces | Slice | Cut the picture into pieces for a web page. | slice | Tools › Crop | Automate & batch › Sheets and layouts · More list | Planned | 13 |  |
 | tool.eyedropper | Pick a colour | Eyedropper | Click the picture to use that colour for painting. | colour picker, sample colour | Tools › Measure | Paint & draw › Colour · small button | Ready | 1 | I |
 | tool.color-sampler | Colour markers | Colour sampler | Pin up to four points that show their colour values. | colour values | Tools › Measure | Paint & draw › Colour · More list | Ready | 13 |  |
@@ -587,7 +587,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.line | Line | Line | Drag to draw a straight line or arrow. | arrow, straight line | Tools › Shapes | Shapes & text › Shapes · More list | Ready | W3 |  |
 | tool.custom-shape | Ready-made shapes | Custom shape | Draw hearts, arrows, speech bubbles and more. | heart, speech bubble | Tools › Shapes | Shapes & text › Shapes · More list | Planned | 6 |  |
 | tool.hand | Move the view | Hand | Drag to move around the picture; hold Space with any tool. | pan, scroll around | Tools › Hand | View sheet | Ready | W1 | H |
-| tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle. | turn canvas | Tools › Hand | View sheet | Planned | 13 | R |
+| tool.rotate-view | Turn the view | Rotate view | Turn the view to paint at a comfortable angle; the pixels never turn. Esc puts it level. | turn canvas | Tools › Hand | View sheet | Ready | 13 | R |
 | tool.zoom | Zoom | Zoom tool | Click to zoom in; Alt-click to zoom out. | magnify, zoom | Tools › Zoom | View sheet | Ready | W1 | Z |
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |

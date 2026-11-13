@@ -421,7 +421,8 @@ for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-
 // The second filters batch (13 Nov 2026): census rows whose dialogs also live in adj-more.ts, loaded on first use.
 export const BATCH2_IDS = ('filter.kaleidoscope filter.alien-map filter.bloom filter.edge-detect filter.deinterlace filter.destripe filter.video-degrade '
   + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias filter.outline-relief filter.newsprint filter.dents filter.cartoon '
-  + 'filter.ink-sketch filter.linocut filter.patterns filter.blur-sketch filter.blur-tileable').split(' ');
+  + 'filter.ink-sketch filter.linocut filter.patterns filter.blur-sketch filter.blur-tileable filter.tile-seamless filter.page-curl filter.illusion '
+  + 'filter.fractal-trace filter.superpixels filter.noise-patterns filter.diffuse-sharpen').split(' ');
 for (const id of BATCH2_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])

@@ -115,7 +115,7 @@ suite('W2 filters (headless Chrome)', () => {
     await p.waitForFunction(() => (window as unknown as Win).fpe.commands().some((c) => c.id === 'filter.kaleidoscope'));
     const ids = (await p.evaluate(() => (window as unknown as Win).fpe.commands()))
       .filter((c) => c.id.startsWith('filter.') && c.status === 'ready' && !INSTANT.has(c.id)).map((c) => c.id);
-    expect(ids.length).toBe(84);
+    expect(ids.length).toBe(91);
     for (const id of ids) {
       const n = await step(p);
       await dialog(p, id);

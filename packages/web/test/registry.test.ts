@@ -166,7 +166,8 @@ describe('the Task ribbon', () => {
       // Filters batch 2 (core fx/more2.ts and more3.ts).
       'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
       'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
-      'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch', 'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable']);
+      'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch', 'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable',
+      'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

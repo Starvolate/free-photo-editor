@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 403 Ready, 272 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 410 Ready, 265 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-199 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+192 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 208 | 442 | 0 |
-| Ready today | 403 | 25 | 171 | 207 | 0 |
+| Ready today | 410 | 25 | 171 | 214 | 0 |
 
 ## The Task ribbon
 
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (199 Planned, 62 Ready), by home
+## New functions from the feature census (192 Planned, 69 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -858,26 +858,26 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 | filter.blur-edge-keep | U206 | Edge-keeping blurs | Bilateral (edge-keeping) blur | Smooth noise while keeping edges. | edge preserving blur, smooth skin blur, selective blur, bilateral | Filters & blur › Blur · family sheet | Ready | T3 |
 | filter.blur-sketch | U207 | Sketchy brush-stroke blur | Stroke median blur | Coarse painted look from median estimation. | sketch blur, brush stroke blur, painterly blur | Filters & blur › Blur · family sheet | Ready | T3 |
 | filter.blur-tileable | U208 | Make a tile repeat without seams (blur edge) | Wrap-around blur | Blurs edges so a pattern tiles. | tileable blur, seamless blur, wrap edges blur | Filters & blur › Blur · family sheet | Ready | T3 |
-| filter.diffuse-sharpen | U209 | Diffuse or sharpen detail | Detail diffusion | A flexible tool that sharpens, deblurs, softens or adds bloom by spreading detail. | diffuse, sharpen detail, local sharpen, soften detail | Filters & blur › Sharpen · family sheet | Planned | T3 |
+| filter.diffuse-sharpen | U209 | Diffuse or sharpen detail | Detail diffusion | A flexible tool that sharpens, deblurs, softens or adds bloom by spreading detail. | diffuse, sharpen detail, local sharpen, soften detail | Filters & blur › Sharpen · family sheet | Ready | T3 |
 | filter.destripe | U210 | Remove stripes from a picture | Stripe removal | Removes vertical stripes from scans. | destripe, stripes, scan lines, banding | Filters & blur › Grain and specks · family sheet | Ready | T3 |
 | filter.deinterlace | U211 | Fix interlace lines | Deinterlace | Removes line artefacts from video frames. | deinterlace, interlace lines, video lines, tv lines | Filters & blur › Grain and specks · family sheet | Ready | T3 |
 | filter.kaleidoscope | U212 | Kaleidoscope | Kaleidoscope | Mirror slices around a centre. | kaleidoscope, mirror pattern, mandala effect | Filters & blur › Bend and twist · family sheet | Ready | T3 |
 | filter.panorama-projection | U213 | Flat panorama to 3D view | Panorama reprojection | Projects a 360 picture into a view. | little planet, panorama projection, 360 photo, tiny planet | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.page-curl | U214 | Page curl and curve bend | Peeled corner, bend | Peel a corner; bend along a curve. | page curl, curl corner, bend picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.illusion | U215 | Illusion and recursive transform | Rotated copies, Droste | Repeating mirrored and nested copies. | illusion, recursive, droste, infinite picture | Filters & blur › Bend and twist · family sheet | Planned | T3 |
-| filter.fractal-trace | U216 | Crumple and fractal looks | Fractal remap, value spread | Odd mapped and spread-colour effects. | fractal trace, crumple, crumpled paper, value propagate | Filters & blur › Bend and twist · family sheet | Planned | T3 |
+| filter.page-curl | U214 | Page curl and curve bend | Peeled corner, bend | Peel a corner; bend along a curve. | page curl, curl corner, bend picture | Filters & blur › Bend and twist · family sheet | Ready | T3 |
+| filter.illusion | U215 | Illusion and recursive transform | Rotated copies, Droste | Repeating mirrored and nested copies. | illusion, recursive, droste, infinite picture | Filters & blur › Bend and twist · family sheet | Ready | T3 |
+| filter.fractal-trace | U216 | Crumple and fractal looks | Crumple, fractal remap, value spread | Odd mapped and spread-colour effects. | fractal trace, crumple, crumpled paper, value propagate | Filters & blur › Bend and twist · family sheet | Ready | T3 |
 | filter.dents | U217 | Dents and tile reflection | Dented glass, mirror tiles | Water-like and mirrored-tile distortions. | dents, tile reflection, bumpy glass | Filters & blur › Bend and twist · family sheet | Ready | T3 |
 | filter.newsprint | U218 | Newsprint and engrave | Halftone dots, engraving | Halftone and line-engraved looks. | newsprint, engrave, comic dots, print dots | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
 | filter.video-degrade | U219 | Video degradation | Old TV look | Old TV pixel-pattern look. | vhs, old tv, video glitch, retro screen | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
-| filter.superpixels | U220 | Superpixels | SLIC, watershed cells | Group pixels into regions. | superpixels, cells, low poly look | Filters & blur › Blocks and dots · family sheet | Planned | T3 |
+| filter.superpixels | U220 | Superpixels | SLIC, watershed cells | Group pixels into regions. | superpixels, cells, low poly look | Filters & blur › Blocks and dots · family sheet | Ready | T3 |
 | filter.star-burst | U221 | Star burst | Star burst, light flare, sparkle | Bright star and flare effects. | star burst, sparkle, supernova, light rays, gradient flare | Filters & blur › Patterns and light · family sheet | Ready | T3 |
 | filter.bump-map | U222 | Bump map and normal map | Bump map, normal map | Create 3D-looking shading or game normal maps from a picture. | bump map, normal map, texture relief | Filters & blur › Patterns and light · family sheet | Ready | T3 |
-| filter.noise-patterns | U223 | Noise patterns | Cell, Perlin, simplex, cloud, plasma | Generated organic textures. | perlin noise, cell noise, plasma, solid noise, random texture | Filters & blur › Patterns and light · family sheet | Planned | T3 |
+| filter.noise-patterns | U223 | Noise patterns | Cell, Perlin, simplex, cloud, plasma | Generated organic textures. | perlin noise, cell noise, plasma, solid noise, random texture | Filters & blur › Patterns and light · family sheet | Ready | T3 |
 | filter.fractals | U224 | Fractals | Julia, Mandelbrot, IFS, flame fractals | Generated fractal art. | fractal, mandelbrot, julia set, flame fractal | Filters & blur › Patterns and light · family sheet | Planned | T3 |
 | filter.patterns | U225 | Patterns: grid, checkerboard, maze, spiral, sinus, jigsaw | Generated patterns | Generates geometric backgrounds. | checkerboard, grid pattern, maze, spiral pattern, jigsaw | Filters & blur › Patterns and light · family sheet | Ready | T3 |
 | filter.bloom | U226 | Glow around lights | Bloom / Soft glow | Spreads light from bright areas. | bloom, glow, soft glow, dreamy, glowing lights | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.long-shadow | U227 | Long cast shadow | Long cast shadow | Flat long shadow behind an object. | long shadow, flat design shadow, cast shadow | Filters & blur › Graphic looks · family sheet | Planned | T3 |
-| filter.tile-seamless | U228 | Seamless tiling | Seamless, repeated, mirrored, scattered tiles | Make or build repeating textures. | seamless tile, make tileable, repeat texture | Filters & blur › Graphic looks · family sheet | Planned | T3 |
+| filter.tile-seamless | U228 | Seamless tiling | Seamless, repeated, mirrored, scattered tiles | Make or build repeating textures. | seamless tile, make tileable, repeat texture | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.edge-detect | U229 | Edge detectors | Sobel, Prewitt, Roberts, Laplace edges | Different line-finding methods. | edge detect, sobel, laplace, neon edges, outline edges | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.outline-relief | U230 | Outline and relief | Traced outline, relief | Edge tracing and edge-blended emboss. | outline, relief, carved, emboss outline | Filters & blur › Graphic looks · family sheet | Ready | T3 |
 | filter.alien-map | U231 | Weird colour shift | Sine colour remap | Rotates colours in a non-natural way. | alien map, psychedelic, weird colours, trippy | Filters & blur › Graphic looks · family sheet | Ready | T3 |

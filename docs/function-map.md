@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 305 Ready, 370 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 323 Ready, 352 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 187 | 463 | 0 |
-| Ready today | 305 | 25 | 141 | 139 | 0 |
+| All functions | 675 | 25 | 194 | 456 | 0 |
+| Ready today | 323 | 25 | 148 | 150 | 0 |
 
 ## The Task ribbon
 
@@ -27,7 +27,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 
 | Tab: plain · pro | Groups | Commands | Homed here | Shown on the tab (2 clicks) |
 |---|---|---|---|---|
-| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 8 |
+| Effects & masks · Layer styles, adjustment layers and masks | New, Editable light and colour, Shadows and glows, Live effects, Hide parts, Blending | 67 | 67 | 13 |
 | Select & cut out · Selection | Select with AI, Draw or paint, By colour or light, Change it, Perfect and keep, Copy and paste | 51 | 51 | 13 |
 | Retouch & remove · Retouch | Remove, Repair, Touch up by painting, Faces and skin, Rescue a photo | 26 | 22 | 9 |
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 1 |
@@ -37,7 +37,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 0 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 14 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 17 |
-| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 8 |
+| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
 | Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
@@ -197,17 +197,17 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Help sheet | Planned | 13 |  |
 | edit.pref-gpu | Use the graphics chip | WebGPU | Run the AI tools on the graphics chip, which is much faster. Planned: not tested yet, and it needs its own 28.7 MB download. | gpu, graphics card, graphics chip, faster ai, speed up ai, webgpu | Edit › Settings | Help sheet | Planned | 11 |  |
 
-## Image (36 Ready, 13 Planned)
+## Image (39 Ready, 10 Planned)
 
 Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
 | image.mode-gray | Shades of grey only | Grayscale | Store only shades of grey. | grey mode | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-indexed | A few colours only | Indexed colour | Limit the picture to a small palette, like a GIF. | palette, gif colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. | print colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. | lab | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
-| image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. | 16 bit, high bit depth | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-indexed | A few colours only | Indexed colour | Limit this layer, or the selected part, to a small palette, like a GIF. | palette, gif colours, indexed | Image › Mode | Light & colour › Colour type · small button | Ready | 13 |  |
+| image.mode-cmyk | Printing colours | CMYK | Colours for printing presses. Not built: a browser cannot show print inks, so save in RGB and let the print shop convert. | print colours | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-lab | Lab colour | Lab colour | Colour described by lightness and two colour axes. Not built yet: editing works in RGB, and Lab needs its own engine. | lab | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
+| image.mode-16 | Finer colour steps | 16 bits per channel | Smoother gradients for heavy edits. Not built yet: pictures keep 8 bits per colour, as the browser draws them. | 16 bit, high bit depth | Image › Mode | Light & colour › Colour type · More list | Planned | 13 |  |
 | image.adj-brightness | Brightness and contrast | Brightness/Contrast | Make the picture lighter or darker, and punchier or flatter. | brighter, darker, lighter, too dark, too bright, contrast, dull, dim | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | 1 |  |
 | image.adj-levels | Light and dark balance | Levels | Set the darkest point, the brightest point and the middle tones. | tones, black point, white point, washed out, histogram | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 | Ctrl+L |
 | image.adj-curves | Tone curve | Curves | Shape the darks, middles and lights separately. | tone curve, s curve, contrast curve | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 | Ctrl+M |
@@ -227,7 +227,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.adj-shadows | Lift shadows, calm highlights | Shadows/Highlights | Brighten dark areas and tame bright ones, judged by their surroundings. | backlit, dark face, recover shadows, bright sky | Image › Adjustments | Light & colour › Light and colour · live-preview gallery | Ready | W1 |  |
 | image.adj-desaturate | Remove colour | Desaturate | Make the picture grey in one step. | grey, colourless | Image › Adjustments | Light & colour › Light and colour · More list | Ready | W1 | Ctrl+Shift+U |
 | image.adj-match | Match another photo's colour | Match colour | Copy the colour mood of another picture. | match colours | Image › Adjustments | Light & colour › Light and colour · More list | Planned | 5 |  |
-| image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | Image › Adjustments | Light & colour › Light and colour · More list | Planned | 5 |  |
+| image.adj-replace | Replace a colour | Replace colour | Swap one colour for another. | swap colour | Image › Adjustments | Light & colour › Light and colour · More list | Ready | 5 |  |
 | image.adj-equalize | Even out the tones | Equalize | Spread the tones evenly from dark to light. | flat, even, histogram | Image › Adjustments | Light & colour › Light and colour · More list | Ready | W1 |  |
 | image.auto-tone | Fix the light automatically | Auto tone | Stretch each colour so the darkest part is black and the lightest white. | auto fix, one click, enhance, improve | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+L |
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Light & colour › Fix in one click · small button | Ready | W1 | Ctrl+Shift+Alt+L |
@@ -249,11 +249,11 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | Image | File sheet | Ready | W1 |  |
 | image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
-| image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · More list | Planned | 5 |  |
+| image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · small button | Ready | 5 |  |
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
-## Layer (52 Ready, 20 Planned)
+## Layer (59 Ready, 13 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -268,16 +268,16 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.duplicate | Duplicate layer | Duplicate layer | Make an exact copy of the active layer. | copy layer, clone layer | Layer | Effects & masks › New · More list | Ready | 1 |  |
 | layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | Layer | Arrange layers › This layer · More list | Ready | 1 |  |
 | layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | Layer | Arrange layers › This layer · small button | Ready | W1 |  |
-| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-shadow | Drop shadow | Drop shadow | A soft shadow behind the layer. | shadow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-inner-shadow | Inner shadow | Inner shadow | A shadow inside the edges, so it looks pressed in. | inset | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-outer-glow | Outer glow | Outer glow | A soft light around the outside. | glow | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-inner-glow | Inner glow | Inner glow | A soft light inside the edges. | glow inside | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-bevel | Raised edge | Bevel and emboss | Make the layer look raised or carved. | 3d edge | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
 | layer.fx-satin | Satin sheen | Satin | A silky shine across the layer. | sheen | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-color | Colour overlay | Colour overlay | Cover the layer with one colour. | tint layer | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
+| layer.fx-gradient | Gradient overlay | Gradient overlay | Cover the layer with a colour fade. | fade overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Ready | 3 |  |
 | layer.fx-pattern | Pattern overlay | Pattern overlay | Cover the layer with a pattern. | texture overlay | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
-| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · More list | Planned | 3 |  |
+| layer.fx-stroke | Outline | Stroke | Draw a coloured outline around the layer. | outline text, border | Layer › Layer effects | Effects & masks › Shadows and glows · live-preview gallery | Ready | 3 |  |
 | layer.fill-color | Solid colour layer | Solid colour | A layer of one colour you can change at any time. | colour layer | Layer › Fill layer | Effects & masks › New · More list | Ready | 3 |  |
 | layer.fill-gradient | Colour fade layer | Gradient fill | A colour fade you can change at any time. | gradient layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
 | layer.fill-pattern | Pattern layer | Pattern fill | A repeating pattern you can change at any time. | pattern layer | Layer › Fill layer | Effects & masks › New · More list | Planned | 3 |  |
@@ -373,7 +373,7 @@ Groups: Change the selection · Modify.
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · small button | Ready | W3 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 
-## Filter (56 Ready, 13 Planned)
+## Filter (64 Ready, 5 Planned)
 
 Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; Grain · Noise; Blocks and dots · Pixelate; Make patterns · Render; Sharpen · Sharpen; Graphic effects · Stylize; More effects · Other.
 
@@ -381,7 +381,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 |---|---|---|---|---|---|---|---|---|---|
 | filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | Filter | Filters & blur › Again · big button | Ready | W1 | Ctrl+Alt+F |
 | filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | Filter | Filters & blur › Artistic · family sheet | Planned | W2 |  |
-| filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Planned | W2 |  |
+| filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Ready | W2 |  |
 | filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | Filter | Develop RAW › Develop · More list | Planned | 5 |  |
 | filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | Filter | Crop & resize › Bend and push · More list | Planned | 5 |  |
 | filter.perspective-plane | Paint in perspective | Perspective plane | Copy and paint along walls and floors in perspective. | vanishing point | Filter | Retouch & remove › Repair · More list | Planned | 5 |  |
@@ -397,7 +397,7 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.blur-iris | Blur around a spot | Iris blur | Keep one spot sharp and blur everything around it. | blur the background, background blur, portrait mode, bokeh | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.blur-tilt | Miniature effect | Tilt-shift | Keep a band sharp so the scene looks like a model. | miniature, tilt shift | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.blur-path | Blur along a path | Path blur | Blur along a line you draw. | path blur | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Planned | W2 |  |
-| filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Planned | W2 |  |
+| filter.blur-spin | Spinning blur | Spin blur | Make wheels and fans look like they spin. | wheels | Filter › Camera blurs | Filters & blur › Camera blurs · family sheet | Ready | W2 |  |
 | filter.displace | Push by a map | Displace | Push pixels around by a pattern of light and dark, such as soft clouds. | displacement, warp, distort | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.pinch | Pinch | Pinch | Squeeze the middle inwards or outwards. | pinch | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.polar | Wrap into a circle | Polar coordinates | Wrap the picture into a circle or unwrap it. | tiny planet | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
@@ -407,8 +407,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.twirl | Swirl | Twirl | Swirl the middle round. | swirl | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.wave | Waves | Wave | Bend the picture in waves. | wavy | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.zigzag | Rings in water | Zigzag | Ripple outwards like a stone in a pond. | pond ripple | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
-| filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | Filter › Distort | Filters & blur › Bend and twist · family sheet | Planned | W2 |  |
-| filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | Filter › Distort | Filters & blur › Bend and twist · family sheet | Planned | W2 |  |
+| filter.glass | Behind glass | Glass | Look through textured glass. | frosted glass | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
+| filter.ocean-ripple | Under water | Ocean ripple | Look through rippling water. | underwater | Filter › Distort | Filters & blur › Bend and twist · family sheet | Ready | W2 |  |
 | filter.add-noise | Add grain | Add noise | Add film-like grain. | grain, film grain | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
 | filter.despeckle | Remove specks | Despeckle | Remove tiny specks and keep edges. | specks | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
 | filter.dust | Remove dust and scratches | Dust and scratches | Hide small dust spots and scratches. | dust, scratches, old photo | Filter › Noise | Filters & blur › Grain and specks · family sheet | Ready | W2 |  |
@@ -424,8 +424,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.clouds | Clouds | Clouds | Fill with soft clouds in your two colours. | sky texture | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.difference-clouds | Marbled clouds | Difference clouds | Blend clouds into the picture for a marbled look. | marble | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
-| filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Filters & blur › Patterns and light · family sheet | Planned | W2 |  |
-| filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Filters & blur › Patterns and light · family sheet | Planned | W2 |  |
+| filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
+| filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Filters & blur › Patterns and light · family sheet | Ready | W2 |  |
 | filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | W1 |  |
 | filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | W1 |  |
 | filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | Filter › Sharpen | Filters & blur › Sharpen · family sheet | Ready | 1 |  |
@@ -446,8 +446,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.minimum | Grow dark areas | Minimum | Spread the dark areas outwards. | minimum | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 | filter.offset | Shift and wrap | Offset | Slide the picture and wrap it round the edges. | seamless tile | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 | filter.custom | Your own filter | Custom | Type in your own blur or sharpen numbers. | kernel | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
-| filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Filters & blur › More effects · family sheet | Planned | W2 |  |
-| filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Filters & blur › More effects · family sheet | Planned | W2 |  |
+| filter.color-to-alpha | Make a colour see-through | Colour to alpha | Turn one colour transparent, like a white background. | remove white, transparent | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
+| filter.dither | Dither | Dither | Fake extra colours with patterns of dots. | dither | Filter › Other | Filters & blur › More effects · family sheet | Ready | W2 |  |
 
 ## View (11 Ready, 7 Planned)
 

@@ -359,7 +359,6 @@ function recent(host: FileHost): void {
           ? 'This browser is not keeping files for this page (private browsing or blocked storage), so there is no list.'
           : 'No recent pictures yet. Pictures you open from this device show up here.'),
       h('div', { class: 'fpe-actions' }, clear, button('Close', true, 'recent-close', () => host.closeSheet())));
-    host.sheet('file.recent', 'Recent pictures', b);
   };
   host.sheet('file.recent', 'Recent pictures', b);
   void draw();

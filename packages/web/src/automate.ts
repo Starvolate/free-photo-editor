@@ -672,7 +672,7 @@ function copyEdits(host: AutoHost): void {
   const open = tabs.length
     ? h('div', { class: 'fpe-stack' }, ...tabs.map((t, i) => h('label', { class: 'fpe-check' }, ticks[i], h('span', {}, t.name))))
     : note('No other pictures are open. Open them first, or paste onto picture files below.');
-  manySheet(host, id, 'Copy edits to other photos',
+  manySheet(host, id, 'Copy edits to many photos',
     "Copies this picture's light-and-colour layers and, if you like, your last filter, with their settings. Pasting changes the active layer of each picture; picture files are flattened first.",
     [], () => {
       const p = plan();

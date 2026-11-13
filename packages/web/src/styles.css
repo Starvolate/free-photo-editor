@@ -226,7 +226,9 @@
 .fpe-layer-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;flex:none;margin-bottom:6px}
 .fpe-layer-top .fpe-row{flex:1 1 120px;min-width:0}
 .fpe-layer-top .fpe-row>label{flex-basis:auto}
-.fpe-layer-top select{min-width:132px}
+/* Blend and Opacity on two rows in the dock: side by side, Blend's list cut "Pass through" ("select{min-width}" lost to ".fpe select{min-width:0}") */
+.fpe:not([data-layout=phone]) .fpe-layer-top .fpe-row{flex-basis:100%}
+.fpe:not([data-layout=phone]) .fpe-layer-top .fpe-row>label{flex-basis:56px}
 .fpe-count{margin-left:6px;color:var(--muted);font-weight:400}
 .fpe-hist{margin:0;padding:0;list-style:none}
 .fpe-hist-count{align-self:center;padding:0 4px;font-size:12px;color:var(--muted);white-space:nowrap}

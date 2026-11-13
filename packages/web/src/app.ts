@@ -12,7 +12,7 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
@@ -33,7 +33,7 @@ import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, 
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
-import { addFolder, ancestors, arrangeNode, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, siblingAbove, StrokeCache, subtreeOf, toggleClip, ungroupNode } from '@free-photoeditor/core';
+import { addFolder, ancestors, arrangeNode, carriesLocked, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, moveNode, placeSpots, siblingAbove, spotsOf, StrokeCache, subtreeOf, toggleClip, ungroupNode, type Spot } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -100,7 +100,7 @@ interface Session {
 }
 interface Tab { doc: Doc; history: History; name: string; savedId: number; view: View; fitted: boolean; lastSel: Selection | null; hole: Rect | null; }
 interface Clip { width: number; height: number; data: Uint8ClampedArray; x: number; y: number; serial: number; }
-type Drag = { kind: 'select' | 'crop' | 'pick' | 'pan'; start: Pt } | { kind: 'move'; start: Pt; x: number; y: number; id: string };
+type Drag = { kind: 'select' | 'crop' | 'pick' | 'pan'; start: Pt } | { kind: 'move'; start: Pt; x: number; y: number; id: string; spots: Spot[] };
 interface PopItem { label: string; run: () => void; disabled?: boolean; cmd?: string; }
 
 /** Over this many pixels a filter previews on a smaller copy of about PREVIEW_PX pixels, so sliders stay quick; Apply works at full size. */
@@ -222,6 +222,7 @@ export class Editor {
   private fileInput!: HTMLInputElement;
   private layerList!: HTMLElement;
   private layerProps!: HTMLElement;
+  private layerTop!: HTMLElement;
   private histList!: HTMLElement;
   private propsBody!: HTMLElement;
   private colorBody!: HTMLElement;
@@ -833,12 +834,21 @@ export class Editor {
     if (pid === 'layers') {
       this.layerList = h('ul', { class: 'fpe-layer-list', 'aria-label': 'Layers, top first', 'data-testid': 'layer-list' });
       this.layerProps = h('div', { class: 'fpe-props' });
-      // Rows first in every layout, so the layers are always in view; then the action row; then the active layer's settings.
-      b.append(this.layerList, h('div', { class: 'fpe-layer-tools', role: 'toolbar', 'aria-label': 'Layer actions' },
-        this.cmdBtn('layer.new', 'plus', null, { 'data-testid': 'layer-add' }), this.cmdBtn('layer.duplicate', 'copy', null, { 'data-testid': 'layer-duplicate' }),
-        this.cmdBtn('file.open-layer', 'image-plus', null, { 'data-testid': 'layer-image' }), this.cmdBtn('layer.forward', 'arrow-up', null, { 'data-testid': 'layer-up' }),
-        this.cmdBtn('layer.backward', 'arrow-down', null, { 'data-testid': 'layer-down' }), this.cmdBtn('layer.merge-down', 'merge', null, { 'data-testid': 'layer-merge' }),
-        this.cmdBtn('layer.lock', 'lock', null, { 'data-testid': 'layer-lock' }), this.cmdBtn('layer.delete', 'trash', null, { 'data-testid': 'layer-delete' })), this.layerProps);
+      // As in the approved layout: Blend and Opacity on top, then the rows, then New, Mask, Copy and Delete with words and
+      // More for the rest, then the name. The count sits beside the panel's title.
+      this.layerTop = h('div', { class: 'fpe-layer-top', 'data-testid': 'layer-top' });
+      const act = (cmd: string, ic: string, text: string, testid: string): HTMLButtonElement => {
+        const btn = this.cmdBtn(cmd, ic, text, { 'data-testid': testid });
+        btn.classList.replace('fpe-btn-ghost', 'fpe-layer-act');
+        return btn;
+      };
+      const more = h('button', { type: 'button', class: 'fpe-btn fpe-layer-act', 'aria-haspopup': 'menu', 'data-testid': 'layer-more',
+        'data-help-title': 'More layer actions', 'data-help': 'Add a picture as a layer, move up or down, merge, lock, folders and clipping.' },
+        icon('chev-down'), h('span', { class: 'fpe-btn-text' }, 'More'));
+      more.addEventListener('click', () => this.layerMore(more));
+      b.append(this.layerTop, this.layerList, h('div', { class: 'fpe-layer-tools', role: 'toolbar', 'aria-label': 'Layer actions' },
+        act('layer.new', 'plus', 'New', 'layer-add'), act('layer.mask-add', 'contrast', 'Mask', 'layer-mask-add'),
+        act('layer.duplicate', 'copy', 'Copy', 'layer-duplicate'), act('layer.delete', 'trash', 'Delete', 'layer-delete'), more), this.layerProps);
     } else if (pid === 'history') {
       this.histList = h('ol', { class: 'fpe-hist', 'data-testid': 'history-list', 'aria-label': 'Steps, oldest first' });
       b.append(this.histList);
@@ -1534,8 +1544,12 @@ export class Editor {
   }
   /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
   private editable(l: Layer, pixels = true, onMask = false): boolean {
-    // A folder has no pixels of its own; moving one (with everything inside) is not wired yet, so it refuses too.
-    if (isFolder(l)) { this.toast('This is a folder: pick a layer inside it.'); return false; }
+    // A folder has no pixels of its own: painting refuses it; Move, X/Y, Align and Free transform carry everything inside.
+    if (isFolder(l)) {
+      if (pixels) { this.toast('This is a folder: pick a layer inside it.'); return false; }
+      if (this.doc && carriesLocked(this.doc, l.id)) { this.toast('Something in this folder is locked: unlock it first.'); return false; }
+      return true;
+    }
     const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
     const mask = this.maskTarget && !!l.mask;
     if (pixels && mask && !onMask && !locked) {
@@ -1580,7 +1594,7 @@ export class Editor {
     if (t === 'move') {
       if (this.autoPick) { const hit = w3LayerAt(d, p.x, p.y); if (hit && hit.id !== d.activeId) this.selectLayer(hit.id); }
       const l = activeLayer(d);
-      if (l && this.editable(l, false)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id };
+      if (l && this.editable(l, false)) this.drag = { kind: 'move', start: p, x: l.x, y: l.y, id: l.id, spots: spotsOf(d, l.id) };
       return;
     }
     if (t === 'eyedropper') { this.drag = { kind: 'pick', start: p }; this.pick(p); return; }
@@ -1644,11 +1658,9 @@ export class Editor {
       return;
     }
     if (g.kind === 'move') {
-      const l = findLayer(d, g.id);
-      if (!l) return;
-      const old = layerRect(l);
-      placeLayer(l, Math.round(g.x + p.x - g.start.x), Math.round(g.y + p.y - g.start.y));
-      this.markDirty(union(old, layerRect(l)));
+      // A folder carries every layer inside it; each node goes to its own start plus the same offset.
+      const r = placeSpots(d, g.spots, Math.round(p.x - g.start.x), Math.round(p.y - g.start.y));
+      if (r) this.markDirty(r);
       this.requestRender();
       return;
     }
@@ -1682,7 +1694,7 @@ export class Editor {
     if (!g || !d) return;
     if (g.kind === 'move') {
       const l = findLayer(d, g.id);
-      if (l && (l.x !== g.x || l.y !== g.y)) this.pushCmd(propsCommand(l.id, { x: g.x, y: g.y }, { x: l.x, y: l.y }, 'Move layer'));
+      if (l && (l.x !== g.x || l.y !== g.y)) { const dx = l.x - g.x, dy = l.y - g.y; placeSpots(d, g.spots, 0, 0); this.pushCmd(moveNode(d, g.id, dx, dy, 'Move layer')); }
     } else if (g.kind === 'pick') this.toast('Colour picked: ' + this.brush.color);
     else if (g.kind === 'select') { if (d.selection && (d.selection.w < 2 || d.selection.h < 2)) d.selection = null; this.afterSelection(); }
     else if (g.kind === 'crop') { if (this.crop && (this.crop.w < 2 || this.crop.h < 2)) this.crop = null; this.renderOptions(); }
@@ -1696,7 +1708,7 @@ export class Editor {
     this.drag = null;
     if (g && g.kind === 'move' && this.doc) {
       const l = findLayer(this.doc, g.id);
-      if (l) { const old = layerRect(l); placeLayer(l, g.x, g.y); this.markDirty(union(old, layerRect(l))); this.requestRender(); }
+      if (l) { const r = placeSpots(this.doc, g.spots, 0, 0); if (r) this.markDirty(r); this.requestRender(); }
     }
   }
   private flushStroke(): void {
@@ -1977,6 +1989,13 @@ export class Editor {
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.testid;
     list.replaceChildren();
     this.layerProps.replaceChildren();
+    this.layerTop.replaceChildren();
+    const tab = this.root.querySelector<HTMLElement>('[data-testid="tab-layers"]');
+    if (tab) {
+      let c = tab.querySelector<HTMLElement>('.fpe-count');
+      if (!c) tab.append(c = h('span', { class: 'fpe-count', 'data-testid': 'layer-count' }));
+      c.textContent = d ? String(d.layers.length) : '';
+    }
     if (!d) { list.append(h('li', { class: 'fpe-note' }, 'Open or create a picture to see its layers.')); return; }
     for (let i = d.layers.length - 1; i >= 0; i--) {
       const l = d.layers[i], on = l.id === d.activeId, folder = isFolder(l), open = l.open !== false, up = ancestors(d.layers, l.id);
@@ -1997,11 +2016,12 @@ export class Editor {
         h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn', 'aria-pressed': String(l.visible), 'aria-label': (l.visible ? 'Hide ' : 'Show ') + l.name,
           'data-help-title': l.visible ? 'Hide this layer' : 'Show this layer', 'data-help': 'The eye shows or hides a layer without deleting it.', 'data-testid': 'layer-eye',
           onclick: () => this.toggleVisible(l.id) }, icon(l.visible ? 'eye' : 'eye-off')),
-        up.length || l.clip ? h('span', { class: 'fpe-indent', 'aria-hidden': 'true' }) : null,
-        l.clip ? h('span', { class: 'fpe-clip-arrow', 'aria-hidden': 'true', 'data-testid': 'clip-arrow' }, icon('clip')) : null,
+        // One indent step per depth, then one fixed slot for the folder arrow or the clip arrow, so every depth lines up.
+        up.length ? h('span', { class: 'fpe-indent', 'aria-hidden': 'true' }) : null,
+        h('span', { class: 'fpe-twist' }, l.clip ? h('span', { class: 'fpe-clip-arrow', 'aria-hidden': 'true', 'data-testid': 'clip-arrow' }, icon('clip')) : null,
         folder ? h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-layer-arrow', 'aria-expanded': String(open), 'aria-label': `${open ? 'Close' : 'Open'} the folder ${l.name}`,
           'data-help-title': open ? 'Close the folder' : 'Open the folder', 'data-help': 'Shows or hides the rows inside. The picture does not change.', 'data-testid': 'folder-arrow',
-          onclick: () => this.toggleOpen(l.id) }, icon(open ? 'chev-down' : 'chev-right')) : null,
+          onclick: () => this.toggleOpen(l.id) }, icon(open ? 'chev-down' : 'chev-right')) : null),
         ...this.layerThumbs(l, on),
         nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
@@ -2034,15 +2054,23 @@ export class Editor {
         if (v === 'pass') this.pushCmd(setLayerProps(d, a.id, { passThrough: true }, 'Folder mixes: pass through'), true);
         else if (isBlendMode(v)) this.pushCmd(setLayerProps(d, a.id, fa ? { passThrough: false, blendMode: v } : { blendMode: v }), true);
       });
-      this.layerProps.append(
+      this.layerTop.append(
         h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': fa ? 'Pass through lets the layers inside mix with everything below. Any other choice first makes the folder one picture, then mixes it.' : 'How this layer mixes with the layers under it. Normal simply covers them.' },
           h('label', { for: id + 'b' }, 'Blend'), blend),
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
-          h('label', { for: id + 'o' }, 'Opacity'), op, opOut),
-        h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
+          h('label', { for: id + 'o' }, 'Opacity'), op, opOut));
+      this.layerProps.append(h('div', { class: 'fpe-row', 'data-help-title': 'Layer name', 'data-help': 'A clear name helps you find the layer later.' }, h('label', { for: id + 'n' }, 'Name'), name));
     }
-    if (focused) this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`)?.focus({ preventScroll: true });
+    if (focused) (this.root.querySelector<HTMLElement>(`.fpe-props [data-testid="${focused}"]`) ?? this.layerTop.querySelector<HTMLElement>(`[data-testid="${focused}"]`))?.focus({ preventScroll: true });
     this.queueThumbs();
+  }
+  /** The Layers card's More list: every layer action that is not one of the four with words. */
+  private layerMore(at: HTMLElement): void {
+    const items: [string, string][] = [['file.open-layer', 'Add a picture as a layer'], ['layer.forward', 'Move up'], ['layer.backward', 'Move down'],
+      ['layer.merge-down', 'Merge down'], ['layer.lock', 'Lock or unlock'], ['layer.group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'],
+      ['layer.new-group', 'New empty folder'], ['layer.clip', 'Clip to the layer below']];
+    this.showPopover(items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => ({ label, cmd,
+      disabled: BY_ID.get(cmd)?.status !== 'ready' || !this.isEnabled(cmd), run: () => void this.run(cmd) })), at);
   }
   /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
   private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
@@ -3272,10 +3300,12 @@ export class Editor {
         e.preventDefault();
         const d = this.doc, l = activeLayer(d), n = e.shiftKey ? 10 : 1;
         if (!l || !this.editable(l, false)) return;
-        const old = layerRect(l);
         const dx = k === 'ArrowLeft' ? -n : k === 'ArrowRight' ? n : 0, dy = k === 'ArrowUp' ? -n : k === 'ArrowDown' ? n : 0;
-        this.pushCmd(setLayerProps(d, l.id, { x: l.x + dx, y: l.y + dy }, 'Move layer'));
-        this.markDirty(union(old, layerRect(l)));
+        // A folder carries everything inside it. placeSpots with no offset only reads the area each node covers now.
+        const spots = spotsOf(d, l.id), was = placeSpots(d, spots, 0, 0);
+        this.pushCmd(moveNode(d, l.id, dx, dy, 'Move layer'));
+        const now = placeSpots(d, spots, dx, dy), r = was && now ? union(was, now) : was ?? now;
+        if (r) this.markDirty(r);
         return;
       }
     }

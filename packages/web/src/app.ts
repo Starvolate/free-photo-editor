@@ -1273,12 +1273,13 @@ export class Editor {
     return !!r && r.status === 'ready' && !!hd && hd.enabled(this);
   }
   async run(id: string): Promise<boolean> {
-    if (this.session?.applying) return false;
     const r = BY_ID.get(id);
     if (!r) return false;
+    // A refused command always says why: a person who clicks and sees nothing thinks the editor is broken.
+    if (this.session?.applying) { this.toast(`${this.session.label} is still being applied. Wait a moment, or press Cancel.`); return false; }
     if (r.status !== 'ready') { this.toast(`${r.plain} (${r.pro}) is planned for a later version.`); return false; }
     const hd = HANDLERS[id];
-    if (!hd) return false;
+    if (!hd) { this.toast(`${r.plain} is not available right now.`); return false; }
     if (!hd.enabled(this)) { this.toast(this.doc ? `${r.plain} is not available right now.` : 'Open or create a picture first.'); return false; }
     this.closeMenus();
     this.closePopover();

@@ -41,8 +41,15 @@ export interface Layer {
   /** Layer effects (design 2.7): shadows, glows, outlines and overlays drawn live from the layer's shape. A value object. */
   fx?: LayerEffects;
   /** 0..1: how solid the layer's own pixels are; its effects stay (Fill). Absent = 1. */
-  fillOpacity?: number;
+  fillOpacity?: number;  /** A colour tag, to find the layer again (Find layers). Absent = none. */
+  label?: LayerLabel;
+  /** Notes and tags written on the layer (Find layers searches them). A value object. */
+  meta?: LayerMeta;
 }
+/** The colour tags a layer can carry. */
+export type LayerLabel = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'violet' | 'grey';
+/** Notes and tags kept with a layer. A value object: a change replaces the whole object. */
+export interface LayerMeta { notes: string; tags: string[]; }
 /** What every layer effect has: switched on, how it mixes, and how strong it is (0..1). */
 export interface FxBase { on: boolean; blend: BlendMode; opacity: number; psd?: unknown; }
 /** A drop shadow or an inner shadow: angle in degrees (where the light comes from), distance, spread (%; choke for inner) and size in px. */

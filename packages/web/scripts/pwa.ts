@@ -10,6 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { transformWithOxc, type Plugin } from 'vite';
 
@@ -155,12 +156,11 @@ export function splitFiles(files: BundleFile[], extra: string[]): { shell: strin
 
 /** The Vite plugin. */
 export function pwa(): Plugin {
-  let base = './';
-  const swSource = new URL('../src/sw.ts', import.meta.url);
+  let base = './', root = process.cwd();
   return {
     name: 'free-photoeditor-pwa',
     apply: 'build',
-    configResolved(c) { base = c.base; },
+    configResolved(c) { base = c.base; root = c.root; },
     transformIndexHtml: {
       order: 'post',
       handler: () => [
@@ -187,12 +187,14 @@ export function pwa(): Plugin {
           hash.update(f.type === 'chunk' ? f.code : typeof f.source === 'string' ? f.source : Buffer.from(f.source));
         }
         const build = { version: hash.digest('hex').slice(0, 12), shell, addons, start: 'index.html', share: SHARE_ACTION, shareField: SHARE_FIELD };
-        const ts = readFileSync(swSource, 'utf8');
+        const ts = readFileSync(join(root, 'src', 'sw.ts'), 'utf8');
         const js = (await transformWithOxc(ts, 'sw.ts', { lang: 'ts' })).code;
         if (!js.includes('__FPE_BUILD__')) throw new Error('sw.ts lost its __FPE_BUILD__ placeholder');
         const out = js.replace(/^declare const __FPE_BUILD__.*$/m, '').replace(/^export \{\s*\};?\s*$/m, '').replace(/__FPE_BUILD__/g, JSON.stringify(build));
         this.emitFile({ type: 'asset', fileName: 'sw.js', source: '// Free Photo Editor by Bhawesh Tibrewal. AGPL-3.0-only. Built from packages/web/src/sw.ts.\n' + out });
-        console.log(`\nOffline: version ${build.version}; ${shell.length} shell files saved at install, ${addons.length} add-on files saved on first use.`);
+        const bytes = (n: string): number => { const f = bundle[n]; return !f ? 0 : f.type === 'chunk' ? Buffer.byteLength(f.code) : typeof f.source === 'string' ? Buffer.byteLength(f.source) : f.source.length; };
+        const kb = (l: string[]): string => (l.reduce((a, n) => a + bytes(n), 0) / 1000).toFixed(1) + ' KB';
+        console.log(`\nOffline: version ${build.version}; ${shell.length} shell files (${kb(shell)} before compression) saved at install, ${addons.length} add-on files (${kb(addons)}) saved on first use.`);
       },
     },
   };

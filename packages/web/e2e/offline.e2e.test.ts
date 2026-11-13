@@ -7,7 +7,7 @@
  * reload, and shows "A new version is ready · Reload" when a new build waits.
  * Run: npm run build && CHROME_PATH=<Chrome binary> npx vitest run --config packages/web/vitest.e2e.config.ts offline
  */
-import { mkdir, readFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { Socket } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
@@ -34,10 +34,13 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebK
 
 /** A static server that can be switched off (every connection dropped) and can serve a changed sw.js, like a new build. */
 interface Srv { server: Server; url: string; hits: string[]; offline: boolean; swExtra: string; sockets: Set<Socket>; refused: number; }
-function serve(): Promise<Srv> {
+/** `prefix` serves the build under a folder, as the site will (/tools/free-photoeditor/). */
+function serve(prefix = '/'): Promise<Srv> {
   const st = { hits: [] as string[], offline: false, swExtra: '', sockets: new Set<Socket>(), refused: 0 } as Srv;
   st.server = createServer((req, res) => {
-    const path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
+    const full = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
+    if (!full.startsWith(prefix)) { res.writeHead(404).end('Not found'); return; }
+    const path = '/' + full.slice(prefix.length);
     st.hits.push(`${req.method} ${path}`);
     if (path === '/favicon.ico') { res.writeHead(204).end(); return; }
     const file = normalize(join(DIST, path.endsWith('/') ? path + 'index.html' : path));
@@ -146,7 +149,8 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
   it("passes Chrome's install checks: manifest, icons and the offline worker", async () => {
     const cdp = await page.context().newCDPSession(page);
     const inst = await cdp.send('Page.getInstallabilityErrors');
-    expect(inst.installabilityErrors).toEqual([]);
+    // Playwright's contexts are private windows, where Chrome never offers installing; every other check must pass.
+    expect(inst.installabilityErrors.filter((e) => e.errorId !== 'in-incognito')).toEqual([]);
     const man = await cdp.send('Page.getAppManifest') as { url: string; errors: { message: string; critical: number }[] };
     expect(man.url).toBe(srv.url + 'manifest.webmanifest');
     expect(man.errors.filter((e) => e.critical)).toEqual([]);
@@ -156,10 +160,12 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
     for (const i of m.icons) expect((await fetch(srv.url + i.src)).status, i.src).toBe(200);
     expect((await fpe(page, (x) => x.commands())).find((c) => c.id === 'file.install')?.enabled).toBe(true);
     expect(await page.textContent('[data-testid="about-offline"]')).toContain('Works offline');
+    for (const f of ['icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png']) await copyFile(join(DIST, 'icons', f), join(OUT, 'w8-' + f));
   }, 60_000);
 
   it('opens pictures handed to the app: Open with (file handlers), the share sheet (share target), several dropped at once', async () => {
-    const lq = 'window.launchQueue = { setConsumer(f) { window.__lq = f; } };';
+    // Chrome has its own read-only launchQueue, so the stand-in is defined over it.
+    const lq = "Object.defineProperty(window, 'launchQueue', { configurable: true, value: { setConsumer(f) { window.__lq = f; } } });";
     const p = await open(undefined, lq);
     await controlled(p);
     const made = (name: string, color: string) => `(async () => { const c = document.createElement('canvas'); c.width = 40; c.height = 30;
@@ -190,7 +196,9 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
     expect(await p.textContent('[data-testid="restore"]')).toContain('Bring back your last pictures?');
     await p.screenshot({ path: join(OUT, 'w8-restore-prompt-desktop.png') });
     await p.click('[data-testid="restore-yes"]');
-    await p.waitForFunction(() => (window as unknown as Win).fpe.state().tabs === 1);
+    // The toast comes once the copy is saved under this window and the old one deleted.
+    await p.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Brought back'), null, { timeout: 15_000 });
+    expect(await fpe(p, (x) => x.state().tabs)).toBe(1);
     expect(await whole(p)).toBe(sum);
     expect(await fpe(p, (x) => x.getInfo()?.width)).toBe(120);
     await p.reload();
@@ -198,6 +206,7 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
     await p.waitForSelector('[data-testid="restore"]:not([hidden])', { timeout: 15_000 });
     expect(await p.$$eval('[data-testid="restore"] li', (l) => l.length)).toBe(1);
     await p.click('[data-testid="restore-discard"]');
+    await p.waitForFunction(() => document.querySelector('[data-testid="toast"]')?.textContent?.includes('Discarded'), null, { timeout: 15_000 });
     await p.reload();
     await p.waitForFunction(() => !!(window as unknown as Win).fpe);
     await p.waitForTimeout(1500);
@@ -225,6 +234,28 @@ describe.skipIf(!CHROME)('works offline, installs like an app, never loses work'
     expect(text).toContain('Share');
     await p.waitForTimeout(400);
     await p.screenshot({ path: join(OUT, 'w8-install-sheet-iphone.png') });
-    expect(errors).toEqual([]);
   }, 60_000);
+
+  it('works in a sub-folder (/tools/free-photoeditor/), the way the site will serve it, offline too', async () => {
+    const sub = await serve('/tools/free-photoeditor/');
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    contexts.push(ctx);
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    const home = sub.url + 'tools/free-photoeditor/';
+    await p.goto(home);
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await controlled(p);
+    expect((await fpe(p, (x) => x.appState())).scope).toBe(home);
+    expect(await p.evaluate(() => (document.querySelector('link[rel=manifest]') as HTMLLinkElement).href)).toBe(home + 'manifest.webmanifest');
+    goOffline(sub);
+    await p.reload();
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await fpe(p, (x) => x.openSample());
+    expect(await fpe(p, (x) => x.getInfo()?.layers.length)).toBeGreaterThan(0);
+    sub.server.close();
+    sub.server.closeAllConnections?.();
+  }, 90_000);
+
+  it('raised no page errors on the way', () => { expect(errors).toEqual([]); });
 });

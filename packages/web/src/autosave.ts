@@ -136,8 +136,12 @@ export class Autosave {
       const db = await this.open();
       const all = await req(db.transaction(META, 'readonly').objectStore(META).getAll()) as SavedPicture[];
       const l = locks();
-      const held = new Set(l ? ((await l.query()).held ?? []).map((x) => x.name ?? '') : []);
-      return all.filter((m) => m.session !== this.session && !held.has(LOCK + m.session))
+      const heldNow = async (): Promise<Set<string>> => new Set(l ? ((await l.query()).held ?? []).map((x) => x.name ?? '') : []);
+      const others = all.filter((m) => m.session !== this.session);
+      let held = await heldNow();
+      // Right after a reload the closed page's lock can still show as held for a moment: look once more.
+      if (others.some((m) => held.has(LOCK + m.session))) { await new Promise((r) => setTimeout(r, 1500)); held = await heldNow(); }
+      return others.filter((m) => !held.has(LOCK + m.session))
         .sort((a, b) => a.savedAt === b.savedAt ? a.order - b.order : a.session === b.session ? a.order - b.order : a.savedAt - b.savedAt);
     } catch { return []; }
   }

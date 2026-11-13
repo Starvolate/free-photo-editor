@@ -141,4 +141,44 @@ suite('Animate batch (headless Chrome)', () => {
     expect(errors).toEqual([]);
     await ctx.close();
   }, 120_000);
+
+  it('imports two pictures through the file chooser as two frames in one undo step, and turns onion skin on and off', async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(url);
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    await p.evaluate(async () => { const f = (window as unknown as Win).fpe; f.openSample(); await f.run('panel.timeline'); });
+    await p.waitForSelector('[data-testid="timeline"] [data-testid="tl-frame"]');
+    const n = (await layers(p)).length, step0 = (await state(p)).step as number;
+    const picked = await p.getAttribute('[data-testid="tl-frame"][aria-current="true"]', 'data-i');
+    const count = (x: number): Promise<unknown> => p.waitForFunction((k) => ((window as unknown as Win).fpe.state().layers as L[]).length === k, x);
+
+    // Import animation frames from its ribbon home: two pictures, picked out of name order, land sorted with numbers counted.
+    const png = await readFile(join(WEB, 'e2e', 'fixtures', 'mug.png'));
+    const [fc] = await Promise.all([p.waitForEvent('filechooser'), reach(p, 'layer.import-frames')]);
+    await fc.setFiles([{ name: 'walk10.png', mimeType: 'image/png', buffer: png }, { name: 'walk2.png', mimeType: 'image/png', buffer: png }]);
+    await count(n + 2);
+    expect((await layers(p)).slice(n).map((l) => l.name)).toEqual(['walk2 (100 ms)', 'walk10 (100 ms)']);
+    expect((await state(p)).step).toBe(step0 + 1);
+    // The timeline shows both new frames, and the layer picked before stays picked, not the last (hidden) frame.
+    await p.waitForFunction((x) => document.querySelectorAll('[data-testid="tl-frame"]').length === x, n + 2);
+    expect(await p.getAttribute('[data-testid="tl-frame"][aria-current="true"]', 'data-i')).toBe(picked);
+    // One undo takes both frames away; redo brings both back.
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.undo'));
+    await count(n);
+    await p.evaluate(() => (window as unknown as Win).fpe.run('edit.redo'));
+    await count(n + 2);
+
+    // Onion skin from its ribbon home: the state flag and the timeline's own button both say on; that button turns it off.
+    // (The ribbon itself shows no on/off mark for any toggle yet, so the timeline button is the visible mark.)
+    await reach(p, 'layer.onion-skin');
+    await p.waitForFunction(() => ((window as unknown as Win).fpe.state().anim as { onion: boolean } | null)?.onion === true);
+    expect(await p.getAttribute('[data-testid="tl-onion"]', 'aria-pressed')).toBe('true');
+    await p.click('[data-testid="tl-onion"]');
+    expect(((await state(p)).anim as { onion: boolean }).onion).toBe(false);
+    expect(await p.getAttribute('[data-testid="tl-onion"]', 'aria-pressed')).toBe('false');
+    expect(errors).toEqual([]);
+    await ctx.close();
+  }, 120_000);
 });

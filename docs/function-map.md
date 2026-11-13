@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**398 functions: 250 Ready, 148 Planned** (64 tools, 22 panels, 36 menus and submenus).
+**398 functions: 251 Ready, 147 Planned** (64 tools, 22 panels, 36 menus and submenus).
 
 ## Phases
 
@@ -68,7 +68,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Planned | 13 |  |
 | file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Planned | 13 |  |
 
-## Edit (27 Ready, 12 Planned)
+## Edit (28 Ready, 11 Planned)
 
 Groups: Turn and flip · Transform; Settings · Preferences.
 
@@ -78,7 +78,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.redo | Redo | Redo | Bring back a change you undid. | redo, again | Edit | Ready | 1 | Ctrl+Shift+Z |
 | edit.history-back | Step back | Step backward | Go one step back in the History list. | previous step | Edit | Ready | W1 |  |
 | edit.history-forward | Step forward | Step forward | Go one step forward in the History list. | next step | Edit | Ready | W1 |  |
-| edit.history-brush-step | Choose the step to paint back | History brush source | Pick which History step the history brush paints from; today it paints the picture as opened. | paint back from step, history brush source | Edit | Planned | 4 |  |
+| edit.history-brush-step | Paint back from this step | History brush source | Make the step you are at the one the history brush paints back; History marks it with a brush, and the brush beside any step picks that one. | paint back from step, history brush source, paint from here | Edit | Ready | W5 |  |
 | edit.fade | Soften the last change | Fade | Make the last filter or paint change weaker. | weaker, fade, reduce effect | Edit | Planned | 13 |  |
 | edit.cut | Cut | Cut | Move the selected part of this layer to the clipboard. | cut out | Edit | Ready | W1 | Ctrl+X |
 | edit.copy | Copy | Copy | Copy the selected part of this layer. | copy | Edit | Ready | W1 | Ctrl+C |
@@ -334,8 +334,8 @@ Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; G
 | filter.fibers | Fibres | Fibers | Draw a woven fibre texture. | fabric | Filter › Render | Ready | W2 |  |
 | filter.lens-flare | Light flare | Lens flare | Add a bright camera flare. | sun flare | Filter › Render | Planned | W2 |  |
 | filter.lighting | Spotlights | Lighting effects | Light the picture with spotlights. | spotlight | Filter › Render | Planned | W2 |  |
-| filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper in one step. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Ready | W1 |  |
-| filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper in one step. | sharper | Filter › Sharpen | Ready | W1 |  |
+| filter.sharpen | Sharpen a little | Sharpen | Make edges a little crisper, with a preview before you apply. | crisp, sharp, blurry photo, focus | Filter › Sharpen | Ready | W1 |  |
+| filter.sharpen-more | Sharpen more | Sharpen more | Make edges clearly crisper, with a preview before you apply. | sharper | Filter › Sharpen | Ready | W1 |  |
 | filter.unsharp | Sharpen with control | Unsharp mask | Choose how strong and how wide the sharpening is. | sharpen detail, crisp | Filter › Sharpen | Ready | 1 |  |
 | filter.sharpen-edges | Sharpen only the edges | Sharpen edges | Sharpen edges and leave smooth areas alone. | edges | Filter › Sharpen | Ready | W2 |  |
 | filter.smart-sharpen | Smart sharpen | Smart sharpen | Sharpen with less halo and noise. | smart sharpen | Filter › Sharpen | Ready | W2 |  |
@@ -464,7 +464,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.mixer | Blend paint | Mixer brush | Paint that mixes with the colours already there. | wet paint | Tools › Paint | Planned | 4 |  |
 | tool.clone | Copy an area | Clone stamp | Alt-click a source, then paint to copy it somewhere else. | clone, copy area, duplicate object | Tools › Clone | Ready | W3 | S |
 | tool.pattern-stamp | Paint a pattern | Pattern stamp | Paint with a repeating pattern. | pattern brush | Tools › Clone | Planned | 4 |  |
-| tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked when it was opened. | undo part, paint back, restore part | Tools › History brush | Ready | W3 | Y |
+| tool.history-brush | Paint back an earlier step | History brush | Paint to bring back how part of the picture looked at an earlier step: the one marked with the brush in History, at first as opened. | undo part, paint back, restore part | Tools › History brush | Ready | W3 | Y |
 | tool.art-history | Painterly strokes | Art history brush | Paint quick artistic strokes from an earlier step. | art brush | Tools › History brush | Planned | 4 |  |
 | tool.eraser | Eraser | Eraser | Rub out pixels so they become see-through. | erase, rub out | Tools › Erase | Ready | 1 | E |
 | tool.bg-eraser | Erase a background | Background eraser | Erase the colour under the brush's centre and keep the edges. | erase background | Tools › Erase | Ready | W3 |  |

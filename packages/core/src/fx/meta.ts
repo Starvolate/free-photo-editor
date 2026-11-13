@@ -38,6 +38,16 @@ const REACH: Partial<Record<FxKind, (p: P) => number>> = {
   facet: (p) => n(p, 'radius', 3), fragment: (p) => n(p, 'distance', 4),
   'high-pass': (p) => gauss(n(p, 'radius', 4)), maximum: (p) => n(p, 'radius', 2), minimum: (p) => n(p, 'radius', 2), custom: () => 2,
 };
+/**
+ * Effects whose every pixel depends only on its neighbours within `fxReach`, so Apply can run them in bands of rows
+ * and show real progress. Chosen by reasoning, then checked byte for byte against one run by test/bands.test.ts, which
+ * turned down box blur, lens blur, oil paint and wind (they read further than their reach or vary by row): those
+ * run in one go behind a moving bar.
+ */
+export const BANDED: ReadonlySet<string> = new Set<FxKind>([
+  'motion-blur', 'surface-blur', 'smart-blur', 'smart-sharpen', 'sharpen-edges', 'reduce-noise', 'median', 'dust', 'despeckle', 'emboss',
+  'find-edges', 'solarize', 'trace-contour', 'glowing-edges', 'facet', 'fragment', 'high-pass', 'maximum', 'minimum', 'custom',
+]);
 /** How many pixels around the edited area an effect reads (0 for effects that only move or recolour pixels inside it). */
 export function fxReach(kind: string | undefined, p: P = {}): number {
   const f = REACH[kind as FxKind];

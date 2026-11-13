@@ -7,7 +7,7 @@
  * function map (registry.ts) and run through one handler table (commands.ts); every pixel change goes through the engine.
  */
 import {
-  APP_NAME, APP_VERSION, AUTHOR, AUTHOR_URL, BLACK, BLEND_GROUPS, BLEND_LABELS, EXPORT_FORMATS, FORMAT_INFO, History, SOURCE_URL, Stroke, WHITE,
+  APP_NAME, APP_VERSION, AUTHOR, AUTHOR_URL, BLACK, BLEND_GROUPS, BLEND_LABELS, EXPORT_FORMATS, FORMAT_INFO, History, SOURCE_URL, Stroke, WHITE, jobBands, resizeBitmap,
   activeLayer, addEmptyLayer, addLayer, clamp, clearSelection, commitResult, compositeDoc, createDocument, createLayer, cropDocument, curveLut,
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
@@ -22,7 +22,7 @@ import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
 import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData, exportList, fmtInfo, multiKind } from './io';
 import { HANDLES, type Guides } from './handles';
-import { JobRunner } from './jobs';
+import { JobRunner, JobStopped } from './jobs';
 import { NOTICES } from './notices';
 import { BY_ID, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS, placeText, search, type MenuEntry, type Row } from './registry';
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
@@ -71,12 +71,16 @@ interface Session {
   hist: Uint32Array; running: Promise<void> | null; queued: boolean; ran: boolean;
   /** The last finished preview (cut to `r`), and whether the dialog shows the picture as it was. */
   after: Uint8ClampedArray | null; showBefore: boolean;
+  /** Below 1 on a big picture: the preview runs on a copy this many times smaller (`small`), and Apply runs again at full size. */
+  scale: number; small: Uint8ClampedArray | null; applying: boolean;
 }
 interface Tab { doc: Doc; history: History; name: string; savedId: number; view: View; fitted: boolean; lastSel: Selection | null; hole: Rect | null; }
 interface Clip { width: number; height: number; data: Uint8ClampedArray; x: number; y: number; serial: number; }
 type Drag = { kind: 'select' | 'crop' | 'pick' | 'pan'; start: Pt } | { kind: 'move'; start: Pt; x: number; y: number; id: string };
 interface PopItem { label: string; run: () => void; disabled?: boolean; cmd?: string; }
 
+/** Over this many pixels a filter previews on a smaller copy of about PREVIEW_PX pixels, so sliders stay quick; Apply works at full size. */
+const PREVIEW_MAX = 2_000_000, PREVIEW_PX = 1_000_000;
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const keyText = (k: string): string => (MAC ? k.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧').replace(/Alt\+/g, '⌥') : k);
 const hexNum = (hex: string): number => { const c = parseHex(hex) ?? BLACK; return (c.r << 16) | (c.g << 8) | c.b; };
@@ -241,6 +245,10 @@ export class Editor {
   private modalReturn: HTMLElement | null = null;
   private popover: HTMLElement | null = null;
   private session: Session | null = null;
+  /** Per tab (each has its own History): the step the history brush paints back, by id; none means as opened. */
+  private marks = new WeakMap<History, number>();
+  /** While a filter works at full size: its Cancel, which Escape also presses. */
+  private jobCancel: (() => void) | null = null;
   private hdrag: string | null = null;
   clip: Clip | null = null;
   lastSel: Selection | null = null;
@@ -1087,6 +1095,7 @@ export class Editor {
     return !!r && r.status === 'ready' && !!hd && hd.enabled(this);
   }
   async run(id: string): Promise<boolean> {
+    if (this.session?.applying) return false;
     const r = BY_ID.get(id);
     if (!r) return false;
     if (r.status !== 'ready') { this.toast(`${r.plain} (${r.pro}) is planned for a later version.`); return false; }
@@ -1382,7 +1391,9 @@ export class Editor {
       tool: () => this.tool, sheet: (id, title, body) => this.toolSheet(id, title, body), closeSheet: () => this.closeModal(),
       slider: (a, b, c, d, e, f, g, k) => this.slider(a, b, c, d, e, f, g, k), panels: () => this.renderPanels(), layout: () => this.layout,
       forgetHole: () => { this.hole = null; }, rememberSel: (s) => { if (s) this.lastSel = s; }, showPanel: (pid) => this.showPanelTab(pid),
+      paintFrom: () => this.marks.get(this.history) ?? 0, paintFromGone: () => this.paintFromGone(),
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
+      fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
     };
   }
   private toolSheet(id: string, title: string, body: HTMLElement): void {
@@ -1900,11 +1911,31 @@ export class Editor {
     const ul = this.histList;
     if (!ul) return;
     if (!this.doc) { ul.replaceChildren(h('li', { class: 'fpe-note' }, 'Your steps appear here.')); return; }
-    const { labels, index } = this.history.entries();
-    ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', {},
+    const { labels, index } = this.history.entries(), ids = [0, ...this.history.stepIds()], m = this.marks.get(this.history) ?? 0, mark = ids.includes(m) ? m : 0;
+    ul.replaceChildren(...['Opened ' + this.name, ...labels].map((label, k) => h('li', { class: 'fpe-hist-row' },
       h('button', { type: 'button', class: 'fpe-hist-item', 'aria-current': k === index ? 'step' : null, 'data-undone': k > index ? '' : null, 'data-testid': 'history-step',
-        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, label))));
+        'data-help-title': label, 'data-help': k > index ? 'An undone step. Pick it to bring it back.' : 'Pick a step to go back to how the picture looked then.', onclick: () => this.goToStep(k) }, label),
+      h('button', { type: 'button', class: 'fpe-hist-mark', 'aria-pressed': ids[k] === mark ? 'true' : 'false', 'aria-label': `Paint from here: ${label}`, 'data-testid': 'history-mark',
+        'data-help-title': 'Paint from here · History brush source', 'data-help': 'The history brush paints back the step marked with this brush. Pick the brush beside another step to paint from that one.',
+        onclick: () => this.markStep(ids[k], label) }, icon('brush')))));
     ul.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest' });
+  }
+  /** Edit › Paint back from this step: the step you are at becomes the one the history brush paints back. */
+  paintFromHere(): void {
+    if (!this.doc) return this.needDoc();
+    const { labels, index } = this.history.entries();
+    this.markStep(index ? this.history.stepIds()[index - 1] : 0, index ? labels[index - 1] : 'Opened ' + this.name);
+    this.showPanelTab('history');
+  }
+  private markStep(id: number, label: string): void {
+    this.marks.set(this.history, id);
+    this.renderHistory();
+    this.toast(`The history brush now paints back “${label}”.`);
+  }
+  private paintFromGone(): void {
+    this.marks.delete(this.history);
+    this.renderHistory();
+    this.toast('The step marked in History is gone (a newer change replaced it), so the history brush paints from the oldest step.');
   }
   private renderProps(): void {
     const b = this.propsBody;
@@ -2107,21 +2138,24 @@ export class Editor {
     if (def.colors) { params.fg = hexNum(this.brush.color); params.bg = hexNum(this.bgColor); }
     const before = readRegion(l, reg), hist = new Uint32Array(256);
     for (let i = 0; i < before.length; i += 4) if (before[i + 3]) hist[Math.round(luma(before[i], before[i + 1], before[i + 2]))]++;
-    this.session = { id, def, label: r.plain, spec, layerId: l.id, r: reg, padded, source: readRegion(l, padded), before, hist, running: null, queued: false, ran: false, after: null, showBefore: false };
-    this.preview();
-    if (def.instant || instant) { await this.applySession(); return; }
+    const area = padded.w * padded.h, scale = def.op !== 'adjust' && area > PREVIEW_MAX ? Math.sqrt(PREVIEW_PX / area) : 1, now = !!def.instant || instant;
+    this.session = { id, def, label: r.plain, spec, layerId: l.id, r: reg, padded, source: readRegion(l, padded), before, hist, running: null, queued: false, ran: false, after: null, showBefore: false,
+      scale, small: null, applying: false };
+    if (!(now && scale < 1)) this.preview();
+    if (now) { await this.applySession(); return; }
     this.renderDialog();
   }
   runLastFilter(): void { const f = this.lastFilter; if (f) void this.openAdjust(f.id, f.params, true); }
   private renderDialog(): void {
     const s = this.session, dlg = this.dlgEl;
-    if (!s || s.def.instant) { dlg.hidden = true; dlg.replaceChildren(); this.dlgCanvas = null; return; }
+    if (!s || s.def.instant || s.applying) { dlg.hidden = true; dlg.replaceChildren(); this.dlgCanvas = null; return; }
     const r = BY_ID.get(s.id) as Row, params = (s.spec.params ??= {}), id = `fpe-${this.uid}-a`;
     const kids: Node[] = [this.dragHead(h('div', { class: 'fpe-dlg-head', 'data-testid': 'dialog-head', 'data-help-title': 'Move this box',
       'data-help': 'Drag the title to move this box off the part of the picture you are changing.' }, h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
       iconButton('close', 'Cancel', { class: 'fpe-btn fpe-icon-btn', onclick: () => this.cancelSession() }))),
       h('p', { class: 'fpe-note' }, `${r.help} It changes ${this.doc?.selection ? 'the selected area of' : 'all of'} the active layer; the picture updates as you move the sliders.${s.def.handles ? ' Drag the round handles on the picture to place it.' : ''}`)];
     this.dlgCanvas = null;
+    if (s.scale < 1) kids.push(h('p', { class: 'fpe-note', 'data-testid': 'adj-small' }, 'This picture is big, so the preview uses a smaller copy to stay quick. Apply then works on every pixel at full size, with a progress bar.'));
     if (s.id === 'image.adj-levels' || s.id === 'image.adj-curves') {
       this.dlgCanvas = h('canvas', { class: 'fpe-histo', width: 256, height: 96, 'aria-label': 'Graph of dark to light tones in the picture', 'data-testid': 'adj-graph' });
       kids.push(this.dlgCanvas);
@@ -2197,22 +2231,23 @@ export class Editor {
   }
   private preview(): void {
     const s = this.session;
-    if (!s) return;
+    if (!s || s.applying) return;
     if (s.running) { s.queued = true; return; }
     const spec: JobSpec = { op: s.spec.op, kind: s.spec.kind, params: { ...s.spec.params } };
+    const small = s.scale < 1 ? this.smallCopy(s, spec) : null;
     const done = this.busyAfter(150);
-    s.running = this.jobs.run(spec, { width: s.padded.w, height: s.padded.h, data: s.source }).then((res) => {
+    s.running = this.jobs.run(spec, small ?? { width: s.padded.w, height: s.padded.h, data: s.source }).then((res) => {
       const d = this.doc;
       if (this.session !== s || !d) return;
       const l = findLayer(d, s.layerId);
       if (!l) return;
-      s.after = innerOf(res, s.padded, s.r);
+      s.after = innerOf(small ? resizeBitmap({ width: small.width, height: small.height, data: res }, s.padded.w, s.padded.h) : res, s.padded, s.r);
       s.ran = true;
       if (s.showBefore) return;
       commitResult(d, l, s.r, s.before, s.after, s.label);
       this.markDirty({ x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h });
       this.requestRender();
-    }).catch((e: unknown) => this.toast(errText(e))).finally(() => {
+    }).catch((e: unknown) => { if (!(e instanceof JobStopped)) this.toast(errText(e)); }).finally(() => {
       done();
       s.running = null;
       if (s.queued && this.session === s) { s.queued = false; this.preview(); }
@@ -2220,10 +2255,11 @@ export class Editor {
   }
   private async applySession(): Promise<void> {
     const s = this.session;
-    if (!s) return;
+    if (!s || s.applying) return;
     while (s.running) await s.running;
     if (this.session !== s) return;
     if (s.showBefore) { s.showBefore = false; this.showResult(s, false); }
+    if (s.scale < 1 && !(await this.applyFull(s))) return;
     this.session = null;
     this.renderDialog();
     if (s.ran) {
@@ -2232,6 +2268,76 @@ export class Editor {
       this.afterEdit();
       this.toast(`${s.label}: done.`);
     }
+  }
+  /** The dialog's working copy at preview size, with every pixel-sized setting (radius, distance, length) scaled to match. */
+  private smallCopy(s: Session, spec: JobSpec): Bitmap {
+    const w = Math.max(1, Math.round(s.padded.w * s.scale)), hh = Math.max(1, Math.round(s.padded.h * s.scale)), fx = w / s.padded.w, fy = hh / s.padded.h;
+    s.small ??= resizeBitmap({ width: s.padded.w, height: s.padded.h, data: s.source }, w, hh);
+    const p = (spec.params ??= {});
+    for (const c of s.def.controls) {
+      const v = p[c.key];
+      if (c.unit === ' px' && typeof v === 'number') p[c.key] = Math.sign(v) * Math.max(Math.min(Math.abs(v), 1), Math.abs(v) * s.scale);
+    }
+    if (spec.op === 'fx') {
+      p.ix = Math.round((p.ix ?? 0) * fx); p.iy = Math.round((p.iy ?? 0) * fy);
+      p.iw = Math.max(1, Math.round((p.iw ?? s.padded.w) * fx)); p.ih = Math.max(1, Math.round((p.ih ?? s.padded.h) * fy));
+    }
+    return { width: w, height: hh, data: s.small };
+  }
+  /** Apply after a preview on a smaller copy: the filter runs again on every pixel in the worker, with a progress bar and Cancel. */
+  private async applyFull(s: Session): Promise<boolean> {
+    s.applying = true;
+    this.renderDialog();
+    const W = s.padded.w, spec: JobSpec = { op: s.spec.op, kind: s.spec.kind, params: { ...s.spec.params } }, bands = jobBands(spec, s.padded.h);
+    let stopped = false;
+    const bar = this.progress(s.id, !!bands, () => { stopped = true; this.jobs.stop(); });
+    try {
+      let out: Uint8ClampedArray;
+      if (bands) {
+        out = s.source.slice();
+        for (let k = 0; k < bands.length; k++) {
+          const b = bands[k], res = await this.jobs.run(b.spec, { width: W, height: b.sh, data: s.source.subarray(b.sy * W * 4, (b.sy + b.sh) * W * 4) });
+          if (stopped) throw new JobStopped();
+          out.set(res.subarray((b.y0 - b.sy) * W * 4, (b.y1 - b.sy) * W * 4), b.y0 * W * 4);
+          bar.set((k + 1) / bands.length);
+        }
+      } else out = await this.jobs.run(spec, { width: W, height: s.padded.h, data: s.source });
+      if (stopped) throw new JobStopped();
+      const d = this.doc, l = d ? findLayer(d, s.layerId) : undefined;
+      if (!d || !l || this.session !== s) return false;
+      s.after = innerOf(out, s.padded, s.r);
+      s.ran = true;
+      commitResult(d, l, s.r, s.before, s.after, s.label);
+      this.markDirty({ x: s.r.x + l.x, y: s.r.y + l.y, w: s.r.w, h: s.r.h });
+      this.requestRender();
+      return true;
+    } catch (e: unknown) {
+      s.applying = false;
+      if (this.session === s) this.cancelSession();
+      this.toast(stopped || e instanceof JobStopped ? `${s.label} stopped. The picture is as it was.` : errText(e));
+      return false;
+    } finally {
+      s.applying = false;
+      bar.close();
+    }
+  }
+  /** A progress bar with Cancel over the editor while a filter works at full size; without steps it shows a moving bar. */
+  private progress(id: string, steps: boolean, cancel: () => void): { set(v: number): void; close(): void } {
+    const r = BY_ID.get(id) as Row, label = r.plain;
+    const bar = h('progress', { max: 1, 'data-testid': 'job-bar', 'aria-label': `${label}: how much is done` }) as HTMLProgressElement;
+    if (steps) bar.value = 0;
+    const pct = h('p', { class: 'fpe-note', 'data-testid': 'job-pct' }, steps ? '0% done' : 'Working on every pixel…');
+    const box = h('div', { class: 'fpe-job', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Applying ${label}`, 'data-testid': 'job-progress' },
+      h('h2', { class: 'fpe-dlg-title' }, this.names(r.plain, r.pro)),
+      h('p', { class: 'fpe-note' }, 'Applying it to the whole picture. The preview used a smaller copy to stay quick; now every pixel is done at full size. Big pictures and big settings take longer.'),
+      bar, pct,
+      h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'data-testid': 'job-cancel', 'data-help-title': 'Cancel',
+        'data-help': 'Stop now and keep the picture as it was.', onclick: cancel }, 'Cancel')));
+    const veil = h('div', { class: 'fpe-job-veil' }, box);
+    this.root.append(veil);
+    this.jobCancel = cancel;
+    requestAnimationFrame(() => box.querySelector<HTMLElement>('button')?.focus({ preventScroll: true }));
+    return { set: (v) => { bar.value = v; pct.textContent = `${Math.round(v * 100)}% done`; }, close: () => { this.jobCancel = null; veil.remove(); } };
   }
   /** Shows the dialog's result, or the picture as it was, without ending the dialog. */
   private showResult(s: Session, before: boolean): void {
@@ -2721,6 +2827,7 @@ export class Editor {
   private setSpace(on: boolean): void { this.space = on; this.root.toggleAttribute('data-space', on); }
   private onKey(e: KeyboardEvent): void {
     if (!this.isActive()) return;
+    if (this.session?.applying) { e.preventDefault(); if (e.key === 'Escape') this.jobCancel?.(); return; }
     if (this.tk?.key(e)) { e.preventDefault(); return; }
     const k = e.key, mod = e.ctrlKey || e.metaKey;
     if (k === 'Escape') {
@@ -2894,9 +3001,10 @@ export class Editor {
           tabs: this.tabs.length, tab: this.cur, saved: !this.doc || this.history.stateId() === this.savedId, step: e.index, steps: e.labels.length,
           fg: this.brush.color, bg: this.bgColor, theme: this.root.dataset.theme, names: this.proNames, hints: this.hints, screen: this.screen, flags: { ...this.flags },
           hidden: [...this.hidden].sort(), folded: [...this.folded].sort(), dock: this.dockState, phonePanel: this.phonePanel, modal: this.modal,
-          adjust: this.session?.id ?? null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
+          adjust: this.session?.id ?? null,
+          preview: this.session ? { scale: this.session.scale, done: this.session.ran && !this.session.running, applying: this.session.applying } : null, clip: this.clip?.serial ?? null, lastSel: !!this.lastSel, lastFilter: this.lastFilter?.id ?? null, tool: this.tool,
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
-          w3: this.tk?.state() ?? null, autoPick: this.autoPick,
+          w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
         };
       },
       openSample: () => this.openSample(),

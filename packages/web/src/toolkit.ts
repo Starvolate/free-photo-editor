@@ -11,7 +11,7 @@ import {
   BLACK, DEFAULT_TEXT_STYLE, EffectStroke, activeLayer, addLayer, alignLayer, arrowHead, borderMask, bucketFill, clamp, colorRangeMask,
   combineCommands, combineMasks, compositeDoc, contentCommand, contractMask, countSelected, createLayer, currentContent, distributeLayers, docRect,
   expandMask, featherMask, fillGradient, findLayer, fontString, geomOf, growMask, indexOfLayer, layerOnCanvas, layerRect, layoutText, magicErase,
-  maskFromSelection, parseHex, patchArea, polygonMask, quadOfRect, quickSelectMask, redEye, selectionAlpha, selectionFromMask, setGeom, shapeBounds,
+  maskFromSelection, nextLayerName, parseHex, patchArea, polygonMask, quadOfRect, quickSelectMask, redEye, selectionAlpha, selectionFromMask, setGeom, shapeBounds,
   shapePoints, similarMask, smoothMask, strokeSelection, transformLayer, transformSelection, union, wandMask, warpBitmap,
   type AlignEdge, type Command, type Doc, type EffectKind, type GradientKind, type History, type Layer, type LayerContent, type LayerGeom, type Mask,
   type Pixels, type Placed, type Quad, type RGBA, type Rect, type Selection, type SelMode, type ShapeContent, type ShapeKind, type TextContent, type TextStyle,
@@ -52,6 +52,13 @@ export interface ToolHost {
   paint(t: 'brush' | 'pencil' | 'eraser'): { size: number; hardness: number; opacity: number };
   /** Zoom out or pan so a picture rectangle, plus a margin of screen pixels, sits in the picture area. */
   fitBox(r: { x: number; y: number; w: number; h: number }, margin: number): void;
+  /** Whether the view is fitted to the window; putting a saved view back (after a transform moved it). */
+  fitted(): boolean;
+  restoreView(v: View, fitted: boolean): void;
+  /** The History step the history brush paints back, by id (0: the picture as opened). */
+  paintFrom(): number;
+  /** That step left History (a new change replaced it, or it was trimmed): go back to the oldest step, and say so. */
+  paintFromGone(): void;
 }
 export interface ToolKit {
   claims(t: ToolId): boolean;
@@ -294,6 +301,8 @@ export function createToolKit(host: ToolHost): ToolKit {
   }
 
   // ---------- free transform ----------
+  /** The view before a transform moved it to show its handles, and the zoom right after: put back when the transform ends unless the zoom changed. */
+  let xfBack: { v: View; fitted: boolean; zoom: number } | null = null;
   function startXf(target: 'layer' | 'selection', mode: XfMode): void {
     const d = doc();
     if (!d) return;
@@ -308,8 +317,9 @@ export function createToolKit(host: ToolHost): ToolKit {
       if (l.locked) return;
       xf = { target, id: l.id, mode, orig: { ...geomOf(l) }, sel0: null, base: quadOfRect(layerRect(l)), q: quadOfRect(layerRect(l)), raf: 0 };
     }
-    const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys);
+    const xs = (xf as Xf).q.map((c) => c.x), ys = (xf as Xf).q.map((c) => c.y), bx = Math.min(...xs), by = Math.min(...ys), v0 = { ...host.view() }, f0 = host.fitted();
     host.fitBox({ x: bx, y: by, w: Math.max(...xs) - bx, h: Math.max(...ys) - by }, host.layout() === 'phone' ? 44 : 36);
+    xfBack = { v: v0, fitted: f0, zoom: host.view().zoom };
     host.toast('Drag the handles to resize, outside the box to turn. Enter applies, Esc cancels.');
     host.refreshOptions();
     host.render();
@@ -352,6 +362,9 @@ export function createToolKit(host: ToolHost): ToolKit {
         } else host.all();
       }
     }
+    const back = xfBack;
+    xfBack = null;
+    if (back && Math.abs(host.view().zoom - back.zoom) < 1e-9) host.restoreView(back.v, back.fitted);
     host.refreshOptions();
     host.render();
   }
@@ -502,8 +515,11 @@ export function createToolKit(host: ToolHost): ToolKit {
       i.addEventListener('change', () => { const n = Number(i.value); if (Number.isFinite(n)) set(clamp(n, min, max)); });
       return i;
     };
-    const toggle = (testid: string, label: string, on: boolean, help: string, set: () => void): HTMLElement =>
-      h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(on), 'data-testid': testid, 'data-help-title': label, 'data-help': help, onclick: set }, label);
+    const toggle = (testid: string, label: string, on: boolean, help: string, set: () => void, now: () => boolean): HTMLElement => {
+      const b: HTMLElement = h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': String(on), 'data-testid': testid, 'data-help-title': label, 'data-help': help,
+        onclick: () => { set(); b.setAttribute('aria-pressed', String(now())); } }, label);
+      return b;
+    };
     if (which !== 'para') {
       const sel = h('select', { 'data-testid': 'text-font', 'aria-label': 'Font' }, ...availableFonts().map((f) => h('option', { value: f }, f)));
       sel.value = st.font;
@@ -513,14 +529,17 @@ export function createToolKit(host: ToolHost): ToolKit {
       out.push(field('Font', 'The typeface. Fonts on this device are listed.', sel),
         field('Size', 'How tall the letters are, in pixels.', num('text-size', st.size, 4, 1000, 1, (n) => restyle({ size: n }))),
         field('Colour', 'The colour of the words.', col),
-        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold })),
-        toggle('text-italic', 'Italic', st.italic, 'Slanted letters.', () => restyle({ italic: !styleNow().italic })),
+        toggle('text-bold', 'Bold', st.bold, 'Thicker letters.', () => restyle({ bold: !styleNow().bold }), () => styleNow().bold),
+        toggle('text-italic', 'Slanted · Italic', st.italic, 'Slanted letters (italic).', () => restyle({ italic: !styleNow().italic }), () => styleNow().italic),
         field('Letter gap', 'Extra space between letters, in pixels (tracking).', num('text-tracking', st.letterSpacing, -50, 200, 1, (n) => restyle({ letterSpacing: n }))));
     }
     if (which !== 'char') {
       const seg = h('div', { class: 'fpe-seg', role: 'group', 'aria-label': 'Line up' });
       for (const [a, label] of [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] as const) {
-        seg.append(h('button', { type: 'button', 'aria-pressed': String(st.align === a), 'data-testid': 'text-align-' + a, onclick: () => restyle({ align: a }) }, label));
+        seg.append(h('button', { type: 'button', 'aria-pressed': String(st.align === a), 'data-testid': 'text-align-' + a, onclick: () => {
+          restyle({ align: a });
+          for (const b of seg.querySelectorAll<HTMLElement>('button')) b.setAttribute('aria-pressed', String(b.dataset.testid === 'text-align-' + styleNow().align));
+        } }, label));
       }
       out.push(seg, field('Line gap', 'Distance between lines, as a multiple of the size (leading).', num('text-leading', st.lineHeight, 0.5, 4, 0.05, (n) => restyle({ lineHeight: n }))));
     }
@@ -573,17 +592,41 @@ export function createToolKit(host: ToolHost): ToolKit {
   }
 
   // ---------- one-click tools ----------
+  /**
+   * Paint bucket: fills what you see at the spot with the main colour, growing the layer when the spot lies outside it.
+   * A layer it may not paint (text, shape, hidden or locked) is left alone: the fill goes on a new layer just above it,
+   * in the same undo step. Only a spot off the picture, or outside the selected area, is turned down, with the reason.
+   */
+  function bucket(d: Doc, p: Pt): void {
+    const x = Math.floor(p.x), y = Math.floor(p.y), l = activeLayer(d);
+    if (!l) return;
+    if (x < 0 || y < 0 || x >= d.width || y >= d.height) { host.toast('That spot is outside the picture. Click on the picture to fill there.'); return; }
+    if (d.selection && !selectionAlpha(d.selection, x, y)) {
+      host.toast('That spot is outside the selected area. Click inside it, or choose Select › Select nothing to fill anywhere.');
+      return;
+    }
+    const o = { color: fgc(), tolerance: S.tolerance, contiguous: S.contiguous, allLayers: S.allLayers, opacity: S.bucketOpacity };
+    const why = l.locked ? 'is locked' : !l.visible ? 'is hidden' : l.content?.kind === 'text' ? 'is a text layer' : l.content ? 'is a shape layer' : '';
+    if (!why) {
+      const cmd = bucketFill(d, l, x, y, o);
+      if (cmd) host.push(cmd, true); else host.toast('Nothing to fill there.');
+      return;
+    }
+    const add = addLayer(d, createLayer(nextLayerName(d), d.width, d.height), indexOfLayer(d, l.id) + 1, 'New layer');
+    const nl = activeLayer(d), fill = nl ? bucketFill(d, nl, x, y, { ...o, allLayers: true }) : null;
+    if (!fill) { add.undo(d); host.toast('Nothing to fill there.'); return; }
+    host.push(combineCommands('Fill an area', [add, fill]), true);
+    host.panels();
+    host.toast(`Filled on a new layer above “${l.name}”, because that layer ${why}.`);
+  }
   function clickTool(t: ToolId, p: Pt, i: PointerInfo): void {
     const d = doc();
     if (!d) return;
     if (t === 'wand') { applyMask(wandMask(pixelsFor(d, S.allLayers), p.x, p.y, S.tolerance, S.contiguous), modeOf(i), 'Select similar colour'); return; }
+    if (t === 'bucket') { bucket(d, p); return; }
     const l = target();
     if (!l) return;
-    if (t === 'bucket') {
-      const cmd = bucketFill(d, l, p.x, p.y, { color: fgc(), tolerance: S.tolerance, contiguous: S.contiguous, allLayers: S.allLayers, opacity: S.bucketOpacity });
-      if (cmd) host.push(cmd, true);
-      else host.toast(inLayer(l, p) ? 'Nothing to fill there.' : `That spot is outside the layer “${l.name}”. Pick the layer to fill in Layers, then click again.`);
-    } else if (t === 'magic-eraser') {
+    if (t === 'magic-eraser') {
       const cmd = magicErase(d, l, p.x, p.y, S.tolerance, S.contiguous, S.eraseAll);
       if (cmd) host.push(cmd, true); else host.toast('Nothing to erase there.');
     } else if (t === 'red-eye') {
@@ -598,13 +641,16 @@ export function createToolKit(host: ToolHost): ToolKit {
     host.refreshOptions();
     host.render();
   }
-  /** The active layer as it was when the picture was opened (the history brush paints it back). */
-  function openedLayer(d: Doc, id: string): Placed | null {
-    const hist = host.history(), n = hist.entries().index;
+  /** The active layer as it looked at the History step marked "Paint from here" (at first, as the picture was opened). */
+  function stepLayer(d: Doc, id: string): Placed | null {
+    const hist = host.history(), n = hist.entries().index, want = host.paintFrom();
+    const t = want ? hist.stepIds().indexOf(want) + 1 : 0;
+    if (want && !t) host.paintFromGone();
     let k = n;
-    while (k > 0 && hist.undo(d)) k--;
+    const go = (to: number): void => { while (k > to && hist.undo(d)) k--; while (k < to && hist.redo(d)) k++; };
+    go(t);
     const l = findLayer(d, id), snap = l ? { x: l.x, y: l.y, width: l.width, height: l.height, data: l.data.slice() } : null;
-    while (k < n && hist.redo(d)) k++;
+    go(n);
     return snap;
   }
   function startFx(t: ToolId, p: Pt, i: PointerInfo): void {
@@ -618,9 +664,9 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (src && (kind === 'clone' || kind === 'heal')) { if (!src.offset || !S.aligned) src.offset = { x: src.pt.x - p.x, y: src.pt.y - p.y }; offset = src.offset; }
     let source: Placed | null = null;
     if (kind === 'history') {
-      source = openedLayer(d, l.id);
+      source = stepLayer(d, l.id);
       l = findLayer(d, l.id) ?? null;
-      if (!source || !l) { host.toast('This layer was not there when the picture was opened.'); return; }
+      if (!source || !l) { host.toast('This layer did not exist yet at the step marked in History, so there is nothing to paint back.'); return; }
       host.all();
     }
     const [size, hardness, strength] = fxo(t);
@@ -969,7 +1015,7 @@ export function createToolKit(host: ToolHost): ToolKit {
       case 'color-replace': bar.append(...fxSliders(t), sl('Closeness', 'How different a colour may be and still change.', 1, 255, S.replTol, '', (v) => { S.replTol = v; }, 'w3-tolerance'),
         hint('Paints your main colour over the colour under the first touch, keeping the detail.')); break;
       case 'bg-eraser': bar.append(...fxSliders(t), sl('Closeness', 'How different a colour may be and still be erased.', 1, 255, S.bgTol, '', (v) => { S.bgTol = v; }, 'w3-tolerance')); break;
-      case 'history-brush': bar.append(...fxSliders(t), hint('Paints back how this layer looked when the picture was opened. Picking another History step comes later.')); break;
+      case 'history-brush': bar.append(...fxSliders(t), hint('Paints back how this layer looked at the step marked with the brush in History; at first, as the picture was opened.')); break;
       case 'blur': case 'sharpen': case 'smudge': bar.append(...fxSliders(t)); break;
       case 'type':
         bar.append(...textControls('bar'));

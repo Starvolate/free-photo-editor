@@ -6,6 +6,8 @@
  */
 import { runJob, type Bitmap, type JobSpec } from '@free-photoeditor/core';
 
+/** The job was stopped with Cancel: there is no result, and it is not run again on the main thread. */
+export class JobStopped extends Error { constructor() { super('Stopped.'); } }
 interface Waiter { res: (d: Uint8ClampedArray) => void; rej: (e: Error) => void; }
 /** The same work on this thread, with the filter families loaded on first use. */
 async function runHere(spec: JobSpec, src: Bitmap): Promise<Uint8ClampedArray> {
@@ -43,7 +45,16 @@ export class JobRunner {
     return new Promise<Uint8ClampedArray>((res, rej) => {
       this.waiting.set(id, { res, rej });
       w.postMessage({ id, spec, width: src.width, height: src.height, buffer: copy.buffer }, [copy.buffer as ArrayBuffer]);
-    }).catch(local);
+    }).catch((e: unknown) => { if (e instanceof JobStopped) throw e; return local(); });
+  }
+  /** Cancel: ends the worker at once (its work is dropped) and fails every waiting job with JobStopped; the next job starts a new worker. */
+  stop(): void {
+    const w = this.worker;
+    this.worker = null;
+    this.tried = false;
+    w?.terminate();
+    for (const p of this.waiting.values()) p.rej(new JobStopped());
+    this.waiting.clear();
   }
   private fail(): void {
     const w = this.worker;

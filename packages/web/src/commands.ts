@@ -114,8 +114,8 @@ export const ADJ: Record<string, AdjDef> = {
   'filter.unsharp': { op: 'sharpen', controls: [
     R('amount', 'Strength', 'How much crisper the edges become.', 0, 5, 1, 0.1, '×'), R('radius', 'Edge width', 'How wide the sharpened edges are.', 0.5, 10, 1, 0.5, ' px'),
     R('threshold', 'Ignore small differences', 'Leaves smooth areas such as skin alone.', 0, 255, 0)] },
-  'filter.sharpen': { op: 'sharpen', instant: true, controls: [R('amount', 'Strength', '', 0, 5, 0.6, 0.1), R('radius', 'Edge width', '', 0.5, 10, 1)] },
-  'filter.sharpen-more': { op: 'sharpen', instant: true, controls: [R('amount', 'Strength', '', 0, 5, 1.5, 0.1), R('radius', 'Edge width', '', 0.5, 10, 1)] },
+  'filter.sharpen': { op: 'sharpen', controls: [R('amount', 'Strength', 'How much crisper the edges become.', 0, 5, 0.6, 0.1), R('radius', 'Edge width', 'How wide the sharpened edges are.', 0.5, 10, 1)] },
+  'filter.sharpen-more': { op: 'sharpen', controls: [R('amount', 'Strength', 'How much crisper the edges become.', 0, 5, 1.5, 0.1), R('radius', 'Edge width', 'How wide the sharpened edges are.', 0.5, 10, 1)] },
   // ---------- W2: every filter family ----------
   'filter.blur-box': FX('box-blur', [PX('radius', 'Blur amount', 'How far each pixel spreads, in square steps; bigger is blurrier.', 1, 100, 6)]),
   'filter.blur-motion': FX('motion-blur', [R('angle', 'Direction', 'Which way the streaks run: 0° is side to side, 90° is up and down.', -180, 180, 0, 1, '°'),
@@ -263,6 +263,7 @@ export const HANDLERS: Record<string, Handler> = {
   'edit.undo': H((e) => e.undo(), (e) => !!e.doc && e.history.canUndo),
   'edit.redo': H((e) => e.redo(), (e) => !!e.doc && e.history.canRedo),
   'edit.history-back': H((e) => e.undo(), (e) => !!e.doc && e.history.canUndo),
+  'edit.history-brush-step': H((e) => e.paintFromHere(), (e) => !!e.doc),
   'edit.history-forward': H((e) => e.redo(), (e) => !!e.doc && e.history.canRedo),
   'edit.cut': H((e) => e.copy(false, true)),
   'edit.copy': H((e) => e.copy(false, false)),

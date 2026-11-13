@@ -21,7 +21,9 @@ interface Fpe {
 type Win = Window & { fpe: Fpe };
 /** The batch, as commands.ts BATCH2_IDS lists it (not imported: commands.ts pulls in the app's CSS imports). */
 const BATCH_IDS = ['filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect', 'filter.deinterlace', 'filter.destripe',
-  'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias'];
+  'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
+  'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch',
+  'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable'];
 
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(WEB, 'dist');
@@ -93,7 +95,7 @@ suite('Filters batch 2 (headless Chrome)', () => {
       await reach(p, id);
       await p.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
       await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, before] as const, { timeout: 20_000 });
-      if (done.length === 0 || id === 'filter.star-burst') await p.screenshot({ path: join(OUT, `batch2-${id}.png`) });
+      if (done.length === 0 || id === 'filter.star-burst' || id === 'filter.ink-sketch' || id === 'filter.patterns') await p.screenshot({ path: join(OUT, `batch2-${id}.png`) });
       await p.click('[data-testid="adj-apply"]');
       await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
       expect(await sum(p), id).not.toBe(before);

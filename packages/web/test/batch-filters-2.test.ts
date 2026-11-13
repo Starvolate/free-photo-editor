@@ -26,7 +26,7 @@ const reds = (d: ArrayLike<number>): number[] => Array.from({ length: d.length /
 describe('filters batch 2', () => {
   it('makes the batch Ready, with handlers, and leaves the rows it did not build Planned', () => {
     expect(NEW_ROWS.length).toBeGreaterThan(200);
-    expect(BATCH2_IDS.length).toBe(12);
+    expect(BATCH2_IDS.length).toBe(21);
     for (const id of BATCH2_IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
     for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow', 'filter.page-curl', 'filter.gallery', 'image.mode-gray', 'image.rotate-any', 'edit.fade']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
@@ -139,5 +139,119 @@ describe('filters batch 2', () => {
         expect(px(out, 12, x, y), `${id} ${x},${y}`).toEqual(px(src.data, 12, x, y));
       }
     }
+  });
+});
+
+describe('filters batch 2, part 2: every look each row names', () => {
+  const step = (lo: number, hi: number): Bmp => bmp(8, 1, (x) => grey(x < 4 ? lo : hi));
+  const at = (d: ArrayLike<number>, w: number, x: number, y = 0): number => d[(y * w + x) * 4];
+  const BW = { fg: 0x000000, bg: 0xffffff };
+
+  it('traced outline and relief', () => {
+    // Outline: at x = 3 and 4 the slope is 4 x (200 - 100) / 4 = 100, ink 100 / 128 = 0.78125, so 100 x 0.21875 = 21.9 and 200 x 0.21875 = 43.75.
+    const o = run('outline', step(100, 200));
+    expect([0, 3, 4, 7].map((x) => at(o, 8, x))).toEqual([100, 22, 44, 200]);
+    // Relief, light from the right, height 1: x = 3 gains 200 - 100 = 100; x = 4 gains 100 too and clips at 255; flat parts keep their colour.
+    const r = run('outline', step(100, 200), { look: 1, angle: 0, height: 1 });
+    expect([0, 3, 4, 7].map((x) => at(r, 8, x))).toEqual([100, 200, 255, 200]);
+  });
+  it('ink drawing and pencil drawing', () => {
+    // Ink, colour 50%: 100 pales to 255 - 155 x 0.5 = 177.5 and 200 to 227.5; next to the step the ink 0.78125 leaves 21.875% of that.
+    const ink = run('sketch', step(100, 200));
+    expect([0, 3, 4, 7].map((x) => at(ink, 8, x))).toEqual([178, 39, 50, 228]);
+    // Pencil, softness 1: at x = 3 the blurred negative is (205 + 205 + 55) / 3 = 155, so 50 x 255 / 100 = 127.5; at x = 4 it is 105, so
+    // 200 x 255 / 150 = 340, clipped to white; a flat area divides by itself and turns white paper.
+    const pen = run('sketch', step(50, 200), { look: 1, size: 1 });
+    expect([0, 3, 4, 7].map((x) => at(pen, 8, x))).toEqual([255, 128, 255, 255]);
+  });
+  it('halftone dots and engraved lines', () => {
+    // Flat 128: darkness 127 / 255; dot radius 10 x 0.7072 x sqrt(0.498) = 4.991. Pixel (4, 4) sits 0.71 from the dot centre (5, 5): ink.
+    // (0, 0) is 6.36 away: paper. (0, 3) is 4.743 away: covered 4.991 - 4.743 + 0.5 = 0.747, so 255 x 0.253 = 64.
+    const g = bmp(10, 10, () => grey(128)), dots = run('newsprint', g, { size: 10, angle: 0 });
+    expect([px(dots, 10, 4, 4)[0], px(dots, 10, 0, 0)[0], px(dots, 10, 0, 3)[0]]).toEqual([0, 255, 64]);
+    expect(Array.from(new Set(reds(run('newsprint', bmp(10, 10, () => grey(255)), { size: 10 }))))).toEqual([255]);
+    expect(Array.from(new Set(reds(run('newsprint', bmp(10, 10, () => grey(0)), { size: 10 }))))).toEqual([0]);
+    // Lines 10 apart: each band's ink is 10 x 127 / 255 = 4.98 thick round its middle (5). Row 4 (centre 4.5) is ink, row 0 paper, and
+    // row 2 (centre 2.5) is covered 2.49 - 2.5 + 0.5 = 0.49, so 255 x 0.51 = 130.
+    const lines = run('newsprint', g, { look: 1, size: 10, angle: 0 });
+    expect([4, 0, 2].map((y) => px(lines, 10, 3, y)[0])).toEqual([0, 255, 130]);
+  });
+  it('dents and mirror tiles', () => {
+    const src = bmp(8, 8, (x, y) => [x * 10 + y, 0, 0, 255]);
+    // Tiles of 4 mirrored both ways round their centres (1.5, 1.5) and (5.5, 5.5): (0, 0) shows (3, 3) and (5, 6) shows (6, 5).
+    const both = run('dents', src, { look: 1, size: 4 });
+    expect([px(both, 8, 0, 0)[0], px(both, 8, 5, 6)[0]]).toEqual([33, 65]);
+    expect(px(run('dents', src, { look: 1, size: 4, flip: 1 }), 8, 0, 0)[0]).toBe(30);
+    // Dents push each pixel at most 2 px, so on a 20-per-pixel ramp no pixel moves more than 40 (plus rounding); flat stays flat.
+    const ramp = bmp(8, 8, (x) => grey(x * 20)), d = run('dents', ramp, { size: 4, amount: 2 });
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) expect(Math.abs(px(d, 8, x, y)[0] - x * 20)).toBeLessThanOrEqual(41);
+    expect(Array.from(d)).not.toEqual(Array.from(ramp.data));
+    expect(Array.from(run('dents', bmp(6, 6, () => grey(90)), { amount: 20 }))).toEqual(Array.from(bmp(6, 6, () => grey(90)).data));
+  });
+  it('cartoon, photocopy, cubist squares and glass blocks', () => {
+    // Reach 1: x = 3 (50) is darker than 90% of its neighbours' mean (50 + 50 + 200) / 3 = 100, so it is a black line. Elsewhere the colour
+    // steps in fours (0, 85, 170, 255): 50 becomes 85 and 200 becomes 170. Photocopy prints only the line.
+    const c = run('cartoon', step(50, 200), { size: 1 });
+    expect([0, 2, 3, 4, 7].map((x) => at(c, 8, x))).toEqual([85, 85, 0, 170, 170]);
+    const pc = run('cartoon', step(50, 200), { look: 1, size: 1 });
+    expect([0, 3, 4, 7].map((x) => at(pc, 8, x))).toEqual([255, 0, 255, 255]);
+    // Squares: on a red left half and a green right half, every pixel is red, green or the blue second colour, and all three show.
+    const two = bmp(32, 32, (x) => (x < 16 ? [200, 0, 0, 255] : [0, 200, 0, 255])), cub = run('cartoon', two, { look: 2, tile: 8, bg: 0x0000ff });
+    const seen = new Set<string>();
+    for (let i = 0; i < 32 * 32; i++) seen.add(px(cub, 32, i % 32, Math.floor(i / 32)).join());
+    expect([...seen].sort()).toEqual(['0,0,255,255', '0,200,0,255', '200,0,0,255']);
+    // Glass blocks of 4 at full bend: (1, 1) looks at (0.5, 0.5), half way between 0 and 10 = 5; (2, 1) looks at (2.5, 0.5): 25 and 5.
+    const ramp = bmp(8, 8, (x, y) => [x * 10, y * 10, 0, 255]), gl = run('cartoon', ramp, { look: 3, tile: 4, amount: 100 });
+    expect([px(gl, 8, 1, 1), px(gl, 8, 2, 1)]).toEqual([[5, 5, 0, 255], [25, 5, 0, 255]]);
+  });
+  it('lino print and leaded glass', () => {
+    // Flat 50 under the 128 level prints black; carved lines every 6 rows open where row % 6 < 3 x 50 / 128 = 1.17, so rows 0, 1, 6, 7.
+    const lino = run('linocut', bmp(4, 12, () => grey(50)), { smooth: 0 });
+    expect(Array.from({ length: 12 }, (_, y) => px(lino, 4, 1, y)[0])).toEqual([255, 255, 0, 0, 0, 0, 255, 255, 0, 0, 0, 0]);
+    expect(Array.from(new Set(reds(run('linocut', bmp(4, 12, () => grey(50)), { smooth: 0, gouges: 0 }))))).toEqual([0]);
+    expect(Array.from(new Set(reds(run('linocut', bmp(4, 12, () => grey(200))))))).toEqual([255]);
+    // Leaded glass on a flat colour: each piece keeps that colour and the lead between pieces is black, and both show.
+    const glass = run('linocut', bmp(40, 40, () => [30, 60, 90, 255]), { look: 1, cell: 12, lead: 2 }), kinds = new Set<string>();
+    for (let i = 0; i < 1600; i++) kinds.add(px(glass, 40, i % 40, Math.floor(i / 40)).join());
+    expect([...kinds].sort()).toEqual(['0,0,0,255', '30,60,90,255']);
+  });
+  it('patterns: grid, checkerboard, maze, spiral, sine waves and jigsaw, in the main colour over the second', () => {
+    const blank = (w: number, h: number): Bmp => bmp(w, h, () => [0, 0, 0, 0]);
+    // Grid every 10 px, lines 2 px: x or y within 2 of a multiple of 10 is a line (main colour, black here); the rest is white. Opaque.
+    const grid = run('patterns', blank(20, 20), { ...BW, size: 10, width: 2 });
+    expect([px(grid, 20, 0, 5), px(grid, 20, 5, 5), px(grid, 20, 5, 1), px(grid, 20, 11, 5)]).toEqual([[0, 0, 0, 255], [255, 255, 255, 255], [0, 0, 0, 255], [0, 0, 0, 255]]);
+    const chk = run('patterns', blank(20, 20), { ...BW, look: 1, size: 10 });
+    expect([px(chk, 20, 0, 0)[0], px(chk, 20, 10, 0)[0], px(chk, 20, 10, 10)[0]]).toEqual([255, 0, 255]);
+    // Maze: 6 px cells with 2 px walls in 50 x 38 make 8 x 6 = 48 cells. A maze with one path between any two cells has exactly 47
+    // openings; count them by looking at the middle of each cell's west and north wall.
+    const mz = run('patterns', blank(50, 38), { ...BW, look: 2, size: 6, width: 2 });
+    let openings = 0;
+    for (let j = 0; j < 6; j++) for (let i = 0; i < 8; i++) {
+      if (i > 0 && px(mz, 50, i * 6, j * 6 + 3)[0] === 255) openings++;
+      if (j > 0 && px(mz, 50, i * 6 + 3, j * 6)[0] === 255) openings++;
+    }
+    expect(openings).toBe(47);
+    expect([px(mz, 50, 0, 0)[0], px(mz, 50, 3, 3)[0], px(mz, 50, 49, 20)[0]]).toEqual([0, 255, 0]);
+    // Spiral 8 px a turn round (8, 8): 2 px to the right is a quarter turn in (main colour), 6 px is three quarters (second colour).
+    const sp = run('patterns', blank(17, 17), { ...BW, look: 3, size: 8 });
+    expect([px(sp, 17, 10, 8)[0], px(sp, 17, 14, 8)[0]]).toEqual([0, 255]);
+    // Sine waves 8 px long: 0.5 + 0.25 (sin x + sin y) of the way to black: 127.5 at (0, 0), 63.75 at (2, 0), 191.25 at (6, 0).
+    const sn = run('patterns', blank(8, 8), { ...BW, look: 4, size: 8 });
+    expect([0, 2, 6].map((x) => px(sn, 8, x, 0)[0])).toEqual([128, 64, 191]);
+    // Jigsaw pieces of 20: the cut between the first two pieces is a line at (19, 2), but at (19, 10) a round tab joins the two sides.
+    const jg = run('patterns', blank(40, 40), { ...BW, look: 5, size: 20, width: 1 });
+    expect([px(jg, 40, 19, 2)[0], px(jg, 40, 5, 5)[0], px(jg, 40, 19, 10)[0]]).toEqual([0, 255, 255]);
+  });
+  it('stroke blur and wrap-around blur', () => {
+    // Level strokes 5 long: an upright 1 px line is 1 of 5 samples, so the middle value is 0 and it goes; a level line stays.
+    const upright = run('stroke-blur', bmp(9, 5, (x) => grey(x === 4 ? 255 : 0)), { angle: 0, jitter: 0, length: 2 });
+    expect([px(upright, 9, 4, 2)[0], px(upright, 9, 3, 2)[0]]).toEqual([0, 0]);
+    expect(px(run('stroke-blur', bmp(9, 5, (_, y) => grey(y === 2 ? 255 : 0)), { angle: 0, jitter: 0, length: 2 }), 9, 4, 2)[0]).toBe(255);
+    // Wrap-around, radius 1: the 240 at the right end also reaches x = 0, so (240 + 0 + 0) / 3 = 80 there; x = 1 stays 0.
+    const w = run('wrap-blur', bmp(6, 1, (x) => grey(x === 5 ? 240 : 0)), { radius: 1, edges: 0 });
+    expect([0, 1, 4, 5].map((x) => at(w, 6, x))).toEqual([80, 0, 80, 80]);
+    // Edges only, 2 px: on a 5 x 5 with 150 in the last column, (0, 2) blurs fully to 50, (3, 2) is 1 px in, so half: 25.
+    const e = run('wrap-blur', bmp(5, 5, (x) => grey(x === 4 ? 150 : 0)), { radius: 1, edges: 2 });
+    expect([0, 2, 3, 4].map((x) => at(e, 5, x, 2))).toEqual([50, 0, 25, 50]);
   });
 });

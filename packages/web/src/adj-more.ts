@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * The batch filters' dialogs (13 Nov 2026), in plain words: spin blur, lens fix, glass, ocean ripple, lens flare,
- * lighting, colour to see-through, dither, replace a colour, fewer colours and palette colour. commands.ts loads this
+ * lighting, colour to see-through, dither, replace a colour, fewer colours and palette colour, then the census filters of batch 2. commands.ts loads this
  * file the first time one of them runs (BATCH_IDS, BATCH2_IDS), so the first screen never downloads it; loading it adds them to ADJ.
  */
 import { ADJ, type AdjDef, type Ctl } from './commands';
@@ -81,3 +81,43 @@ export const MORE2: Record<string, AdjDef> = {
     PCT('strength', 'Strength', 'How much the steps are smoothed.', 0, 100, 80)]),
 };
 Object.assign(ADJ, MORE2);
+
+/** The second batch, part 2 (13 Nov 2026): each census row builds every look its name lists, picked in the Look list. */
+const LOOK = (help: string, options: readonly string[]): Ctl => SEL('look', 'Look', help, options);
+export const MORE3: Record<string, AdjDef> = {
+  'filter.outline-relief': FX('outline', [LOOK('Dark lines traced along the edges, or the edges raised and sunk with the colours kept.', ['Traced outline', 'Relief']),
+    PCT('amount', 'Strength', 'How dark the lines are, or how high the relief stands.', 10, 400, 100),
+    R('width', 'Line width (outline)', 'How thick the traced lines are.', 1, 10, 1, ' px'),
+    R('angle', 'Light from (relief)', 'Where the light comes from: 0 is the right, 90 the top.', 0, 360, 135, '°'),
+    R('height', 'Height (relief)', 'How far apart the raised and sunk sides of each edge are.', 1, 10, 2, ' px')]),
+  'filter.newsprint': FX('newsprint', [LOOK('Round ink dots like a newspaper photo, or engraved lines that thicken in the dark parts.', ['Halftone dots', 'Engraved lines']),
+    R('size', 'Spacing', 'How far apart the dots or lines are.', 2, 64, 8, ' px'), R('angle', 'Angle', 'Turns the dot grid or the lines.', 0, 180, 45, '°')]),
+  'filter.dents': FX('dents', [LOOK('Bends the picture as if seen through dented glass, or mirrors it inside square tiles.', ['Dents', 'Mirror tiles']),
+    R('size', 'Size', 'How big each dent or tile is.', 2, 400, 40, ' px'), R('amount', 'Depth (dents)', 'How far the dents push the picture.', 0, 100, 8, ' px'),
+    SEL('flip', 'Mirror (tiles)', 'Which way each tile mirrors its part of the picture.', ['Both ways', 'Left to right', 'Top to bottom']), SEED]),
+  'filter.cartoon': FX('cartoon', [LOOK('Flat colours with black lines, a black and white photocopy, tilted squares of colour, or a wall of glass blocks.',
+    ['Cartoon', 'Photocopy', 'Cubist squares', 'Glass blocks']),
+    R('size', 'Line reach (cartoon, photocopy)', 'How far round each pixel it looks to decide whether it is a dark line.', 1, 100, 6, ' px'),
+    PCT('edge', 'Line threshold (cartoon, photocopy)', 'How much darker than its surroundings a pixel must be to become ink; lower finds more lines.', 1, 90, 10),
+    R('levels', 'Colour steps (cartoon)', 'How many flat tones each colour keeps.', 2, 16, 4),
+    R('tile', 'Tile size (squares, glass)', 'How big the squares or glass blocks are.', 2, 400, 16, ' px'),
+    PCT('amount', 'Glass bend (glass)', 'How much each block squeezes the view behind it.', 0, 100, 50), SEED], { colors: true }),
+  'filter.ink-sketch': FX('sketch', [LOOK('Ink lines over paler colour, or a grey pencil drawing on white paper.', ['Ink drawing', 'Pencil drawing']),
+    PCT('amount', 'Line strength (ink)', 'How dark the ink lines are.', 10, 400, 100), R('width', 'Line width (ink)', 'How thick the ink lines are.', 1, 10, 1, ' px'),
+    PCT('color', 'Colour (ink)', 'How much of the colour stays under the ink.', 0, 100, 50),
+    R('size', 'Softness (pencil)', 'Bigger draws broader, softer pencil shading.', 1, 100, 4, ' px'), PCT('dark', 'Darkness (pencil)', 'How dark the pencil lines are.', 10, 300, 100)]),
+  'filter.linocut': FX('linocut', [LOOK('A black and white print cut from a lino block, or coloured glass held by dark lead lines.', ['Lino print', 'Leaded glass']),
+    R('level', 'Ink below (lino)', 'Parts darker than this print black.', 1, 254, 128), R('smooth', 'Smoothness (lino)', 'Smooths the cut edges.', 0, 50, 1, ' px'),
+    CHK('gouges', 'Carved lines (lino)', 'Cut thin white lines into the dark parts, thicker where the picture is lighter.', 1),
+    R('spacing', 'Line spacing (lino)', 'How far apart the carved lines are.', 3, 40, 6, ' px'),
+    R('cell', 'Piece size (glass)', 'How big each piece of glass is.', 6, 400, 24, ' px'), R('lead', 'Lead width (glass)', 'How thick the dark lines between pieces are.', 0, 20, 2, ' px'), SEED]),
+  'filter.patterns': FX('patterns', [LOOK('Fills the area with a pattern in your main colour over your second colour.', ['Grid', 'Checkerboard', 'Maze', 'Spiral', 'Sine waves', 'Jigsaw']),
+    R('size', 'Size', 'How big each square, maze cell, spiral turn, wave or puzzle piece is.', 2, 400, 24, ' px'),
+    R('width', 'Line width (grid, maze, jigsaw)', 'How thick the lines are.', 1, 100, 2, ' px'), SEED], { colors: true }),
+  'filter.blur-sketch': FX('stroke-blur', [R('length', 'Stroke length', 'How long each brush stroke is; longer looks more painted.', 1, 40, 6, ' px'),
+    R('angle', 'Stroke angle', 'Which way the strokes run: 0 is level, 90 upright.', 0, 180, 45, '°'),
+    R('jitter', 'Wobble', 'How much each stroke turns from that angle, for a hand-painted look.', 0, 90, 20, '°'), SEED]),
+  'filter.blur-tileable': FX('wrap-blur', [R('radius', 'Blur amount', 'How far the blur reaches; it wraps round, so the left edge blends with the right.', 1, 200, 8, ' px'),
+    R('edges', 'Only near the edges', 'Blur only this close to the edges, so the middle stays sharp; 0 blurs the whole area.', 0, 1000, 32, ' px')]),
+};
+Object.assign(ADJ, MORE3);

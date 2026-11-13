@@ -46,12 +46,15 @@ const CASES: Record<FxKind, P> = {
   kaleidoscope: { repeats: 3 }, 'alien-map': { cycles: 3 }, bloom: { threshold: 60, size: 6, strength: 120 }, 'edge-detect': { method: 0 }, deinterlace: { keep: 0 },
   destripe: { width: 4 }, 'video-degrade': { pattern: 0, size: 1, strength: 80 }, lowlight: { dark: 80 }, 'bump-map': { depth: 40 }, 'star-burst': { length: 30 },
   'edge-keep-blur': { radius: 2, keep: 60 }, antialias: { edge: 10 },
+  outline: { amount: 200 }, sketch: { look: 1, size: 2 }, newsprint: { size: 4 }, linocut: { smooth: 0 }, cartoon: { size: 2, edge: 5 }, dents: { size: 8, amount: 4 },
+  patterns: { size: 4, fg: 0x102030, bg: 0xe0d0c0 }, 'stroke-blur': { length: 3 }, 'wrap-blur': { radius: 3 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
   'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed',
-  'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur']);
-const FILLS = new Set<FxKind>(['clouds', 'fibers']);
+  'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur',
+  'outline', 'sketch', 'newsprint', 'linocut', 'cartoon', 'stroke-blur']);
+const FILLS = new Set<FxKind>(['clouds', 'fibers', 'patterns']);
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude');
 
 const run = (k: FxKind, src: Bitmap, extra: P = {}): Uint8ClampedArray => runEffect({ kind: k, params: { ...CASES[k], ...extra } }, src);
@@ -73,7 +76,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(74);
+    expect(FX_KINDS.length).toBe(83);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

@@ -143,3 +143,15 @@
 .fpe-rrow .fpe-icon{width:16px;height:16px;color:var(--muted)}
 .fpe-rrow .fpe-rline{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fpe-rrow kbd{font:12px system-ui,sans-serif;color:var(--muted)}
+/* Layer effect tiles (a-deep): a live "Aa" sample of each effect on a light card, in place of an icon. Soft, never neon. */
+.fpe-rtile .fpe-raa{font:800 20px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.02em;color:#2b2622;background:linear-gradient(160deg,#f6f1ea,#e2d8cc)}
+.fpe-rbody:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .fpe-rtile .fpe-raa{font-size:16px}
+.fpe-rtile[data-cmd="layer.fx-shadow"] .fpe-raa{text-shadow:2px 3px 3px rgba(40,25,10,.5)}
+.fpe-rtile[data-cmd="layer.fx-stroke"] .fpe-raa{color:#f6f1ea;-webkit-text-stroke:1.5px #2b2622;paint-order:stroke fill}
+.fpe-rtile[data-cmd="layer.fx-outer-glow"] .fpe-raa{color:#f7e1b5;background:linear-gradient(160deg,#3b3029,#241e1a);text-shadow:0 0 6px rgba(240,180,90,.6)}
+.fpe-rtile[data-cmd="layer.fx-bevel"] .fpe-raa{color:#cbb59c;text-shadow:-1px -1px 0 #fff8ee,1px 1px 1px rgba(70,45,20,.6)}
+.fpe-rtile[data-cmd="layer.fx-color"] .fpe-raa{color:#3f78d8}
+.fpe-rtile[data-cmd="layer.fx-gradient"] .fpe-raa{color:#b4623f}
+.fpe-rtile[data-cmd="layer.fx-inner-shadow"] .fpe-raa{color:#b3a699;text-shadow:1px 1px 0 rgba(255,255,255,.7),-1px -1px 1px rgba(40,25,10,.5)}
+.fpe-rtile[data-cmd="layer.fx-inner-glow"] .fpe-raa{color:#d99a45;text-shadow:0 0 3px #fff3d6}
+.fpe-rtile[data-cmd="layer.fx-satin"] .fpe-raa{color:#7b5d8e}

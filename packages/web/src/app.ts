@@ -1301,6 +1301,7 @@ export class Editor {
       b.setAttribute('aria-pressed', String(TOOLS[cur] === this.tool));
     }
     this.updateUndo();
+    this.ribbon?.synced();
   }
 
   // ---------- layout, theme, view ----------

@@ -7,7 +7,7 @@
  * `clicks()` promises are the same data. app.ts loads this file lazily the first time the layout is desktop, so the
  * first-screen budget holds; it keeps today's menu bar for narrower screens.
  */
-import { flatten, resizeBitmap, runJob, type Bitmap, type Doc, type JobSpec } from '@free-photoeditor/core';
+import { activeLayer, flatten, resizeBitmap, runJob, type Bitmap, type Doc, type JobSpec, type Layer } from '@free-photoeditor/core';
 import { ADJ } from './commands';
 import { CONTEXTUAL, SHEETS, TABS, firstTab, homes, homeText, restOf, type Group, type Rest, type Tab } from './ribbon-homes';
 // The new Planned rows must be in BY_ID before any label is drawn. A bare `import './registry-union'` is dropped by the
@@ -38,6 +38,8 @@ export interface RibbonHost {
 export interface Ribbon {
   setActive(on: boolean): void;
   toolChanged(): void;
+  /** After the editor brought its controls in line: each layer effect's reason for being off follows the active layer. */
+  synced(): void;
   optionsChanged(activity: boolean): void;
   place(id: string): string | null;
   reveal(id: string): HTMLElement | null;
@@ -111,6 +113,17 @@ const idle = (f: () => void): void => {
   const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
   if (w.requestIdleCallback) w.requestIdleCallback(f, { timeout: 1000 }); else setTimeout(f, 80);
 };
+/**
+ * Why a Ready layer effect cannot go on the active layer, in plain words: an effect follows the edges of a layer's own
+ * pixels, which a light and colour layer or a colour layer does not have; a folder is not one layer; a lock stops changes.
+ */
+export function fxWhy(plain: string, l: Layer | undefined): string {
+  if (l?.locked) return `${l.name} is locked: unlock it in Layers, then ${plain} can go on it.`;
+  if (l?.kind === 'adjust') return `${plain} follows the edges of a layer's own pixels. ${l.name} is a light and colour layer with no pixels of its own, so pick a picture, text or shape layer in Layers.`;
+  if (l?.kind === 'fill') return `${plain} follows the edges of a layer's own pixels. ${l.name} is a colour layer that covers the whole picture, so pick a picture, text or shape layer in Layers.`;
+  if (l?.kind === 'folder') return `${plain} goes on one layer, not a folder: open ${l.name} and pick a layer inside it.`;
+  return `${plain} goes on an unlocked picture layer: pick one in Layers.`;
+}
 const readTab = (): string | null => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const writeTab = (t: string): void => { try { localStorage.setItem(KEY, t); } catch { /* private window: the tab is simply not remembered */ } };
 
@@ -139,9 +152,9 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     if (b.getAttribute('aria-disabled') !== 'true') { closeList(); void host.run(id); } else if (!planned && !hasDoc()) { closeList(); askForPhoto(id); }
     else if (b.dataset.why) { closeList(); host.toast(b.dataset.why); }
   };
-  /** A Ready layer effect that is off only because the active layer has no pixels of its own reads as normal; its tooltip and a click say what to do. */
+  /** A Ready layer effect that is off only because of the active layer reads as normal; its tooltip and a click say why and what to do. */
   const whyOff = (id: string, off: boolean): string | null =>
-    (off && ready(id) && hasDoc() && /^layer\.fx-/.test(id) ? `${plainOf(id)} goes on an unlocked picture layer: pick one in Layers.` : null);
+    (off && ready(id) && hasDoc() && /^layer\.fx-/.test(id) ? fxWhy(plainOf(id), activeLayer(host.picture())) : null);
 
   // ---------- the app bar: File, View, Help and Export sheets; the contextual chip; the document tabs ----------
   const sheetBtn = (plain: string, ids: string[], label = plain): HTMLButtonElement => {
@@ -240,7 +253,8 @@ export function mountRibbon(host: RibbonHost): Ribbon {
       'aria-disabled': planned || !host.enabled(id) ? 'true' : null, 'data-why': whyOff(id, planned || !host.enabled(id)), 'aria-label': `${plain}${pro && pro !== plain ? ' · ' + pro : ''}${planned ? ', planned' : ''}` };
     const b = kind === 'small'
       ? h('button', attrs, icon(iconFor(id, tab)), h('span', { class: 'fpe-rlabel' }, plain), planned ? tag() : null)
-      : h('button', attrs, h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, short), planned ? tag() : null);
+      // A layer effect's tile shows a live "Aa" sample of that effect (a-deep), drawn by CSS, in place of an icon.
+      : h('button', attrs, kind === 'tile' && /^layer\.fx-/.test(id) ? h('span', { class: 'fpe-rico fpe-raa', 'aria-hidden': 'true' }, 'Aa') : h('span', { class: 'fpe-rico' }, icon(iconFor(id, tab))), kind === 'big' ? names(plain, pro, 'fpe-names fpe-rlabel') : h('span', { class: 'fpe-rlabel' }, short), planned ? tag() : null);
     b.addEventListener('click', () => press(id, b, planned));
     return b;
   };
@@ -529,6 +543,12 @@ export function mountRibbon(host: RibbonHost): Ribbon {
       }
     },
     toolChanged() { if (active) showCtx(); else labelChip(); },
+    synced() {
+      for (const b of ribbon.querySelectorAll<HTMLElement>('[data-cmd^="layer.fx-"]')) {
+        const w = whyOff(b.dataset.cmd as string, b.getAttribute('aria-disabled') === 'true');
+        if (w) b.dataset.why = w; else delete b.dataset.why;
+      }
+    },
     optionsChanged(activity) {
       const has = hasDoc(), opened = has && !hadDoc;
       hadDoc = has;

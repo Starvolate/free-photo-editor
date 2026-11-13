@@ -406,6 +406,10 @@ for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 export const BATCH_IDS = ('filter.blur-spin filter.lens filter.glass filter.ocean-ripple filter.lens-flare filter.lighting filter.color-to-alpha filter.dither '
   + 'image.adj-replace image.reduce-colors image.mode-indexed').split(' ');
 for (const id of BATCH_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
+// The second filters batch (13 Nov 2026): census rows whose dialogs also live in adj-more.ts, loaded on first use.
+export const BATCH2_IDS = ('filter.kaleidoscope filter.alien-map filter.bloom filter.edge-detect filter.deinterlace filter.destripe filter.video-degrade '
+  + 'filter.lowlight filter.bump-map filter.star-burst filter.blur-edge-keep filter.antialias').split(' ');
+for (const id of BATCH2_IDS) HANDLERS[id] = H(async (e) => { await import('./adj-more'); return e.openAdjust(id); });
 // W6 S3: each editable light and colour layer uses its Image › Adjustments dialog's engine and controls.
 for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue', 'color-balance', 'bw', 'photo-filter', 'channel-mixer', 'invert', 'posterize', 'threshold', 'gradient-map', 'selective-color'])
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));

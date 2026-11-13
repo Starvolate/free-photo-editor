@@ -181,7 +181,18 @@ export function runPathOp(id: string, k: PathOpsKit): void {
     host.render();
   };
   go();
-  host.sheet('pathop', `${plain} (${pro})`, sheet(id, k, go));
+  show(k, `${plain} (${pro})`, sheet(id, k, go));
+}
+
+/**
+ * The editor builds a sheet once per name and keeps that first body, so every command shows its own controls inside one
+ * holder that is refilled each time. Without it, Mirror after Grow showed Grow's sheet, wired to redo Grow.
+ */
+let holder: HTMLElement | null = null;
+function show(k: PathOpsKit, title: string, body: HTMLElement): void {
+  holder ??= h('div', { 'data-testid': 'pathop-holder' });
+  holder.replaceChildren(body);
+  k.host.sheet('pathop', title, holder);
 }
 
 // ---- drawing an outline as a line on a layer -------------------------------------------------------------------------
@@ -247,7 +258,7 @@ function runLineStyle(k: PathOpsKit): void {
     host.render();
   };
   go();
-  host.sheet('pathop', `${plain} (${pro})`, sheet('path.stroke-style', k, go));
+  show(k, `${plain} (${pro})`, sheet('path.stroke-style', k, go));
 }
 
 function seg<T extends string>(label: string, help: string, opts: readonly [T, string][], cur: () => T, set: (v: T) => void, redo: () => void, tid: string): HTMLElement {

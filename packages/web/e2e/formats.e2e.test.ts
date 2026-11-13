@@ -64,6 +64,16 @@ function oraFile(): Buffer {
 const TIFF3 = Buffer.from(encodeTiffPages([{ bmp: solid(48, 36, [200, 30, 30, 255]), name: 'Sky' }, { bmp: solid(48, 36, [30, 160, 60, 255]), name: 'Sea' }, { bmp: solid(48, 36, [230, 200, 90, 255]), name: 'Sand' }]));
 const GIF3 = Buffer.from(encodeGif([0, 1, 2].map((i) => ({ bmp: solid(20, 10, [i * 100, 50, 200 - i * 80, 255]), delay: 150, name: '' }))));
 const PDF2 = Buffer.from(encodePdf([solid(40, 30, [220, 30, 30, 255]), solid(50, 20, [30, 60, 220, 255])]));
+/** 24 x 16, red left half and blue right half: drawn by us, then encoded with macOS `sips -s format heic` (no outside picture). */
+const HEIC = Buffer.from([
+  'AAAAJGZ0eXBoZWljAAAAAG1pZjFNaVBybWlhZk1pSEJoZWljAAABhm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAA',
+  'AAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAADnBpdG0AAAAAAAEAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMx',
+  'AAAAAOZpcHJwAAAAxWlwY28AAAATY29scm5jbHgAAgACAAaAAAAADGNsbGkAywBAAAAAFGlzcGUAAAAAAAAAGAAAABAAAAAJaXJvdAAAAAAQcG',
+  'l4aQAAAAADCAgIAAAAcWh2Y0MBA3AAAACwAAAAAAAe8AD8/fj4AAALA6AAAQAXQAEMAf//A3AAAAMAsAAAAwAAAwAecCShAAEAI0IBAQNwAAAD',
+  'ALAAAAMAAAMAHqAUIEHAiwziHuRZVNwICBgCogABAAlEAcBhcshAUyQAAAAZaXBtYQAAAAAAAAABAAEGgQIDBYaEAAAAHmlsb2MAAAAARAAAAQ',
+  'ABAAAAAQAAAboAAABUAAAAAW1kYXQAAAAAAAAAZAAAAFAoAa+jcRpiI/6Vf/pfZYd0IX/so5TLZN3DNvxA9fhy7QtQcCk//9CxCxplHyiddN//',
+  'CHi/+k+L5sl9soYhoD1jGrTr1CaETf9+4PcFsr1zgA==',
+].join(''), 'base64');
 function dngFile(w: number, h: number): Buffer {
   const px = new Uint8Array(w * h * 2), dv = new DataView(px.buffer);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -168,6 +178,10 @@ describe.skipIf(!CHROME)('file formats in the real editor', () => {
     expect(latin(jxl)).toContain(CREDIT);
     const i = await waitTabs(page, await open(page, 'back.jxl', 'image/jxl', jxl), 60_000);
     expect([i.width, i.height]).toEqual([20, 10]);
+  });
+  it('opens HEIC (iPhone photos) through WebAssembly, since the browser has no HEIC decoder of its own', async () => {
+    const i = await waitTabs(page, await open(page, 'tiny.heic', 'image/heic', HEIC), 60_000);
+    expect([i.width, i.height, i.layers.length]).toEqual([24, 16, 1]);
   });
   it('opens a PDF page through the page picker, and saves PDF with the credit', async () => {
     const before = await open(page, 'two-pages.pdf', 'application/pdf', PDF2);

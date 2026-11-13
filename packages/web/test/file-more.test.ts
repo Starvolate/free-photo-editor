@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { addLayer, createDocument, createLayer, type Layer } from '@free-photoeditor/core';
 import { decodePng } from '@free-photoeditor/formats/png';
 import { unzipSync } from '@free-photoeditor/formats/zip';
-import { URL_BLOCKED, URL_PAGE, cameraProblem, checkUrl, fetchPicture, layerFiles, layersZip, nameFromUrl, photoName, printHtml, printMm, statusText } from '../src/file-more';
+import { RECENT_MAX, URL_BLOCKED, URL_PAGE, addRecent, cameraProblem, recentKey, checkUrl, fetchPicture, layerFiles, layersZip, nameFromUrl, photoName, printHtml, printMm, statusText } from '../src/file-more';
 
 const answer = (status: number, type: string, body: Uint8Array | string): typeof fetch =>
   (async () => new Response(status === 204 ? null : body, { status, headers: { 'content-type': type } })) as unknown as typeof fetch;
@@ -95,5 +95,28 @@ describe('Take a photo', () => {
   });
   it('names the photo from the time it was taken', () => {
     expect(photoName(new Date(2026, 10, 13, 9, 5, 7))).toBe('Camera photo 2026-11-13 09.05.07.png');
+  });
+});
+
+describe('Recent pictures', () => {
+  const item = (name: string, size: number, at: number) => ({ key: recentKey(name, size), name, size, type: 'image/png', at });
+  it('puts the newest on top, moves a picture opened again up instead of listing it twice', () => {
+    const a = item('a.png', 10, 1), b = item('b.png', 20, 2);
+    expect(addRecent([a], b)).toEqual({ list: [b, a], drop: [] });
+    const again = item('a.png', 10, 3);
+    expect(addRecent([b, a], again)).toEqual({ list: [again, b], drop: [] });
+    // The same name with another size is another file.
+    expect(addRecent([a], item('a.png', 11, 4)).list.map((r) => r.key)).toEqual(['a.png|11', 'a.png|10']);
+  });
+  it('keeps at most the count and the total size, dropping the oldest, and never keeps a file larger than the whole allowance', () => {
+    const list = Array.from({ length: RECENT_MAX }, (_, i) => item(`p${i}.png`, 5, i));
+    const r = addRecent(list, item('new.png', 5, 100));
+    expect(r.list.length).toBe(RECENT_MAX);
+    expect(r.drop).toEqual(['p0.png|5']);
+    // 100 bytes in all: 40 + 30 + 20 fit, the 25-byte oldest goes.
+    const s = addRecent([item('old.png', 25, 1), item('mid.png', 20, 2), item('new.png', 30, 3)], item('top.png', 40, 4), 10, 100);
+    expect([s.list.map((x) => x.name), s.drop]).toEqual([['top.png', 'new.png', 'mid.png'], ['old.png|25']]);
+    const big = addRecent([item('a.png', 10, 1)], item('huge.tif', 101, 2), 10, 100);
+    expect(big).toEqual({ list: [item('a.png', 10, 1)], drop: [] });
   });
 });

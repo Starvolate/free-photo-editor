@@ -4,9 +4,9 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 406 Ready, 269 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 437 Ready, 238 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
-201 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
+171 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
 
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 675 | 25 | 214 | 436 | 0 |
-| Ready today | 406 | 25 | 177 | 204 | 0 |
+| All functions | 675 | 25 | 227 | 423 | 0 |
+| Ready today | 437 | 25 | 191 | 221 | 0 |
 
 ## The Task ribbon
 
@@ -33,11 +33,11 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Develop RAW · RAW develop | Develop, Light and tone, Colour and looks, Detail and lens, Edit one area, Check | 38 | 35 | 7 |
 | AI tools · AI | Make with words, Select and remove, Change with AI, Better quality, Faces and words | 36 | 23 | 5 |
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 11 |
-| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 8 |
-| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 4 |
+| Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
+| Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 6 |
 | Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 17 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 20 |
-| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 10 |
+| Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 15 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 8 |
 | File sheet · File (backstage) | app-bar sheet | 29 | 29 | 29 |
 | Export sheet · Export as | app-bar sheet | 26 | 26 | 26 |
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (37 Ready, 4 Planned)
+## File (38 Ready, 3 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -114,7 +114,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
 | file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
 | file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
-| file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
+| file.recent | Recent pictures | Open recent | Open again a picture you opened before. The files are kept only in this browser on this device; nothing is uploaded. | last files, history, open again | File | File sheet | Ready | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
 | file.install | Install as an app | Install app | Put the editor on your home screen or desktop. It opens in its own window and works offline. | install, app, home screen, desktop app, offline, add to dock, pwa | File | File sheet | Ready | 8 |  |
@@ -148,7 +148,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · small button | Ready | 13 |  |
 | file.crop-scans | Split scanned photos | Crop and straighten photos | Cut several scanned photos into separate straight pictures. | scans, straighten scans | File › Automate | Automate & batch › Do many at once · More list | Planned | 13 |  |
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Automate & batch › Sheets and layouts · small button | Ready | 13 |  |
-| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
+| file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. Not built: scripts need a safe sandbox first. | script, automation, code | File | Automate & batch › Scripts and data · More list | Planned | 13 |  |
 
 ## Edit (33 Ready, 7 Planned)
 
@@ -187,8 +187,8 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.smart-scale | Stretch without squashing people | Content-aware scale | Resizes a layer by squeezing out or stretching its plain parts, so people keep their shape. Select a part first to protect it. | stretch background | Edit | Crop & resize › Bend and push · More list | Ready | 11 |  |
 | edit.pin-warp | Bend around pins | Puppet warp | Pin points and bend the shape around them. | pose, bend arm | Edit | Crop & resize › Bend and push · small button | Ready | 3 |  |
 | edit.perspective-warp | Re-angle a building | Perspective warp | Change the angle of buildings and flat surfaces. | building angle | Edit | Crop & resize › Bend and push · More list | Ready | 3 |  |
-| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
-| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-align | Line up photos automatically | Auto-align layers | Match overlapping photos of the same scene. Not built: finding matching points is not written yet. | panorama, align | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
+| edit.auto-blend | Blend photos automatically | Auto-blend layers | Merge photos into one seamless picture. Not built: needs Line up photos automatically first. | focus stack, blend | Edit | Automate & batch › Merge photos · More list | Planned | 13 |  |
 | edit.define-brush | Make a brush from the selection | Define brush | Save the selected area as a brush tip. | custom brush | Edit | Paint & draw › Brush settings · More list | Planned | 4 |  |
 | edit.define-pattern | Make a pattern from the selection | Define pattern | Save the selected area as a repeating pattern. | custom pattern, texture | Edit | Paint & draw › Fill · More list | Planned | 4 |  |
 | edit.pref-pro-names | Show pro names first | Pro names first | Put the usual professional names before the plain names. | expert names, professional names | Edit › Settings | Help sheet | Ready | W1 |  |
@@ -248,7 +248,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.trim | Cut away empty edges | Trim | Remove see-through or same-colour edges. | remove border, auto crop, white edges | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.reveal-all | Show the parts outside | Reveal all | Grow the canvas so every layer fits. | expand, show hidden parts | Image | Crop & resize › Crop · small button | Ready | W1 |  |
 | image.duplicate | Copy into a new tab | Duplicate | Open a copy of the picture in a new tab. | copy picture, try a version | Image | File sheet | Ready | W1 |  |
-| image.apply | Blend a layer into itself | Apply image | Blend a layer or channel into the active layer. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
+| image.apply | Blend a layer into itself | Apply image | Not built: blending one colour channel into a layer needs separate channels, which the editor does not have yet. | apply image | Image | Light & colour › More colour tools · More list | Planned | 13 |  |
 | image.reduce-colors | Use fewer colours | Reduce colours | Limit the picture to a set number of colours. | palette, fewer colours | Image | Light & colour › Colour type · small button | Ready | 5 |  |
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · More list | Planned | 13 |  |
@@ -592,7 +592,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.swap-colors | Swap the two colours | Switch colours | Swap your main and second colours. | swap colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | X |
 | tool.default-colors | Black and white | Default colours | Reset to a black main colour and a white second colour. | reset colours | Tools › Colours | Paint & draw › Colour · More list | Ready | W1 | D |
 
-## New functions from the feature census (201 Planned, 60 Ready), by home
+## New functions from the feature census (171 Planned, 90 Ready), by home
 
 Not in the menu bar. Search finds them by plain name, pro name or wish words, and shows a Planned one with its tag.
 
@@ -747,31 +747,31 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 |---|---|---|---|---|---|---|---|---|
 | shape.live | U068 | Live editable shapes | Live Shapes (corner radius sliders) | Rectangles and polygons whose corners stay editable. | live shape, editable shape, corner radius, rounded corners | Shapes & text › Shapes · More list | Planned | B15 |
 | shape.vector-layer | U069 | Vector layer | Vector Layer | A layer holding editable shapes and text that stay sharp. | vector layer, sharp shapes, scalable drawing | Shapes & text › Shapes · More list | Planned | B15 |
-| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Builds one shape from several by adding, subtracting or keeping overlaps. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · More list | Planned | B4 |
-| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins shapes into one path or separates them. | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · More list | Planned | B4 |
-| path.stroke-style | U072 | Arrowheads and dash styles | Arrowheads, Dot/dash line styles | Line ends and patterns. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · More list | Planned | B15 |
+| path.boolean | U070 | Combine two shapes (merge, cut out, overlap) | Boolean operations: Union, Difference, Intersection, Exclusion | Merges the picked outline with the one above it in Outlines, cuts it out of that one, or keeps only the overlap or only what does not overlap. | union, subtract shapes, intersect, exclude, combine shapes, merge shapes | Shapes & text › Combine and style · small button | Ready | B4 |
+| path.combine | U071 | Join or split path pieces | Combine / Break Apart | Joins the picked outline and the one above it into one outline, or splits an outline into its separate pieces (a hole stays with its shape). | combine paths, break apart, join paths, split path | Shapes & text › Combine and style · small button | Ready | B4 |
+| path.stroke-style | U072 | Arrowheads and dash styles | Stroke style: dashes, line ends, corners, arrowheads | Draws the picked outline as a line on a new layer: solid, dashed or dotted, flat, round or square ends, sharp, round or cut corners, and arrowheads. | arrow, arrowhead, dashed line, dotted line, line style | Shapes & text › Combine and style · small button | Ready | B15 |
 | path.effects | U073 | Non-destructive path effects, stackable | Live Path Effects | Adds editable effects to a path that update when the path changes; effects can be stacked. | path effects, live path effect, non-destructive path | Shapes & text › Live shape effects · More list | Planned | B15 |
 | type.opentype | U074 | Variable fonts and OpenType features | Variable fonts, ligatures, stylistic sets | Weight and width sliders and type features for fonts. | variable font, ligatures, stylistic sets, font features, opentype | Shapes & text › Text style · More list | Planned | B15 |
 | type.styles | U075 | Paragraph and character styles | Character Styles, Paragraph Styles | Save text looks and apply to many text layers. | character style, paragraph style, text style, reuse text format | Shapes & text › Text style · More list | Planned | B15 |
 | type.scripts | U076 | Text in every script | Complex scripts (Arabic, Hebrew, Indic) | Correct shaping and right-to-left layout for Arabic, Hebrew, Hindi and other Indic scripts. | hindi text, arabic text, hebrew, right to left, indic script, complex script | Shapes & text › Text style · More list | Planned | B15 |
 | path.tweak | U142 | Reshape a path by brushing it | Tweak Tool (push, shrink, roughen, jitter colours) | Pushes, thins or roughens path parts like clay. | tweak path, push path, roughen path, brush a shape | Shapes & text › Draw outlines · More list | Planned | T3 |
-| shape.spiral-star | U143 | Shape tools: spirals, stars, 3D boxes | Spiral, Star/Polygon, 3D Box tools | Draws parametric shapes you can edit by numbers. | spiral, star, 3d box, polygon star | Shapes & text › Shapes · More list | Planned | T3 |
+| shape.spiral-star | U143 | Star and spiral outlines | Star and spiral tools | Draws a star (number of points, inner size) or a spiral (turns) as an outline you can reshape and fill. | spiral, star, polygon star, star shape, swirl | Shapes & text › Shapes · More list | Ready | T3 |
 | shape.qr | U144 | Draw QR codes | QR code shape | Generates an editable QR code. | qr code, make qr code, scan code | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.generate | U145 | Generate shapes (barcodes, grids, gears) | Render extensions | Creates new objects from numbers. | barcode, grid, gear, generate shapes | Shapes & text › Shapes · More list | Planned | T3 |
 | shape.comic-panels | U146 | Comic panels | Comic Panel Editing Tool | Draw and edit comic panel frames. | comic panels, manga panels, comic page layout | Shapes & text › Shapes · More list | Planned | T3 |
-| path.divide | U147 | Slice a shape with another shape | Division and Cut Path | Cuts the lower shape into pieces along the upper one. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Planned | T3 |
-| path.bend | U148 | Bend a shape along a curve | LPE Bend | Deforms an object along a custom path. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.hatches | U149 | Hatches | LPE Hatches | Fills a shape with adjustable hatch lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.interpolate | U150 | Blend between parts of a path | LPE Interpolate Sub-Paths | Creates in-between steps between two parts of one path. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.divide | U147 | Slice a shape with another shape | Division | Slices the outline above the picked one along the picked one's edge: the parts outside it and the parts inside it each become their own outline. | divide shapes, cut path, slice shape, knife | Shapes & text › Combine and style · More list | Ready | T3 |
+| path.bend | U148 | Bend a shape along a curve | Bend | Bends the outline above the picked line along it, stretched to the line's length. | bend along curve, follow path, curve a shape | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.hatches | U149 | Hatch lines | Hatches | Fills the picked outline with evenly spaced lines (holes stay empty): pick the gap, the angle, and crossed lines. | hatches, hatching, crosshatch shading | Shapes & text › Live shape effects · small button | Ready | T3 |
+| path.interpolate | U150 | Blend between two shapes | Interpolate sub-paths | Adds in-between shapes that blend the outline above into the picked one (or one piece into the next) in the number of steps you pick. | interpolate, blend shapes, steps between paths | Shapes & text › Live shape effects · small button | Ready | T3 |
 | path.knot | U151 | Over-and-under crossings | LPE Knot | Makes gaps where a path crosses itself, like a knot. | knot, over and under, weave lines | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.mirror | U152 | Draw one half, mirror the other | LPE Mirror Symmetry | Mirrors a drawing across an axis live. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.mirror | U152 | Draw one half, mirror the other | Mirror symmetry | Adds a mirror copy across an edge of the outline and joins the halves: draw half a heart, get the whole heart. | mirror half, symmetric shape, mirror path | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.envelope | U153 | Tilt a flat shape in perspective | LPE Perspective/Envelope | Four corner handles tilt a flat object in 3D space. | envelope, perspective shape, tilt flat shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.stitch | U154 | Stitch lines between two paths | LPE Stitch Sub-Paths | Adds cross lines between two paths. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.pattern-along | U155 | Repeat a shape along a line | LPE Pattern Along Path | Repeats and bends a shape to follow a path. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.offset | U156 | Grow or shrink a shape by a distance | LPE Offset | Thickens or thins a whole outline by exact amount. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.power-stroke | U157 | Strokes with changing thickness | LPE Power Stroke | Handles set stroke width at points along a path. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.rotate-copies | U158 | Copies around a circle | LPE Rotate Copies | Spins copies of a shape around a centre for mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Planned | T3 |
-| path.roughen | U159 | Hand-drawn wobble | LPE Roughen | Adds organic imperfections to outlines. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Planned | T3 |
+| path.stitch | U154 | Stitch lines between two paths | Stitch sub-paths | Adds straight lines across from the outline above to the picked one, spaced evenly along both, like string art. | stitch lines, connect two paths, string art | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.pattern-along | U155 | Repeat a shape along a line | Pattern along path | Repeats the outline above along the picked line, each copy bent to follow it, with the gap you pick. | pattern along path, repeat along line, chain of shapes | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.offset | U156 | Grow or shrink a shape by a distance | Offset path | Moves every edge of an outline out or in by a number of pixels, true to about half a pixel; grown corners come out round. | offset, outset, inset, grow shape, shrink shape | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.power-stroke | U157 | Strokes with changing thickness | Power stroke | Turns the picked line into a shape that is thick and thin along its length: sliders set the width at the start, the middle and the end. | variable width, tapered stroke, thick and thin line | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.rotate-copies | U158 | Copies around a circle | Rotate copies | Spins copies of an outline round its own centre or the picture's centre and joins them, for flowers and mandalas. | rotate copies, radial copies, copies around a circle, mandala shape | Shapes & text › Live shape effects · More list | Ready | T3 |
+| path.roughen | U159 | Hand-drawn wobble | Roughen | Gives an outline a hand-drawn wobble: pick how far points move, how fine the wobble is, and another random pattern. | roughen, wobble, hand drawn look, jitter | Shapes & text › Live shape effects · More list | Ready | T3 |
 | path.sketch | U160 | Sketch look from a path | LPE Sketch | Turns a path into several pencil-like lines. | sketch path, sketchy lines, pencil look from path | Shapes & text › Live shape effects · More list | Planned | T3 |
 | path.tiling | U161 | Tile many copies in a grid | LPE Tiling | Makes rows and columns of copies with gaps and offsets. | tile copies, grid of copies, repeat in grid | Shapes & text › Live shape effects · More list | Planned | T3 |
 | type.match-font | U162 | Change a font to match a picture | Match Font | Find a similar font from a photo of text. | match font, what font is this, identify font, font finder | Shapes & text › Text · More list | Planned | T3 |
@@ -783,20 +783,20 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Paste a saved set of edits onto a selection of photos. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · More list | Planned | B7 |
-| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.copy-edits | U077 | Copy edits to many photos | History copy and paste, styles | Copy this picture's light-and-colour layers and your last filter, then paste them onto other open pictures or many picture files. | copy edits, paste settings, sync edits, same edit on many photos | Automate & batch › Do many at once · small button | Ready | B7 |
+| auto.panorama | U078 | Stitch several shots into a panorama | Photomerge | Align and blend many photos into one wide picture. Not built: needs automatic alignment first. | panorama, stitch photos, photomerge, join shots | Automate & batch › Merge photos · More list | Planned | B17 |
+| auto.hdr-merge | U079 | Merge exposure brackets | Merge to HDR Pro (32-bit) | Combine exposures into an HDR image with tone mapping. Not built: needs automatic alignment, and the editor holds 8 bits per colour. | hdr, merge brackets, exposure bracket, high dynamic range | Automate & batch › Merge photos · More list | Planned | B17 |
 | auto.stacks | U080 | Stack photos to remove moving objects or noise | Image stacks (median, mean, exposure merge) | Combines many shots of one scene to drop passers-by, cut noise or blend exposures. | stack photos, remove tourists by stacking, median stack, noise stack | Automate & batch › Merge photos · More list | Planned | B17 |
-| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
+| auto.plugins | U081 | Add extra tools | Plug-ins | Install outside tools and effects into the editor. Not built: outside code needs a safe sandbox first. | plugin, add-on, extension, extra tools | Automate & batch › Scripts and data · More list | Planned | B19 |
 | auto.record-painting | U166 | Record a painting | Recorder Docker | Records the painting session into a timelapse. | record painting, timelapse, record strokes | Automate & batch › Record steps · More list | Planned | T3 |
-| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.watermark | U168 | Watermark | Watermark | Stamp a logo or text on export. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · More list | Planned | T3 |
-| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
-| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
+| auto.droplets | U167 | Drag-and-drop mini apps | Droplets | Save an action as a tiny app: drop files on it and they are processed. Not built yet; use Edit many pictures the same way. | droplet, drag and drop app, quick action | Automate & batch › Do many at once · More list | Planned | T3 |
+| auto.watermark | U168 | Watermark | Watermark | Stamp your text or logo on this picture as a movable layer, or on many pictures at once. | watermark, logo on photos, copyright mark, signature | Automate & batch › Do many at once · small button | Ready | T3 |
+| auto.astro-stack | U169 | Stack star photos | Astrophotography Stack Persona | Aligns and averages night-sky frames, with dark and flat frames and narrowband mixing. Not built: needs automatic alignment first. | astro, star stack, milky way, night sky stacking | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.pixel-shift | U170 | Combine several shots with ghost removal | Pixel shift merge | Merge a camera's pixel-shift frames, hiding moving things. Not built: needs pixel-exact alignment first. | pixel shift, ghost removal, multi shot merge | Automate & batch › Merge photos · More list | Planned | T3 |
+| auto.script-events | U171 | Run scripts on events | Script Events Manager | Run an action or script when a file opens, saves or exports. Not built: scripts need a safe sandbox first. | script events, run on open, automatic script, trigger | Automate & batch › Scripts and data · More list | Planned | T3 |
 | auto.filter-graph | U172 | Draw-your-own filter graph | GEGL Graph, GEGL Operation tool | Type a chain of filters and run it. | node editor, filter graph, node based, gegl graph | Automate & batch › Scripts and data · More list | Planned | T3 |
-| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Planned | T3 |
-| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Crops and lays out photos to passport rules. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Planned | T3 |
+| auto.collage | U173 | Auto-arrange photos into a collage | Collage Wizard | Places chosen photos in a layout without cropping them. | collage, photo collage, grid collage, auto arrange photos | Automate & batch › Sheets and layouts · More list | Ready | T3 |
+| auto.passport | U174 | Passport photo sheet | Passport Photo Maker | Fills a print page with copies of your photo at a passport size. Check your own country's rules: only the size is set. | passport photo, id photo, visa photo, photo sheet | Automate & batch › Sheets and layouts · More list | Ready | T3 |
 
 ### Arrange layers (16)
 
@@ -832,22 +832,22 @@ Not in the menu bar. Search finds them by plain name, pro name or wish words, an
 
 | id | Census | Plain name | Pro name | What it does | Wish words | Lives in | Status | Phase |
 |---|---|---|---|---|---|---|---|---|
-| image.tone-mapping | U083 | Even out tone ranges for HDR looks | Tone Mapping: Fattal, Mantiuk, Reinhard, Stress | Compress a wide-range picture into a showable one. | tone mapping, hdr look, compress tones, dramatic hdr | Light & colour › More colour tools · More list | Planned | B17 |
-| image.mode-32 | U084 | Work in 32-bit light | 32-bit HDR editing / OpenEXR | Edit and save pictures with light values above pure white. | 32 bit, float, hdr editing, exr, high dynamic range editing | Light & colour › Colour type · More list | Planned | B17 |
-| image.profiles | U085 | Colour profiles | Colour settings, assign and convert profile | Choose working colour spaces, assign, convert, discard and embed ICC profiles, with rendering intent and black point. | colour profile, icc, srgb, adobe rgb, display p3, convert profile | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.soft-proof | U086 | Preview how colours print | Soft Proof (Proof Setup, Proof Colours, Simulate Paper) | Show the picture as a chosen printer, paper or screen would reproduce it. | soft proof, print preview colours, proof colours, paper simulation | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.gamut-warning | U087 | See which colours cannot print | Gamut Warning | Grey out pixels a profile cannot reproduce. | gamut warning, out of gamut, colours that cannot print | Light & colour › Colour accuracy · More list | Planned | B18 |
-| image.local-threshold | U194 | Local threshold | Local Threshold | Black and white decided by neighbourhood, not globally. | local threshold, adaptive threshold, scan documents, clean text scan | Light & colour › Light and colour · More list | Planned | T3 |
-| image.retinex | U195 | Even out uneven light and colour | Retinex | Corrects uneven lighting and colour cast. | retinex, uneven light, shadow lift, even out lighting | Light & colour › More colour tools · More list | Planned | T3 |
-| image.hue-chroma | U196 | Hue and chroma sliders | Hue Chroma | Changes hue and chroma in a perceptual space. | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · More list | Planned | T3 |
-| image.rotate-colours | U197 | Spin the colours | Rotate Colors | Cycles a range of hues. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Planned | T3 |
-| image.sample-colorize | U198 | Colour by example | Sample Colorize | Colours a picture from sample gradient taken from another. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
-| image.harmonize | U199 | Harmonise colours | Colour harmonizer | Nudge hues toward a pleasing relationship. | colour harmony, harmonise colours, colour scheme | Light & colour › More colour tools · More list | Planned | T3 |
-| image.colour-contrast | U200 | Colour contrast | Color contrast | Make neighbouring colours stand further apart. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Planned | T3 |
-| image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Exports your colour edits as a .cube table for other apps. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Planned | T3 |
-| image.palette-edit | U202 | Edit the indexed palette | Colormap, Set/Rearrange Colormap, Palette Map | Control the palette of an indexed picture. | edit palette, colormap, indexed palette, gif palette | Light & colour › Colour type · More list | Planned | T3 |
-| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Break a picture into R/G/B, LAB, HSV layers and back. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Planned | T3 |
-| image.spot-channels | U204 | Print inks as separate plates | Spot channels, Duotone, Multichannel | Special inks, two-ink tones and plate channels for press. | spot colour, duotone, multichannel, ink plates, separations | Light & colour › Colour type · More list | Planned | T3 |
+| image.tone-mapping | U083 | Even out tone ranges for HDR looks | Tone Mapping (local) | Squeezes big light and dark differences into the screen's range while keeping the local detail. | tone mapping, hdr look, compress tones, dramatic hdr | Light & colour › More colour tools · small button | Ready | B17 |
+| image.mode-32 | U084 | Work in 32-bit light | 32-bit HDR editing / OpenEXR | Not built: a browser canvas keeps 8 bits per colour, so light above pure white cannot be kept. | 32 bit, float, hdr editing, exr, high dynamic range editing | Light & colour › Colour type · More list | Planned | B17 |
+| image.profiles | U085 | Colour profiles | Colour settings, assign and convert profile | Not built yet: reading and embedding ICC colour profiles needs changes to how files are saved. | colour profile, icc, srgb, adobe rgb, display p3, convert profile | Light & colour › Colour accuracy · More list | Planned | B18 |
+| image.soft-proof | U086 | Preview how colours print | Soft Proof (Proof Setup, Proof Colours, Simulate Paper) | Not built: an honest proof needs a printer's ICC profile, and the editor cannot read one in the browser yet. | soft proof, print preview colours, proof colours, paper simulation | Light & colour › Colour accuracy · More list | Planned | B18 |
+| image.gamut-warning | U087 | See which colours cannot print | Gamut Warning | Greys out colours a typical four-ink press is likely to miss, or pulls them into range. An estimate, not a printer's profile. | gamut warning, out of gamut, colours that cannot print | Light & colour › Colour accuracy · small button | Ready | B18 |
+| image.local-threshold | U194 | Local threshold | Local Threshold | Black and white decided by each pixel's neighbourhood, not the whole picture: clean text from unevenly lit scans. | local threshold, adaptive threshold, scan documents, clean text scan | Light & colour › Light and colour · More list | Ready | T3 |
+| image.retinex | U195 | Lift detail in dark areas | Retinex | Brings dark, unevenly lit places up toward the picture's average light, keeping their colours. | retinex, uneven light, shadow lift, even out lighting | Light & colour › More colour tools · small button | Ready | T3 |
+| image.hue-chroma | U196 | Hue and chroma sliders | Hue Chroma | Turns colours, makes them stronger or weaker, and lighter or darker as the eye sees it (OKLCH). | hue chroma, chroma, lch, colour strength | Light & colour › More colour tools · small button | Ready | T3 |
+| image.rotate-colours | U197 | Spin the colours | Rotate Colors | Turns one range of colours, say the oranges, into another, say the blues; the rest stay as they are. | rotate colours, hue shift, swap colours, colour spin | Light & colour › More colour tools · More list | Ready | T3 |
+| image.sample-colorize | U198 | Colour by example | Sample Colorize | Not built yet: it needs a way to choose a second picture as the colour sample. | colour by example, sample colorize, copy colours from picture | Light & colour › More colour tools · More list | Planned | T3 |
+| image.harmonize | U199 | Harmonise colours | Colour harmonizer | Pulls every colour toward a colour scheme built on the picture's main colour. | colour harmony, harmonise colours, colour scheme | Light & colour › More colour tools · More list | Ready | T3 |
+| image.colour-contrast | U200 | Check text contrast | WCAG contrast check | Shows whether text in a chosen colour is readable on this area (WCAG ratio), and lightens or darkens only the parts that fail. | colour contrast, colour pop, separate colours | Light & colour › More colour tools · More list | Ready | T3 |
+| image.export-lut | U201 | Save your adjustments as a lookup file | Export adjustments as 3D LUTs | Saves your light and colour layers as one .cube file that other editors and video apps open. Add one such layer first. | export lut, save lut, cube file, 3d lut | Light & colour › More colour tools · More list | Ready | T3 |
+| image.palette-edit | U202 | Change the main colours | Palette edit | Finds the picture's four main colours and lets you turn, strengthen or lighten each one. | edit palette, colormap, indexed palette, gif palette | Light & colour › Colour type · small button | Ready | T3 |
+| image.decompose | U203 | Split into and rebuild from colour channels | Decompose, Compose, Recompose, Extract Component | Splits the layer into Red, Green and Blue layers in one step (one undo). Together they rebuild the picture; edit or hide one to change just that colour. | decompose, channels to layers, rgb channels, compose channels | Light & colour › Colour type · More list | Ready | T3 |
+| image.spot-channels | U204 | Print inks as separate plates | Spot channels, Duotone, Multichannel | Not built: special inks need separate colour channels, which the editor does not have yet. | spot colour, duotone, multichannel, ink plates, separations | Light & colour › Colour type · More list | Planned | T3 |
 
 ### Filters & blur (34)
 

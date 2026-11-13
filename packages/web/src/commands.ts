@@ -393,6 +393,8 @@ for (const k of ['brightness', 'levels', 'curves', 'exposure', 'vibrance', 'hue'
   HANDLERS['layer.adj-' + k] = H((e) => e.addAdjustLayer('image.adj-' + k));
 HANDLERS['layer.fill-color'] = H((e) => e.addFillLayer());
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
+// File extras (file-more.ts, loaded on first use): open from a web link, take a photo, print, save each layer as a file.
+for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 
 /** The "What do you want to do?" jobs. Each opens the real command; `ratio` starts the crop tool with that shape. */
 export interface Job {

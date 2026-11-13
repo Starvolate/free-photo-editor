@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 301 Ready, 374 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 305 Ready, 370 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 259 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 260 | 390 | 0 |
-| Ready today | 301 | 25 | 130 | 146 | 0 |
+| Ready today | 305 | 25 | 134 | 146 | 0 |
 
 ## The Task ribbon
 
@@ -102,7 +102,7 @@ Shown only in context, as a filled chip in the app bar. Everything on them also 
 | B20 | Build wave 20: workspace helpers |
 | T3 | Basic or niche, not sequenced yet |
 
-## File (30 Ready, 11 Planned)
+## File (34 Ready, 7 Planned)
 
 Groups: Save a copy as · Export as; Do many at once · Automate.
 
@@ -112,8 +112,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.open | Open a photo | Open | Open a picture from this device in a new tab. | load, photo, import, upload, open file, heic, raw, dng, tiff, pdf | File | File sheet | Ready | 1 | Ctrl+O |
 | file.open-layer | Add a photo as a layer | Place | Put another picture on top of this one as its own layer. | combine photos, collage, overlay, add picture, place | File | File sheet | Ready | 1 | Ctrl+Shift+O |
 | file.sample | Try a sample photo | Open sample | Open a built-in practice photo to try things on. | example, demo, practice, test picture | File | File sheet | Ready | W1 |  |
-| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Planned | 7 |  |
-| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Planned | 8 |  |
+| file.open-url | Open from a web link | Open from URL | Load a picture from an internet address. | link, url, web address | File | File sheet | Ready | 7 |  |
+| file.camera | Take a photo | Capture | Use the camera to take a new picture. | camera, selfie, webcam | File | File sheet | Ready | 8 |  |
 | file.recent | Recent pictures | Open recent | Pictures you opened before. | last files, history | File | File sheet | Planned | 8 |  |
 | file.restore | Bring back last pictures | Recover | Open again the pictures that were still open when the editor last closed. | restore, recover, lost work, crashed, closed by mistake | File | File sheet | Ready | 8 |  |
 | file.autosave | Keep safety copies | Autosave | Keep a copy of open pictures in this browser, so a closed tab or a crash loses nothing. Nothing is uploaded. | autosave, auto save, backup, never lose work | File | File sheet | Ready | 8 |  |
@@ -141,8 +141,8 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.export-bmp | BMP picture | BMP | Plain Windows pictures with no compression. | bmp, bitmap, windows picture | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-ora | Layered file for free editors | OpenRaster | Keeps the layers for Krita, GIMP and MyPaint. | ora, openraster, krita, mypaint, gimp layers | File › Export as | Export sheet | Ready | 7 |  |
 | file.export-animation | Animation from layers | Export animation | A moving GIF, PNG or WebP: each layer becomes one frame. | animation, animated gif, gif from layers, frames, apng, moving picture | File › Export as | Export sheet | Ready | 7 |  |
-| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Planned | 7 |  |
-| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Planned | 8 |  |
+| file.export-layers | Save each layer as a file | Export layers | Save every layer as its own picture. | layers to files, separate layers | File | Export sheet | Ready | 7 |  |
+| file.print | Print | Print | Print the picture on paper. | printer, paper | File | File sheet | Ready | 8 |  |
 | file.info | Picture details | File info | Title, author and copyright stored inside the file. | metadata, exif, copyright, author | File | File sheet | Planned | 7 |  |
 | file.batch | Edit many pictures the same way | Batch | Run the same steps on a folder of pictures. | bulk edit, many files | File › Automate | Automate & batch › Do many at once · big button | Planned | 13 |  |
 | file.resize-many | Resize many pictures | Image processor | Resize and convert many files at once. | bulk resize, convert many | File › Automate | Automate & batch › Do many at once · small button | Planned | 13 |  |

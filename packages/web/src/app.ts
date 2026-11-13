@@ -3238,6 +3238,13 @@ export class Editor {
       done();
     }
   }
+  /** The File extras (file-more.ts), loaded on first use: open from a web link, take a photo, print, save each layer. */
+  async fileMore(id: string): Promise<void> {
+    try {
+      const m = await import('./file-more');
+      m.runFileMore(id, { ...this.toolHost(), name: () => this.name, open: (f, n) => this.openFile(f, n) });
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
+  }
   /** Several pictures at once (dropped, opened with the installed app, or shared to it): each in its own tab, or as layers. */
   async openFiles(files: File[], asLayer = false): Promise<void> {
     for (const f of files) await this.openFile(f, f.name || 'Picture', asLayer && !!this.doc);

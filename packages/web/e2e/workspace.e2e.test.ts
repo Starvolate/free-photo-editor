@@ -153,6 +153,17 @@ const overRulers = (p: Page): Promise<string[]> => p.evaluate(() => {
   if (t && z && t.bottom > z.top + 0.5) out.push('toast lower than the top of the zoom buttons');
   return out;
 });
+/** True when no note is showing, or the one showing sits above the status bar. */
+const toastClear = (p: Page): Promise<boolean> => p.evaluate(() => {
+  const t = document.querySelector('[data-testid="toast"][data-on]'), s = document.querySelector('[data-testid="status"]');
+  return !t || !s || t.getBoundingClientRect().bottom <= s.getBoundingClientRect().top + 0.5;
+});
+/** The task tabs that stick out of the tab row's box (cut off at either end). */
+const tabsOut = (p: Page): Promise<string[]> => p.$eval('[data-testid="ribbon-tabs"]', (row) => {
+  const b = row.getBoundingClientRect();
+  return Array.from(row.querySelectorAll('[role="tab"]')).filter((t) => { const r = t.getBoundingClientRect(); return r.left < b.left - 0.5 || r.right > b.right + 0.5; })
+    .map((t) => t.textContent ?? '');
+});
 const state = (p: Page): Promise<Record<string, unknown>> => p.evaluate(() => (window as unknown as Win).fpe.state());
 const sig = (p: Page): Promise<string> => p.evaluate(() => {
   const w = window as unknown as Win;
@@ -485,6 +496,30 @@ suite('W1 workspace (headless Chrome)', () => {
     }
   }, 120_000);
 
+  it('1280: all twelve task tabs show and the "Sample photo opened" note clears the status bar; 1024: arrows reach the rest', async () => {
+    const p = await open(1280, 800);
+    await p.waitForSelector('[data-testid="ribbon-tabs"] [role="tab"]');
+    await p.evaluate(() => (window as unknown as Win).fpe.openSample());
+    await p.waitForSelector('[data-testid="toast"][data-on]');
+    await p.waitForTimeout(250);
+    expect(await p.locator('[data-testid="ribbon-tabs"] [role="tab"]').count()).toBe(12);
+    expect(await tabsOut(p), '1280: no tab cut off').toEqual([]);
+    expect(await p.$eval('[data-testid="ribbon-tabs"] [role="tab"]', (t) => parseFloat(getComputedStyle(t).fontSize)), 'tab words 12 px or larger').toBeGreaterThanOrEqual(12);
+    expect(await toastClear(p), '1280: the note clears the status bar').toBe(true);
+    await p.screenshot({ path: join(OUT, 'ui-d-1280-open.png') });
+    await p.setViewportSize({ width: 1024, height: 768 });
+    await p.waitForTimeout(300);
+    expect(await p.isVisible('[data-testid="rtabs-right"]'), '1024: an arrow says there are more tabs').toBe(true);
+    expect(await p.isVisible('[data-testid="rtabs-left"]'), '1024: nothing before the first tab').toBe(false);
+    await p.click('[data-testid="rtabs-right"]');
+    await p.waitForTimeout(700);
+    expect(await p.$eval('[data-testid="ribbon-tabs"]', (r) => r.scrollLeft), 'the arrow scrolls the row').toBeGreaterThan(0);
+    expect(await p.isVisible('[data-testid="rtabs-left"]'), 'then an arrow back appears').toBe(true);
+    await p.screenshot({ path: join(OUT, 'ui-d-1024-tabs.png') });
+    await p.click('[data-testid="rtab-filters-blur"]');
+    expect(await tabsOut(p).then((o) => o.includes('Filters & blur')), 'the open tab is scrolled into view').toBe(false);
+  }, 60_000);
+
   it('1440 x 900, the sample with a Tone curve layer: the Layers card shows its four action words and Properties its first four controls in full; 1280 is one tabbed card', async () => {
     const p = await open(1440, 900);
     await p.evaluate(() => (window as unknown as Win).fpe.openSample());
@@ -536,6 +571,7 @@ suite('W1 workspace (headless Chrome)', () => {
     await p.waitForSelector('[data-testid="dock-views"]', { state: 'visible' });
     await p.click('[data-testid="dview-layers"]');
     await p.waitForTimeout(200);
+    expect(await toastClear(p), '1280: the note is placed again and clears the status bar').toBe(true);
     expect(await fully(acts, 4), '1280: New, Mask, Copy and Delete in full').toEqual([]);
     expect(await clipped(p), '1280 Layers: nothing cut').toEqual([]);
     // One tab in the card: its "..." sits in the switch row and the card has no empty header strip over Blend.
@@ -543,6 +579,7 @@ suite('W1 workspace (headless Chrome)', () => {
     expect(await p.isVisible('[data-testid="dock-views"] [data-testid="gmore-layers"]'), "1280: the card's ... in the switch row").toBe(true);
     await p.screenshot({ path: join(OUT, 'ui-b-1280-tabs.png') });
     await p.screenshot({ path: join(OUT, 'ui-c-1280-tabs.png') });
+    await p.screenshot({ path: join(OUT, 'ui-d-1280-tabs.png') });
     await p.click('[data-testid="dview-props"]');
     await p.waitForSelector(props, { state: 'visible' });
     expect(await fully(props, 4), '1280: the first four controls in full').toEqual([]);

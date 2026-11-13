@@ -1311,6 +1311,7 @@ export class Editor {
       this.root.toggleAttribute('data-wide', wide);
       if (layout === this.layout) { this.applyDock(); this.renderPanels(); }
     }
+    if (this.toastEl?.hasAttribute('data-on')) this.placeToast();
     if (layout === this.layout) return;
     this.layout = layout;
     this.root.dataset.layout = layout;
@@ -3664,7 +3665,7 @@ export class Editor {
     };
     const dlg = box(this.dlgEl);
     const zoomEl = this.stage.querySelector('.fpe-zoom'), zoom = box(zoomEl);
-    const avoid = [zoomEl, this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl, this.rulerH, this.rulerV,
+    const avoid = [zoomEl, this.dlgEl, this.dock, this.toolsBar, this.optionsBar, this.root.querySelector('.fpe-top'), this.tabRow, this.ribbonEl, this.rulerH, this.rulerV, this.statusEl,
       this.root.querySelector('.fpe-rcoach'), ...this.sheets.values()].map(box).filter((b): b is DOMRect => !!b);
     const pad = 8, spans: [number, number][] = [[st.left + pad, st.right - pad]];
     if (dlg) spans.push([st.left + pad, dlg.left - pad], [dlg.right + pad, st.right - pad]);

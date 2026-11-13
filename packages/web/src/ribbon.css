@@ -20,6 +20,17 @@
 .fpe-rtabs{align-items:center;gap:2px;padding:0 10px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;background:var(--bg)}
 .fpe-rtab{height:32px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--muted);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;flex:none;transition:background .3s cubic-bezier(.2,.8,.2,1),color .2s}
 .fpe-rtab:hover{color:var(--text)}
+.fpe-rtabs[data-fit="1"],.fpe-rtabs[data-fit="2"]{gap:0}
+.fpe-rtabs[data-fit="1"] .fpe-rtab{padding:0 8px}
+.fpe-rtabs[data-fit="2"] .fpe-rtab{padding:0 6px;font-size:12px}
+.fpe-rtabs-cue{position:sticky;left:0;z-index:2;flex:none;width:0;height:32px;align-self:center}
+.fpe-rtabs-cue[data-side=right]{left:auto;right:0}
+.fpe-rtabs-cue[hidden]{display:none}
+.fpe-rtabs-cue>button{position:absolute;top:0;display:grid;place-items:center;width:30px;height:32px;padding:0;border:0;border-radius:9px;background:var(--panel-2);color:var(--text);cursor:pointer;box-shadow:0 0 14px 10px var(--bg)}
+.fpe-rtabs-cue[data-side=left]>button{left:0}
+.fpe-rtabs-cue[data-side=right]>button{right:0}
+.fpe-rtabs-cue>button:hover{background:var(--hover)}
+.fpe-rtabs-cue svg{width:16px;height:16px}
 .fpe-rtab[aria-selected=true]{background:var(--panel-2);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
 .fpe-rtab:focus-visible,.fpe-rsheet:focus-visible,:is(.fpe-rbig,.fpe-rtile,.fpe-rsmall,.fpe-rmore,.fpe-rsoon,.fpe-rrow):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .fpe-ribbon{margin:0 8px 8px;min-width:0;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 rgba(255,255,255,.035) inset,0 8px 24px rgba(0,0,0,.3);overflow:hidden}

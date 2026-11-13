@@ -198,6 +198,33 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     next.focus();
     next.click();
   });
+  // Narrower windows tighten the tabs (ribbon.css data-fit) until all twelve show. When they still cannot (1024 px), an
+  // arrow at each end that has more says so and scrolls the row; the open tab is always scrolled into view.
+  const cueBtn = (side: 'left' | 'right'): HTMLElement => {
+    const b = h('button', { type: 'button', tabindex: '-1', 'aria-label': side === 'left' ? 'Earlier tabs' : 'More tabs', 'data-testid': 'rtabs-' + side,
+      'data-help-title': side === 'left' ? 'Earlier tabs' : 'More tabs', 'data-help': 'The row has more tabs than fit: this scrolls it.' }, icon(side === 'left' ? 'chev-left' : 'chev-right'));
+    b.addEventListener('click', () => tabRow.scrollBy({ left: (side === 'left' ? -0.6 : 0.6) * tabRow.clientWidth, behavior: 'smooth' }));
+    return h('span', { class: 'fpe-rtabs-cue', 'data-side': side, hidden: true }, b);
+  };
+  const cueL = cueBtn('left'), cueR = cueBtn('right');
+  tabRow.prepend(cueL);
+  tabRow.append(cueR);
+  const cue = (): void => {
+    const over = tabRow.scrollWidth > tabRow.clientWidth + 1;
+    cueL.hidden = !over || tabRow.scrollLeft < 2;
+    cueR.hidden = !over || tabRow.scrollLeft + tabRow.clientWidth > tabRow.scrollWidth - 2;
+  };
+  const fitTabs = (): void => {
+    if (!tabRow.clientWidth) return;
+    for (const lvl of ['0', '1', '2']) {
+      tabRow.dataset.fit = lvl;
+      if (tabRow.scrollWidth <= tabRow.clientWidth + 1) break;
+    }
+    tabBtns.get(current)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    cue();
+  };
+  tabRow.addEventListener('scroll', cue, { passive: true });
+  new ResizeObserver(fitTabs).observe(tabRow);
 
   // ---------- the ribbon body ----------
   const body = h('div', { class: 'fpe-rbody', role: 'tabpanel', 'data-testid': 'ribbon-body' });
@@ -305,6 +332,7 @@ export function mountRibbon(host: RibbonHost): Ribbon {
     current = t.plain;
     view = 'tab';
     for (const [p, b] of tabBtns) b.setAttribute('aria-selected', String(p === current));
+    tabBtns.get(current)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const els: HTMLElement[] = [];
     let fams: Group[] = [];
     for (const g of [...t.groups, null]) {

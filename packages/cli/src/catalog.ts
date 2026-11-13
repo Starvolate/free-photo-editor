@@ -35,9 +35,13 @@ function toSetting(c: Ctl): Setting {
 }
 
 /** Every Ready adjustment and filter, in the web app's menu order. */
+const JOB_OPS: readonly string[] = ['adjust', 'gaussian-blur', 'sharpen', 'fx'];
+/** A Ready picture adjustment or filter that runs as an engine job (dialogs for selections or tools are not operations here). */
+export const isOperation = (rid: string, def: AdjDef): boolean =>
+  /^(image|filter)\./.test(rid) && JOB_OPS.includes(def.op) && BY_ID.get(rid)?.status === 'ready';
 export const OPERATIONS: Operation[] = Object.entries(ADJ).flatMap(([rid, def]): Operation[] => {
   const r = BY_ID.get(rid);
-  if (!r || r.status !== 'ready') return [];
+  if (!r || !isOperation(rid, def)) return [];
   return [{ id: shortId(rid), group: rid.startsWith('filter.') ? 'filter' : 'adjust', registryId: rid, plain: r.plain, pro: r.pro,
     help: r.help, wish: r.wish, place: r.place, settings: def.controls.map(toSetting), usesColors: !!def.colors, def }];
 });

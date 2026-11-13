@@ -13,7 +13,7 @@ import { commitResult, documentFromBitmap, innerOf, jobPadding, paddedRegion, re
 import { runEffect } from '@free-photoeditor/core/fx';
 import { ADJ } from '../../web/src/commands';
 import { BY_ID } from '../../web/src/registry';
-import { OPERATIONS } from '../src/catalog';
+import { OPERATIONS, isOperation } from '../src/catalog';
 import { run } from '../src/cli';
 import { capture, pattern, readPng, tempDir, writePng } from './helpers';
 
@@ -44,7 +44,8 @@ describe('the command line gives the same pixels as the web app', () => {
     return readPng(out);
   };
   it('offers every Ready adjustment and filter of the web app, and nothing else', () => {
-    const ready = Object.keys(ADJ).filter((id) => BY_ID.get(id)?.status === 'ready').sort();
+    const ready = Object.keys(ADJ).filter((id) => isOperation(id, ADJ[id])).sort();
+    expect(Object.keys(ADJ).filter((id) => /^(image|filter)\./.test(id) && BY_ID.get(id)?.status === 'ready').sort()).toEqual(ready);
     expect(OPERATIONS.map((o) => o.registryId).sort()).toEqual(ready);
     expect(ready.length).toBeGreaterThan(70);
   });

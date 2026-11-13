@@ -17,6 +17,7 @@ import {
   type Pixels, type Placed, type Quad, type RGBA, type Rect, type Selection, type SelMode, type ShapeContent, type ShapeKind, type TextContent, type TextStyle,
 } from '@free-photoeditor/core';
 import { TK_TOOLS, type ToolId } from './commands';
+import type { AiKit } from './ai';
 import { h } from './dom';
 import type { PointerInfo, Pt } from './input';
 import type { View } from './renderer';
@@ -28,6 +29,8 @@ export interface ToolHost {
   history(): History;
   view(): View;
   canvas(): HTMLCanvasElement;
+  /** The on-device AI commands (ai.ts), loaded on first use. */
+  ai(): Promise<AiKit>;
   pointer(): Pt | null;
   fg(): string;
   bg(): string;
@@ -84,6 +87,7 @@ export interface ToolKit {
 type XfMode = 'free' | 'skew' | 'distort' | 'perspective';
 interface Snap { content: LayerContent | null; geom: LayerGeom; }
 type Gesture =
+  | { k: 'rm'; last: Pt; size: number }
   | { k: 'lasso'; pts: Pt[]; mode: SelMode; label: string }
   | { k: 'quick'; pts: Pt[]; mode: SelMode; base: Mask | null; before: Selection | null; src: Pixels; at: number }
   | { k: 'drag'; t: ToolId; a: Pt; b: Pt; shift: boolean }
@@ -197,7 +201,7 @@ function selCommand(label: string, before: Selection | null, after: Selection | 
 
 export function createToolKit(host: ToolHost): ToolKit {
   const S = {
-    mode: 'new' as SelMode, tolerance: 32, contiguous: true, allLayers: true, eraseAll: false, feather: 0, qs: 24,
+    mode: 'new' as SelMode, tolerance: 32, contiguous: true, allLayers: true, eraseAll: false, feather: 0, qs: 24, rm: 50,
     grad: { kind: 'linear' as GradientKind, preset: 0, opacity: 1, reverse: false }, bucketOpacity: 1,
     fx: {
       clone: [40, 0.6, 1], heal: [40, 0.6, 1], 'spot-heal': [30, 0.7, 1], dodge: [60, 0.2, 0.5], burn: [60, 0.2, 0.5], sponge: [60, 0.2, 0.6],
@@ -209,6 +213,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     shape: { fill: true, stroke: false, strokeWidth: 4, radius: 24, sides: 5, star: false, arrow: true, lineWidth: 6 },
   };
   let g: Gesture | null = null, poly: { pts: Pt[]; mode: SelMode } | null = null, xf: Xf | null = null, te: TextEdit | null = null;
+  let rm: { mask: Mask; cv: HTMLCanvasElement; busy: boolean } | null = null;
   let qm: { mask: Mask; cv: HTMLCanvasElement } | null = null, src: { pt: Pt; offset: Pt | null } | null = null, pickSource = false;
   let lastClick = { t: 0, x: 0, y: 0 }, fonts: string[] | null = null;
   const saved = new WeakMap<Doc, Selection>(), bodies = new Map<string, HTMLElement>(), panels = new Map<string, HTMLElement>();
@@ -286,6 +291,15 @@ export function createToolKit(host: ToolHost): ToolKit {
     host.render();
   }
   function syncQmButton(): void { host.root.querySelector('[data-testid="tool-quick-mask"]')?.setAttribute('aria-pressed', String(!!qm)); }
+  /** Remove an object: paint what should go into a mask, shown over the picture in red. */
+  function rmDab(cx: number, cy: number, size: number): void {
+    if (!rm) return;
+    const m = rm.mask, r = Math.max(1, size / 2);
+    const x0 = Math.max(0, Math.floor(cx - r)), y0 = Math.max(0, Math.floor(cy - r)), x1 = Math.min(m.width, Math.ceil(cx + r)), y1 = Math.min(m.height, Math.ceil(cy + r));
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) m.data[y * m.width + x] = 255;
+    const c = rm.cv.getContext('2d');
+    if (c) { c.fillStyle = '#ff3b30'; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); }
+  }
   function qmDab(cx: number, cy: number, size: number, hard: number, erase: boolean): void {
     if (!qm) return;
     const m = qm.mask, r = Math.max(0.5, size / 2), feather = Math.max(1, r * (1 - hard)), start = r - feather;
@@ -711,6 +725,17 @@ export function createToolKit(host: ToolHost): ToolKit {
       commitText();
     }
     switch (t) {
+      case 'remove': {
+        if (rm?.busy) { host.toast('Wait a moment: the last removal is still working.'); return; }
+        const cv = document.createElement('canvas');
+        cv.width = d.width;
+        cv.height = d.height;
+        rm = { mask: { width: d.width, height: d.height, data: new Uint8Array(d.width * d.height) }, cv, busy: false };
+        g = { k: 'rm', last: p, size: S.rm };
+        rmDab(p.x, p.y, S.rm);
+        host.render();
+        break;
+      }
       case 'lasso': g = { k: 'lasso', pts: [p], mode: modeOf(i), label: 'Draw around it' }; break;
       case 'lasso-poly': polyClick(p, i); break;
       case 'quick-select': {
@@ -748,6 +773,13 @@ export function createToolKit(host: ToolHost): ToolKit {
       host.render();
       return;
     }
+    if (q.k === 'rm') {
+      const n = Math.ceil(Math.hypot(p.x - q.last.x, p.y - q.last.y) / Math.max(1, q.size * 0.25));
+      for (let k = 1; k <= n; k++) rmDab(q.last.x + ((p.x - q.last.x) * k) / n, q.last.y + ((p.y - q.last.y) * k) / n, q.size);
+      q.last = p;
+      host.render();
+      return;
+    }
     if (q.k === 'lasso') { const l = q.pts[q.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) * z() >= 2) q.pts.push(p); host.render(); return; }
     if (q.k === 'quick') { q.pts.push(p); quickUpdate(false); return; }
     if (q.k === 'drag') { q.b = p; q.shift = i.shift; host.render(); return; }
@@ -772,6 +804,14 @@ export function createToolKit(host: ToolHost): ToolKit {
     if (!q || !d) return;
     if (q.k === 'xf') { host.render(); return; }
     if (q.k === 'qm') { host.render(); return; }
+    if (q.k === 'rm') {
+      const r = rm;
+      if (!r) return;
+      r.busy = true;
+      host.render();
+      void host.ai().then((k) => k.removeObject(r.mask)).finally(() => { if (rm === r) rm = null; host.render(); });
+      return;
+    }
     if (q.k === 'lasso') {
       if (q.pts.length < 3) { if (q.mode === 'new' && d.selection) setSel(null, 'Deselect'); return; }
       applyMask(polygonMask(d.width, d.height, q.pts), q.mode, q.label);
@@ -1005,6 +1045,7 @@ export function createToolKit(host: ToolHost): ToolKit {
           hint(src ? 'Paint to copy from the source.' : 'Alt-click, or press and hold, where to copy from.'));
         break;
       case 'spot-heal': bar.append(...fxSliders(t).slice(0, 2), hint('Paint over a spot; it blends into its surroundings.')); break;
+      case 'remove': bar.append(sl('Size', 'How wide the brush is.', 4, 500, S.rm, ' px', (v) => { S.rm = v; host.render(); }, 'w3-size'), hint('Paint over what you want gone, then let go. AI on this device fills the gap.')); break;
       case 'patch': bar.append(hint(d?.selection ? 'Drag the selected flaw onto a clean area.' : 'Draw around the flaw, then drag it onto a clean area.')); break;
       case 'dodge': case 'burn':
         bar.append(...fxSliders(t, 'Strength', 'How much each stroke lightens or darkens (exposure).'), seg('Tones', [
@@ -1071,6 +1112,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     };
     const ants = (): void => { ctx.lineWidth = 1; ctx.setLineDash([5, 5]); ctx.strokeStyle = '#000'; ctx.stroke(); ctx.lineDashOffset = 5; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0; };
     if (qm) { ctx.imageSmoothingEnabled = false; ctx.drawImage(qm.cv, v.panX, v.panY, d.width * v.zoom, d.height * v.zoom); }
+    if (rm) { ctx.save(); ctx.globalAlpha = rm.busy ? 0.3 : 0.45; ctx.imageSmoothingEnabled = false; ctx.drawImage(rm.cv, v.panX, v.panY, d.width * v.zoom, d.height * v.zoom); ctx.restore(); }
     const q = g;
     if (q?.k === 'lasso') { path(q.pts, false); ants(); }
     if (poly) {
@@ -1132,6 +1174,7 @@ export function createToolKit(host: ToolHost): ToolKit {
     toolChanged(prev, next) {
       if (prev === 'type' && te) commitText();
       if (prev === 'lasso-poly') poly = null;
+      if (prev === 'remove' && rm && !rm.busy) rm = null;
       if (prev === next) return;
       host.render();
     },
@@ -1142,7 +1185,7 @@ export function createToolKit(host: ToolHost): ToolKit {
         savedSel: !!(d && saved.get(d)), shaped: !!sel?.alpha, selected: sel && d ? countSelected(maskFromSelection(sel, d.width, d.height)) : 0,
         content: l?.content?.kind ?? null, mode: S.mode, allLayers: S.allLayers, handles: xf ? xfHandles(xf).map(scr) : [] };
     },
-    cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : null; },
+    cursorSize(t) { return FX[t] ? fxo(t)[0] : t === 'quick-select' ? S.qs : t === 'remove' ? S.rm : null; },
     refresh() { for (const [pid, b] of panels) fillPanel(pid, b); },
     activity() {
       if (xf) {

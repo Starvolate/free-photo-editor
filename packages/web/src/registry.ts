@@ -74,7 +74,7 @@ edit.clear | Delete the selected pixels | Clear | Make the selected area of this
 edit.fill | Fill with the main colour | Fill | Fill the selected area, or the whole layer, with your main colour. | paint area, colour fill, fill colour | R | W1 | Alt+Backspace
 edit.fill-bg | Fill with the second colour | Fill with background colour | Fill the selected area, or the whole layer, with your second colour. | fill white, background colour | R | W1 | Ctrl+Backspace
 edit.stroke | Outline the selection | Stroke | Draw a line along the edge of the selection. | border, outline | R | W3
-edit.smart-fill | Fill from the surroundings | Content-aware fill | Remove something by filling it from nearby pixels. | remove object, erase object, remove person | P | 11
+edit.smart-fill | Fill from the surroundings | Content-aware fill | Remove what is selected; AI on this device fills the gap from its surroundings. | remove object, erase object, remove person, fill selection, remove selection | R | 11
 --
 edit.free-transform | Resize and turn freely | Free transform | Scale, turn and move the layer with handles. | resize layer, scale, rotate layer | R | W3 | Ctrl+T
 @Edit > Transform = Turn and flip | Transform | Flip, turn and reshape the active layer.
@@ -143,6 +143,11 @@ image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch t
 image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | R | W1 | Ctrl+Shift+B
 --
 image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | R | W1 | Ctrl+Alt+I
+image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it; AI does it on this device. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | R | 11
+@Image > Make it bigger = Make it bigger | Upscale | Twice or four times the size, with AI drawing in sharp detail on this device.
+image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | R | 11
+image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | R | 11
+@Image
 image.canvas-size | Canvas size | Canvas size | Add or remove space around the picture without stretching it. | border, padding, frame, extend, more space | R | W1 | Ctrl+Alt+C
 @Image > Rotate = Turn the picture | Image rotation | Turn or flip the whole picture.
 image.rotate-cw | Turn right 90° | Rotate 90° clockwise | Turn the whole picture a quarter turn to the right. | rotate, sideways photo, portrait | R | W1
@@ -263,8 +268,7 @@ select.none | Select nothing | Deselect | Drop the selection, so changes apply e
 select.reselect | Bring back the last selection | Reselect | Select again what you had selected before. | previous selection | R | W1 | Ctrl+Shift+D
 select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | R | W1 | Ctrl+Shift+I
 --
-select.subject | Select the main subject | Subject | Find the person or thing in front automatically. | person, subject, auto select | P | 11
-select.remove-bg | Remove the background | Remove background | Keep the subject and clear everything behind it. | background removal, cut out, transparent background, remove backdrop | P | 11
+select.subject | Select the main subject | Subject | Find the person or thing in front automatically; AI does it on this device. | person, subject, auto select, select person, select object automatically | R | 11
 select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | R | W3
 select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | P | 11
 --
@@ -453,6 +457,7 @@ tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle
 tool.note | Sticky note | Note | Pin a written note on the picture. | comment | P | 13
 @Tools > Retouch = Fix spots | Healing | Remove spots and blemishes.
 tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | R | W3 | J
+tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | R | 11
 tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | R | W3
 tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | R | W3
 tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | P | 11

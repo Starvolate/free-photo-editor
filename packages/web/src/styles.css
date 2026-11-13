@@ -404,3 +404,8 @@
 /* W3b: a dialog moves by its title bar */
 .fpe-dlg-head{touch-action:none;cursor:move;user-select:none}
 .fpe-dlg-head button{cursor:pointer}
+
+/* W11 on-device AI sheet */
+.fpe-ai [hidden] { display: none !important; }
+.fpe-ai-msg { margin: 0 0 8px; }
+.fpe-ai progress { display: block; width: 100%; height: 8px; margin: 12px 0 6px; }

@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts` by `packages/web/test/registry.tes
 Every menu item, tool and panel of a professional editor, with a plain name first, the usual pro name second,
 one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**398 functions: 251 Ready, 147 Planned** (64 tools, 22 panels, 36 menus and submenus).
+**401 functions: 257 Ready, 144 Planned** (65 tools, 22 panels, 37 menus and submenus).
 
 ## Phases
 
@@ -68,7 +68,7 @@ Groups: Save a copy as · Export as; Do many at once · Automate.
 | file.contact-sheet | Sheet of small photos | Contact sheet | Place many small pictures on one page. | grid of photos, photo sheet | File › Automate | Planned | 13 |  |
 | file.scripts | Scripts | Scripts | Run small programs that edit pictures for you. | script, automation, code | File | Planned | 13 |  |
 
-## Edit (28 Ready, 11 Planned)
+## Edit (29 Ready, 10 Planned)
 
 Groups: Turn and flip · Transform; Settings · Preferences.
 
@@ -89,7 +89,7 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.fill | Fill with the main colour | Fill | Fill the selected area, or the whole layer, with your main colour. | paint area, colour fill, fill colour | Edit | Ready | W1 | Alt+Backspace |
 | edit.fill-bg | Fill with the second colour | Fill with background colour | Fill the selected area, or the whole layer, with your second colour. | fill white, background colour | Edit | Ready | W1 | Ctrl+Backspace |
 | edit.stroke | Outline the selection | Stroke | Draw a line along the edge of the selection. | border, outline | Edit | Ready | W3 |  |
-| edit.smart-fill | Fill from the surroundings | Content-aware fill | Remove something by filling it from nearby pixels. | remove object, erase object, remove person | Edit | Planned | 11 |  |
+| edit.smart-fill | Fill from the surroundings | Content-aware fill | Remove what is selected; AI on this device fills the gap from its surroundings. | remove object, erase object, remove person, fill selection, remove selection | Edit | Ready | 11 |  |
 | edit.free-transform | Resize and turn freely | Free transform | Scale, turn and move the layer with handles. | resize layer, scale, rotate layer | Edit | Ready | W3 | Ctrl+T |
 | edit.flip-layer-h | Mirror left to right | Flip horizontal | Flip the active layer like a mirror. | mirror, flip sideways | Edit › Transform | Ready | W1 |  |
 | edit.flip-layer-v | Flip top to bottom | Flip vertical | Flip the active layer upside down. | upside down | Edit › Transform | Ready | W1 |  |
@@ -114,9 +114,9 @@ Groups: Turn and flip · Transform; Settings · Preferences.
 | edit.pref-theme | Light or dark look | Theme | Switch between the dark and the light look. | dark mode, light mode, theme | Edit › Settings | Ready | 1 |  |
 | edit.pref-language | Language | Language | Use the editor in another language. | translate, hindi | Edit › Settings | Planned | 13 |  |
 
-## Image (32 Ready, 13 Planned)
+## Image (35 Ready, 13 Planned)
 
-Groups: Colour type · Mode; Light and colour · Adjustments; Turn the picture · Image rotation.
+Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · Upscale; Turn the picture · Image rotation.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|
@@ -150,6 +150,9 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Turn the picture �
 | image.auto-contrast | Fix the contrast automatically | Auto contrast | Stretch the contrast without changing the colours. | auto contrast, flat photo | Image | Ready | W1 | Ctrl+Shift+Alt+L |
 | image.auto-color | Fix the colour automatically | Auto colour | Remove a colour cast automatically. | white balance, colour cast, auto colour | Image | Ready | W1 | Ctrl+Shift+B |
 | image.size | Picture size | Image size | Change the width and height in pixels; the picture is redrawn to fit. | resize, smaller, bigger, scale, dimensions, for the web, email size | Image | Ready | W1 | Ctrl+Alt+I |
+| image.remove-bg | Remove the background | Remove background | Keep the main subject and clear everything behind it; AI does it on this device. | background removal, cut out, transparent background, remove backdrop, remove bg, no background, png without background, delete background | Image | Ready | 11 |  |
+| image.upscale-2x | Twice as big | Upscale 2× | Double the width and height; AI adds sharp detail instead of blur. | enlarge, upscale, make bigger, bigger photo, increase resolution, higher resolution, hd, enhance, super resolution | Image › Make it bigger | Ready | 11 |  |
+| image.upscale-4x | Four times as big | Upscale 4× | Four times the width and height, for small pictures and old photos. | enlarge 4x, upscale 4x, much bigger, super resolution, sharpen small photo | Image › Make it bigger | Ready | 11 |  |
 | image.canvas-size | Canvas size | Canvas size | Add or remove space around the picture without stretching it. | border, padding, frame, extend, more space | Image | Ready | W1 | Ctrl+Alt+C |
 | image.rotate-cw | Turn right 90° | Rotate 90° clockwise | Turn the whole picture a quarter turn to the right. | rotate, sideways photo, portrait | Image › Rotate | Ready | W1 |  |
 | image.rotate-ccw | Turn left 90° | Rotate 90° counter-clockwise | Turn the whole picture a quarter turn to the left. | rotate left | Image › Rotate | Ready | W1 |  |
@@ -254,7 +257,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | type.spell | Check spelling | Check spelling | Find spelling mistakes in your text. | spelling | Type | Planned | 6 |  |
 | type.find | Find and replace text | Find and replace | Change a word everywhere at once. | replace word | Type | Planned | 6 |  |
 
-## Select (16 Ready, 4 Planned)
+## Select (17 Ready, 2 Planned)
 
 Groups: Change the selection · Modify.
 
@@ -264,8 +267,7 @@ Groups: Change the selection · Modify.
 | select.none | Select nothing | Deselect | Drop the selection, so changes apply everywhere. | deselect, clear selection, unselect | Select | Ready | 1 | Ctrl+D |
 | select.reselect | Bring back the last selection | Reselect | Select again what you had selected before. | previous selection | Select | Ready | W1 | Ctrl+Shift+D |
 | select.inverse | Swap selected and not selected | Inverse | Select everything except what is selected now. | invert selection, opposite, background | Select | Ready | W1 | Ctrl+Shift+I |
-| select.subject | Select the main subject | Subject | Find the person or thing in front automatically. | person, subject, auto select | Select | Planned | 11 |  |
-| select.remove-bg | Remove the background | Remove background | Keep the subject and clear everything behind it. | background removal, cut out, transparent background, remove backdrop | Select | Planned | 11 |  |
+| select.subject | Select the main subject | Subject | Find the person or thing in front automatically; AI does it on this device. | person, subject, auto select, select person, select object automatically | Select | Ready | 11 |  |
 | select.color-range | Select by colour | Colour range | Select every pixel close to a colour, like the sky. | select sky, select colour | Select | Ready | W3 |  |
 | select.focus | Select the sharp parts | Focus area | Select what is in focus and leave the blurry parts. | in focus | Select | Planned | 11 |  |
 | select.refine | Smooth the selection edge | Refine edge | Tidy up hair and soft edges of a selection. | hair, fur, edge | Select | Planned | 2 |  |
@@ -428,7 +430,7 @@ Groups: Screen mode · Screen mode.
 | panel.layer-comps | Saved layer setups | Layer comps | Remember which layers were shown, to switch between versions. | versions | Window | Planned | 13 |  |
 | panel.vector-info | Shape measurements | Vector info | Exact sizes of shapes and paths. | shape size | Window | Planned | 6 |  |
 
-## Tools (38 Ready, 26 Planned)
+## Tools (39 Ready, 26 Planned)
 
 Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart select · Quick selection; Crop · Crop; Pick and measure · Eyedropper; Fix spots · Healing; Paint · Brush; Copy an area · Clone stamp; Paint back · History brush; Erase · Eraser; Fill · Gradient; Soften and smudge · Blur tool; Lighten and darken · Dodge; Pen · Pen; Text · Type; Pick outlines · Path selection; Shapes · Shape; Move around · Hand; Zoom · Zoom; Colours · Colours.
 
@@ -454,6 +456,7 @@ Groups: Move · Move; Select a box · Marquee; Draw a selection · Lasso; Smart 
 | tool.ruler | Measure | Ruler | Measure a distance and an angle. | measure, angle | Tools › Measure | Planned | 13 |  |
 | tool.note | Sticky note | Note | Pin a written note on the picture. | comment | Tools › Measure | Planned | 13 |  |
 | tool.spot-heal | Remove spots | Spot healing brush | Paint over a spot and it blends into its surroundings. | blemish, pimple, dust spot, remove spot | Tools › Retouch | Ready | W3 | J |
+| tool.remove | Remove an object | Remove tool | Paint over something and let go: it disappears and AI fills the gap. | remove object, erase object, remove person, remove people, delete object, clean up photo, remove wires, remove text | Tools › Retouch | Ready | 11 |  |
 | tool.heal | Heal from a source | Healing brush | Alt-click a clean area, then paint to heal with it. | heal | Tools › Retouch | Ready | W3 |  |
 | tool.patch | Patch an area | Patch | Draw around a flaw and drag it to a clean area. | patch | Tools › Retouch | Ready | W3 |  |
 | tool.smart-move | Move and fill the gap | Content-aware move | Move something and fill the hole it leaves. | move object | Tools › Retouch | Planned | 11 |  |

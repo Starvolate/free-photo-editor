@@ -29,6 +29,7 @@ import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
+import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
 
 type Layout = 'phone' | 'tablet' | 'desktop';
@@ -52,6 +53,8 @@ export interface EditorController {
   sample(x: number, y: number, activeLayerOnly?: boolean): number[] | null;
   /** Page coordinates of a document position, for automation and tests. */
   toClient(x: number, y: number): { x: number; y: number } | null;
+  /** How selected one picture pixel is, 0 to 255 (for tests). */
+  selectionAt(x: number, y: number): number;
   exportFile(format: string, quality?: number, multi?: boolean, delay?: number): Promise<Blob>;
   /** Every function of the map with its status, for automation and tests. */
   commands(): CommandInfo[];
@@ -290,6 +293,7 @@ export class Editor {
   private off: (() => void)[] = [];
   tk: ToolKit | null = null;
   private tkLoad: Promise<ToolKit> | null = null;
+  private aiLoad: Promise<AiKit> | null = null;
   private tkDown = false;
   autoPick = false;
   private olSel: Selection | null = null;
@@ -1382,6 +1386,8 @@ export class Editor {
       return this.tk;
     }));
   }
+  // ---------- W11 on-device AI (ai.ts and packages/ai, loaded on first use) ----------
+  ai(): Promise<AiKit> { return (this.aiLoad ??= import('./ai').then((m) => m.createAiKit(this.toolHost()))); }
   private toolHost(): ToolHost {
     return {
       root: this.root, uid: this.uid, doc: () => this.doc, history: () => this.history, view: () => this.view, canvas: () => this.canvas, pointer: () => this.pointer,
@@ -1394,6 +1400,7 @@ export class Editor {
       paintFrom: () => this.marks.get(this.history) ?? 0, paintFromGone: () => this.paintFromGone(),
       paint: (t) => (t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush), fitBox: (r, m) => this.fitBox(r, m),
       fitted: () => this.fitted, restoreView: (v, f) => { this.setView(v); this.fitted = f; },
+      ai: () => this.ai(),
     };
   }
   private toolSheet(id: string, title: string, body: HTMLElement): void {
@@ -2680,7 +2687,7 @@ export class Editor {
     const link = (href: string, text: string, testid?: string): HTMLElement => h('a', { href, target: '_blank', rel: 'noopener', 'data-testid': testid }, text);
     return h('div', { class: 'fpe-about', 'data-testid': 'about' },
       h('p', { class: 'fpe-about-credit' }, h('strong', {}, 'Free Photo Editor by Bhawesh Tibrewal'), h('br'), link(AUTHOR_URL, 'bhaweshtibrewal.com', 'about-site')),
-      h('p', {}, `Version ${APP_VERSION}. A free photo editor that runs fully in your browser. Your pictures stay on this device.`),
+      h('p', {}, `Version ${APP_VERSION}. A free photo editor that runs fully in your browser. Your pictures stay on this device: nothing is uploaded. The AI tools (select the subject, remove the background or an object, make it bigger) download their models once, then run right here on this device.`),
       h('h3', {}, 'Licence'),
       h('p', {}, 'Copyright (C) 2026 Bhawesh Tibrewal. This program is free software: you may share and change it under the GNU Affero General Public License, version 3 (AGPL-3.0-only), with additional terms: every copy must keep the credit "Free Photo Editor by Bhawesh Tibrewal" with a link to bhaweshtibrewal.com, and changed versions must say that they are changed. It comes with no warranty of any kind.'),
       h('p', {}, link(SOURCE_URL, 'Source code', 'about-source'), ' · ', link(SOURCE_URL + '/blob/main/LICENSE', 'Licence text'), ' · ', link(SOURCE_URL + '/blob/main/ADDITIONAL-TERMS.md', 'Additional terms')),
@@ -2987,6 +2994,7 @@ export class Editor {
         return { id: r.id, status: r.status, kind: r.kind, enabled: this.isEnabled(r.id), checked: hd?.checked ? hd.checked(this) : null, handler: !!hd };
       }),
       run: (id) => this.run(id),
+      selectionAt: (x, y) => { const s = this.doc?.selection; if (!s || x < s.x || y < s.y || x >= s.x + s.w || y >= s.y + s.h) return 0; return s.alpha ? s.alpha[(y - s.y) * s.w + (x - s.x)] : 255; },
       checksum: (x, y, w, hh) => {
         const d = this.doc, r = d ? intersect({ x, y, w, h: hh }, docRect(d)) : null;
         if (!d || !r) return 0;

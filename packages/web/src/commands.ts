@@ -11,7 +11,7 @@ import type { Editor } from './app';
 export type ToolId = 'move' | 'select' | 'crop' | 'brush' | 'pencil' | 'eraser' | 'eyedropper' | 'hand' | 'zoom'
   | 'lasso' | 'lasso-poly' | 'wand' | 'quick-select' | 'gradient' | 'bucket' | 'magic-eraser' | 'bg-eraser' | 'color-replace' | 'history-brush'
   | 'clone' | 'heal' | 'spot-heal' | 'patch' | 'red-eye' | 'dodge' | 'burn' | 'sponge' | 'blur' | 'sharpen' | 'smudge'
-  | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line';
+  | 'type' | 'rect' | 'rounded-rect' | 'ellipse' | 'polygon' | 'line' | 'remove';
 export interface Handler { run: (e: Editor) => unknown; enabled: (e: Editor) => boolean; checked?: (e: Editor) => boolean; }
 export interface Ctl {
   key: string; label: string; help: string; value: number; min?: number; max?: number; step?: number; unit?: string;
@@ -224,7 +224,7 @@ export const TOOLS: Record<string, ToolId> = {
 export const W3_TOOLS: Record<string, ToolId> = {
   'tool.lasso': 'lasso', 'tool.lasso-poly': 'lasso-poly', 'tool.magic-wand': 'wand', 'tool.quick-select': 'quick-select', 'tool.gradient': 'gradient',
   'tool.bucket': 'bucket', 'tool.magic-eraser': 'magic-eraser', 'tool.bg-eraser': 'bg-eraser', 'tool.color-replace': 'color-replace',
-  'tool.history-brush': 'history-brush', 'tool.clone': 'clone', 'tool.heal': 'heal', 'tool.spot-heal': 'spot-heal', 'tool.patch': 'patch',
+  'tool.history-brush': 'history-brush', 'tool.clone': 'clone', 'tool.heal': 'heal', 'tool.spot-heal': 'spot-heal', 'tool.remove': 'remove', 'tool.patch': 'patch',
   'tool.red-eye': 'red-eye', 'tool.dodge': 'dodge', 'tool.burn': 'burn', 'tool.sponge': 'sponge', 'tool.blur': 'blur', 'tool.sharpen': 'sharpen',
   'tool.smudge': 'smudge', 'tool.type': 'type', 'tool.rect': 'rect', 'tool.rounded-rect': 'rounded-rect', 'tool.ellipse': 'ellipse',
   'tool.polygon': 'polygon', 'tool.line': 'line',
@@ -340,6 +340,10 @@ for (const id of ['select.color-range', 'select.grow', 'select.similar', 'select
   'layer.align-vcenter', 'layer.align-bottom', 'layer.distribute-h', 'layer.distribute-v', 'layer.rasterize', 'type.fonts', 'type.rasterize']) HANDLERS[id] = w3(id);
 for (const id of ['select.border', 'select.smooth', 'select.expand', 'select.contract', 'select.feather', 'select.transform', 'edit.stroke']) HANDLERS[id] = w3(id, hasSel);
 HANDLERS['type.add'] = H((e) => e.setTool('type'));
+/** W11 on-device AI: ai.ts, loaded on first use. */
+const ai = (id: string, enabled: Handler['enabled'] = hasDoc): Handler => H(async (e) => (await e.ai()).cmd(id), enabled);
+for (const id of ['select.subject', 'image.remove-bg', 'image.upscale-2x', 'image.upscale-4x']) HANDLERS[id] = ai(id);
+HANDLERS['edit.smart-fill'] = ai('edit.smart-fill', hasSel);
 for (const [id, t] of Object.entries(TOOLS)) HANDLERS[id] = H((e) => e.setTool(t), always, (e) => e.tool === t);
 for (const id of Object.keys(ADJ)) HANDLERS[id] = H((e) => e.openAdjust(id));
 for (const p of DOCK_PANELS) HANDLERS['panel.' + p] = H((e) => e.togglePanelShown(p), always, (e) => e.panelShown(p));
@@ -357,7 +361,9 @@ export const JOBS: Job[] = [
   { title: 'Soften or blur', cmd: 'filter.blur-gaussian', icon: 'droplet' },
   { title: 'Draw or paint', cmd: 'tool.brush', icon: 'brush' },
   { title: 'Combine two photos', cmd: 'file.open-layer', icon: 'image-plus' },
-  { title: 'Remove the background', cmd: 'select.remove-bg', icon: 'scissors' },
+  { title: 'Remove the background', cmd: 'image.remove-bg', icon: 'scissors' },
+  { title: 'Remove an object', cmd: 'tool.remove', icon: 'eraser' },
+  { title: 'Make it bigger', cmd: 'image.upscale-2x', icon: 'fit' },
   { title: 'Remove a spot', cmd: 'tool.spot-heal', icon: 'bandage' },
   { title: 'Add text', cmd: 'tool.type', icon: 'type' },
   { title: 'Blur the background', cmd: 'filter.blur-iris', icon: 'focus' },

@@ -7,10 +7,10 @@
   "author": "Bhawesh Tibrewal (https://bhaweshtibrewal.com)",
   "homepage": "https://github.com/Starvolate/free-photo-editor",
   "type": "module",
-  "workspaces": ["packages/core", "packages/formats", "packages/web", "packages/cli", "packages/mcp"],
+  "workspaces": ["packages/core", "packages/formats", "packages/ai", "packages/web", "packages/cli", "packages/mcp"],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/core/tsconfig.test.json && tsc --noEmit -p packages/formats && tsc --noEmit -p packages/formats/tsconfig.test.json && tsc --noEmit -p packages/web && tsc --noEmit -p packages/web/tsconfig.node.json",
+    "typecheck": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/core/tsconfig.test.json && tsc --noEmit -p packages/formats && tsc --noEmit -p packages/formats/tsconfig.test.json && tsc --noEmit -p packages/web && tsc --noEmit -p packages/web/tsconfig.node.json && tsc --noEmit -p packages/ai && tsc --noEmit -p packages/ai/tsconfig.test.json",
     "build": "npm run build -w @free-photoeditor/web",
     "size": "npm run build && node packages/web/scripts/size.mjs",
     "e2e": "npm run build && vitest run --config packages/web/vitest.e2e.config.ts",

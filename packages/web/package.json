@@ -19,6 +19,7 @@
   "dependencies": {
     "@free-photoeditor/core": "0.1.0",
     "lucide": "1.72.0",
-    "@free-photoeditor/formats": "0.1.0"
+    "@free-photoeditor/formats": "0.1.0",
+    "@free-photoeditor/ai": "0.1.0"
   }
 }

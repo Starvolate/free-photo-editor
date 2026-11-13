@@ -12,7 +12,7 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, fitCanvas, layersBox, samplePixel,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
   selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
@@ -2611,17 +2611,12 @@ export class Editor {
     this.fit();
     this.toast(`Trimmed to ${d.width} × ${d.height} px.`);
   }
-  /** Fit the canvas to the selection, or round every layer's visible pixels; the layers keep all their pixels (one undo step). */
-  fitCanvasAction(): void {
-    const d = this.doc;
-    if (!d) return;
-    const s = d.selection, r = s ? { x: s.x, y: s.y, w: s.w, h: s.h } : layersBox(d);
-    if (!r) { this.toast('Nothing to fit: every layer is empty.'); return; }
-    const cmd = fitCanvas(d, r, s ? 'Fit canvas to selection' : 'Fit canvas to layers');
-    if (!cmd) { this.toast('The canvas already fits.'); return; }
-    this.pushCmd(cmd, true);
-    this.fit();
-    this.toast(`The canvas is now ${d.width} × ${d.height} px. Nothing was deleted: parts outside it are kept.`);
+  /** Liquify, Stretch without squashing people, the detail layers and Fit canvas (warpkit.ts), loaded on first use. */
+  async warpMore(id: string): Promise<void> {
+    try {
+      const m = await import('./warpkit'), host = { ...this.toolHost(), job: (s: JobSpec, b: Bitmap) => this.jobs.run(s, b), fit: () => this.fit() };
+      if (id === 'image.fit-canvas') m.fitCanvasRun(host); else m.runWarpMore(id, host);
+    } catch (e) { this.toast(errText(e, "This couldn't load. Check the connection and try again.")); }
   }
   /** Applies a live free transform first (the Transform bar offers the bends while one is open), so a bend starts from what is shown. */
   async settleTransform(): Promise<void> { if (this.tk?.state().transform) (await this.toolkit()).cmd('edit.transform-commit'); }

@@ -5,7 +5,9 @@ import { cageOf, gridOf, pinsOf } from '@free-photoeditor/core/warp';
 import type { JobParams } from '@free-photoeditor/core';
 import { ADJ, HANDLERS, WARP_IDS } from '../src/commands';
 import { HANDLES } from '../src/handles';
-import { SHAPE_FILLS, WARP_HANDLES, nearestEdge, pctOf } from '../src/warpkit';
+import { SHAPE_FILLS, WARP_HANDLES, WARP_MORE_IDS, nearestEdge, pctOf } from '../src/warpkit';
+import { BY_ID } from '../src/registry';
+import { NEW_ROWS } from '../src/registry-union';
 
 // A box 101 pixels wide and 51 high: one percent is one pixel across and half a pixel down.
 const B = { x: 10, y: 20, w: 101, h: 51 };
@@ -15,6 +17,15 @@ describe('Bend and push dialogs (warpkit)', () => {
     for (const id of WARP_IDS) { expect(ADJ[id], id).toBeTruthy(); expect(HANDLERS[id], id).toBeTruthy(); }
     for (const k of ['mesh', 'plane', 'pins', 'cage']) expect(HANDLES[k]).toBe(WARP_HANDLES[k]);
     expect(HANDLERS['image.fit-canvas'] && HANDLERS['edit.transform-again']).toBeTruthy();
+  });
+  it('gives Liquify, Stretch without squashing and the detail layers a handler, and deblur a dialog in plain words', () => {
+    const row = (id: string) => BY_ID.get(id) ?? NEW_ROWS.find((r) => r.id === id);
+    for (const id of [...WARP_MORE_IDS, 'retouch.deblur']) { expect(HANDLERS[id], id).toBeTruthy(); expect(row(id)?.status, id).toBe('ready'); }
+    const d = ADJ['retouch.deblur'];
+    expect(d?.kind).toBe('deblur');
+    expect(d?.controls.map((c) => [c.key, c.min, c.max, c.value])).toEqual([['size', 0.5, 8, 1.5], ['rounds', 1, 30, 8]]);
+    for (const c of d?.controls ?? []) expect(c.help.length).toBeLessThanOrEqual(160);
+    expect(row('retouch.deblur')?.help).toMatch(/cannot be rescued/);
   });
   it('turns picture pixels into handle percentages and back', () => {
     expect(pctOf(B, 60, 45)).toEqual([50, 50]);

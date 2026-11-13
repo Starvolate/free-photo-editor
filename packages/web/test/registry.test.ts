@@ -165,7 +165,8 @@ describe('the Task ribbon', () => {
       'select.luminance', 'select.from-alpha', 'select.from-channel', 'select.remove-holes', 'select.round-corners', 'select.distort', 'select.float', 'layer.crop-to-content', 'layer.remove-alpha', 'layer.invert-alpha', 'layer.split-by-colour', 'layer.reverse',
       'select.editor', 'layer.filter', 'layer.colour-label', 'layer.select-by-state', 'layer.metadata',
       // Batch crop-warp (warpkit.ts, app.ts, toolkit.ts).
-      'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin']);
+      'edit.cage', 'image.fit-canvas', 'edit.transform-again', 'retouch.median-brush', 'retouch.smooth-skin',
+      'retouch.frequency-separation', 'retouch.deblur']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

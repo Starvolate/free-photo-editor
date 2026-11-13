@@ -49,11 +49,12 @@ const CASES: Record<FxKind, P> = {
   kaleidoscope: { repeats: 3 }, 'alien-map': { cycles: 3 }, bloom: { threshold: 60, size: 6, strength: 120 }, 'edge-detect': { method: 0 }, deinterlace: { keep: 0 },
   destripe: { width: 4 }, 'video-degrade': { pattern: 0, size: 1, strength: 80 }, lowlight: { dark: 80 }, 'bump-map': { depth: 40 }, 'star-burst': { length: 30 },
   'edge-keep-blur': { radius: 2, keep: 60 }, antialias: { edge: 10 },
+  'seam-scale': { tw: 10, th: 8 }, deblur: { size: 1, rounds: 4 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
   'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed',
-  'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur']);
+  'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur', 'deblur']);
 const FILLS = new Set<FxKind>(['clouds', 'fibers']);
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude');
 
@@ -76,7 +77,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(78);
+    expect(FX_KINDS.length).toBe(80);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

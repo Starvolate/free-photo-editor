@@ -184,4 +184,63 @@ suite('Bend and push (headless Chrome)', () => {
     expect(errors).toEqual([]);
     await ctx.close();
   }, 120_000);
+
+  it('pushes pixels on the Liquify preview, then stretches, splits into detail layers and deblurs, each from the ribbon as one step', async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(url);
+    await p.waitForFunction(() => !!(window as unknown as Win).fpe);
+    const info = (): Promise<ReturnType<Fpe['getInfo']>> => p.evaluate(() => (window as unknown as Win).fpe.getInfo());
+    const oneStep = (k: number): Promise<unknown> => p.waitForFunction((n) => ((window as unknown as Win).fpe.state().step as number) === n + 1, k, { timeout: 60_000 });
+
+    // Liquify: a drag across the preview over the middle of BOX. The canvas does not change until Apply.
+    await fresh(p);
+    let before = await sum(p), n = await step(p);
+    await reach(p, 'filter.liquify');
+    const cv = await p.waitForSelector('[data-testid="lq-canvas"]');
+    await cv.scrollIntoViewIfNeeded();
+    const r = (await cv.boundingBox())!, i0 = (await info())!;
+    const cx = r.x + ((BOX[0] + BOX[2] / 2) / i0.width) * r.width, cy = r.y + ((BOX[1] + BOX[3] / 2) / i0.height) * r.height;
+    await drag(p, { x: cx - 40, y: cy - 10 }, 80, 30);
+    expect(await sum(p), 'the canvas waits for Apply').toBe(before);
+    expect(await step(p)).toBe(n);
+    await p.waitForTimeout(100);
+    await p.screenshot({ path: join(OUT, 'liquify-1440.png') });
+    await p.click('[data-testid="wm-apply"]');
+    await oneStep(n);
+    expect(await sum(p), 'filter.liquify').not.toBe(before);
+
+    // Stretch without squashing people: 80% of the width by default, with the selected box protected; the canvas follows.
+    await fresh(p);
+    const w0 = (await info())!.width;
+    n = await step(p);
+    await reach(p, 'edit.smart-scale');
+    await p.waitForSelector('[data-testid="wm-scale"] [data-testid="ss-keep-yes"][aria-pressed="true"]');
+    await p.click('[data-testid="wm-apply"]');
+    await oneStep(n);
+    expect((await info())?.width, 'edit.smart-scale').toBe(Math.round(w0 * 0.8));
+
+    // Smooth a face by detail layers: two layers above the photo, one undo step.
+    await fresh(p);
+    const l0 = (await info())!.layers.length;
+    n = await step(p);
+    await reach(p, 'retouch.frequency-separation');
+    await p.waitForSelector('[data-testid="wm-freq"]');
+    await p.click('[data-testid="wm-apply"]');
+    await oneStep(n);
+    expect((await info())?.layers.length, 'retouch.frequency-separation').toBe(l0 + 2);
+
+    // Fix a blurry photo: a filter dialog with a live preview, then Apply.
+    await fresh(p);
+    before = await sum(p); n = await step(p);
+    await reach(p, 'retouch.deblur');
+    await p.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
+    await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, before] as const, { timeout: 30_000 });
+    await p.click('[data-testid="adj-apply"]');
+    await oneStep(n);
+    expect(await sum(p), 'retouch.deblur').not.toBe(before);
+    expect(errors).toEqual([]);
+    await ctx.close();
+  }, 240_000);
 });

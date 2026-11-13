@@ -440,9 +440,11 @@ for (const id of RAW_IDS) HANDLERS[id] = H(async (e) => { await import('./raw-mo
 for (const id of ['file.open-url', 'file.camera', 'file.print', 'file.export-layers']) HANDLERS[id] = H((e) => e.fileMore(id), id === 'file.open-url' || id === 'file.camera' ? always : hasDoc);
 // Batch crop-warp (warpkit.ts, loaded on first use): Bend, Re-angle a surface, Bend around pins and the Cage as filter dialogs
 // with handles on the picture, plus two retouch dialogs. A live free transform is applied first, so a bend starts from what is shown.
-export const WARP_IDS = 'edit.warp edit.perspective-warp edit.pin-warp edit.cage retouch.median-brush retouch.smooth-skin'.split(' ');
+export const WARP_IDS = 'edit.warp edit.perspective-warp edit.pin-warp edit.cage retouch.median-brush retouch.smooth-skin retouch.deblur'.split(' ');
 for (const id of WARP_IDS) HANDLERS[id] = H(async (e) => { await e.settleTransform(); await import('./warpkit'); return e.openAdjust(id); });
-HANDLERS['image.fit-canvas'] = H((e) => e.fitCanvasAction());
+// Liquify, Stretch without squashing people and the detail layers have sheets of their own (warpkit.ts runWarpMore).
+for (const id of ['filter.liquify', 'edit.smart-scale', 'retouch.frequency-separation']) HANDLERS[id] = H(async (e) => { await e.settleTransform(); return e.warpMore(id); });
+HANDLERS['image.fit-canvas'] = H((e) => e.warpMore('image.fit-canvas'));
 HANDLERS['edit.transform-again'] = w3('edit.transform-again');
 // Automate and batch (automate.ts, loaded on first use): recorded steps, many pictures at once, a sheet of small photos.
 for (const id of ['panel.actions', 'file.batch', 'file.resize-many', 'file.contact-sheet']) HANDLERS[id] = H((e) => e.automate(id), always);

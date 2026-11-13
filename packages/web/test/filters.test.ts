@@ -27,9 +27,10 @@ const fxIds = Object.keys(ADJ).filter((id) => ADJ[id].op === 'fx');
 describe('W2 filter dialogs', () => {
   it('makes every filter of the card Ready, with a dialog', () => {
     for (const id of CARD) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(ADJ[id], id).toBeTruthy(); }
-    expect(BY_ID.get('filter.liquify')?.status).toBe('planned');
-    // The bends (core/warp.ts) have their own dialogs in warpkit.ts, loaded on first use and tested in warpkit.test.ts.
-    const kinds = FX_KINDS.filter((k) => !k.endsWith('-warp'));
+    expect(BY_ID.get('filter.liquify')?.status).toBe('ready');
+    // The bends, Stretch without squashing (seam-scale) and deblur (core/warp.ts) have their dialogs or sheets in warpkit.ts,
+    // loaded on first use and tested in warpkit.test.ts.
+    const kinds = FX_KINDS.filter((k) => !k.endsWith('-warp') && k !== 'seam-scale' && k !== 'deblur');
     expect(new Set(fxIds.map((id) => ADJ[id].kind))).toEqual(new Set(kinds));
     expect(fxIds.length).toBe(kinds.length);
   });
@@ -73,6 +74,6 @@ describe('W2 filter dialogs', () => {
   });
   it('counts the Filter menu', () => {
     const rows = ROWS.filter((r) => r.id.startsWith('filter.'));
-    expect(rows.filter((r) => r.status === 'ready').length).toBe(64);
+    expect(rows.filter((r) => r.status === 'ready').length).toBe(65);
   });
 });

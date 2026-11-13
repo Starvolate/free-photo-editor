@@ -15,7 +15,7 @@
  */
 import type { Bitmap } from './document';
 import { homography, invert3, type Quad } from './transform';
-import { clamp, premul, unpremul, type Box, type Fx, type P } from './fx/lib';
+import { clamp, luma, premul, unpremul, type Box, type Fx, type P } from './fx/lib';
 
 type Pt = [number, number];
 const num = (p: P, k: string, d: number): number => { const v = p[k]; return typeof v === 'number' && Number.isFinite(v) ? v : d; };
@@ -216,5 +216,231 @@ const cageWarp: Fx = (src, p, b) => {
   });
 };
 
-export const WARPS = { 'mesh-warp': meshWarp, 'perspective-warp': perspectiveWarp, 'pin-warp': pinWarp, 'cage-warp': cageWarp };
+// ---------- Push pixels like liquid (Liquify) ----------
+/**
+ * Liquify keeps one field of moves at the preview's size, read backwards: the picture at p shows the source at p + d(p).
+ * Each brush dab composes a small move into the field, so strokes build on each other, and Undo the push eases the field
+ * back to zero. Apply scales the field up to the layer and reads the layer once, with its edges clamped (no holes).
+ */
+export interface Field { w: number; h: number; dx: Float32Array; dy: Float32Array; }
+export const LIQUIFY_TOOLS = ['push', 'pucker', 'bloat', 'twirl', 'restore'] as const;
+export type LiquifyTool = (typeof LIQUIFY_TOOLS)[number];
+export const newField = (w: number, h: number): Field => ({ w, h, dx: new Float32Array(w * h), dy: new Float32Array(w * h) });
+/** The field at a fractional position (bilinear; outside it, the nearest edge). */
+export function fieldAt(f: Field, x: number, y: number): Pt {
+  const cx = clamp(x, 0, f.w - 1), cy = clamp(y, 0, f.h - 1), x0 = Math.floor(cx), y0 = Math.floor(cy);
+  const x1 = Math.min(f.w - 1, x0 + 1), y1 = Math.min(f.h - 1, y0 + 1), tx = cx - x0, ty = cy - y0;
+  const a = y0 * f.w + x0, b = y0 * f.w + x1, c = y1 * f.w + x0, e = y1 * f.w + x1;
+  const wa = (1 - tx) * (1 - ty), wb = tx * (1 - ty), wc = (1 - tx) * ty, we = tx * ty;
+  return [f.dx[a] * wa + f.dx[b] * wb + f.dx[c] * wc + f.dx[e] * we, f.dy[a] * wa + f.dy[b] * wb + f.dy[c] * wc + f.dy[e] * we];
+}
+/** How strongly a dab of radius R and strength s acts at squared distance r2 from its centre: s·(1 − r²/R²)². */
+export const falloff = (r2: number, R: number, s: number): number => (r2 >= R * R ? 0 : s * (1 - r2 / (R * R)) ** 2);
+/**
+ * One dab at (cx, cy) with radius R and strength s: every point p it covers now reads from q, so d(p) = (q − p) + d_old(q).
+ * Push drags along (vx, vy); Grow (bloat) and Shrink (pucker) push out from or pull in to the centre; Twirl turns by up to
+ * `turn` radians; Undo the push eases the field back towards the untouched picture.
+ */
+export function liquifyDab(f: Field, tool: LiquifyTool, cx: number, cy: number, R: number, s: number, vx = 0, vy = 0, turn = 0.35): void {
+  const x0 = Math.max(0, Math.floor(cx - R)), x1 = Math.min(f.w - 1, Math.ceil(cx + R)), y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(f.h - 1, Math.ceil(cy + R));
+  if (x0 > x1 || y0 > y1) return;
+  const ow = x1 - x0 + 1, nx = new Float32Array(ow * (y1 - y0 + 1)), ny = new Float32Array(nx.length), hit = new Uint8Array(nx.length);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const px = x - cx, py = y - cy, w = falloff(px * px + py * py, R, s), k = (y - y0) * ow + x - x0, i = y * f.w + x;
+    if (w <= 0) continue;
+    hit[k] = 1;
+    if (tool === 'restore') { const keep = 1 - Math.min(1, w); nx[k] = f.dx[i] * keep; ny[k] = f.dy[i] * keep; continue; }
+    let qx: number, qy: number;
+    if (tool === 'push') { qx = x - w * vx; qy = y - w * vy; }
+    else if (tool === 'bloat') { qx = x - px * w; qy = y - py * w; }
+    else if (tool === 'pucker') { qx = x + px * w; qy = y + py * w; }
+    else { const a = -turn * w, c = Math.cos(a), sn = Math.sin(a); qx = cx + c * px - sn * py; qy = cy + sn * px + c * py; }
+    const [ox, oy] = fieldAt(f, qx, qy);
+    nx[k] = qx - x + ox; ny[k] = qy - y + oy;
+  }
+  // Written after every read, so one dab only ever reads the field as it was before it.
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const k = (y - y0) * ow + x - x0;
+    if (hit[k]) { f.dx[y * f.w + x] = nx[k]; f.dy[y * f.w + x] = ny[k]; }
+  }
+}
+/** Bilinear read of premultiplied pixels with the position held inside the bitmap (edges smear instead of turning clear). */
+function sampleEdge(pm: Float32Array, W: number, H: number, x: number, y: number, out: Float32Array, o: number): void {
+  const cx = clamp(x, 0, W - 1), cy = clamp(y, 0, H - 1), x0 = Math.floor(cx), y0 = Math.floor(cy), x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+  const tx = cx - x0, ty = cy - y0, a = (y0 * W + x0) * 4, b = (y0 * W + x1) * 4, c = (y1 * W + x0) * 4, e = (y1 * W + x1) * 4;
+  const wa = (1 - tx) * (1 - ty), wb = tx * (1 - ty), wc = (1 - tx) * ty, we = tx * ty;
+  for (let k = 0; k < 4; k++) out[o + k] = pm[a + k] * wa + pm[b + k] * wb + pm[c + k] * wc + pm[e + k] * we;
+}
+/** A bitmap drawn through a field of any size: the field and its moves are scaled to the bitmap, then read once. */
+export function liquifyDraw(src: Bitmap, f: Field): Uint8ClampedArray {
+  const W = src.width, H = src.height, sx = f.w / W, sy = f.h / H, pm = premul(src), out = new Float32Array(pm.length);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const [dx, dy] = fieldAt(f, (x + 0.5) * sx - 0.5, (y + 0.5) * sy - 0.5);
+    sampleEdge(pm, W, H, x + dx / sx, y + dy / sy, out, (y * W + x) * 4);
+  }
+  return unpremul(out);
+}
+
+// ---------- Stretch without squashing people (content-aware scale) ----------
+/**
+ * Seam carving (Avidan and Shamir, 2007), written for this project: paths of plain pixels from top to bottom are taken out
+ * to narrow a picture, or doubled to widen it, so busy parts such as faces keep their shape. The seams are found on a copy
+ * of at most about 300,000 pixels, then the same choice is mapped onto every full-size pixel; height works on the picture
+ * turned on its side. A protected box costs so much that no seam crosses it while another way exists.
+ */
+const CARVE_PX = 300_000;
+/** For a w × h grid of brightness: how many times each cell is kept after `k` seams (0 or 1 when narrowing, 1 or 2 when widening). */
+export function seamPlan(L: Float32Array, w: number, h: number, k: number, shrink: boolean, guard: Uint8Array | null = null): Uint8Array {
+  const mult = new Uint8Array(w * h).fill(1), cols = Array.from({ length: h }, () => Int32Array.from({ length: w }, (_, i) => i));
+  const cost = new Float64Array(w * h), from = new Int8Array(w * h);
+  let n = w;
+  for (let s = 0; s < Math.min(k, w - 1); s++) {
+    for (let r = 0; r < h; r++) {
+      const row = cols[r], up = cols[Math.max(0, r - 1)], dn = cols[Math.min(h - 1, r + 1)], o = r * w;
+      for (let c = 0; c < n; c++) {
+        let e = Math.abs(L[o + row[Math.min(n - 1, c + 1)]] - L[o + row[Math.max(0, c - 1)]])
+          + Math.abs(L[Math.min(h - 1, r + 1) * w + dn[c]] - L[Math.max(0, r - 1) * w + up[c]]);
+        if (guard && guard[o + row[c]]) e += 1e5;
+        let best = 0;
+        if (r) {
+          const p = (r - 1) * w;
+          let m = cost[p + c];
+          if (c > 0 && cost[p + c - 1] < m) { m = cost[p + c - 1]; best = -1; }
+          if (c < n - 1 && cost[p + c + 1] < m) { m = cost[p + c + 1]; best = 1; }
+          e += m;
+        }
+        cost[o + c] = e; from[o + c] = best;
+      }
+    }
+    let c = 0;
+    for (let x = 1; x < n; x++) if (cost[(h - 1) * w + x] < cost[(h - 1) * w + c]) c = x;
+    for (let r = h - 1; r >= 0; r--) {
+      const row = cols[r];
+      mult[r * w + row[c]] = shrink ? 0 : 2;
+      row.copyWithin(c, c + 1, n);
+      c += from[r * w + c];
+      c = Math.max(0, Math.min(n - 1, c));
+    }
+    n--;
+  }
+  return mult;
+}
+/** Premultiplied pixels (w × h) narrowed or widened to tw columns along seams, each row resampled to exactly tw. */
+function carveWidth(pm: Float32Array, w: number, h: number, tw: number, guard: Box | null): Float32Array {
+  if (tw === w) return pm.slice();
+  const s = Math.min(1, Math.sqrt(CARVE_PX / (w * h))), ws = Math.max(1, Math.round(w * s)), hs = Math.max(1, Math.round(h * s));
+  const L = new Float32Array(ws * hs), G = guard ? new Uint8Array(ws * hs) : null;
+  for (let r = 0; r < hs; r++) for (let c = 0; c < ws; c++) {
+    const x = Math.min(w - 1, Math.floor(((c + 0.5) * w) / ws)), y = Math.min(h - 1, Math.floor(((r + 0.5) * h) / hs)), i = (y * w + x) * 4;
+    L[r * ws + c] = luma(pm[i], pm[i + 1], pm[i + 2]);
+    if (G && guard && x >= guard.x && x < guard.x + guard.w && y >= guard.y && y < guard.y + guard.h) G[r * ws + c] = 1;
+  }
+  const mult = seamPlan(L, ws, hs, Math.round((Math.abs(tw - w) * ws) / w), tw < w, G);
+  const out = new Float32Array(tw * h * 4), xs = new Float32Array(2 * w + 1);
+  for (let y = 0; y < h; y++) {
+    const r = Math.min(hs - 1, Math.floor((y * hs) / h));
+    let n = 0;
+    for (let x = 0; x < w; x++) {
+      const m = mult[r * ws + Math.min(ws - 1, Math.floor((x * ws) / w))];
+      if (m >= 1) xs[n++] = x;
+      if (m === 2) xs[n++] = Math.min(w - 1, x + 0.5);
+    }
+    if (!n) xs[n++] = 0;
+    for (let j = 0; j < tw; j++) {
+      const t = n === tw ? j : clamp(((j + 0.5) * n) / tw - 0.5, 0, n - 1), a = Math.floor(t), b = Math.min(n - 1, a + 1), f = t - a;
+      const sx = xs[a] * (1 - f) + xs[b] * f, x0 = Math.floor(sx), x1 = Math.min(w - 1, x0 + 1), g = sx - x0;
+      const i0 = (y * w + x0) * 4, i1 = (y * w + x1) * 4, o = (y * tw + j) * 4;
+      for (let k = 0; k < 4; k++) out[o + k] = pm[i0 + k] * (1 - g) + pm[i1 + k] * g;
+    }
+  }
+  return out;
+}
+function turn(pm: Float32Array, w: number, h: number): Float32Array {
+  const o = new Float32Array(pm.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let k = 0; k < 4; k++) o[(x * h + y) * 4 + k] = pm[(y * w + x) * 4 + k];
+  return o;
+}
+/** Premultiplied pixels (w × h) carved to tw × th, keeping a protected box (in the same pixels) out of every seam. */
+export function carve(pm: Float32Array, w: number, h: number, tw: number, th: number, guard: Box | null = null): Float32Array {
+  const a = carveWidth(pm, w, h, tw, guard);
+  if (th === h) return a;
+  const g = guard ? { x: guard.y, y: Math.round((guard.x * tw) / w), w: guard.h, h: Math.max(1, Math.round((guard.w * tw) / w)) } : null;
+  return turn(carveWidth(turn(a, tw, h), h, tw, th, g), th, tw);
+}
+/**
+ * The box's top-left w × h pixels (all of it by default) carved to tw × th (`tw`, `th`), written from the box's top-left
+ * corner; the rest of the box turns see-through. `px, py, pw, ph` protect a box, in pixels from the box's corner.
+ */
+const seamScale: Fx = (src, p, b) => {
+  const w = clamp(Math.round(num(p, 'w', b.w)), 1, b.w), h = clamp(Math.round(num(p, 'h', b.h)), 1, b.h);
+  const tw = clamp(Math.round(num(p, 'tw', w)), 1, 4 * w), th = clamp(Math.round(num(p, 'th', h)), 1, 4 * h), W = src.width;
+  const pm = premul(src), box = new Float32Array(w * h * 4);
+  for (let y = 0; y < h; y++) box.set(pm.subarray(((b.y + y) * W + b.x) * 4, ((b.y + y) * W + b.x + w) * 4), y * w * 4);
+  const pw = num(p, 'pw', 0), ph = num(p, 'ph', 0), guard = pw >= 1 && ph >= 1 ? { x: num(p, 'px', 0), y: num(p, 'py', 0), w: pw, h: ph } : null;
+  const res = carve(box, w, h, tw, th, guard), out = pm.slice();
+  for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) {
+    const i = ((b.y + y) * W + b.x + x) * 4;
+    if (x < tw && y < th) out.set(res.subarray((y * tw + x) * 4, (y * tw + x) * 4 + 4), i);
+    else out[i] = out[i + 1] = out[i + 2] = out[i + 3] = 0;
+  }
+  return finish(src, b, out);
+};
+
+// ---------- Smooth a face by detail layers (frequency separation) ----------
+/**
+ * The texture layer: (original − blurred) / 2 + 127.5 per colour, rounded, alpha from the original. Put over the blurred
+ * layer in Linear light (b + 2s − 1), the two give the original back to within 1 level.
+ */
+export function textureLayer(orig: ArrayLike<number>, blur: ArrayLike<number>): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(orig.length);
+  for (let i = 0; i < orig.length; i += 4) {
+    for (let k = 0; k < 3; k++) out[i + k] = Math.round((orig[i + k] - blur[i + k]) / 2 + 127.5);
+    out[i + 3] = orig[i + 3];
+  }
+  return out;
+}
+
+// ---------- Fix a blurry photo (deblur) ----------
+/**
+ * Richardson-Lucy deconvolution (Richardson 1972, Lucy 1974), written for this project: the picture is guessed again and
+ * again, each round asking how the guess would look blurred and correcting it by how far that is from the photo. It
+ * assumes a mild, even (Gaussian) blur of `size` pixels; strong motion blur is not rescued. Alpha is kept.
+ */
+function gaussKernel(sigma: number): Float32Array {
+  const r = Math.max(1, Math.ceil(sigma * 3)), k = new Float32Array(2 * r + 1);
+  let s = 0;
+  for (let i = -r; i <= r; i++) s += k[i + r] = Math.exp(-(i * i) / (2 * sigma * sigma));
+  for (let i = 0; i < k.length; i++) k[i] /= s;
+  return k;
+}
+function blurPlane(src: Float32Array, W: number, H: number, k: Float32Array, tmp: Float32Array, out: Float32Array): void {
+  const r = (k.length - 1) / 2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let s = 0;
+    for (let i = -r; i <= r; i++) s += k[i + r] * src[y * W + Math.max(0, Math.min(W - 1, x + i))];
+    tmp[y * W + x] = s;
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let s = 0;
+    for (let i = -r; i <= r; i++) s += k[i + r] * tmp[Math.max(0, Math.min(H - 1, y + i)) * W + x];
+    out[y * W + x] = s;
+  }
+}
+const deblur: Fx = (src, p, b) => {
+  const W = src.width, H = src.height, N = W * H, k = gaussKernel(clamp(num(p, 'size', 1.5), 0.5, 8)), rounds = clamp(Math.round(num(p, 'rounds', 8)), 1, 30);
+  const out = src.data.slice(), d = new Float32Array(N), u = new Float32Array(N), est = new Float32Array(N), tmp = new Float32Array(N), q = new Float32Array(N);
+  for (let c = 0; c < 3; c++) {
+    for (let i = 0; i < N; i++) d[i] = u[i] = src.data[i * 4 + c];
+    for (let n = 0; n < rounds; n++) {
+      blurPlane(u, W, H, k, tmp, est);
+      for (let i = 0; i < N; i++) est[i] = d[i] / Math.max(est[i], 1e-3);
+      blurPlane(est, W, H, k, tmp, q);
+      for (let i = 0; i < N; i++) u[i] = Math.max(0, Math.min(255, u[i] * q[i]));
+    }
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) out[(y * W + x) * 4 + c] = Math.round(u[y * W + x]);
+  }
+  return out;
+};
+
+export const WARPS = { 'mesh-warp': meshWarp, 'perspective-warp': perspectiveWarp, 'pin-warp': pinWarp, 'cage-warp': cageWarp, 'seam-scale': seamScale, deblur };
 export const WARP_KINDS = Object.keys(WARPS) as (keyof typeof WARPS)[];

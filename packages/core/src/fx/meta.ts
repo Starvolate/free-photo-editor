@@ -17,6 +17,7 @@ export const FX_KINDS = [
   'kaleidoscope', 'alien-map', 'bloom', 'edge-detect', 'deinterlace', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur', 'antialias',
   'outline', 'newsprint', 'dents', 'cartoon', 'sketch', 'linocut', 'patterns', 'stroke-blur', 'wrap-blur',
   'tiling', 'page-curl', 'illusion', 'fractal', 'superpixels', 'noise-pattern', 'detail-diffuse',
+  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning',
 ] as const;
 export type FxKind = (typeof FX_KINDS)[number];
 

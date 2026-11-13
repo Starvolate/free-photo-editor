@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
- * More File commands, loaded the first time one is used: Open from a web link, Take a photo, Print, and Save each
- * layer as a file. Each opens the editor's own sheet (or saves one ZIP), so nothing happens behind the person's back:
+ * More File commands, loaded the first time one is used: Open from a web link, Take a photo, Print, Save each layer as
+ * a file, and Recent pictures (the files themselves, kept only in this browser, since a browser cannot open a path again). Each opens the editor's own sheet (or saves one ZIP), so nothing happens behind the person's back:
  * the camera starts only after they picked Take a photo, and a web link is fetched only after they pressed Open.
  * The pure parts (names, sizes, plain messages) are exported for the unit tests.
  */
@@ -275,10 +275,101 @@ function exportLayers(host: FileHost): void {
   host.toast(`Saved ${count} layer${count === 1 ? '' : 's'} as PNG pictures in ${file} (${fmtBytes(blob.size)}).`);
 }
 
+// ---- Recent pictures --------------------------------------------------------------------------------------------------
+/** One remembered picture: the file itself (`blob`; a browser cannot reopen a path), its name, size, type and when it was opened. */
+export interface Recent { key: string; name: string; size: number; type: string; at: number; blob?: Blob; }
+export const RECENT_MAX = 10, RECENT_BYTES = 150 * 1024 * 1024;
+export const recentKey = (name: string, size: number): string => `${name}|${size}`;
+/**
+ * The list with a newly opened picture on top, newest first. The same file opened again moves up instead of showing
+ * twice; the oldest go once there are more than `max` or they pass `bytes` in all. A file larger than `bytes` on its own
+ * is not kept, and the list stays as it was. Returns the new list and the keys to delete.
+ */
+export function addRecent(list: readonly Recent[], item: Recent, max = RECENT_MAX, bytes = RECENT_BYTES): { list: Recent[]; drop: string[] } {
+  if (!(item.size <= bytes) || max < 1) return { list: [...list].sort((a, b) => b.at - a.at), drop: [] };
+  const out: Recent[] = [item], drop: string[] = [];
+  let total = item.size;
+  for (const r of [...list].sort((a, b) => b.at - a.at)) {
+    if (r.key === item.key) continue;
+    if (out.length < max && total + r.size <= bytes) { out.push(r); total += r.size; } else drop.push(r.key);
+  }
+  return { list: out, drop };
+}
+const RECENT_DB = 'free-photo-editor-recent', FILES = 'files';
+let recentDb: Promise<IDBDatabase> | null = null;
+function openRecentDb(): Promise<IDBDatabase> {
+  return (recentDb ??= new Promise<IDBDatabase>((res, rej) => {
+    const r = indexedDB.open(RECENT_DB, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(FILES)) r.result.createObjectStore(FILES, { keyPath: 'key' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => { recentDb = null; rej(r.error); };
+  }));
+}
+const ask = <T>(r: IDBRequest<T>): Promise<T> => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const finish = (tx: IDBTransaction): Promise<void> => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = tx.onabort = () => rej(tx.error); });
+/** The remembered pictures, newest first (their files are not read). */
+export async function recentList(): Promise<Recent[]> {
+  const db = await openRecentDb(), all = await ask(db.transaction(FILES, 'readonly').objectStore(FILES).getAll()) as Recent[];
+  return all.map((r) => ({ key: r.key, name: r.name, size: r.size, type: r.type, at: r.at })).sort((a, b) => b.at - a.at);
+}
+/** Remember a picture that was just opened from this device. Never throws: storage may be full, blocked or private. */
+export async function rememberRecent(file: Blob, name: string, now = Date.now()): Promise<void> {
+  try {
+    if (typeof indexedDB === 'undefined' || !(file.size > 0)) return;
+    const item: Recent = { key: recentKey(name, file.size), name, size: file.size, type: file.type, at: now };
+    const { list, drop } = addRecent(await recentList(), item);
+    if (list[0]?.key !== item.key) return;
+    const db = await openRecentDb(), tx = db.transaction(FILES, 'readwrite'), st = tx.objectStore(FILES);
+    st.put({ ...item, blob: file });
+    for (const k of drop) st.delete(k);
+    await finish(tx);
+  } catch { /* not kept: the list is only a convenience */ }
+}
+async function clearRecent(): Promise<void> {
+  const db = await openRecentDb(), tx = db.transaction(FILES, 'readwrite');
+  tx.objectStore(FILES).clear();
+  await finish(tx);
+}
+const when = (at: number): string => { try { return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch { return ''; } };
+function recent(host: FileHost): void {
+  const b = h('div', { class: 'fpe-stack', 'data-testid': 'recent-body' }, h('p', { class: 'fpe-note' }, 'Loading the list…'));
+  const button = (text: string, primary: boolean, testid: string, onclick: () => void, label?: string): HTMLButtonElement =>
+    h('button', { type: 'button', class: 'fpe-btn ' + (primary ? 'fpe-btn-primary' : 'fpe-btn-ghost'), 'data-testid': testid, ...(label ? { 'aria-label': label } : {}), onclick }, text) as HTMLButtonElement;
+  const draw = async (): Promise<void> => {
+    let list: Recent[] = [], blocked = false;
+    try { list = typeof indexedDB === 'undefined' ? [] : await recentList(); } catch { blocked = true; }
+    const open = async (r: Recent): Promise<void> => {
+      let got: Recent | undefined;
+      try { const db = await openRecentDb(); got = await ask(db.transaction(FILES, 'readonly').objectStore(FILES).get(r.key)) as Recent | undefined; } catch { got = undefined; }
+      if (!got?.blob) { host.toast('That picture is no longer kept in this browser.'); await draw(); return; }
+      host.closeSheet();
+      await host.open(got.blob, got.name);
+    };
+    const clear = button('Clear list', false, 'recent-clear', () => void (async () => {
+      try { await clearRecent(); host.toast('The list is cleared, and its copies are deleted from this browser.'); } catch { host.toast('This browser would not clear the list.'); }
+      await draw();
+    })());
+    clear.disabled = !list.length;
+    b.replaceChildren(
+      h('p', { class: 'fpe-note' }, `The last ${RECENT_MAX} pictures you opened from this device (up to ${fmtBytes(RECENT_BYTES)} in all), kept only in this browser so they open again with one click. Nothing is uploaded.`),
+      list.length
+        ? h('ol', { class: 'fpe-steps', 'data-testid': 'recent-list' }, ...list.map((r) => h('li', { class: 'fpe-row', 'data-testid': 'recent-item' },
+          h('span', {}, h('strong', {}, r.name), ` · ${fmtBytes(r.size)} · ${when(r.at)}`), button('Open', true, 'recent-open', () => void open(r), 'Open ' + r.name))))
+        : h('p', { class: 'fpe-note', 'data-testid': 'recent-empty' }, blocked
+          ? 'This browser is not keeping files for this page (private browsing or blocked storage), so there is no list.'
+          : 'No recent pictures yet. Pictures you open from this device show up here.'),
+      h('div', { class: 'fpe-actions' }, clear, button('Close', true, 'recent-close', () => host.closeSheet())));
+    host.sheet('file.recent', 'Recent pictures', b);
+  };
+  host.sheet('file.recent', 'Recent pictures', b);
+  void draw();
+}
+
 /** Run one of the File extras. */
 export function runFileMore(id: string, host: FileHost): void {
   if (id === 'file.open-url') openUrl(host);
   else if (id === 'file.camera') camera(host);
   else if (id === 'file.print') print(host);
   else if (id === 'file.export-layers') exportLayers(host);
+  else if (id === 'file.recent') recent(host);
 }

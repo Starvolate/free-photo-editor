@@ -167,7 +167,14 @@ describe('the Task ribbon', () => {
       'filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'filter.edge-detect',
       'filter.deinterlace', 'filter.destripe', 'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
       'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch', 'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable',
-      'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen']);
+      'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen',
+      // Batch light-and-colour (light-more.ts).
+      'image.hue-chroma', 'image.rotate-colours', 'image.colour-contrast', 'image.local-threshold', 'image.retinex', 'image.tone-mapping',
+      'image.harmonize', 'image.palette-edit', 'image.export-lut', 'image.gamut-warning', 'image.decompose',
+      // Batch shapes-text (pathops).
+      'path.boolean', 'path.combine', 'path.offset', 'path.mirror', 'path.rotate-copies', 'path.roughen', 'shape.spiral-star', 'path.stroke-style', 'path.divide', 'path.bend', 'path.hatches', 'path.interpolate', 'path.stitch', 'path.pattern-along', 'path.power-stroke',
+      // Automate and batch (automate.ts).
+      'auto.watermark', 'auto.collage', 'auto.passport', 'auto.copy-edits']);
     expect(NEW_ROWS.filter((r) => r.status === 'ready').map((r) => r.id).sort()).toEqual([...BUILT].sort());
     for (const r of NEW_ROWS) {
       expect(inMenus.has(r.id), r.id).toBe(false);

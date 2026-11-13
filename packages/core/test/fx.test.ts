@@ -50,12 +50,16 @@ const CASES: Record<FxKind, P> = {
   patterns: { size: 4, fg: 0x102030, bg: 0xe0d0c0 }, 'stroke-blur': { length: 3 }, 'wrap-blur': { radius: 3 },
   tiling: { look: 0 }, 'page-curl': { size: 40 }, illusion: { copies: 3 }, fractal: { look: 1, depth: 3 }, superpixels: { size: 6 },
   'noise-pattern': { size: 6, fg: 0x102030, bg: 0xe0d0c0 }, 'detail-diffuse': { amount: 100, steps: 1 },
+  'hue-chroma': { hue: 40, chroma: 30 }, 'rotate-colours': { from: 0, to: 5, width: 180, soft: 20 }, 'text-contrast': { text: 2, level: 0 },
+  'local-threshold': { radius: 6, offset: 0 }, retinex: { radius: 8, amount: 100 }, 'tone-map': { squeeze: 80, radius: 6 }, harmonize: { scheme: 0, amount: 100 },
+  'palette-edit': { h1: 90, h2: 90, h3: 90, h4: 90 }, 'gamut-warning': { margin: -50 },
 };
 const KEEPS_ALPHA = new Set<FxKind>(['add-noise', 'reduce-noise', 'median', 'dust', 'despeckle', 'smart-sharpen', 'sharpen-edges', 'surface-blur', 'smart-blur',
   'average', 'emboss', 'find-edges', 'solarize', 'oil-paint', 'wind', 'trace-contour', 'glowing-edges', 'pointillize', 'halftone', 'mezzotint', 'facet',
   'diff-clouds', 'high-pass', 'maximum', 'minimum', 'custom', 'lens-flare', 'lighting', 'dither', 'replace-color', 'reduce-colors', 'indexed',
   'alien-map', 'bloom', 'edge-detect', 'destripe', 'video-degrade', 'lowlight', 'bump-map', 'star-burst', 'edge-keep-blur',
-  'outline', 'sketch', 'newsprint', 'linocut', 'cartoon', 'stroke-blur', 'superpixels', 'detail-diffuse']);
+  'outline', 'sketch', 'newsprint', 'linocut', 'cartoon', 'stroke-blur', 'superpixels', 'detail-diffuse',
+  'hue-chroma', 'rotate-colours', 'text-contrast', 'local-threshold', 'retinex', 'tone-map', 'harmonize', 'palette-edit', 'gamut-warning']);
 const FILLS = new Set<FxKind>(['clouds', 'fibers', 'patterns', 'noise-pattern']);
 // Extrude and the peeled corner draw their own shading (block sides, the back of the page), so white does not stay white there.
 const NO_DARK_EDGE = FX_KINDS.filter((k) => !KEEPS_ALPHA.has(k) && !FILLS.has(k) && k !== 'extrude' && k !== 'page-curl');
@@ -79,7 +83,7 @@ const inside = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y 
 describe('every filter family', () => {
   it('has a case for every filter and nothing more', () => {
     expect(Object.keys(CASES).sort()).toEqual([...FX_KINDS].sort());
-    expect(FX_KINDS.length).toBe(90);
+    expect(FX_KINDS.length).toBe(99);
   });
   it.each([...FX_KINDS])('%s changes the picture, the same way every time', (k) => {
     const src = photo(), a = run(k, src), b = run(k, src);

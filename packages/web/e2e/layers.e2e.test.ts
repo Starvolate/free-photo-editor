@@ -252,7 +252,7 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(errors).toEqual([]);
   });
 
-  it('at 1440 x 900 the layer rows come first and three are fully in view; the mask settings sit in Properties, one line per label', async () => {
+  it('at 1440 x 900 Blend and Opacity sit above the layer rows and three rows are fully in view; the mask settings sit in Properties, one line per label', async () => {
     const q = await open(1440, 900);
     await masked(q);
     expect(await run(q, 'layer.new')).toBe(true);
@@ -267,9 +267,10 @@ suite('W6 S1 layer masks in headless Chrome', () => {
       const b = await rows.nth(i).boundingBox();
       expect(!!b && b.y >= list.y - 0.5 && b.y + b.height <= list.y + list.height + 0.5 && b.y + b.height <= 900, `row ${i + 1} fully in view`).toBe(true);
     }
-    // The rows come before Blend, Opacity and Name.
-    const blend = await q.locator('[data-testid="layer-blend"]').boundingBox();
-    expect((blend?.y ?? 0) > list.y).toBe(true);
+    // Blend and Opacity sit in one strip at the top of the card, above the rows, as in the approved picture (a-deep,
+    // 13 Nov 2026); the three rows above stay fully in view.
+    const top = await q.locator('[data-testid="layer-top"]').boundingBox();
+    expect(!!top && top.y + top.height <= list.y + 0.5, 'Blend and Opacity above the rows').toBe(true);
     // The mask's settings are in the Properties panel, each label plain name then pro name on one line, at 12 px or more.
     const props = q.locator('[data-testid="panel-properties"] [data-testid="mask-props"]');
     await props.locator('label').first().waitFor();
@@ -483,8 +484,9 @@ suite('W6 S1 layer masks in headless Chrome', () => {
     expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-blend"]').count()).toBe(1);
     expect(await q.locator('[data-testid="layer-top"] [data-testid="layer-opacity"]').count()).toBe(1);
     expect(await q.textContent('[data-testid="layer-count"]')).toBe('2');
-    // Put in a folder from the menu bar's Layer menu.
+    // Put in a folder from the menu bar: Layer > New > Put in a new folder.
     await q.click('[data-testid="menu-top-layer"]');
+    await q.hover('[data-testid="sub-layer-new"]');
     await q.click('[data-testid="mi-layer.group"]');
     const s = await state(q), f = s.layers.find((l) => l.kind === 'folder'), kid = s.layers.find((l) => !!f && l.parentId === f.id);
     if (!f || !kid) throw new Error('no folder from the menu');

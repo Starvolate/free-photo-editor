@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import type { Doc } from '@free-photoeditor/core';
-import { contrastRatio, runEffect, toLab, wcagLum } from '@free-photoeditor/core/fx';
+import { contrastRatio, pressChroma, runEffect, toLab, wcagLum } from '@free-photoeditor/core/fx';
 import type { Editor } from '../src/app';
 import { ADJ, HANDLERS, LIGHT_IDS } from '../src/commands';
 import { BY_ID } from '../src/registry';
@@ -139,6 +139,14 @@ describe('light and colour batch', () => {
     const pulled = px(run('gamut-warning', src, { mode: 1 }), 3, 0, 0);
     expect(pulled).not.toEqual([0, 0, 255, 255]);
     expect(pulled[2]).toBeGreaterThan(pulled[0]);
+    // Hues below the first anchor (29) wrap round from the last one (330): both sit at lightness 0.56 with chroma 0.19.
+    expect(pressChroma(0.56, 10)).toBeCloseTo(0.19, 6);
+    expect(pressChroma(0.56, 359)).toBeCloseTo(0.19, 6);
+    // Crimson is pulled in, and stays red.
+    const crimson = run('gamut-warning', one([220, 20, 60]), { mode: 1 });
+    expect(Array.from(crimson)).not.toEqual([220, 20, 60, 255]);
+    expect(crimson[0]).toBeGreaterThan(crimson[1]);
+    expect(crimson[0]).toBeGreaterThan(crimson[2]);
   });
 
   it('writes a .cube file other editors read: size line, red fastest, exact identity, layers applied', async () => {

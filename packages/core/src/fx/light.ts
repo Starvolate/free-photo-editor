@@ -198,6 +198,7 @@ export function pressChroma(L: number, h: number): number {
   const hh = ((h % 360) + 360) % 360;
   let k = PRESS.length - 1;
   while (k > 0 && PRESS[k][0] > hh) k--;
+  if (PRESS[k][0] > hh) k = PRESS.length - 1; // below the first anchor: the stretch from the last one round to it
   const a = PRESS[k], z = PRESS[(k + 1) % PRESS.length], span = (z[0] - a[0] + 360) % 360 || 360, t = ((hh - a[0] + 360) % 360) / span;
   const Lc = a[1] + (z[1] - a[1]) * t, Cc = a[2] + (z[2] - a[2]) * t;
   return Cc * clamp(L <= Lc ? L / Lc : (1 - L) / (1 - Lc), 0, 1);

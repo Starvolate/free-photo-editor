@@ -180,7 +180,9 @@ image.variables | Data-driven pictures | Variables | Make many versions from a d
 layer.new | New empty layer | New layer | A clear sheet on top to paint on without touching the photo. | add layer, blank layer, transparent layer | R | 1 | Ctrl+Shift+N
 layer.new-copy | Layer from a copy | Layer via copy | Copy the selected area, or the whole layer, to a new layer. | copy to layer | R | W1 | Ctrl+J
 layer.new-cut | Layer from a cut | Layer via cut | Move the selected area to a new layer. | cut to layer, separate part | R | W1 | Ctrl+Shift+J
-layer.new-group | Folder of layers | Group | Keep layers together in a folder. | group, folder | P | 3 | Ctrl+G
+layer.new-group | New empty folder | New group | Start an empty folder of layers above this one, then move layers into it. | group, folder, new folder | R | 3
+layer.group | Put in a new folder | Group layers | Put this layer in a new folder in its place, so you can move, hide or fade them together. | group, folder, put in folder | R | 3 | Ctrl+G
+layer.ungroup | Take out of the folder | Ungroup layers | Take the folder apart: its layers keep their place, one level up. | ungroup, remove folder, unfold | R | 3 | Ctrl+Shift+G
 @Layer
 layer.duplicate | Duplicate layer | Duplicate layer | Make an exact copy of the active layer. | copy layer, clone layer | R | 1
 layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | R | 1
@@ -228,7 +230,7 @@ layer.mask-hide-sel | Hide the selection | Hide selection | Hide the selected pa
 layer.mask-toggle | Switch the mask off | Disable layer mask | See the whole layer again without losing the mask; choose again to switch it back on. | mask on off, disable mask | R | 2
 layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | R | 2
 layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | P | 6
-layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text | P | 2 | Ctrl+Alt+G
+layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text, clipping mask | R | 2 | Ctrl+Alt+G
 @Layer > Smart layer = Smart layer | Smart object | A layer that keeps its original pixels, so resizing never loses quality.
 layer.smart-convert | Make a smart layer | Convert to smart object | Keep the layer's original pixels safe from resizing. | smart object | P | 3
 layer.smart-edit | Edit the contents | Edit contents | Open the original pixels to change them. | edit smart object | P | 3

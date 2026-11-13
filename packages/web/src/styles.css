@@ -151,6 +151,14 @@
 .fpe-layer-list{flex:1 1 auto;min-height:143px;margin:0;padding:0;overflow-y:auto;list-style:none;border:1px solid var(--line);border-radius:6px}
 .fpe-layer{display:flex;align-items:center;gap:4px;min-height:46px;padding:2px 6px 2px 2px;border-bottom:1px solid var(--line)}
 .fpe-layer:last-child{border-bottom:0}
+.fpe-indent{flex:none;width:calc(var(--depth,0) * var(--step,16px) + var(--clip,0px))}
+.fpe-clipped{--clip:12px}
+.fpe-clip-arrow{display:grid;flex:none;place-items:center;width:16px;color:var(--muted)}
+.fpe-clip-arrow svg{width:14px;height:14px}
+.fpe-layer-folder{display:grid;place-items:center;color:var(--muted)}
+.fpe-layer-folder svg{width:20px;height:20px}
+.fpe-layer-two{flex-direction:column;align-items:flex-start;justify-content:center;gap:0}
+.fpe-layer-sub{max-width:100%;overflow:hidden;font-size:11px;font-weight:400;color:var(--muted);text-overflow:ellipsis;white-space:nowrap}
 .fpe-layer[aria-current=true]{background:var(--sel)}
 .fpe-layer-thumb{flex:none;width:38px;height:38px;border:1px solid var(--line);border-radius:4px;background:var(--panel-2)}
 .fpe-layer-name{flex:1 1 auto;min-width:0;justify-content:flex-start;padding:0 6px;overflow:hidden}
@@ -461,7 +469,7 @@
 .fpe-mask-props .fpe-row{flex-wrap:wrap;row-gap:2px}
 .fpe-mask-props .fpe-row>label{flex:1 0 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* W6 S1 phones: the mask controls are 44 px targets in 56 px rows; the layer actions sheet */
-.fpe[data-layout=phone] .fpe-layer{min-height:56px}
+.fpe[data-layout=phone] .fpe-layer{min-height:56px;--step:12px}
 /* phones: the rows keep their own scroll; the action row and the active layer's settings follow (the order is the DOM's) */
 .fpe[data-layout=phone] .fpe-layer-list{flex:none;min-height:56px;max-height:236px}
 .fpe[data-layout=phone] .fpe-thumb-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}

@@ -12,14 +12,15 @@ import {
   deleteLayer, docFacts, docRect, documentFromBitmap, duplicateActive, editRegion, fillSelection, findLayer, flatten, flattenDocument, indexOfLayer,
   innerOf, intersect, inverseSelection, isBlendMode, jobPadding, layerRect, levelsLut, lossReport, formatDef, formatLossReport, mergeDown, mergeVisible, moveLayer, nextLayerName,
   paddedRegion, parseHex, pixelCommand, propsCommand, addMask, applyMask, deleteMask, expandRect, featherReach, invertLayerMask,
-  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, resizeDocument, revealAll, samplePixel,
-  selectionAlpha, setLayerProps, toHex, PRINT_UNITS, docDpi, dpiForPrint, fromInches, isDpi, printPixels, roundDpi, setDocDpi, type PrintUnit, trimDocument, turnDocument, turnLayer, union, writeRegion,
+  adjust, applyToLayer, maskAt, maskSummary, openMaskSurface, placeLayer, setMaskSettings, withMaskSurface, type MaskSurface, readRegion, rectFromPoints, resizeCanvas, revealAll, samplePixel,
+  selectionAlpha, setLayerProps, toHex, trimDocument, turnDocument, turnLayer, union, writeRegion,
   type Bitmap, type BlendMode, type Command, type Doc, type DocFacts, type ExportFormat, type JobParams, type JobSpec, type Layer, type LayerProps,
   type RGBA, type Rect, type Resample, type Selection, type StrokePoint, type Turn,
 } from '@free-photoeditor/core';
 import { ADJ, DOCK_PANELS, HANDLERS, JOBS, TOOLS, type AdjDef, type Job, type ToolId } from './commands';
 import { errText, fmtBytes, focusInSheet, h, icon, iconButton, type Attrs } from './dom';
-import { UNIT_LABEL, buildDpiPanel, holdsDpi, joinCommands, n2, printCopy, printText, type DpiPanel } from './export-dpi';
+import type { DpiPanel } from './export-dpi';
+import { holdsDpi, n2, printText } from './print-text';
 import { ensureSprite } from './icons';
 import { CanvasInput, type PointerInfo, type Pt } from './input';
 import { OPEN_ACCEPT, baseName, download, encodeDocument, historyBytesForDevice, maxPixelsForDevice, readImageFile, scaleBitmap, toImageData, exportList, fmtInfo, multiKind } from './io';
@@ -32,6 +33,7 @@ import { BY_ID, KEEP_TOOLS, MENU_INFO, MENU_ITEMS, ROWS, TOOL_GROUPS, TOP_MENUS,
 import { Canvas2DRenderer, type Renderer, type View } from './renderer';
 import css from './styles.css?inline';
 import { layerAt as w3LayerAt, selectionOutline as w3Outline } from '@free-photoeditor/core';
+import { addFolder, ancestors, arrangeNode, effectiveBox, groupNode, isFolder, lockedInTree, mergeDownRefusal, siblingAbove, StrokeCache, subtreeOf, toggleClip, ungroupNode } from '@free-photoeditor/core';
 import { TK_TOOLS } from './commands';
 import type { AiKit } from './ai';
 import type { ToolHost, ToolKit } from './toolkit';
@@ -243,7 +245,12 @@ export class Editor {
   private qualityRow!: HTMLElement;
   private lossBox!: HTMLElement;
   private exportGo!: HTMLButtonElement;
-  private dpiPanel!: DpiPanel;
+  /** Export's DPI section, loaded when Export first opens (it is not needed on the first screen). */
+  private dpiPanel: DpiPanel | null = null;
+  private dpiHost!: HTMLElement;
+  private dpiMod: Promise<typeof import('./export-dpi')> | null = null;
+  /** export-dpi.ts once loaded: Picture size's DPI half builds from it. */
+  private dpiLib: typeof import('./export-dpi') | null = null;
   private askBody!: HTMLElement;
   private sheets = new Map<string, HTMLElement>();
   private bodies = new Map<string, HTMLElement>();
@@ -280,6 +287,8 @@ export class Editor {
   private sampleAll = true;
   private ratio = 0;
   private stroke: Stroke | null = null;
+  /** While a pixel stroke runs, the rows below the painted layer per tile, so a frame redraws only what changed (core composite.ts). */
+  private strokeCache: StrokeCache | null = null;
   /** True while the active layer's mask (not its pixels) is what tools edit. View state, not an undo step. */
   private maskTarget = false;
   private maskSurf: MaskSurface | null = null;
@@ -338,6 +347,8 @@ export class Editor {
   private ro: ResizeObserver;
   private stageRo: ResizeObserver;
   private off: (() => void)[] = [];
+  /** True from a long press firing until the click that ends it (see longPress). */
+  private liftEaten = false;
   tk: ToolKit | null = null;
   private tkLoad: Promise<ToolKit> | null = null;
   private aiLoad: Promise<AiKit> | null = null;
@@ -349,6 +360,7 @@ export class Editor {
   constructor(host: HTMLElement, opts: MountOptions) {
     this.opts = opts;
     this.root = h('div', { class: 'fpe', 'data-theme': 'dark', 'data-tool': 'brush', 'data-screen': 'standard', 'data-names': 'plain', 'data-hints': 'on' });
+    this.eatLift(this.root);
     this.loadPrefs();
     this.build();
     host.append(this.root);
@@ -510,12 +522,32 @@ export class Editor {
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
+  /**
+   * Press and hold (or right-click) runs `fn`. The click that ends a held press is swallowed by `eatLift` wherever it lands:
+   * what the press opened (the layer actions sheet, a tool's flyout) now sits under the finger, and that click would run the
+   * item under it and close the sheet (on a phone it ran "Add a mask", 13 Nov 2026).
+   */
   private longPress(el: HTMLElement, fn: () => void): void {
-    let t = 0, fired = false;
-    el.addEventListener('pointerdown', () => { fired = false; t = window.setTimeout(() => { fired = true; fn(); }, 480); });
-    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => clearTimeout(t));
-    el.addEventListener('click', (e) => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } });
-    el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!fired) fn(); fired = true; });
+    let t = 0, fired = false, down = false;
+    const fire = (): void => { fired = true; if (down) this.liftEaten = true; fn(); };
+    el.addEventListener('pointerdown', () => { fired = false; down = true; t = window.setTimeout(fire, 480); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => { clearTimeout(t); down = false; });
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); if (!fired) fire(); });
+  }
+  /** Swallow the one click that ends a long press (see longPress). A new press, or 400 ms after the lift, clears it. */
+  private eatLift(root: HTMLElement): void {
+    let timer = 0;
+    root.addEventListener('click', (e) => {
+      // A keyboard click (detail 0) never ends a press.
+      if (!this.liftEaten || e.detail === 0) return;
+      this.liftEaten = false;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+    root.addEventListener('pointerdown', () => { this.liftEaten = false; clearTimeout(timer); }, true);
+    const lift = (): void => { if (this.liftEaten) { clearTimeout(timer); timer = window.setTimeout(() => { this.liftEaten = false; }, 400); } };
+    root.addEventListener('pointerup', lift, true);
+    root.addEventListener('pointercancel', lift, true);
   }
 
   // ---------- the menu bar (desktop and tablet) ----------
@@ -1353,7 +1385,7 @@ export class Editor {
       this.rendW = d.width; this.rendH = d.height;
       this.dirty = docRect(d);
     } else if (!d && this.rendW) { this.renderer.setDocumentSize(0, 0); this.rendW = 0; this.rendH = 0; }
-    if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, compositeDoc(d, r)); }
+    if (d && this.dirty) { const r = this.dirty; this.dirty = null; this.renderer.upload(r, this.strokeCache ? this.strokeCache.composite(r) : compositeDoc(d, r)); }
     const t = this.tool, z = this.view.zoom, o = t === 'eraser' ? this.eraser : t === 'pencil' ? this.pencil : this.brush;
     const tks = this.tk?.cursorSize(t) ?? null;
     const cursor = this.hoverPt && d && (t === 'brush' || t === 'eraser' || t === 'pencil' || tks) ? { x: this.hoverPt.x, y: this.hoverPt.y, r: ((tks ?? o.size) / 2) * z } : null;
@@ -1540,17 +1572,20 @@ export class Editor {
   }
   /** Tools that work on the mask pass `onMask`; every other pixel tool refuses while the mask is the target. */
   private editable(l: Layer, pixels = true, onMask = false): boolean {
+    // A folder has no pixels of its own; moving one (with everything inside) is not wired yet, so it refuses too.
+    if (isFolder(l)) { this.toast('This is a folder: pick a layer inside it.'); return false; }
+    const locked = this.doc ? lockedInTree(this.doc.layers, l) : !!l.locked;
     const mask = this.maskTarget && !!l.mask;
-    if (pixels && mask && !onMask && !l.locked) {
+    if (pixels && mask && !onMask && !locked) {
       this.toast('You are editing the mask. Brush, pencil, eraser, Fill, Delete, Colour fade (Gradient) and Negative (Invert) work on it; for this one, click the picture thumbnail in the Layers panel to edit pixels.');
       return false;
     }
-    if (pixels && !mask && l.content && !l.locked) {
+    if (pixels && !mask && l.content && !locked) {
       this.toast(`"${l.name}" is a ${l.content.kind === 'text' ? 'text' : 'shape'} layer: change it with its own tool, or choose Layer › Turn into plain pixels to paint on it.`);
       return false;
     }
-    if (!l.locked) return true;
-    this.toast(`"${l.name}" is locked. Unlock it in the Layers panel to change it.`);
+    if (!locked) return true;
+    this.toast(l.locked ? `"${l.name}" is locked. Unlock it in the Layers panel to change it.` : `"${l.name}" is in a locked folder. Unlock the folder in the Layers panel to change it.`);
     return false;
   }
   private toolStart(p: Pt, i: PointerInfo): void {
@@ -1575,7 +1610,7 @@ export class Editor {
       if (!l.visible) { this.toast('This layer is hidden. Show it to paint on it.'); return; }
       const o = this.paintOpts(), opts = { size: o.size, hardness: o.hardness, opacity: o.opacity, color: parseHex(this.brush.color) ?? BLACK, erase: t === 'eraser' };
       if (this.onMask(l)) { this.maskSurf = openMaskSurface(d, l); this.stroke = new Stroke(this.maskSurf.doc, this.maskSurf.layer, opts); }
-      else this.stroke = new Stroke(d, l, opts);
+      else { this.stroke = new Stroke(d, l, opts); this.strokeCache = new StrokeCache(d.layers, l); }
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       return;
@@ -1675,7 +1710,7 @@ export class Editor {
       this.stroke.add(this.strokePoint(p, i));
       this.flushStroke();
       const cmd = this.stroke.end(), surf = this.maskSurf;
-      this.stroke = null;
+      this.stroke = null; this.strokeCache = null;
       this.maskSurf = null;
       this.pushCmd(surf ? surf.finish(cmd?.label === 'Eraser' ? 'Erase on the mask' : 'Paint on the mask') : cmd);
       return;
@@ -1694,7 +1729,7 @@ export class Editor {
   private toolCancel(): void {
     if (this.tkDown) { this.tkDown = false; this.tk?.cancel(); }
     this.hdrag = null;
-    if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.markDirty(r); this.requestRender(); }
+    if (this.stroke) { const r = this.stroke.cancel(); this.stroke = null; this.strokeCache = null; this.markDirty(r); this.requestRender(); }
     const g = this.drag;
     this.drag = null;
     if (g && g.kind === 'move' && this.doc) {
@@ -1983,15 +2018,29 @@ export class Editor {
     this.layerProps.replaceChildren();
     if (!d) { list.append(h('li', { class: 'fpe-note' }, 'Open or create a picture to see its layers.')); return; }
     for (let i = d.layers.length - 1; i >= 0; i--) {
-      const l = d.layers[i], on = l.id === d.activeId;
-      const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name', 'aria-label': `Layer ${l.name}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
-        'data-help-title': 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
-        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') }, h('span', {}, l.name));
+      const l = d.layers[i], on = l.id === d.activeId, folder = isFolder(l), open = l.open !== false, up = ancestors(d.layers, l.id);
+      // A closed folder hides every row inside it, however deep (design 6).
+      if (up.some((a) => a.open === false)) continue;
+      let clipped = 0;
+      for (let s = siblingAbove(d.layers, l.id); s?.clip; s = siblingAbove(d.layers, s.id)) clipped++;
+      const n = folder ? subtreeOf(d.layers, l.id).length - 1 : 0, nl = (k: number): string => `${k} layer${k === 1 ? '' : 's'}`;
+      const sub = folder ? `Folder, ${open ? 'open' : 'closed'} · ${nl(n)}` : l.clip ? 'Clipped to the layer below' : clipped ? `${nl(clipped)} clipped to it` : '';
+      const nameBtn = h('button', { type: 'button', class: 'fpe-btn fpe-layer-name' + (sub ? ' fpe-layer-two' : ''),
+        'aria-label': `${folder ? 'Folder' : 'Layer'} ${l.name}${folder ? `, ${open ? 'open' : 'closed'}, ${nl(n)} inside` : ''}${l.clip ? ', clipped to the layer below' : ''}${clipped ? `, ${nl(clipped)} clipped to it` : ''}${l.visible ? '' : ', hidden'}${l.locked ? ', locked' : ''}${on ? ', active' : ''}`,
+        'data-help-title': folder ? 'Choose this folder' : 'Choose this layer', 'data-help': 'Tap to work on this layer. Press and hold, or right-click, for its actions.',
+        'data-testid': 'layer-select', onclick: () => this.selectLayer(l.id), ondblclick: () => this.openModal('rename') },
+        h('span', {}, l.name), sub ? h('small', { class: 'fpe-layer-sub' }, sub) : null);
       this.longPress(nameBtn, () => this.layerActions(l.id));
-      list.append(h('li', { class: 'fpe-layer', 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id, 'aria-current': on ? 'true' : 'false' },
+      list.append(h('li', { class: 'fpe-layer' + (l.clip ? ' fpe-clipped' : ''), style: `--depth:${up.length}`, 'data-testid': 'layer-row', 'data-name': l.name, 'data-id': l.id,
+        'data-depth': up.length, 'data-kind': folder ? 'folder' : 'layer', 'aria-current': on ? 'true' : 'false' },
         h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn', 'aria-pressed': String(l.visible), 'aria-label': (l.visible ? 'Hide ' : 'Show ') + l.name,
           'data-help-title': l.visible ? 'Hide this layer' : 'Show this layer', 'data-help': 'The eye shows or hides a layer without deleting it.', 'data-testid': 'layer-eye',
           onclick: () => this.toggleVisible(l.id) }, icon(l.visible ? 'eye' : 'eye-off')),
+        up.length || l.clip ? h('span', { class: 'fpe-indent', 'aria-hidden': 'true' }) : null,
+        l.clip ? h('span', { class: 'fpe-clip-arrow', 'aria-hidden': 'true', 'data-testid': 'clip-arrow' }, icon('clip')) : null,
+        folder ? h('button', { type: 'button', class: 'fpe-btn fpe-icon-btn fpe-layer-arrow', 'aria-expanded': String(open), 'aria-label': `${open ? 'Close' : 'Open'} the folder ${l.name}`,
+          'data-help-title': open ? 'Close the folder' : 'Open the folder', 'data-help': 'Shows or hides the rows inside. The picture does not change.', 'data-testid': 'folder-arrow',
+          onclick: () => this.toggleOpen(l.id) }, icon(open ? 'chev-down' : 'chev-right')) : null,
         ...this.layerThumbs(l, on),
         nameBtn,
         l.locked ? icon('lock', 'fpe-icon fpe-layer-lock') : null));
@@ -2007,7 +2056,7 @@ export class Editor {
         if (this.opacityStart === null) this.opacityStart = a.opacity;
         a.opacity = Number(op.value) / 100;
         opOut.textContent = op.value + '%';
-        this.markDirty(intersect(layerRect(a), docRect(d)) ?? docRect(d));
+        this.markDirty(intersect((isFolder(a) ? effectiveBox(d.layers, a) : layerRect(a)) ?? docRect(d), docRect(d)) ?? docRect(d));
         this.requestRender();
       });
       op.addEventListener('change', () => {
@@ -2015,11 +2064,17 @@ export class Editor {
         this.opacityStart = null;
         if (from !== null && from !== a.opacity) this.pushCmd(propsCommand(a.id, { opacity: from }, { opacity: a.opacity }, 'Layer opacity'));
       });
-      const blend = h('select', { id: id + 'b', 'data-testid': 'layer-blend' },
-        ...BLEND_GROUPS.map((g) => h('optgroup', { label: g.label }, ...g.modes.map((m) => h('option', { value: m, selected: m === a.blendMode }, BLEND_LABELS[m])))));
-      blend.addEventListener('change', () => { const v = blend.value; if (isBlendMode(v)) this.pushCmd(setLayerProps(d, a.id, { blendMode: v }), true); });
+      // A folder's first choice is Pass through: the layers inside mix with everything below as if there were no folder.
+      const fa = isFolder(a), pass = fa && !!a.passThrough;
+      const blend = h('select', { id: id + 'b', 'data-testid': 'layer-blend' }, fa ? h('option', { value: 'pass', selected: pass }, 'Pass through') : null,
+        ...BLEND_GROUPS.map((g) => h('optgroup', { label: g.label }, ...g.modes.map((m) => h('option', { value: m, selected: !pass && m === a.blendMode }, BLEND_LABELS[m])))));
+      blend.addEventListener('change', () => {
+        const v = blend.value;
+        if (v === 'pass') this.pushCmd(setLayerProps(d, a.id, { passThrough: true }, 'Folder mixes: pass through'), true);
+        else if (isBlendMode(v)) this.pushCmd(setLayerProps(d, a.id, fa ? { passThrough: false, blendMode: v } : { blendMode: v }), true);
+      });
       this.layerProps.append(
-        h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': 'How this layer mixes with the layers under it. Normal simply covers them.' },
+        h('div', { class: 'fpe-row', 'data-help-title': 'Blend mode', 'data-help': fa ? 'Pass through lets the layers inside mix with everything below. Any other choice first makes the folder one picture, then mixes it.' : 'How this layer mixes with the layers under it. Normal simply covers them.' },
           h('label', { for: id + 'b' }, 'Blend'), blend),
         h('div', { class: 'fpe-row', 'data-help-title': 'Opacity', 'data-help': 'How solid the layer is: 100% covers fully, lower lets the layers below show through.' },
           h('label', { for: id + 'o' }, 'Opacity'), op, opOut),
@@ -2030,7 +2085,8 @@ export class Editor {
   }
   /** The row's picture thumbnail and, when the layer has a mask, the link button and the mask thumbnail. */
   private layerThumbs(l: Layer, on: boolean): HTMLElement[] {
-    const pic = h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
+    const pic = isFolder(l) ? h('span', { class: 'fpe-layer-thumb fpe-layer-folder', 'aria-hidden': 'true' }, icon(l.open === false ? 'folder' : 'open'))
+      : h('canvas', { class: 'fpe-layer-thumb', width: 80, height: 80, 'data-thumb': l.id, 'aria-hidden': 'true' });
     const m = l.mask;
     if (!m) return [pic];
     const maskOn = on && this.maskTarget;
@@ -2049,6 +2105,16 @@ export class Editor {
       h('canvas', { width: 80, height: 80, 'data-mask-thumb': l.id, 'aria-hidden': 'true' })),
     ];
   }
+  /** Open or close a folder's rows: a view choice, not an undo step. The safety copy keeps it. */
+  private toggleOpen(id: string): void {
+    const d = this.doc, l = d ? findLayer(d, id) : undefined;
+    if (!d || !l || !isFolder(l)) return;
+    l.open = l.open === false;
+    // Closing the folder that holds the active layer makes the folder active, so the active row stays in view.
+    if (!l.open && ancestors(d.layers, d.activeId).some((a) => a.id === id)) this.selectLayer(id);
+    this.renderLayers();
+    this.saver?.touch();
+  }
   /**
    * A layer row's actions (design 6, phones): a bottom sheet on phones and tablets after a long press, a small menu on a
    * desktop after a right-click. Rows still Planned show visibly disabled with the Planned tag.
@@ -2061,7 +2127,7 @@ export class Editor {
     const items: [string, string][] = [
       ['layer.mask-add', 'Add a mask'], ['layer.mask-toggle', m && !m.enabled ? 'Switch the mask on' : 'Switch the mask off'],
       ['layer.mask-link', m && !m.linked ? 'Link the mask' : 'Unlink the mask'], ['layer.clip', 'Clip to the layer below'],
-      ['layer.fx-shadow', 'Effects…'], ['layer.new-group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'], ['layer.delete', 'Delete'],
+      ['layer.fx-shadow', 'Effects…'], ['layer.group', 'Put in a folder'], ['layer.ungroup', 'Take out of the folder'], ['layer.delete', 'Delete'],
     ];
     const rows = items.filter(([cmd]) => BY_ID.has(cmd)).map(([cmd, label]) => {
       const planned = BY_ID.get(cmd)?.status !== 'ready';
@@ -2181,6 +2247,7 @@ export class Editor {
       h('h3', { class: 'fpe-group-title' }, 'Picture'),
       h('p', { class: 'fpe-kv' }, `${d.width} × ${d.height} px · ${d.layers.length} layer${d.layers.length === 1 ? '' : 's'}`),
       h('div', { class: 'fpe-btnrow' }, this.cmdBtn('image.size', null, 'Picture size…'), this.cmdBtn('image.canvas-size', null, 'Canvas size…'))];
+    const own = parts[1];
     if (l.mask) {
       // The mask's settings live here (design 6): first while the mask is the target, after the layer's own otherwise.
       const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'mask-props' });
@@ -2189,6 +2256,18 @@ export class Editor {
         m.renderMaskProps(box, {
           uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
           live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg),
+        });
+        if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
+      });
+    }
+    if (isFolder(l)) {
+      // A folder has no pixels of its own: its section (how it mixes, opacity, open) replaces X, Y and size, loaded lazily.
+      const box = h('div', { class: 'fpe-mask-props', 'data-testid': 'folder-props' });
+      parts.splice(parts.indexOf(own) - 1, 4, box);
+      void import('./layerprops').then((m) => {
+        m.renderFolderProps(box, {
+          uid: this.uid, doc: () => this.doc, layer: () => this.active(), push: (c) => this.pushCmd(c, true), run: (cmd) => void this.run(cmd),
+          live: () => { this.markAll(); this.requestRender(); }, toast: (msg) => this.toast(msg), toggleOpen: (fid) => this.toggleOpen(fid),
         });
         if (focused && box.isConnected) box.querySelector<HTMLElement>(`[data-testid="${focused}"]`)?.focus({ preventScroll: true });
       });
@@ -2228,16 +2307,15 @@ export class Editor {
   deleteLayerAction(): void {
     const d = this.doc;
     if (!d) return this.needDoc();
-    if (d.layers.length < 2) { this.toast('A picture needs at least one layer.'); return; }
     this.cancelSession();
-    this.pushCmd(deleteLayer(d, d.activeId), true);
+    const cmd = deleteLayer(d, d.activeId);
+    if (!cmd) { this.toast('A picture needs at least one layer.'); return; }
+    this.pushCmd(cmd, true);
   }
   arrange(k: 'front' | 'forward' | 'backward' | 'back'): void {
     const d = this.doc;
     if (!d) return;
-    const i = indexOfLayer(d, d.activeId), n = d.layers.length;
-    const to = k === 'front' ? n - 1 : k === 'forward' ? i + 1 : k === 'backward' ? i - 1 : 0;
-    this.pushCmd(moveLayer(d, i, to), true);
+    this.pushCmd(arrangeNode(d, d.activeId, k), true);
   }
   active(): Layer | undefined { return this.doc ? activeLayer(this.doc) : undefined; }
   activeIndex(): number { return this.doc ? indexOfLayer(this.doc, this.doc.activeId) : -1; }
@@ -2262,7 +2340,30 @@ export class Editor {
     this.renderProps();
     this.syncChrome();
   }
-  mergeDownAction(): void { const d = this.doc; if (d) this.pushCmd(mergeDown(d), true); }
+  mergeDownAction(): void {
+    const d = this.doc;
+    if (!d) return;
+    const why = mergeDownRefusal(d);
+    if (why) { this.toast(why); return; }
+    this.pushCmd(mergeDown(d), true);
+  }
+  /** New empty folder, put the active node in a new folder, or take its folder apart (design 2.4). */
+  folderAction(k: 'new' | 'group' | 'ungroup'): void {
+    const d = this.doc;
+    if (!d) return this.needDoc();
+    this.cancelSession();
+    const cmd = k === 'new' ? addFolder(d) : k === 'group' ? groupNode(d, d.activeId) : ungroupNode(d, d.activeId);
+    if (!cmd && k === 'ungroup') { this.toast('This layer is not in a folder.'); return; }
+    this.pushCmd(cmd, true);
+  }
+  /** Show only inside the layer below · Create clipping mask, on or off. */
+  clipAction(): void {
+    const d = this.doc, a = this.active();
+    if (!d || !a) return this.needDoc();
+    const cmd = toggleClip(d, a.id);
+    if (!cmd) { this.toast('There is no layer below it in this folder to clip to.'); return; }
+    this.pushCmd(cmd, true);
+  }
   mergeVisibleAction(): void { const d = this.doc; if (d) this.pushCmd(mergeVisible(d), true); }
   flattenAction(): void { const d = this.doc; if (d) this.pushCmd(flattenDocument(d, parseHex(this.bgColor) ?? WHITE), true); }
   turnLayerAction(t: Turn): void {
@@ -2607,6 +2708,7 @@ export class Editor {
   openModal(id: string): void {
     const s = this.sheets.get(id);
     if (!s) return;
+    if (id === 'size' && !this.dpiLib) { void this.openSize(); return; }
     if (id === 'size' || id === 'canvas' || id === 'rename') { if (!this.doc) return this.needDoc(); this.renderForm(id); }
     if (id === 'menu') this.renderMenuSheet(null);
     this.closePopover();
@@ -2673,93 +2775,16 @@ export class Editor {
       : `Now ${d.width} × ${d.height} px. The picture keeps its size; space is added or cut around it.`),
       h('div', { class: 'fpe-row' }, h('label', { for: fid + 'w' }, 'Width (px)'), w), h('div', { class: 'fpe-row' }, h('label', { for: fid + 'h' }, 'Height (px)'), hh)];
     if (id === 'size') {
-      // Resolution (DPI) and Resample. On: the picture gets new pixels. Off: the pixels stay, and width, height and DPI
-      // change the print size only (dpiForPrint), saved as one undoable step (setDocDpi).
-      const note = rows[0] as HTMLElement;
-      let dpi = docDpi(d), unit: PrintUnit = 'cm';
-      const dec = (k: string, label: string, help: string): HTMLInputElement => h('input', { id: fid + k, type: 'number', min: 0.01, step: 'any', inputmode: 'decimal',
-        'data-testid': `size-${k}`, 'aria-label': label, 'data-help-title': label, 'data-help': help });
-      const res = dec('dpi', 'Resolution in DPI', 'How many pixels go into one printed inch: 300 for print, 72 for screens.');
-      res.value = n2(dpi);
-      const pw = dec('pw', 'Print width', 'How wide the picture prints.'), ph = dec('ph', 'Print height', 'How tall the picture prints.');
-      const unitSel = h('select', { id: fid + 'u', 'aria-label': 'Print unit', 'data-testid': 'size-unit' }, ...PRINT_UNITS.map((u) => h('option', { value: u }, UNIT_LABEL[u])));
-      const resample = h('input', { id: fid + 's', type: 'checkbox', checked: true, 'data-testid': 'size-resample' });
-      const px = (): [number, number] => [Math.max(1, Math.round(Number(w.value))), Math.max(1, Math.round(Number(hh.value)))];
-      const showPrint = (): void => { const [W, H] = px(); pw.value = n2(fromInches(W / dpi, unit)); ph.value = n2(fromInches(H / dpi, unit)); };
-      w.addEventListener('input', showPrint);
-      hh.addEventListener('input', showPrint);
-      res.addEventListener('input', () => {
-        const v = Number(res.value);
-        if (!isDpi(v)) return;
-        dpi = roundDpi(v);
-        // Resample on keeps the print size, so the pixels follow; off keeps the pixels, so the print size follows.
-        if (resample.checked) { w.value = String(printPixels(Number(pw.value), unit, dpi)); hh.value = String(printPixels(Number(ph.value), unit, dpi)); } else showPrint();
-      });
-      const fromPrint = (side: 'w' | 'h'): void => {
-        const v = Number((side === 'w' ? pw : ph).value), [W, H] = px();
-        if (!(v > 0)) return;
-        if (resample.checked) {
-          const a = side === 'w' ? w : hh, b = side === 'w' ? hh : w, na = side === 'w' ? d.width : d.height, nb = side === 'w' ? d.height : d.width;
-          a.value = String(printPixels(v, unit, dpi));
-          if (keep.checked) b.value = String(Math.max(1, Math.round((Number(a.value) * nb) / na)));
-          (side === 'w' ? ph : pw).value = n2(fromInches(Number(b.value) / dpi, unit));
-        } else {
-          const nd = dpiForPrint(side === 'w' ? W : H, v, unit);
-          if (!isDpi(nd)) return;
-          dpi = nd;
-          res.value = n2(dpi);
-          (side === 'w' ? ph : pw).value = n2(fromInches((side === 'w' ? H : W) / dpi, unit));
-        }
-      };
-      pw.addEventListener('input', () => fromPrint('w'));
-      ph.addEventListener('input', () => fromPrint('h'));
-      unitSel.addEventListener('change', () => { unit = unitSel.value as PrintUnit; showPrint(); });
-      const mode = h('select', { id: fid + 'm', 'data-testid': 'size-mode' }, h('option', { value: 'smooth' }, 'Smooth (photos)'), h('option', { value: 'pixel' }, 'Hard pixels (pixel art)'));
-      const modeRow = h('div', { class: 'fpe-row', 'data-help-title': 'Quality', 'data-help': 'Smooth suits photos. Hard pixels keeps pixel art crisp.' }, h('label', { for: fid + 'm' }, 'Quality'), mode);
-      const presets = h('div', { class: 'fpe-chips' }, ...([['Half', 0.5], ['1080 wide', 1080 / d.width], ['1920 wide', 1920 / d.width], ['Double', 2]] as const).map(([label, k]) =>
-        h('button', { type: 'button', class: 'fpe-chip', onclick: () => { w.value = String(Math.max(1, Math.round(d.width * k))); hh.value = String(Math.max(1, Math.round(d.height * k))); showPrint(); } }, label)));
-      const apply = (): void => {
-        const nd = Number(res.value);
-        if (!isDpi(nd)) { this.toast('The DPI must be a number from 1 to 10000, for example 300.'); return; }
-        if (!resample.checked) {
-          this.closeModal();
-          this.pushCmd(setDocDpi(d, nd));
-          const k = docDpi(d);
-          this.toast(`The pixels stay ${d.width} × ${d.height}. At ${n2(k)} DPI the picture prints ${printText(d.width, d.height, k)}.`);
-          return;
-        }
-        const W = Math.round(Number(w.value)), H = Math.round(Number(hh.value));
-        if (!(W >= 1 && H >= 1 && W <= 16384 && H <= 16384)) { this.toast('Width and height must be between 1 and 16384 pixels.'); return; }
-        if (W * H > maxPixelsForDevice()) { this.toast('That size is too large for this device.'); return; }
-        this.closeModal();
-        this.cancelSession();
-        this.hole = null;
-        const before = docDpi(d);
-        this.pushCmd(joinCommands(resizeDocument(d, W, H, mode.value as Resample), setDocDpi(d, nd)), true);
-        this.updateAnts();
-        this.fit();
-        const k = docDpi(d);
-        this.toast(`Picture is now ${d.width} × ${d.height} px.${k !== before ? ` At ${n2(k)} DPI it prints ${printText(d.width, d.height, k)}.` : ''}`);
-      };
-      const act = actions('Resize', apply), goBtn = act.lastElementChild as HTMLElement;
-      resample.addEventListener('change', () => {
-        const on = resample.checked;
-        if (!on) { w.value = String(d.width); hh.value = String(d.height); keep.checked = true; showPrint(); }
-        w.disabled = hh.disabled = keep.disabled = !on;
-        for (const b of presets.querySelectorAll<HTMLButtonElement>('button')) b.disabled = !on;
-        modeRow.hidden = !on;
-        goBtn.textContent = on ? 'Resize' : 'Set the DPI';
-        note.textContent = on ? `Now ${d.width} × ${d.height} px. The picture is redrawn to the new size.`
-          : `Now ${d.width} × ${d.height} px. The pixels stay as they are: only the DPI and the print size change. DPI alone never adds detail.`;
-      });
-      showPrint();
-      rows.unshift(presets);
-      rows.push(h('div', { class: 'fpe-check' }, keep, h('label', { for: fid + 'k' }, 'Keep the shape (width and height change together)')),
-        h('div', { class: 'fpe-row' }, h('label', { for: fid + 'dpi' }, 'Resolution (DPI)'), res),
-        h('div', { class: 'fpe-row fpe-size-print' }, h('label', { for: fid + 'pw' }, 'Print size'), pw, h('span', { class: 'fpe-out', 'aria-hidden': 'true' }, '×'), ph, unitSel),
-        h('div', { class: 'fpe-check', 'data-help-title': 'Resample', 'data-help': 'On: the picture gets more or fewer pixels. Off: the pixels stay; width, height and DPI change the print size only.' },
-          resample, h('label', { for: fid + 's' }, 'Resample: change the number of pixels')),
-        modeRow, act);
+      // Resolution (DPI), print size and Resample live in export-dpi.ts, loaded before the sheet opens (openSize).
+      const lib = this.dpiLib;
+      if (!lib) return;
+      const out = lib.sizeRows(d, { fid, w, hh, keep, note: rows[0] as HTMLElement, actions }, {
+        toast: (m) => this.toast(m),
+        setDpi: (make) => { this.closeModal(); this.pushCmd(make()); },
+        resize: (make) => { this.closeModal(); this.cancelSession(); this.hole = null; this.pushCmd(make(), true); this.updateAnts(); this.fit(); },
+      }, maxPixelsForDevice());
+      rows.unshift(out.presets);
+      rows.push(...out.rows);
     } else {
       let ax = 0.5, ay = 0.5;
       const grid = h('div', { class: 'fpe-anchor', role: 'group', 'aria-label': 'Which side stays put' });
@@ -2859,12 +2884,12 @@ export class Editor {
     const dl = h('input', { id: id + 'd', type: 'number', min: 20, max: 10000, step: 10, value: 100, inputmode: 'numeric', 'data-testid': 'export-delay' });
     dl.addEventListener('input', () => { const v = Number(dl.value); if (v >= 10) this.exportDelay = Math.min(10000, Math.round(v)); });
     this.delayRow = h('div', { class: 'fpe-row', 'data-help-title': 'Time per frame', 'data-help': 'How long each frame shows, in thousandths of a second: 100 shows ten frames a second.' }, h('label', { for: id + 'd' }, 'Time per frame (ms)'), dl);
-    this.dpiPanel = buildDpiPanel(String(this.uid), () => this.renderExport(), maxPixelsForDevice());
+    this.dpiHost = h('div', { style: 'display:contents' });
     this.exportGo = h('button', { type: 'button', class: 'fpe-btn fpe-btn-primary', 'data-testid': 'export-go', onclick: () => void this.doExport() }, 'Export');
     return h('div', { class: 'fpe-stack' },
       h('div', { class: 'fpe-row' }, h('label', { for: id + 'n' }, 'File name'), this.exportName),
       h('div', { class: 'fpe-field-col' }, h('span', { class: 'fpe-label' }, 'File type'), this.exportChips),
-      this.qualityRow, this.multiRow, this.delayRow, this.lossBox, this.dpiPanel.el,
+      this.qualityRow, this.multiRow, this.delayRow, this.lossBox, this.dpiHost,
       h('div', { class: 'fpe-actions' }, h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', onclick: () => this.closeModal() }, 'Cancel'), this.exportGo));
   }
   /** A sheet that asks how to open a file (the PDF page, the RAW develop step). Resolves false when closed. */
@@ -2885,7 +2910,9 @@ export class Editor {
    * Picture size, with the cursor in Resolution (DPI) when asked. "Print resolution" opens it with Resample off, so a
    * beginner who types 300 keeps every pixel and only the print size changes; ticking Resample is the pro path.
    */
-  openSize(focus?: 'dpi'): void {
+  async openSize(focus?: 'dpi'): Promise<void> {
+    if (!this.doc) return this.needDoc();
+    try { await this.loadDpi(); } catch (e) { this.toast(errText(e, "Picture size couldn't load. Check the connection and try again.")); return; }
     this.openModal('size');
     if (!focus || this.modal !== 'size') return;
     const s = this.sheets.get('size'), re = s?.querySelector<HTMLInputElement>('[data-testid="size-resample"]');
@@ -2893,31 +2920,42 @@ export class Editor {
     requestAnimationFrame(() => requestAnimationFrame(() => focusInSheet(s?.querySelector<HTMLElement>('[data-testid="size-dpi"]'))));
   }
   /** Export; `focus` opens it at the DPI choice or with Best quality ticked. */
-  openExport(fmt?: string, multi?: boolean, focus?: 'dpi' | 'best'): void {
-    const d = this.doc;
-    if (!d) return this.needDoc();
+  /** Load Export's DPI section once and put it in the sheet. */
+  private loadDpi(): Promise<typeof import('./export-dpi')> {
+    return (this.dpiMod ??= import('./export-dpi').then((m) => {
+      this.dpiLib = m;
+      this.dpiPanel ??= m.buildDpiPanel(String(this.uid), () => this.renderExport(), maxPixelsForDevice());
+      if (!this.dpiPanel.el.isConnected) this.dpiHost.replaceChildren(this.dpiPanel.el);
+      return m;
+    }, (e: unknown) => { this.dpiMod = null; throw e; }));
+  }
+  async openExport(fmt?: string, multi?: boolean, focus?: 'dpi' | 'best'): Promise<void> {
+    if (!this.doc) return this.needDoc();
     if (this.session) { this.toast('Apply or cancel the adjustment first.'); return; }
+    try { await this.loadDpi(); } catch (e) { this.toast(errText(e, "Export couldn't load. Check the connection and try again.")); return; }
+    const d = this.doc, panel = this.dpiPanel;
+    if (!d || !panel) return;
     if (fmt) this.exportFormat = fmt;
     if (multi !== undefined) this.exportMulti = multi;
     this.exportFacts = docFacts(d);
     this.exportName.value = this.name;
-    this.dpiPanel.reset(d);
-    if (focus === 'best') this.dpiPanel.setBest(true);
+    panel.reset(d);
+    if (focus === 'best') panel.setBest(true);
     this.renderExport();
     this.openModal('export');
-    if (focus) this.dpiPanel.focus(focus);
+    if (focus) panel.focus(focus);
   }
   private renderExport(): void {
-    const f = this.exportFacts;
-    if (!f) return;
+    const f = this.exportFacts, panel = this.dpiPanel;
+    if (!f || !panel) return;
     const fmt = this.exportFormat, info = fmtInfo(fmt), label = info.label, kind = multiKind(fmt), def = formatDef(fmt), d = this.doc;
     const multi = this.exportMulti && !!kind && f.layers > 1;
     this.multiRow.hidden = !kind || f.layers < 2;
     this.multiText.textContent = kind === 'pages' ? 'Each layer as its own page' : 'Make an animation: each layer is one frame';
     this.multiBox.checked = this.exportMulti;
     this.delayRow.hidden = !multi || kind !== 'frames';
-    this.dpiPanel.render(fmt, label, info.lossy, multi);
-    const best = this.dpiPanel.choice().best, q = best ? 1 : this.exportQuality;
+    panel.render(fmt, label, info.lossy, multi);
+    const best = panel.choice().best, q = best ? 1 : this.exportQuality;
     const rep = def || multi ? formatLossReport(def ?? { id: fmt, label, caps: { alpha: 'full', lossy: info.lossy, multi: kind ?? undefined }, keeps: '' }, f, q, multi, d ? Math.max(d.width, d.height) : 0)
       : lossReport(f, fmt as ExportFormat, q);
     for (const b of this.exportChips.querySelectorAll<HTMLElement>('[data-format]')) {
@@ -2937,16 +2975,16 @@ export class Editor {
     this.exportGo.textContent = rep.losses.length ? `Export ${label} anyway` : `Export ${label}`;
   }
   private async doExport(): Promise<void> {
-    const d = this.doc;
-    if (!d) return;
+    const d = this.doc, panel = this.dpiPanel, mod = this.dpiMod;
+    if (!d || !panel || !mod) return;
     const fmt = this.exportFormat, info = fmtInfo(fmt), file = baseName(this.exportName.value || this.name) + '.' + info.ext;
-    const pc = this.dpiPanel.choice(), bad = this.dpiPanel.problem(), multi = this.exportMulti && d.layers.length > 1 && !!multiKind(fmt);
+    const pc = panel.choice(), bad = panel.problem(), multi = this.exportMulti && d.layers.length > 1 && !!multiKind(fmt);
     if (bad) { this.toast(bad); return; }
     const done = this.busyAfter(100);
     this.exportGo.disabled = true;
     try {
       // "Resize to a print size" redraws a copy; the picture itself keeps its pixels.
-      const src = pc.resize ? printCopy(d, pc.resize.width, pc.resize.height, pc.resize.mode) : d;
+      const src = pc.resize ? (await mod).printCopy(d, pc.resize.width, pc.resize.height, pc.resize.mode) : d;
       const { blob, note } = await encodeDocument(src, fmt, pc.best ? 1 : this.exportQuality, { multi, delay: this.exportDelay, dpi: pc.dpi });
       download(blob, file, this.root);
       this.savedId = this.history.stateId();
@@ -3043,7 +3081,7 @@ export class Editor {
   }
   private load(i: number): void {
     this.cancelSession();
-    this.stroke = null;
+    this.stroke = null; this.strokeCache = null;
     this.drag = null;
     this.crop = null;
     const t = this.tabs[i];
@@ -3432,7 +3470,8 @@ export class Editor {
           ratio: this.ratio, crop: this.crop, hole: this.hole, exportFormat: this.exportFormat, info: this.infoOf(),
           w3: this.tk?.state() ?? null, autoPick: this.autoPick, view: { ...this.view },
           maskTarget: !!this.active()?.mask && this.maskTarget,
-          layers: this.doc ? this.doc.layers.map((l) => ({ id: l.id, x: l.x, y: l.y, w: l.width, h: l.height, mask: l.mask ? maskSummary(l.mask) : null })) : [],
+          layers: this.doc ? this.doc.layers.map((l) => ({ id: l.id, x: l.x, y: l.y, w: l.width, h: l.height, mask: l.mask ? maskSummary(l.mask) : null,
+            name: l.name, kind: l.kind ?? 'pixel', parentId: l.parentId ?? null, clip: !!l.clip, open: l.open !== false, passThrough: !!l.passThrough, opacity: l.opacity, blendMode: l.blendMode })) : [],
         };
       },
       openSample: (k?: number) => this.openSample(k),

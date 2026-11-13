@@ -4,8 +4,8 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**673 functions: 269 Ready, 404 Planned** (65 tools, 22 panels, 37 menus and submenus).
-412 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
+**675 functions: 273 Ready, 402 Planned** (65 tools, 22 panels, 37 menus and submenus).
+414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 all Planned, which never join the menu bar: search lists them with their "Planned" tag, and the Task ribbon gives each one a home.
 
 ## Reach on the Task ribbon
@@ -17,8 +17,8 @@ counts once, at its best.
 
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
-| All functions | 673 | 25 | 258 | 390 | 0 |
-| Ready today | 269 | 25 | 116 | 128 | 0 |
+| All functions | 675 | 25 | 260 | 390 | 0 |
+| Ready today | 273 | 25 | 118 | 130 | 0 |
 
 ## The Task ribbon
 
@@ -35,7 +35,7 @@ leave the screen. "Commands" counts every command a tab shows, including ones sh
 | Paint & draw · Painting | Paint and erase, Brush kinds, Brush settings, Fill, Colour, Paint back | 47 | 47 | 19 |
 | Shapes & text · Vectors and type | Draw outlines, Shapes, Combine and style, Live shape effects, Text, Text style | 65 | 65 | 14 |
 | Automate & batch · Actions and batch | Record steps, Do many at once, Merge photos, Scripts and data, Sheets and layouts | 24 | 24 | 13 |
-| Arrange layers · Layer arrangement | This layer, Order, Line up, Combine, Find and versions, Animate | 40 | 40 | 17 |
+| Arrange layers · Layer arrangement | This layer, Order, Folders, Line up, Combine, Find and versions, Animate | 42 | 42 | 19 |
 | Crop & resize · Crop and transform | Crop, Size, Turn the picture, Move and reshape a layer, Turn a layer, Bend and push | 38 | 38 | 20 |
 | Light & colour · Adjustments | Fix in one click, Light and colour, More colour tools, Colour type, Colour accuracy | 51 | 48 | 16 |
 | Filters & blur · Filters | Again, Popular effects, Blur, Camera blurs, Sharpen, Grain and specks, Bend and twist, Blocks and dots, Patterns and light, Graphic looks, Artistic, More effects | 114 | 100 | 9 |
@@ -253,7 +253,7 @@ Groups: Colour type · Mode; Light and colour · Adjustments; Make it bigger · 
 | image.vectorize | Turn into shapes | Vectorize | Trace the picture into vector shapes. | trace, svg | Image | Shapes & text › Shapes · More list | Planned | 6 |  |
 | image.variables | Data-driven pictures | Variables | Make many versions from a data file. | template, data merge | Image | Automate & batch › Scripts and data · small button | Planned | 13 |  |
 
-## Layer (32 Ready, 38 Planned)
+## Layer (36 Ready, 36 Planned)
 
 Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour layer · Fill layer; Editable light and colour · Adjustment layer; Hide parts · Mask; Smart layer · Smart object; Order · Arrange; Line up · Align.
 
@@ -262,7 +262,9 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.new | New empty layer | New layer | A clear sheet on top to paint on without touching the photo. | add layer, blank layer, transparent layer | Layer › New | Effects & masks › New · big button | Ready | 1 | Ctrl+Shift+N |
 | layer.new-copy | Layer from a copy | Layer via copy | Copy the selected area, or the whole layer, to a new layer. | copy to layer | Layer › New | Effects & masks › New · More list | Ready | W1 | Ctrl+J |
 | layer.new-cut | Layer from a cut | Layer via cut | Move the selected area to a new layer. | cut to layer, separate part | Layer › New | Effects & masks › New · More list | Ready | W1 | Ctrl+Shift+J |
-| layer.new-group | Folder of layers | Group | Keep layers together in a folder. | group, folder | Layer › New | Effects & masks › New · More list | Planned | 3 | Ctrl+G |
+| layer.new-group | New empty folder | New group | Start an empty folder of layers above this one, then move layers into it. | group, folder, new folder | Layer › New | Effects & masks › New · More list | Ready | 3 |  |
+| layer.group | Put in a new folder | Group layers | Put this layer in a new folder in its place, so you can move, hide or fade them together. | group, folder, put in folder | Layer › New | Arrange layers › Folders · small button | Ready | 3 | Ctrl+G |
+| layer.ungroup | Take out of the folder | Ungroup layers | Take the folder apart: its layers keep their place, one level up. | ungroup, remove folder, unfold | Layer › New | Arrange layers › Folders · small button | Ready | 3 | Ctrl+Shift+G |
 | layer.duplicate | Duplicate layer | Duplicate layer | Make an exact copy of the active layer. | copy layer, clone layer | Layer | Effects & masks › New · More list | Ready | 1 |  |
 | layer.delete | Delete layer | Delete layer | Remove the active layer. | remove layer | Layer | Arrange layers › This layer · More list | Ready | 1 |  |
 | layer.rename | Rename layer | Rename | Give the active layer a clear name. | name layer | Layer | Arrange layers › This layer · small button | Ready | W1 |  |
@@ -304,7 +306,7 @@ Groups: New layer · New; Shadows, glows and outlines · Layer style; Colour lay
 | layer.mask-toggle | Switch the mask off | Disable layer mask | See the whole layer again without losing the mask; choose again to switch it back on. | mask on off, disable mask | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |
 | layer.mask-link | Link the mask to the layer | Link layer mask | Linked, the mask moves and turns with the layer; unlinked, they move apart. | link mask, chain | Layer › Mask | Effects & masks › Hide parts · More list | Ready | 2 |  |
 | layer.vector-mask | Shape mask | Vector mask | Hide parts with a sharp-edged shape. | shape mask | Layer › Mask | Effects & masks › Hide parts · More list | Planned | 6 |  |
-| layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text | Layer › Mask | Effects & masks › New · More list | Planned | 2 | Ctrl+Alt+G |
+| layer.clip | Show only inside the layer below | Create clipping mask | Show this layer only where the layer below has pixels. | clip, picture inside text, clipping mask | Layer › Mask | Effects & masks › New · More list | Ready | 2 | Ctrl+Alt+G |
 | layer.smart-convert | Make a smart layer | Convert to smart object | Keep the layer's original pixels safe from resizing. | smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
 | layer.smart-edit | Edit the contents | Edit contents | Open the original pixels to change them. | edit smart object | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |
 | layer.smart-replace | Replace the contents | Replace contents | Swap the contents for another picture. | mockup | Layer › Smart layer | Effects & masks › Live effects · More list | Planned | 3 |  |

@@ -28,7 +28,13 @@ const filesOf = (key, out, seen = new Set()) => {
 const first = filesOf(Object.keys(manifest).find((k) => manifest[k].isEntry), new Set());
 const lazy = new Set();
 for (const [k, m] of Object.entries(manifest)) if (m.isDynamicEntry) for (const f of filesOf(k, new Set())) if (!first.has(f)) lazy.add(f);
-const refs = (f) => [...readFileSync(join(dist, f), 'utf8').matchAll(/["'`](?:\.\/|\/)?(?:assets\/)?([\w.-]+\.(?:js|mjs|wasm))["'`]/g)].map((m) => 'assets/' + m[1]).filter((r) => all.has(r));
+// A file's references: what it imports up front and what it fetches by URL (the filter worker). A dynamic import() is
+// left out: that file loads only when the code runs. The filter worker's own effects chunk (fx-*.js) is one; a browser
+// test (editor.e2e) checks that a first load with a photo open never asks for it. It is listed under add-ons.
+const DYN = /import\(\s*["'`](?:\.\/|\/)?(?:assets\/)?([\w.-]+\.m?js)["'`]\s*\)/g;
+const names = (t, re) => [...t.matchAll(re)].map((m) => 'assets/' + m[1]).filter((r) => all.has(r));
+const refs = (f) => names(readFileSync(join(dist, f), 'utf8').replace(DYN, ''), /["'`](?:\.\/|\/)?(?:assets\/)?([\w.-]+\.(?:js|mjs|wasm))["'`]/g);
+const later = (f) => names(readFileSync(join(dist, f), 'utf8'), DYN);
 for (const f of [...first]) if (/\.m?js$/.test(f)) for (const r of refs(f)) if (!lazy.has(r) && !first.has(r)) first.add(r);
 let total = 0;
 const rows = [...first].filter((f) => /\.(m?js|css)$/.test(f)).sort().map((f) => { const s = br(f); total += s; return `${kb(s)}  ${f}`; });
@@ -42,6 +48,7 @@ for (const [k, m] of Object.entries(manifest)) {
   for (const f of filesOf(k, new Set())) if (!first.has(f) && !owner.has(f)) owner.set(f, name);
 }
 for (const [f, name] of [...owner]) if (/\.m?js$/.test(f)) for (const r of refs(f)) if (!first.has(r) && !owner.has(r)) owner.set(r, name);
+for (const f of first) if (/\.m?js$/.test(f)) for (const r of later(f)) if (!first.has(r) && !owner.has(r)) owner.set(r, `loaded by ${f} on first use`);
 for (const f of all) if (!first.has(f) && !owner.has(f) && /\.(m?js|css|wasm)$/.test(f)) owner.set(f, 'other');
 const groups = new Map();
 for (const [f, name] of owner) groups.set(name, [...(groups.get(name) ?? []), f]);

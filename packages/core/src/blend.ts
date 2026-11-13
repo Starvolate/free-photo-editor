@@ -104,4 +104,6 @@ export interface BlendLayer {
   visible: boolean; opacity: number; blendMode: BlendMode;
   x: number; y: number; width: number; height: number; data: Uint8ClampedArray;
   mask?: LayerMask;
+  /** The tree fields (document.ts): plain objects without them are plain pixel layers at the top level. */
+  id?: string; kind?: 'pixel' | 'folder' | 'adjust' | 'fill'; parentId?: string; clip?: boolean; passThrough?: boolean;
 }

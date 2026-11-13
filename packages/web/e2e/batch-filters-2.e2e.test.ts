@@ -25,7 +25,7 @@ const BATCH_IDS = ['filter.kaleidoscope', 'filter.alien-map', 'filter.bloom', 'f
   'filter.video-degrade', 'filter.lowlight', 'filter.bump-map', 'filter.star-burst', 'filter.blur-edge-keep', 'filter.antialias',
   'filter.outline-relief', 'filter.newsprint', 'filter.dents', 'filter.cartoon', 'filter.ink-sketch',
   'filter.linocut', 'filter.patterns', 'filter.blur-sketch', 'filter.blur-tileable',
-  'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen'];
+  'filter.tile-seamless', 'filter.page-curl', 'filter.illusion', 'filter.fractal-trace', 'filter.superpixels', 'filter.noise-patterns', 'filter.diffuse-sharpen', 'filter.gallery'];
 
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(WEB, 'dist');
@@ -97,7 +97,16 @@ suite('Filters batch 2 (headless Chrome)', () => {
       await reach(p, id);
       await p.waitForSelector('[data-testid="adjust-dialog"]:not([hidden])');
       await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, before] as const, { timeout: 20_000 });
-      if (done.length === 0 || id === 'filter.star-burst' || id === 'filter.ink-sketch' || id === 'filter.patterns' || id === 'filter.noise-patterns' || id === 'filter.page-curl') await p.screenshot({ path: join(OUT, `batch2-${id}.png`) });
+      // The artistic looks sheet: its eight small previews draw, then picking the pencil drawing previews that look.
+      if (id === 'filter.gallery') {
+        await p.waitForSelector('[data-testid="gallery-looks"][data-ready="true"]', { timeout: 20_000 });
+        expect(await p.locator('[data-testid^="gallery-look-"]').count()).toBe(8);
+        const ink = await sum(p);
+        await p.click('[data-testid="gallery-look-1"]');
+        await p.waitForFunction(([b, o]) => (window as unknown as Win).fpe.checksum(b[0], b[1], b[2], b[3]) !== o, [BOX, ink] as const, { timeout: 20_000 });
+        expect(await p.getAttribute('[data-testid="gallery-look-1"]', 'aria-pressed')).toBe('true');
+      }
+      if (id === 'filter.gallery' || done.length === 0 || id === 'filter.star-burst' || id === 'filter.ink-sketch' || id === 'filter.patterns' || id === 'filter.noise-patterns' || id === 'filter.page-curl') await p.screenshot({ path: join(OUT, `batch2-${id}.png`) });
       await p.click('[data-testid="adj-apply"]');
       await p.waitForFunction((k) => ((window as unknown as Win).fpe.state().step as number) > k, n);
       expect(await sum(p), id).not.toBe(before);

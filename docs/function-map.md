@@ -4,7 +4,7 @@ Generated from `packages/web/src/registry.ts`, `registry-union.ts` and `ribbon-h
 do not edit by hand. Every menu item, tool and panel of a professional editor, with a plain name first, the usual
 pro name second, one plain line of help, the wish words search understands, where it lives, and whether it works today.
 
-**675 functions: 444 Ready, 231 Planned** (65 tools, 22 panels, 37 menus and submenus).
+**675 functions: 445 Ready, 230 Planned** (65 tools, 22 panels, 37 menus and submenus).
 414 are today's menu, tool and panel rows; 261 are new functions from the feature census (U001 to U261),
 162 of them Planned until their wave builds them; they never join the menu bar: search lists them (a Planned one with its tag), and the Task ribbon gives each one a home.
 
@@ -18,7 +18,7 @@ counts once, at its best.
 | Functions | Count | 1 click | 2 clicks | 3 clicks | Search only |
 |---|---|---|---|---|---|
 | All functions | 675 | 25 | 222 | 428 | 0 |
-| Ready today | 444 | 25 | 186 | 233 | 0 |
+| Ready today | 445 | 25 | 186 | 234 | 0 |
 
 ## The Task ribbon
 
@@ -373,14 +373,14 @@ Groups: Change the selection · Modify.
 | select.save | Save the selection | Save selection | Keep the selection to use again later. | store selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 | select.load | Load a saved selection | Load selection | Bring back a saved selection. | load selection | Select | Select & cut out › Perfect and keep · More list | Ready | W3 |  |
 
-## Filter (64 Ready, 5 Planned)
+## Filter (65 Ready, 4 Planned)
 
 Groups: Blur · Blur; Camera blurs · Blur gallery; Bend and twist · Distort; Grain · Noise; Blocks and dots · Pixelate; Make patterns · Render; Sharpen · Sharpen; Graphic effects · Stylize; More effects · Other.
 
 | id | Plain name | Pro name | What it does | Wish words | Place | Lives in | Status | Phase | Keys |
 |---|---|---|---|---|---|---|---|---|---|
 | filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | Filter | Filters & blur › Again · big button | Ready | W1 | Ctrl+Alt+F |
-| filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | Filter | Filters & blur › Artistic · family sheet | Planned | W2 |  |
+| filter.gallery | Artistic effects | Painterly looks with previews | Pick a drawn or painted look from small previews. | painting effect, sketch, filter gallery | Filter | Filters & blur › Artistic · family sheet | Ready | W2 |  |
 | filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | Filter | Develop RAW › Detail and lens · More list | Ready | W2 |  |
 | filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | Filter | Develop RAW › Develop · More list | Planned | 5 |  |
 | filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | Filter | Crop & resize › Bend and push · More list | Planned | 5 |  |

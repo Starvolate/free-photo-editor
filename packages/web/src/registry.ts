@@ -305,7 +305,7 @@ select.load | Load a saved selection | Load selection | Bring back a saved selec
 @Filter = Filter | Filter | Effects such as blur, sharpen, noise and distortions.
 filter.last | Repeat the last effect | Last filter | Run the last effect again with the same settings. | again, repeat effect | R | W1 | Ctrl+Alt+F
 --
-filter.gallery | Artistic effects | Filter gallery | Try painterly effects with a big preview. | painting effect, sketch | P | W2
+filter.gallery | Artistic effects | Painterly looks with previews | Pick a drawn or painted look from small previews. | painting effect, sketch, filter gallery | R | W2
 filter.lens | Fix lens problems | Lens correction | Straighten bulging lines and lighten dark corners. | distortion, vignette, fisheye | R | W2
 filter.raw | Develop a photo | Raw develop | Every photo control in one place, as for camera RAW files. | raw, develop, camera raw | P | 5
 filter.liquify | Push pixels like liquid | Liquify | Gently push, bloat or pinch parts of the picture. | reshape, slim, liquify | P | 5

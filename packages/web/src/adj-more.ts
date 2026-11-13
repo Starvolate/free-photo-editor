@@ -2,12 +2,15 @@
 // Copyright (C) 2026 Bhawesh Tibrewal
 /**
  * The batch filters' dialogs (13 Nov 2026), in plain words: spin blur, lens fix, glass, ocean ripple, lens flare,
- * lighting, colour to see-through, dither, replace a colour, fewer colours and palette colour, then the census filters of batch 2. commands.ts loads this
+ * lighting, colour to see-through, dither, replace a colour, fewer colours and palette colour, then the census filters of batch 2 and the artistic
+ * looks sheet with its small previews. commands.ts loads this
  * file the first time one of them runs (BATCH_IDS, BATCH2_IDS), so the first screen never downloads it; loading it adds them to ADJ.
  */
-import { ADJ, type AdjDef, type Ctl } from './commands';
+import { resizeBitmap, type Bitmap } from '@free-photoeditor/core';
+import { ADJ, type AdjDef, type Ctl, type SheetApi } from './commands';
 import type { Editor } from './app';
-import { errText } from './dom';
+import { renderControls } from './controls';
+import { errText, h } from './dom';
 
 /**
  * Soften the last change, shades of grey and turn by any angle (image-more.ts). commands.ts reaches them through this
@@ -175,3 +178,48 @@ export const MORE4: Record<string, AdjDef> = {
     R('radius', 'Blur to undo (deblur)', 'About how wide the blur is that deblur takes away.', 1, 20, 2, ' px')]),
 };
 Object.assign(ADJ, MORE4);
+
+/**
+ * Artistic looks with previews (13 Nov 2026): eight drawn and painted looks (the `gallery` effect), each drawn on a small
+ * copy of the area as it was when the dialog opened, so a person picks by sight. A tile press previews that look.
+ */
+const STYLES = ['Ink drawing', 'Pencil drawing', 'Cartoon', 'Photocopy', 'Lino print', 'Halftone dots', 'Brush strokes', 'Crumpled paper'];
+type Tiles = { params: object; done: (ImageData | null)[]; boxes: HTMLCanvasElement[]; wrap: HTMLElement | null };
+let tiles: Tiles | null = null;
+function drawTiles(t: Tiles): void {
+  t.boxes.forEach((c, k) => { const d = t.done[k]; if (d) { c.width = d.width; c.height = d.height; c.getContext('2d')?.putImageData(d, 0, 0); } });
+  if (t.done.every(Boolean)) t.wrap?.setAttribute('data-ready', 'true');
+}
+async function makeTiles(t: Tiles, src: Bitmap): Promise<void> {
+  try {
+    const { runEffect } = await import('@free-photoeditor/core/fx');
+    for (let k = 0; k < STYLES.length && tiles === t; k++) {
+      t.done[k] = new ImageData(new Uint8ClampedArray(runEffect({ kind: 'gallery', params: { style: k } }, src)), src.width, src.height);
+      drawTiles(t);
+      await new Promise((r) => setTimeout(r));
+    }
+  } catch { /* the tiles keep their names, and the picture itself still previews each look */ }
+}
+function gallerySheet(api: SheetApi): Node[] {
+  // The first draw of a dialog keeps a small copy of the area as it was (later draws would see the live preview).
+  if (tiles?.params !== api.params) {
+    const a = api.result(), k = Math.min(1, 120 / a.width, 80 / a.height), w = Math.max(1, Math.round(a.width * k)), hh = Math.max(1, Math.round(a.height * k));
+    tiles = { params: api.params, done: STYLES.map(() => null), boxes: [], wrap: null };
+    void makeTiles(tiles, { width: w, height: hh, data: resizeBitmap(a as Bitmap, w, hh) } as Bitmap);
+  }
+  const t = tiles, pick = api.params.style ?? 0;
+  t.boxes = [];
+  t.wrap = h('div', { role: 'group', 'aria-label': 'Looks', 'data-testid': 'gallery-looks', style: 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px' },
+    ...STYLES.map((name, k) => {
+      const c = h('canvas', { width: 1, height: 1, 'aria-hidden': 'true', style: 'width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:4px;background:var(--line)' }) as HTMLCanvasElement;
+      t.boxes.push(c);
+      return h('button', { type: 'button', class: 'fpe-btn fpe-btn-ghost', 'aria-pressed': k === pick ? 'true' : 'false', 'data-testid': 'gallery-look-' + k,
+        style: 'display:flex;flex-direction:column;align-items:stretch;gap:3px;height:auto;padding:4px;font-size:12px;line-height:1.2;white-space:normal;text-align:center',
+        'data-help-title': name, 'data-help': 'Show the picture with this look. Apply keeps it.', onclick: () => { api.params.style = k; api.rerender(); api.input(); } }, c, name);
+    }));
+  drawTiles(t);
+  return [t.wrap, ...renderControls(GALLERY.controls.filter((c) => c.key !== 'style'), api.params, api.idBase, { input: () => api.input(), rerender: () => api.rerender() })];
+}
+const GALLERY: AdjDef = FX('gallery', [SEL('style', 'Look', 'Which drawn or painted look covers the area; the small previews show each one.', STYLES),
+  PCT('mix', 'Strength', 'How much of the look covers the picture; lower lets the photo show through.', 0, 100, 100)], { sheet: gallerySheet });
+Object.assign(ADJ, { 'filter.gallery': GALLERY });

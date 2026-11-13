@@ -26,9 +26,9 @@ const reds = (d: ArrayLike<number>): number[] => Array.from({ length: d.length /
 describe('filters batch 2', () => {
   it('makes the batch Ready, with handlers, and leaves the rows it did not build Planned', () => {
     expect(NEW_ROWS.length).toBeGreaterThan(200);
-    expect(BATCH2_IDS.length).toBe(28);
+    expect(BATCH2_IDS.length).toBe(29);
     for (const id of BATCH2_IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow', 'filter.gallery']) {
+    for (const id of ['filter.depth-blur', 'filter.blur-variable', 'filter.long-shadow']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
       expect(HANDLERS[id], id).toBeUndefined();
     }
@@ -369,5 +369,21 @@ describe('filters batch 2, part 3: every look each row names', () => {
     expect(reds(run('detail-diffuse', spike, { ...one, look: 3 }))).toEqual([0, 25, 100, 25, 0]);
     // Deblur, radius 1: each pass adds back what a 3-wide blur takes away: 100 + (100 - 100 / 3) = 166.7; beside it 0 - 33.3 clips to 0.
     expect(reds(run('detail-diffuse', spike, { ...one, look: 1, radius: 1 }))).toEqual([0, 0, 167, 0, 0]);
+  });
+  it('artistic looks: each of the eight looks is its own effect byte for byte, and Strength mixes it over the picture', () => {
+    // The sheet's order: ink and pencil drawing, cartoon, photocopy, lino print, halftone dots, brush strokes, crumpled paper.
+    const looks: [string, number][] = [['sketch', 0], ['sketch', 1], ['cartoon', 0], ['cartoon', 1], ['linocut', 0], ['newsprint', 0], ['stroke-blur', 0], ['fractal', 0]];
+    const src = bmp(24, 16, (x, y) => [(x * 11 + y * 5) % 256, (x * 3 + y * 13) % 256, (x * y * 7) % 256, 255]);
+    looks.forEach(([kind, look], style) => {
+      const out = run('gallery', src, { style });
+      expect(Array.from(out), kind + ' ' + look).toEqual(Array.from(run(kind, src, { look })));
+      expect(Array.from(out), kind + ' ' + look).not.toEqual(Array.from(src.data));
+    });
+    // Pencil drawing on flat grey 100: the soft inverse is 155, so 100 x 255 / (255 - 155) = 255, white paper. At 40% strength:
+    // 100 + 0.4 x (255 - 100) = 162; at 0% the picture stays as it was.
+    const flat = bmp(6, 6, () => grey(100));
+    expect(px(run('gallery', flat, { style: 1 }), 6, 3, 3)).toEqual(grey(255));
+    expect(px(run('gallery', flat, { style: 1, mix: 40 }), 6, 3, 3)).toEqual(grey(162));
+    expect(Array.from(run('gallery', flat, { style: 1, mix: 0 }))).toEqual(Array.from(flat.data));
   });
 });

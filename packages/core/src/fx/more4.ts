@@ -5,11 +5,13 @@
  * seamless, repeated, mirrored and scattered paper tiles; a peeled corner and a curve bend; rotated copies and nested
  * copies (Droste); crumpled paper, a fractal remap and value spread; superpixels by colour clusters (SLIC) and by flooding
  * (watershed cells); cell, Perlin, simplex, cloud and plasma noise; and detail diffusion that sharpens, deblurs, softens
- * or blooms. Every read stays inside the edited box, so none needs a reach. All maths here is written for this project.
+ * or blooms; and artistic looks with previews, which picks one of eight drawn and painted looks from these effects and the
+ * third wave's. Every read stays inside the edited box, so none needs a reach. All maths here is written for this project.
  */
 import type { Bitmap } from '../document';
 import { clamp, hash, luma, makeSampler, num, premul, rgbOf, unpremul, warp, type Box, type Fx, type P } from './lib';
 import type { FxKind } from './meta';
+import { MORE3 } from './more3';
 
 const TAU = Math.PI * 2;
 const each = (b: Box, f: (x: number, y: number) => void): void => {
@@ -458,6 +460,21 @@ const detailDiffuse: Fx = (src, p, b) => {
   return out;
 };
 
+// ---------- artistic looks ----------
+/**
+ * The eight looks of the artistic looks sheet, in its order: ink drawing, pencil drawing, cartoon, photocopy, lino print,
+ * halftone dots, brush strokes and crumpled paper. Each is an effect of its own row with that row's look picked.
+ */
+const STYLES: ReadonlyArray<readonly [Fx, number]> = [[MORE3.sketch, 0], [MORE3.sketch, 1], [MORE3.cartoon, 0], [MORE3.cartoon, 1],
+  [MORE3.linocut, 0], [MORE3.newsprint, 0], [MORE3['stroke-blur'], 0], [fractal, 0]];
+/** One look (`style`) with its own row's settings at their defaults, laid over the picture at `mix` percent. */
+const gallery: Fx = (src, p, b) => {
+  const [f, sub] = STYLES[int(p, 'style', 0, 0, STYLES.length - 1)], out = f(src, { ...p, look: sub }, b), d = src.data;
+  const m = clamp(num(p, 'mix', 100), 0, 100) / 100;
+  if (m < 1) for (let i = 0; i < out.length; i++) out[i] = d[i] + (out[i] - d[i]) * m;
+  return out;
+};
+
 export const MORE4 = {
-  tiling, 'page-curl': pageCurl, illusion, fractal, superpixels, 'noise-pattern': noisePattern, 'detail-diffuse': detailDiffuse,
+  tiling, 'page-curl': pageCurl, illusion, fractal, superpixels, 'noise-pattern': noisePattern, 'detail-diffuse': detailDiffuse, gallery,
 } satisfies Partial<Record<FxKind, Fx>>;

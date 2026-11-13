@@ -25,7 +25,7 @@ describe('batch filters', () => {
   it('makes the batch Ready, with handlers, and leaves the rest of the area Planned', () => {
     expect(BATCH_IDS.length).toBe(11);
     for (const id of BATCH_IDS) { expect(BY_ID.get(id)?.status, id).toBe('ready'); expect(HANDLERS[id], id).toBeTruthy(); }
-    for (const id of ['filter.liquify', 'filter.gallery', 'filter.blur-path', 'filter.raw', 'filter.perspective-plane', 'image.mode-16', 'image.mode-lab', 'image.mode-cmyk']) {
+    for (const id of ['filter.liquify', 'filter.blur-path', 'filter.raw', 'filter.perspective-plane', 'image.mode-16', 'image.mode-lab', 'image.mode-cmyk']) {
       expect(BY_ID.get(id)?.status, id).toBe('planned');
       expect(HANDLERS[id], id).toBeUndefined();
     }

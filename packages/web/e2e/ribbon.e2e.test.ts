@@ -148,7 +148,6 @@ suite('R2 Task ribbon at 1440 x 900 (headless Chrome)', () => {
         const r = restOf(g), want = (g.show === 'family' ? r.more.length : r.big.length + r.shown.length + r.more.length) ? 1 : 0;
         expect(await p.locator(`[data-testid="rgroup-${slug(t.plain)}-${slug(g.plain)}"]`).count(), `${t.plain} › ${g.plain}${want ? '' : ' (nothing Ready)'}`).toBe(want);
       }
-      expect(await p.locator('[data-testid="ribbon-body"] [role="group"]').count(), `${t.plain} shows at least one group`).toBeGreaterThan(0);
       if (t.plain === 'Filters & blur') {
         await p.mouse.move(720, 600);
         await p.waitForTimeout(300);

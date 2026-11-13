@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Bhawesh Tibrewal
+# The AI model check: runs only when the check or the tap-to-select steps change, because it downloads about 150 MB.
+name: Model check
+on:
+  push:
+    paths:
+      - 'packages/ai/model-check/**'
+      - 'packages/ai/src/segment.ts'
+      - '.github/workflows/model-check.yml'
+permissions:
+  contents: read
+jobs:
+  segment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Segment Anything family on the four CC0 photos (round 4)
+        run: npx vitest run --config packages/ai/model-check/vitest.config.ts
+      - name: Keep the table and the contact sheets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-check-out
+          path: packages/ai/model-check/out
+          if-no-files-found: ignore
